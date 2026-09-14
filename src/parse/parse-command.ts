@@ -573,11 +573,7 @@ export function matchApproachesForTokens(
   return out;
 }
 
-function cloneProcedures(list: readonly CatalogProcedure[]): CatalogProcedure[] {
-  return list.slice(0, MAX_PATH_C_FIXES).map((item) => ({ ...item }));
-}
-
-function cloneApproaches(list: readonly CatalogApproach[]): CatalogApproach[] {
+function cloneCatalogEntries<T extends object>(list: readonly T[]): T[] {
   return list.slice(0, MAX_PATH_C_FIXES).map((item) => ({ ...item }));
 }
 
@@ -618,7 +614,7 @@ function pathCProcedureList(
   const matched = matchProceduresForTokens(queryTokens, procedures);
   if (matched.length > 0) {
     if (procedures.length <= MAX_PATH_C_FIXES) {
-      return cloneProcedures(procedures);
+      return cloneCatalogEntries(procedures);
     }
     return matched;
   }
@@ -626,7 +622,7 @@ function pathCProcedureList(
     return [];
   }
   if (procedures.length <= MAX_PATH_C_FIXES) {
-    return cloneProcedures(procedures);
+    return cloneCatalogEntries(procedures);
   }
   return [];
 }
@@ -641,12 +637,12 @@ export function pathCApproachList(
   const matched = matchApproachesForTokens(queryTokens, approaches);
   if (matched.length > 0) {
     if (approaches.length <= MAX_PATH_C_FIXES) {
-      return cloneApproaches(approaches);
+      return cloneCatalogEntries(approaches);
     }
     return matched;
   }
   if (hasApproachCue(queryTokens) || approaches.length <= MAX_PATH_C_FIXES) {
-    return cloneApproaches(approaches);
+    return cloneCatalogEntries(approaches);
   }
   return [];
 }
@@ -1257,6 +1253,18 @@ export async function parseCommand(
     ? clearanceLimitCandidates(normalized, catalog, opts.routeCandidates ?? [], airports)
     : { limits: [], airportMatches: [] };
   const extraTokens: string[] = [];
+  const acceptLocalStage = (stage: ReturnType<typeof tryGroundedLocal>): ParseResult | null => {
+    if (stage?.kind === "hit") {
+      if (ifrCandidate && !isSoleIfrClearance(stage.result)) {
+        return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+      }
+      return stage.result;
+    }
+    if (stage?.kind === "ungrounded") {
+      extraTokens.push(...stage.tokens);
+    }
+    return null;
+  };
 
   const typed = tryGroundedLocal(
     groundLocalCallsign(
@@ -1274,15 +1282,8 @@ export async function parseCommand(
     approaches,
     airports,
   );
-  if (typed?.kind === "hit") {
-    if (ifrCandidate && !isSoleIfrClearance(typed.result)) {
-      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
-    }
-    return typed.result;
-  }
-  if (typed?.kind === "ungrounded") {
-    extraTokens.push(...typed.tokens);
-  }
+  const typedResult = acceptLocalStage(typed);
+  if (typedResult !== null) return typedResult;
 
   const spoken = parseSpokenGrammar(
     normalized,
@@ -1303,15 +1304,8 @@ export async function parseCommand(
     approaches,
     airports,
   );
-  if (pathA?.kind === "hit") {
-    if (ifrCandidate && !isSoleIfrClearance(pathA.result)) {
-      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
-    }
-    return pathA.result;
-  }
-  if (pathA?.kind === "ungrounded") {
-    extraTokens.push(...pathA.tokens);
-  }
+  const pathAResult = acceptLocalStage(pathA);
+  if (pathAResult !== null) return pathAResult;
 
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
@@ -1331,15 +1325,8 @@ export async function parseCommand(
       approaches,
       airports,
     );
-    if (pathB?.kind === "hit") {
-      if (ifrCandidate && !isSoleIfrClearance(pathB.result)) {
-        return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
-      }
-      return pathB.result;
-    }
-    if (pathB?.kind === "ungrounded") {
-      extraTokens.push(...pathB.tokens);
-    }
+    const pathBResult = acceptLocalStage(pathB);
+    if (pathBResult !== null) return pathBResult;
   }
 
   const islandParsed = matchSpokenPatterns(
@@ -1362,15 +1349,8 @@ export async function parseCommand(
     approaches,
     airports,
   );
-  if (island?.kind === "hit") {
-    if (ifrCandidate && !isSoleIfrClearance(island.result)) {
-      return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
-    }
-    return island.result;
-  }
-  if (island?.kind === "ungrounded") {
-    extraTokens.push(...island.tokens);
-  }
+  const islandResult = acceptLocalStage(island);
+  if (islandResult !== null) return islandResult;
 
   const queryTokens = [...identifierSlotTokens(normalized), ...extraTokens];
   const retrievedFixes = mergeRetrievedFixes(queryTokens, catalog);

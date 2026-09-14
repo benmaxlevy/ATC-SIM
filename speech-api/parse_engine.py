@@ -288,6 +288,12 @@ def _sanitize_spans(raw: object) -> list[dict[str, Any]]:
     return out
 
 
+def _sanitize_aliases(raw: object) -> list[str]:
+    aliases_raw = raw or []
+    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    return list(dict.fromkeys(aliases))
+
+
 def _sanitize_route_candidate(raw: object) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         return None
@@ -302,12 +308,11 @@ def _sanitize_route_candidate(raw: object) -> dict[str, Any] | None:
     candidate_id = candidate_id.strip().upper()
     if (_NAVAID_RE if kind == "NAVAID" else _FIX_RE).match(candidate_id) is None:
         return None
-    aliases_raw = raw.get("aliases") or []
-    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    aliases = _sanitize_aliases(raw.get("aliases"))
     spans = _sanitize_spans(raw.get("spans"))
     if not spans:
         return None
-    return {"id": candidate_id, "kind": kind, "aliases": list(dict.fromkeys(aliases)), "spans": spans}
+    return {"id": candidate_id, "kind": kind, "aliases": aliases, "spans": spans}
 
 
 def _sanitize_transition_candidate(raw: object) -> dict[str, Any] | None:
@@ -316,14 +321,13 @@ def _sanitize_transition_candidate(raw: object) -> dict[str, Any] | None:
     transition_id = raw.get("id")
     if not isinstance(transition_id, str) or not transition_id.strip():
         return None
-    aliases_raw = raw.get("aliases") or []
-    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    aliases = _sanitize_aliases(raw.get("aliases"))
     spans = _sanitize_spans(raw.get("spans"))
     if not spans:
         return None
     return {
         "id": transition_id.strip().upper(),
-        "aliases": list(dict.fromkeys(aliases)),
+        "aliases": aliases,
         "spans": spans,
     }
 
@@ -334,8 +338,7 @@ def _sanitize_route_procedure(raw: object) -> dict[str, Any] | None:
     procedure_id = raw.get("id")
     if not isinstance(procedure_id, str) or not procedure_id.strip():
         return None
-    aliases_raw = raw.get("aliases") or []
-    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    aliases = _sanitize_aliases(raw.get("aliases"))
     spans = _sanitize_spans(raw.get("spans"))
     if not spans:
         return None
@@ -346,7 +349,7 @@ def _sanitize_route_procedure(raw: object) -> dict[str, Any] | None:
             transitions.append(checked)
     return {
         "id": procedure_id.strip().upper(),
-        "aliases": list(dict.fromkeys(aliases)),
+        "aliases": aliases,
         "spans": spans,
         "transitions": transitions,
     }

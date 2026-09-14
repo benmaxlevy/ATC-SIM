@@ -493,12 +493,12 @@ function routeEvidenceCovered(
     }
   }
   for (const procedure of route.procedures) {
-    if (!hasEvidence(procedure.spans, route.transcript) || procedure.spans.length === 0) {
+    if (!hasEvidence(procedure.spans, route.transcript)) {
       return false;
     }
     for (const transition of procedure.transitions) {
       if (transition.spans.length === 0) continue;
-      if (!hasEvidence(transition.spans, route.transcript) || transition.spans.length === 0) {
+      if (!hasEvidence(transition.spans, route.transcript)) {
         return false;
       }
     }

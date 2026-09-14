@@ -947,7 +947,6 @@ export function buildScopeDatablockPresentation(
 ): ScopeDatablockPresentation {
   const td = view.tracks.get(ac.id);
   const mode = visual.mode;
-  const handoff = handoffFor(world, ac.id);
   const field0Indicators =
     mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined;
   const runtime = buildDatablockRuntimeState(world, ac, {
@@ -966,6 +965,7 @@ export function buildScopeDatablockPresentation(
       field0Indicators,
     },
   });
+  const handoff = runtime.display.handoff;
   const datablockSource = runtime.source;
   const atpaReadout =
     mode === "full"

@@ -22,8 +22,7 @@ import type {
   VideoMap,
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
-import { loadCatalog } from "./procedures/loadCatalog";
-import { parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedures/loadCatalog";
+import { loadCatalog, parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedures/loadCatalog";
 import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
@@ -577,12 +576,9 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     catalog,
     assertString(s.activeRunwayId, "activeRunwayId"),
   );
+  const approaches = assertArray(s.approaches, "approaches").map(assertApproach);
 
-  const scenarioApproachIds = new Set(
-    assertArray(s.approaches, "approaches").map((value, index) =>
-      assertApproach(value, index).id.toUpperCase(),
-    ),
-  );
+  const scenarioApproachIds = new Set(approaches.map((approach) => approach.id.toUpperCase()));
   const scenarioCatalog =
     atpaWakeAdaptation === undefined
       ? catalog
@@ -605,22 +601,25 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     arpNm: latLonToNm(arp, arp),
     activeRunwayId: assertString(s.activeRunwayId, "activeRunwayId"),
     runways: runwaysRaw.map(assertRunway),
-    approaches: assertArray(s.approaches, "approaches").map(assertApproach),
+    approaches,
     fixes: assertArray(s.fixes, "fixes").map(assertFix),
     maps: parseScenarioMaps(maps),
     spawns: assertArray(s.spawns, "spawns").map(assertSpawn),
     arrivals,
     spawnPolicy,
     giTextLines: parseGiTextLines(s.giTextLines),
-    ...(parseSsaWeatherAirports(s.ssaWeatherAirports)
-      ? { ssaWeatherAirports: parseSsaWeatherAirports(s.ssaWeatherAirports) }
-      : {}),
-    ...(parseTowerAirports(s.towerAirports)
-      ? { towerAirports: parseTowerAirports(s.towerAirports) }
-      : {}),
-    ...(parseSsaWeatherGiSlot(s.ssaWeatherGiSlot) !== undefined
-      ? { ssaWeatherGiSlot: parseSsaWeatherGiSlot(s.ssaWeatherGiSlot) }
-      : {}),
+    ...(() => {
+      const ssaWeatherAirports = parseSsaWeatherAirports(s.ssaWeatherAirports);
+      return ssaWeatherAirports ? { ssaWeatherAirports } : {};
+    })(),
+    ...(() => {
+      const towerAirports = parseTowerAirports(s.towerAirports);
+      return towerAirports ? { towerAirports } : {};
+    })(),
+    ...(() => {
+      const ssaWeatherGiSlot = parseSsaWeatherGiSlot(s.ssaWeatherGiSlot);
+      return ssaWeatherGiSlot !== undefined ? { ssaWeatherGiSlot } : {};
+    })(),
     ...(departureConfig ? { departureConfig } : {}),
     ...(atpaWakeAdaptation !== undefined ? { atpaWakeAdaptation } : {}),
     catalog: scenarioCatalog,

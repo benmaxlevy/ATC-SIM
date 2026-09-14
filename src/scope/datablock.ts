@@ -784,10 +784,12 @@ export function formatDatablockFields(
   // Fields 6–8 are independently time-shared. Priority follows Figure 2-20;
   // this is an analog-plus-delta formatter contract, not a TSAS/coordination
   // workflow. Absent inputs remain absent; no simulator state is inferred.
-  const reportedBeaconMismatch =
-    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
-      ? normalizeDisplayField(track.reportedSquawk, 4)
-      : undefined;
+  const hasReportedBeaconMismatch = Boolean(
+    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk,
+  );
+  const reportedBeaconMismatch = hasReportedBeaconMismatch
+    ? normalizeDisplayField(track.reportedSquawk, 4)
+    : undefined;
   const field6 = select([
     normalizeDisplayField(opts.atpaInTrailDistance ?? track.atpaDistance, 5) || undefined,
     opts.atpaNowgt ? "NOWGT" : undefined,
@@ -801,19 +803,20 @@ export function formatDatablockFields(
     normalizeDisplayField(opts.selectedBeaconCode, 4) || undefined,
     formatTsasRunwayId(opts.tsasRunwayId),
   ]);
-  const mismatch =
-    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
-      ? normalizeDisplayField(track.assignedSquawk, 4)
-      : undefined;
+  const mismatch = hasReportedBeaconMismatch
+    ? normalizeDisplayField(track.assignedSquawk, 4)
+    : undefined;
   const field7 = select([
     targetAssignedAltitude(track),
     mismatch,
     formatAdvisedSpeed(opts.tsasAdvisedSpeedKt),
     formatEarlyLate(opts.tsasEarlyLate),
   ]);
+  const pointoutTcp =
+    opts.pointoutReceiverTcp != null ? formatTcp(opts.pointoutReceiverTcp) : undefined;
   const pointout =
     opts.pointoutReceiverTcp != null
-      ? `PO${formatTcp(opts.pointoutReceiverTcp) ? ` ${formatTcp(opts.pointoutReceiverTcp)}` : ""}`
+      ? `PO${pointoutTcp ? ` ${pointoutTcp}` : ""}`
       : opts.pointoutUn
         ? "UN"
         : opts.pointoutRd

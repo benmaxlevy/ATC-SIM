@@ -415,13 +415,11 @@ export function createWorldForSession(
   departureOptions?: DepartureOptions | null,
   arrivalTraffic?: ArrivalTrafficConfig,
 ): World {
-  let world: World;
+  const world = worldFromScenario(scenario);
   let arrivalScheduler: ArrivalScheduler | undefined;
   if (scenario.spawnPolicy === "random" && trafficCount !== null) {
-    world = worldFromScenario(scenario);
     spawnArrivals(world, trafficCount, scenario, seed);
   } else {
-    world = worldFromScenario(scenario);
     if (scenario.spawnPolicy === "random") {
       arrivalScheduler = createArrivalScheduler(
         scenario.catalog,

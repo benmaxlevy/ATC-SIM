@@ -67,8 +67,8 @@ export function createScenarioIfrFlightPlan(
   const existing = world.flightPlans.find(
     (plan) => plan.status !== "deleted" && plan.acid === input.acid.trim().toUpperCase(),
   );
+  const requestedRoute = routeText(input.route);
   if (existing) {
-    const requestedRoute = routeText(input.route);
     if (requestedRoute) {
       const route = resolveFiledRoute(requestedRoute, world.catalog);
       if (!route.ok) {
@@ -115,7 +115,7 @@ export function createScenarioIfrFlightPlan(
       ? { departureAirport: input.scenario.icao }
       : {}),
     source: "SCENARIO",
-    filedRoute: routeText(input.route),
+    filedRoute: requestedRoute,
   });
   if (!result.ok) {
     throw new Error(
@@ -137,7 +137,6 @@ export function spawnScenarioIfrAircraft(
   world: World,
   params: AircraftInit,
   input: Omit<ScenarioIfrFlightPlanInput, "acid" | "aircraftType"> & {
-    route?: ScenarioIfrRoute;
     /** Optional catalog override for callers that spawn from an external catalog. */
     catalog?: NonNullable<World["catalog"]>;
   },

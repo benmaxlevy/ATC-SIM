@@ -52,15 +52,14 @@ export function terminalStripsFromWorld(world: World): {
     const aircraftType = plan?.aircraftType ?? ac.aircraftType;
     const requestedAltitudeFt =
       plan?.requestedAltitudeFt ?? ac.requestedAltitudeFt ?? ac.intent.requestedAltitudeFt;
-    const isDeparture =
+    const isDepartureByIntent =
       handoffFor(world, ac.id)?.kind === "departure" ||
       ac.intent.vertical?.type === "VIA_SID" ||
-      (ac.intent.lateral?.type === "PROCEDURE" && Boolean(ac.intent.lateral.sidId)) ||
-      Boolean(
-        world.scheduledDepartures?.some(
-          (sd) => sd.callsign.toUpperCase() === acid.toUpperCase() && sd.spawned,
-        ),
-      );
+      (ac.intent.lateral?.type === "PROCEDURE" && Boolean(ac.intent.lateral.sidId));
+    const matchedSd = world.scheduledDepartures?.find(
+      (sd) => sd.callsign.toUpperCase() === acid.toUpperCase() && sd.spawned,
+    );
+    const isDeparture = isDepartureByIntent || Boolean(matchedSd);
 
     const cwtCategory: CWTCategory | undefined = ac.cwtWakeCategory;
     const isHeavy = ac.wakeCategory?.toUpperCase() === "H";
@@ -78,11 +77,7 @@ export function terminalStripsFromWorld(world: World): {
         plan?.route ??
         (ac.intent.lateral?.type === "PROCEDURE" && ac.intent.lateral.routeFixIds?.length
           ? ac.intent.lateral.routeFixIds.join(" ")
-          : "");
-
-      const matchedSd = world.scheduledDepartures?.find(
-        (sd) => sd.callsign.toUpperCase() === acid.toUpperCase() && sd.spawned,
-      );
+          : "DIRECT");
       const proposedTime =
         plan?.ptd ??
         (matchedSd?.scheduledSimMs !== undefined
@@ -109,7 +104,7 @@ export function terminalStripsFromWorld(world: World): {
         destinationAirport:
           plan?.airportId ??
           (ac as unknown as { destinationAirport?: string }).destinationAirport ??
-          "",
+          "DEST",
         remarks: plan?.remarks ?? "",
         annotationBoxes: {
           box8A: activeRunway,

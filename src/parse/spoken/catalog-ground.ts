@@ -670,10 +670,11 @@ export function groundInstructionProcedures(
   if (catalog.length === 0) {
     return [...instructions];
   }
+  const mapProcedureId = (procedureId: string): string =>
+    groundProcedureToCatalog(procedureId, catalog) ?? procedureId;
   return instructions.map((inst) => {
     if (inst.type === "IFR_CLEARANCE" && inst.access.type === "SID") {
-      const procedureId =
-        groundProcedureToCatalog(inst.access.procedureId, catalog) ?? inst.access.procedureId;
+      const procedureId = mapProcedureId(inst.access.procedureId);
       return procedureId === inst.access.procedureId
         ? inst
         : { ...inst, access: { ...inst.access, procedureId } };
@@ -682,8 +683,7 @@ export function groundInstructionProcedures(
       let changed = false;
       const segments = inst.access.segments.map((segment) => {
         if (segment.type !== "PROCEDURE") return segment;
-        const procedureId =
-          groundProcedureToCatalog(segment.procedureId, catalog) ?? segment.procedureId;
+        const procedureId = mapProcedureId(segment.procedureId);
         if (procedureId === segment.procedureId) return segment;
         changed = true;
         return { ...segment, procedureId };
@@ -697,7 +697,7 @@ export function groundInstructionProcedures(
     ) {
       return inst;
     }
-    const procedureId = groundProcedureToCatalog(inst.procedureId, catalog) ?? inst.procedureId;
+    const procedureId = mapProcedureId(inst.procedureId);
     return procedureId === inst.procedureId ? inst : { ...inst, procedureId };
   });
 }
