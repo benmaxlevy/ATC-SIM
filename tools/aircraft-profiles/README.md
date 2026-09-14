@@ -1,51 +1,88 @@
-# Aircraft profile generator
+# Aircraft performance profiles
 
-Build-time only. Install the pinned dependency once, then run offline:
+Build-time profile generator and dataset documentation.
+
+The simulator uses a unified single-file dataset at
+`src/core/performance/aircraft-profiles.json`. The browser runtime imports only
+this JSON artifact; it does not invoke Python, load OpenAP, or make network requests.
+
+## Dataset architecture
+
+The dataset consists of two top-level sections:
+
+```json
+{
+  "defaults": {
+    "limits": { "minControlledSpeedKt": 100, "maxControlledSpeedKt": 340, "serviceCeilingFt": 41000 },
+    "regimes": {
+      "initialClimb": { "nominalClimbFpm": 2600, ... },
+      "climb": { "nominalClimbFpm": 2000, ... },
+      "enroute": { "nominalClimbFpm": 1000, ... },
+      "arrival": { "nominalDescentFpm": 2200, ... },
+      "approach": { "nominalDescentFpm": 1200, ... },
+      "landing": { "nominalDescentFpm": 750, ... },
+      "missedApproach": { "nominalClimbFpm": 2200, ... }
+    }
+  },
+  "aircraft": {
+    "A320": {
+      "source": "openap",
+      "limits": { "maxControlledSpeedKt": 350, "serviceCeilingFt": 12500 },
+      "regimes": {
+        "initialClimb": { "nominalClimbFpm": 2478.35 },
+        "climb": { "nominalClimbFpm": 1659.45 },
+        "approach": { "minSpeedKt": 130.24, "maxSpeedKt": 149.68 }
+      }
+    },
+    "B753": {}
+  }
+}
+```
+
+- **`defaults`**: Defines baseline envelope limits and standard performance parameters across all 7 flight regimes (`initialClimb`, `climb`, `enroute`, `arrival`, `approach`, `landing`, `missedApproach`).
+- **`aircraft`**: Map of ICAO aircraft type codes to sparse override records. Types populated from OpenAP specify `"source": "openap"` along with empirical limits and regime rates. Unpopulated types remain empty objects `{}`.
+
+## Runtime resolution cascade
+
+When querying aircraft performance via `performanceRegistry.getProfile(type)`:
+
+1. **Aircraft overrides:** If the ICAO type exists in `aircraft`, its specified fields (limits, regime speeds/rates/bank) override defaults.
+2. **Default cascade:** Any limit or regime field omitted in the aircraft entry inherits from `defaults`.
+3. **Trainer fallback:** If the aircraft type is unknown, unlisted, or null, it falls back to `DEFAULT_PROFILE` (safe legacy kinematics: 1800 fpm climb/descent, 3°/s standard rate turn, 1 kt/s acceleration).
+
+## Commands
+
+Install the pinned build dependency in a local environment:
 
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r tools/aircraft-profiles/requirements.txt
-npm run aircraft:profiles -- --preset terminal-v1
-npm run aircraft:profiles:check -- --preset terminal-v1
 ```
 
-`--types A320,B738 --types CRJ9` accepts arbitrary mapped ICAO ids. Input is
-normalized, sorted in the artifact, and duplicate normalized ids fail. The
-generator uses OpenAP `prop.aircraft` and `kinematic.WRAP`; no network request
-is made by the command. Missing or unusable OpenAP data emits `UNRESOLVED`.
-
-OpenAP is LGPL-3.0. Its values are open-literature/empirical trainer inputs,
-not certified operating limits. Bank, caps, and missing-data values come from
-`simulator-policies.json` and are explicitly marked `simulator-policy`.
-
-The committed artifact is the runtime input. The browser does not import
-OpenAP, start Python, or make network requests. Review generated changes by
-running `npm run aircraft:profiles -- --preset terminal-v1 --report`, then
-inspect the JSON diff and provenance before committing it. `--check` is the
-release/CI gate and never writes the artifact.
-
-The initial `terminal-v1` preset contains 33 ICAO ids. Arbitrary reviewed ids
-can be generated without changing that preset:
+### Populate or refresh profiles
 
 ```sh
-npm run aircraft:profiles -- --types A320,B738 --types CRJ9 --out /tmp/profiles.json
+# Refresh all aircraft defined in aircraft-profiles.json
+npm run aircraft:profiles
+
+# Update specific types only
+npm run aircraft:profiles -- --types A320,B738
 ```
 
-Inputs are normalized, deduplicated, and sorted. Every requested id must have
-a mapping entry; an unavailable OpenAP lookup is emitted as `UNRESOLVED` and
-the TypeScript registry uses its safe default profile. Keep the selected
-representative variant/engine and provenance in the mapping/data review.
+The generator queries OpenAP (`openap.prop.aircraft` and `openap.kinematic.WRAP`), converts SI units to aviation units (knots, feet per minute), and updates `src/core/performance/aircraft-profiles.json` in-place with deterministic 2-space formatting. Types with unavailable OpenAP data log a warning and remain empty objects to cascade to defaults.
 
-For a clean local setup, install the pinned build dependency in a dedicated
-virtual environment. The generator itself performs no downloads; dependency
-installation is the only network-capable step:
+### Verification and CI check
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install -r tools/aircraft-profiles/requirements.txt
-npm run aircraft:profiles:test
+# Compare committed JSON file against calculated output (exits 0 on match, 2 on drift)
 npm run aircraft:profiles:check
+
+# Run Python generator test suite
+npm run aircraft:profiles:test
 ```
 
-OpenAP's LGPL-3.0 license and any changes to the pinned version require
-provenance/license review before redistributing a regenerated artifact.
+`npm run aircraft:profiles:check` is the release and CI gate. It verifies that the committed artifact matches generator output without modifying the file on disk.
+
+## Licensing
+
+OpenAP is licensed under LGPL-3.0. OpenAP is used exclusively at build time to populate static trainer values into `aircraft-profiles.json`. Empirical values represent open-literature aircraft performance estimates, not certified manufacturer operating limitations.

@@ -362,8 +362,10 @@ export const performanceRegistry = new AircraftPerformanceRegistry();
 /** Exported for production-data shape tests without exposing mutable internals. */
 export function isAircraftProfileDataset(value: unknown): value is AircraftProfileDataset {
   if (!isRecord(value)) return false;
-  if (isRecord(value.defaults) && isRecord(value.aircraft)) {
-    return isRecord(value.defaults.limits) && isRecord(value.defaults.regimes);
-  }
-  return value.schemaVersion === 1 && Array.isArray(value.profiles);
+  return (
+    isRecord(value.defaults) &&
+    isRecord(value.aircraft) &&
+    isRecord(value.defaults.limits) &&
+    isRecord(value.defaults.regimes)
+  );
 }

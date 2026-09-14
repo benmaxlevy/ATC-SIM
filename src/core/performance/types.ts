@@ -83,10 +83,3 @@ export interface AircraftProfileDataset {
   readonly defaults: AircraftProfileDefaults;
   readonly aircraft: Readonly<Record<string, AircraftProfileOverride>>;
 }
-
-/** Legacy shape retained for aircraft-profiles.generated.json until T04-62. */
-export interface LegacyAircraftProfileDataset {
-  readonly schemaVersion: number;
-  readonly generator: Readonly<Record<string, string>>;
-  readonly profiles: readonly AircraftPerformanceProfile[];
-}
