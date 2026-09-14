@@ -795,8 +795,10 @@ function pathCContext(
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
   const pathAirports = (route ? clearanceAirports : airports)
-    .filter((airport) =>
-      queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
+    .filter(
+      (airport) =>
+        route !== undefined ||
+        queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
     )
     .slice(0, MAX_PATH_C_FIXES)
     .map((item) => ({ ...item }));

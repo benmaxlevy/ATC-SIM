@@ -272,6 +272,9 @@ ATC-SIM trainer extension, not a claim of complete FAA phraseology.
 Examples: `VIA DIRECT`; `VIA SIITH VOR1 HOUND ALT 50`; `VIA DIRECT SIITH
 DIRECT VOR1`; and `VIA SID1 NORTH TRANSITION HOUND`. The editable filed plan
 is unchanged, and later plan edits do not retarget an issued clearance.
+When the deterministic paths miss, the trainer-only Path C fallback receives
+only the matched route candidates and transcript spans; it may not invent,
+concatenate, or omit a route element.
 `AS FILED` is accepted only when its limit is
 the filed route's terminal endpoint or the filed destination's catalog airport;
 the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and

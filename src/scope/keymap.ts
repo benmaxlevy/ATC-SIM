@@ -114,7 +114,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "DAL123 CLR TO KAHN VIA DIRECT",
         input: "Radio",
         result:
-          "Issues one atomic IFR clearance; executable routes fly immediately, while radar vectors wait for a later vector. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
+          "Issues one atomic IFR clearance; VIA accepts an arbitrary catalog-grounded route chain with optional DIRECT markers, and missing markers mean direct. Executable routes fly immediately, while radar vectors wait for a later vector. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
       },
       {
         id: "approach",
