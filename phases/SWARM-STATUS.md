@@ -1,6 +1,33 @@
 # Swarm status
 
+## SIXTY-SEVENTH SWARM COMPLETE — Simplified OpenAP Profile Pipeline (T04-60–T04-62)
+
+Completed sequentially on `feature/better-openap-usage` with isolated workers,
+captain squash merges, and no push. The delivered surface replaces the bloated
+multi-file performance configuration (`simulator-policies.json`,
+`type-mappings.json`, `aircraft-profiles.generated.json`) with a single, unified
+`src/core/performance/aircraft-profiles.json` dataset (~200 lines).
+
+Aircraft entries cascade missing or empty `{}` regime fields from top-level
+`defaults` at runtime in `AircraftPerformanceRegistry`. `build_profiles.py` is
+simplified to populate OpenAP properties directly without policy indirection.
+
+Captain commits: `1c5518e` (T04-60), `51e29c1` (T04-61), `64cd66a` (T04-62).
+Planning commit: `5dfd3c9`.
+
+Final `npm run ci`: **211 test files passed, 2,102 tests passed, 3 skipped**.
+Python tests: **7 passed**; `build_profiles.py --check` exit code 0.
+
+## SIXTY-SEVENTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Simplified OpenAP Profile Pipeline T04-60–62
+Merge target: `feature/better-openap-usage`
+Merged: T04-60, T04-61, T04-62
+Tests: npm run ci exit 0, python unittests 7 passed, build_profiles --check exit 0
+Notes: Single-file profile dataset with runtime cascade; 7,000 lines of boilerplate removed; no push
+
 ## SIXTY-SIXTH SWARM COMPLETE — voice airport, command parity, and clearance separation (T02-181–T02-184)
+
 
 Completed sequentially on `feature/clearances` with Luna-high workers/reviews
 and no push. The delivered surface grounds every shipped scenario airport as a
