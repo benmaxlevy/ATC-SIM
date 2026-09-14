@@ -87,6 +87,30 @@ test("duplicate structured aliases remain ambiguous", () => {
   expect(groundFixPhraseToCatalog(["ATHENS"], entries)).toBeNull();
 });
 
+test("exact ids reject competing custom or generated aliases", () => {
+  expect(
+    groundFixToCatalog("ATHENS", [
+      { id: "ATHENS", kind: "FIX" as const },
+      { id: "AHN", kind: "NAVAID" as const, aliases: ["Athens"] },
+    ]),
+  ).toBeNull();
+  expect(
+    groundFixToCatalog("CMAX", [
+      { id: "CMAX", kind: "FIX" as const },
+      { id: "SEMAX", kind: "FIX" as const },
+    ]),
+  ).toBeNull();
+});
+
+test("exact id remains preferred without a competing alias", () => {
+  expect(
+    groundFixToCatalog("ATHENS", [
+      { id: "ATHENS", kind: "FIX" as const },
+      { id: "AHN", kind: "NAVAID" as const, aliases: ["Athens VOR"] },
+    ]),
+  ).toBe("ATHENS");
+});
+
 test("catalog vocabulary keeps navaids and fixes, excludes the airport, and preserves aliases", () => {
   const entries = catalogFixEntriesFromCatalog({
     airportId: "KATL",

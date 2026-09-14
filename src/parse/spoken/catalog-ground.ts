@@ -449,7 +449,14 @@ export function groundFixToCatalog(
 ): string | null {
   const ranked = rankFixCandidates(token, catalog);
   const winner = ranked[0];
-  if (winner === undefined || ranked[1]?.score === winner.score) {
+  const exactAliasCollision =
+    winner?.tier === "exact" &&
+    ranked.some(
+      (candidate) =>
+        candidate.id !== winner.id &&
+        (candidate.tier === "alias" || candidate.tier === "folded-alias"),
+    );
+  if (winner === undefined || ranked[1]?.score === winner.score || exactAliasCollision) {
     return null;
   }
   return winner.id;
