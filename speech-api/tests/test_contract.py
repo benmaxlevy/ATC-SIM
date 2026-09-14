@@ -32,6 +32,7 @@ def test_health_ok_parse_ready(client: TestClient) -> None:
     assert isinstance(body["sttModel"], str) and body["sttModel"]
     assert isinstance(body["ttsVoice"], str) and body["ttsVoice"]
     assert body["parse"] == "ready"
+    assert body["parseContract"] == "command-ir-v0-safe-1"
 
 
 def test_parse_mock_ready_without_download(client: TestClient) -> None:
@@ -55,8 +56,10 @@ def test_stt_fixture_wav_json_shape(client: TestClient) -> None:
     body = response.json()
     assert isinstance(body["text"], str)
     assert body["text"]
-    assert isinstance(body["confidence"], (int, float))
-    assert 0.0 <= float(body["confidence"]) <= 1.0
+    assert body["metadata"]["model"] == "mock"
+    assert body["metadata"]["audioDurationMs"] == pytest.approx(100.0)
+    assert body["metadata"]["inferenceLatencyMs"] >= 0
+    assert body["metadata"]["emptySignal"] is False
 
 
 def test_stt_rejects_non_wav(client: TestClient) -> None:
@@ -89,7 +92,10 @@ def test_piper_voice_maps_to_hub_path() -> None:
     assert piper_hub_filename("en_US-amy-medium") == "en/en_US/amy/medium/en_US-amy-medium.onnx"
 
 
-def test_mock_stt_has_stable_confidence() -> None:
+def test_mock_stt_returns_quality_metadata() -> None:
     from engines import MockStt
 
-    assert MockStt().transcribe(b"RIFF") == ("delta one two three fly heading two seven zero", 1.0)
+    result = MockStt().transcribe(b"RIFF")
+    assert result["text"] == "delta one two three fly heading two seven zero"
+    assert result["model"] == "mock"
+    assert result["emptySignal"] is True

@@ -66,14 +66,24 @@ test("AC1 AC6 — happy STT JSON fills Transcript and id is http", async () => {
     expect(riffPrefix(init?.body)).toBe("RIFF");
     return jsonResponse({
       text: "turn left heading two seven zero",
-      confidence: 0.92,
+      metadata: {
+        model: "qwen-test",
+        audioDurationMs: 1250,
+        inferenceLatencyMs: 420,
+        emptySignal: false,
+      },
     });
   };
   const port = new HttpSpeechPort({ fetch: fetchMock });
   const transcript = await port.transcribe(smallClip());
   expect(port.id).toBe("http");
   expect(transcript.text).toBe("turn left heading two seven zero");
-  expect(transcript.confidence).toBe(0.92);
+  expect(transcript.metadata).toEqual({
+    model: "qwen-test",
+    audioDurationMs: 1250,
+    inferenceLatencyMs: 420,
+    emptySignal: false,
+  });
   expect(transcript.latencyMs).toBeGreaterThanOrEqual(0);
 });
 
@@ -124,12 +134,12 @@ test("T03-19 AC2 — STT still sends STAR and SID names as X-ATC-Procedures", as
   expect(transcript.text).toBe("climb via the BAY ONE departure");
 });
 
-test("AC2 — missing confidence defaults to 1.0", async () => {
+test("AC2 — missing metadata remains absent, never a fake confidence", async () => {
   const port = new HttpSpeechPort({
     fetch: async () => jsonResponse({ text: "ident" }),
   });
   const transcript = await port.transcribe(smallClip());
-  expect(transcript.confidence).toBe(1.0);
+  expect(transcript.metadata).toBeUndefined();
   expect(transcript.text).toBe("ident");
 });
 

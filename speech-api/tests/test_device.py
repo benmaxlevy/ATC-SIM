@@ -115,9 +115,11 @@ def test_qwen_transcribe_forces_english_and_passes_atc_context(monkeypatch, tmp_
     monkeypatch.setattr("engines._pick_stt_device", lambda _s: "cpu")
     monkeypatch.setattr("engines._load_qwen_model", load)
     stt = QwenAsrStt(_settings(cache_dir=tmp_path))
-    text, confidence = stt.transcribe(b"RIFF", ["SEMAX", "NEMAX"], ["DEM1", "DEMO ONE"])
-    assert text == "delta one two three"
-    assert confidence == 1.0
+    result = stt.transcribe(b"RIFF", ["SEMAX", "NEMAX"], ["DEM1", "DEMO ONE"])
+    assert result["text"] == "delta one two three"
+    assert result["model"] == "Qwen/Qwen3-ASR-1.7B"
+    assert result["emptySignal"] is True
+    assert result["inferenceLatencyMs"] >= 0
     request = captured["request"]
     assert request["language"] == "English"
     assert request["context"] == (

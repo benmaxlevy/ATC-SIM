@@ -11,6 +11,7 @@ from config import DEFAULT_PARSE_GGUF_FILE, DEFAULT_PARSE_MODEL_ID, Settings
 from parse_engine import (
     INSTRUCTION_TYPES,
     MOCK_PARSE_OK,
+    PARSE_CONTRACT_VERSION,
     ParseOutcome,
     ROUTE_SEGMENT_TYPES,
     guard_catalog_ids,
@@ -18,6 +19,23 @@ from parse_engine import (
     validate_instruction,
     validate_parse_json,
 )
+def test_parse_contract_version_is_explicit() -> None:
+    assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-1"
+
+
+def test_catalog_guard_rejects_unlisted_callsign() -> None:
+    outcome = ParseOutcome(
+        ok=True,
+        callsign_token="GTI7908",
+        instructions=[{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+    )
+    guarded = guard_catalog_ids(
+        "GTI 7908 fly heading 270",
+        {"callsigns": ["UAL8431"]},
+        outcome,
+    )
+    assert guarded.ok is False
+    assert guarded.error == "PARSE_MISS"
 
 
 def _settings(*, parse_model_id: str, mock: bool = True) -> Settings:
@@ -936,8 +954,8 @@ def test_catalog_guard_rejects_ids_outside_the_provided_lists() -> None:
         instructions=[{"type": "IDENT"}],
     )
     out = guard_catalog_ids("ident", ctx, stripped)
-    assert out.ok
-    assert out.callsign_token is None
+    assert out.ok is False
+    assert out.error == "PARSE_MISS"
 
 
 def test_heading_360_normalizes_in_schema() -> None:

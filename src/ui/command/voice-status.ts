@@ -19,13 +19,6 @@ export function formatVoiceStatus(event: VoiceStatusEvent): string {
       return "Radio failed — say again";
     case "voice_backend_unavailable":
       return "Voice backend unavailable";
-    case "low_confidence": {
-      const n = event.confidence;
-      if (typeof n === "number" && Number.isFinite(n)) {
-        return `Say again (${n.toFixed(2)})`;
-      }
-      return "Say again";
-    }
     case "parse_miss":
       return "Unable to parse";
     case "tts_failed":
