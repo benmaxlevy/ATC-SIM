@@ -5,7 +5,6 @@ import {
   createWorld,
   makeTestAircraft,
   saveFlightPlanDraft,
-  serializeIfrClearanceRoute,
   type FiledRouteCatalog,
   type Instruction,
 } from "@core";
@@ -47,26 +46,6 @@ function clearance(
 ): Extract<Instruction, { type: "IFR_CLEARANCE" }> {
   return { type: "IFR_CLEARANCE", limitId: "LIMIT", access, ...extra };
 }
-
-test("serializes zero and many canonical segments without a semantic length cap", () => {
-  expect(serializeIfrClearanceRoute({ type: "EXPLICIT_ROUTE", segments: [] }, "LIMIT")).toEqual({
-    input: { routeText: "LIMIT" },
-  });
-  expect(
-    serializeIfrClearanceRoute(
-      {
-        type: "EXPLICIT_ROUTE",
-        segments: [
-          { type: "DIRECT", fixId: "FIXA" },
-          { type: "DIRECT", fixId: "VOR1" },
-          { type: "DIRECT", fixId: "FIXB" },
-          { type: "DIRECT", fixId: "FIXC" },
-        ],
-      },
-      "LIMIT",
-    ),
-  ).toEqual({ input: { routeText: "FIXA VOR1 FIXB FIXC LIMIT" } });
-});
 
 test("applies an ordered direct chain to an owned active snapshot", () => {
   const { world, aircraft, plan } = setup();

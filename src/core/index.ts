@@ -193,7 +193,7 @@ export type {
   IfrClearanceResult,
   IfrClearanceWorld,
 } from "./ifrClearance";
-export { applyIfrClearance, serializeIfrClearanceRoute } from "./ifrClearance";
+export { applyIfrClearance } from "./ifrClearance";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";

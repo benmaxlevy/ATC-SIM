@@ -116,9 +116,8 @@ function canonicalizeAccess(access: ClearanceInputAccess): IfrClearanceAccess | 
   }
 }
 
-/** Serialize the canonical route elements into the existing route compiler's input. */
-export function serializeIfrClearanceRoute(
-  access: IfrClearanceAccess,
+function routeTextFor(
+  access: Extract<IfrClearanceAccess, { type: "AS_FILED" | "RADAR_VECTORS" }>,
   limitId: string,
 ): { input: { source: "AS_FILED" } } | { input: { routeText: string } } {
   switch (access.type) {
@@ -126,26 +125,11 @@ export function serializeIfrClearanceRoute(
       return { input: { source: "AS_FILED" } };
     case "RADAR_VECTORS":
       return { input: { routeText: normalize(limitId) } };
-    case "EXPLICIT_ROUTE": {
-      const routeTokens = access.segments.map((segment) =>
-        segment.type === "DIRECT"
-          ? normalize(segment.fixId)
-          : `${normalize(segment.procedureId)}${segment.transitionId ? `/${normalize(segment.transitionId)}` : ""}`,
-      );
-      return { input: { routeText: [...routeTokens, normalize(limitId)].join(" ") } };
-    }
     default: {
       const _exhaustive: never = access;
       return _exhaustive;
     }
   }
-}
-
-function routeTextFor(
-  access: IfrClearanceAccess,
-  limitId: string,
-): { input: { source: "AS_FILED" } } | { input: { routeText: string } } {
-  return serializeIfrClearanceRoute(access, limitId);
 }
 
 function limitKnown(
