@@ -37,6 +37,7 @@ interface Cursor {
   i: number;
   catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
+  clearanceLimitIds?: ReadonlySet<string>;
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -272,7 +273,7 @@ function tryIfrClearance(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
-  const limitId = parseFixId(c);
+  const limitId = parseFixId(c, c.clearanceLimitIds);
   if (!limitId) {
     c.i = start;
     return null;
@@ -530,7 +531,7 @@ function takePeek(c: Cursor, n: number): string[] | null {
   return slice;
 }
 
-function parseFixId(c: Cursor): string | null {
+function parseFixId(c: Cursor, protectedIds?: ReadonlySet<string>): string | null {
   const phoneticStart = c.i;
   const phonetics: string[] = [];
   while (phonetics.length < 5) {
@@ -544,6 +545,7 @@ function parseFixId(c: Cursor): string | null {
   const catalog = c.catalog ?? [];
   if (phonetics.length >= 2) {
     const id = phonetics.join("");
+    if (protectedIds?.has(id)) return id;
     return groundFixToCatalog(id, catalog) ?? id;
   }
   c.i = phoneticStart;
@@ -556,6 +558,10 @@ function parseFixId(c: Cursor): string | null {
         continue;
       }
       const glued = slice.join("");
+      if (protectedIds?.has(glued.toUpperCase())) {
+        c.i += n;
+        return glued.toUpperCase();
+      }
       const hit = groundFixToCatalog(glued, catalog);
       if (hit) {
         c.i += n;
@@ -569,6 +575,7 @@ function parseFixId(c: Cursor): string | null {
     return null;
   }
   c.i += 1;
+  if (protectedIds?.has(tok.toUpperCase())) return tok.toUpperCase();
   return groundFixToCatalog(tok, catalog) ?? tok.toUpperCase();
 }
 
@@ -903,6 +910,7 @@ export function parseSpokenGrammar(
   sourceText: string,
   catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
+  clearanceLimitIds?: ReadonlySet<string>,
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -914,6 +922,7 @@ export function parseSpokenGrammar(
     i: 0,
     catalog: catalogFixes ?? [],
     procedures: catalogProcedures ?? [],
+    clearanceLimitIds,
   };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
   let callsignToken: string | null = null;

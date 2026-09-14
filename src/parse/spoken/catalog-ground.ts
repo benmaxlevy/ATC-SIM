@@ -542,7 +542,9 @@ export function groundInstructionFixes(
   const ungroundedFixes: string[] = [];
   const next = instructions.map((inst) => {
     if (inst.type === "IFR_CLEARANCE") {
-      const limit = groundDirectOrCrossFix(inst.limitId, catalog, opts);
+      const limit = opts?.clearanceLimitIds?.has(inst.limitId)
+        ? { fixId: inst.limitId, ungrounded: false }
+        : groundDirectOrCrossFix(inst.limitId, catalog, opts);
       if (limit.ungrounded && !opts?.clearanceLimitIds?.has(inst.limitId)) {
         ungroundedFixes.push(inst.limitId);
       }

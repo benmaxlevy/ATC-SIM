@@ -162,6 +162,7 @@ function parseFixIdFrom(
   tokens: readonly string[],
   i: number,
   catalog: readonly CatalogFixInput[],
+  protectedIds?: ReadonlySet<string>,
 ): { fixId: string; next: number } | null {
   let j = i;
   const phonetics: string[] = [];
@@ -171,11 +172,15 @@ function parseFixIdFrom(
   }
   if (phonetics.length >= 2) {
     const id = phonetics.join("");
+    if (protectedIds?.has(id)) return { fixId: id, next: j };
     return { fixId: groundFixToCatalog(id, catalog) ?? id, next: j };
   }
 
   for (let n = Math.min(3, tokens.length - i); n >= 1; n -= 1) {
     const slice = tokens.slice(i, i + n).join("");
+    if (protectedIds?.has(slice.toUpperCase())) {
+      return { fixId: slice.toUpperCase(), next: i + n };
+    }
     const hit = groundFixToCatalog(slice, catalog);
     if (hit) {
       return { fixId: hit, next: i + n };
@@ -184,6 +189,9 @@ function parseFixIdFrom(
 
   const tok = tokens[i];
   if (tok !== undefined && !RESERVED_SPOKEN.has(tok)) {
+    if (protectedIds?.has(tok.toUpperCase())) {
+      return { fixId: tok.toUpperCase(), next: i + 1 };
+    }
     return { fixId: groundFixToCatalog(tok, catalog) ?? tok.toUpperCase(), next: i + 1 };
   }
 
@@ -729,12 +737,13 @@ function matchIfrClearance(
   i: number,
   catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
+  protectedIds?: ReadonlySet<string>,
 ): { instruction: Instruction; next: number } | null {
   if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
     return null;
   }
   let j = i + 2;
-  const limit = parseFixIdFrom(tokens, j, catalog);
+  const limit = parseFixIdFrom(tokens, j, catalog, protectedIds);
   if (!limit) return null;
   j = limit.next;
   if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
@@ -1235,6 +1244,7 @@ export function matchSpokenPatterns(
   catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   catalogApproaches?: readonly CatalogApproach[],
+  clearanceLimitIds?: ReadonlySet<string>,
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1264,7 +1274,7 @@ export function matchSpokenPatterns(
       matchGoAround(tokens, i) ??
       matchVia(tokens, i, procedures) ??
       matchJoinProcedure(tokens, i, procedures) ??
-      matchIfrClearance(tokens, i, catalog, procedures) ??
+      matchIfrClearance(tokens, i, catalog, procedures, clearanceLimitIds) ??
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??

@@ -201,6 +201,26 @@ test("Endeavor spoken clearance accepts Atlanta International Airport", async ()
   });
 });
 
+test("airport clearance alias wins over a nearby navaid id", async () => {
+  const result = await parseCommand(
+    "giant twenty seven seventy seven heavy clear to atlanta international airport via direct",
+    {
+      source: "voice",
+      fixes: [...fixes, { id: "IATL", kind: "NAVAID" }],
+      airports,
+      pathC: false,
+    },
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: "GTI2777",
+    instructions: [
+      { type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "EXPLICIT_ROUTE", segments: [] } },
+    ],
+  });
+});
+
 test("unknown and ambiguous airport names miss without producing a clearance", async () => {
   const unknownIcao = await parseCommand("DAL123 CLR TO KXXX VIA DIRECT", {
     source: "text",

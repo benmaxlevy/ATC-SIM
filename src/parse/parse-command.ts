@@ -188,13 +188,21 @@ function localIfrClearanceSyntaxIsValid(
   selected: string | null,
   catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
+  clearanceLimitIds: ReadonlySet<string>,
 ): boolean {
   const typed = attachCallsign(
     parseRadioText(normalized, { fixes: catalog, procedures }),
     selected,
   );
   if (typed.ok && isSoleIfrClearance(typed)) return true;
-  const spoken = parseSpokenGrammar(normalized, selected, normalized, catalog, procedures);
+  const spoken = parseSpokenGrammar(
+    normalized,
+    selected,
+    normalized,
+    catalog,
+    procedures,
+    clearanceLimitIds,
+  );
   return spoken.ok && isSoleIfrClearance(spoken);
 }
 
@@ -1233,6 +1241,7 @@ export async function parseCommand(
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
   const airports = sanitizeCatalogAirports(opts.airports);
+  const clearanceLimitIds = new Set(airports.map((airport) => airport.icao));
   const catalog = sanitizeCatalogFixEntries(opts.fixes, {
     excludeIds: new Set(airports.map((airport) => airport.icao)),
   });
@@ -1275,7 +1284,14 @@ export async function parseCommand(
     extraTokens.push(...typed.tokens);
   }
 
-  const spoken = parseSpokenGrammar(normalized, selected, sourceText, catalog, procedures);
+  const spoken = parseSpokenGrammar(
+    normalized,
+    selected,
+    sourceText,
+    catalog,
+    procedures,
+    clearanceLimitIds,
+  );
   const pathA = tryGroundedLocal(
     groundLocalCallsign(spoken, normalized, roster, selected),
     sourceText,
@@ -1333,6 +1349,7 @@ export async function parseCommand(
     catalog,
     procedures,
     approaches,
+    clearanceLimitIds,
   );
   const island = tryGroundedLocal(
     groundLocalCallsign(islandParsed, normalized, roster, selected),
@@ -1380,7 +1397,7 @@ export async function parseCommand(
     (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
     (!ifrCandidate ||
       routeFallbackHasEvidence ||
-      localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures))
+      localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds))
   ) {
     const run = opts.parsePathC ?? fetchParsePathC;
     const context = pathCContext(
