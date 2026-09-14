@@ -47,7 +47,8 @@ If that loop is not fun with a keyboard, CIFP import and wind will not save it. 
 ## Goals (when this phase is done)
 
 - KDEM ships first-class **demo data files** under `src/scenario/data/kdem/`: VORs, NDBs, ILS loc/GS/DME/markers, named fixes (including STAR/FAF/missed), STAR DEMO ONE, ILS 27. Runtime loads that set. `DCT` resolves **fixes and navaids**.
-- `DIRECT` to a named fix on that catalog actually tracks the fix (fly-by).
+- `DIRECT` to a named fix on that catalog actually tracks the fix, then starts
+  the next leg at the fix.
 - `EXPECT_APPROACH` and `CLEARED_APPROACH` change intent (expect is arming/scratchpad; cleared starts intercept).
 - **Phraseology = fly-through.** Canonical ILS transmission is heading + *maintain (alt) until established* + *cleared ILS approach runway 27*. Same `Command` (three instructions). Aircraft: fly heading, **hold altitude until established on the localizer**, then GS from below. Bare `APP ILS27` still arms intercept from the current heading and holds the already-assigned altitude until established.
 - Vector-to-intercept: assigned heading until rate-one lead turn, then bounded signed cross-track guidance captures and tracks inbound without a heading snap.
@@ -106,7 +107,7 @@ Procedure catalog JSON (KDEM or importer output)
 Parser ──► Command IR ──► Pilot agent ──► Intent (lateral + vertical modes)
                                             │
                                             ▼
-                              stepWorld: heading | fly-by | loc | GS | missed
+                              stepWorld: heading | fix sequence | loc | GS | missed
                                             │
                                             ▼
                               Tracks + alertCA() + alertMsaw()
@@ -120,7 +121,7 @@ New code belongs in:
 | Folder | Owns |
 | --- | --- |
 | `src/scenario` | Facility catalog types + KDEM instance (`data/kdem/` vors, ndbs, ils, fixes, procedures, sids), MVA JSON, schema validation |
-| `src/core` | Fix lookup, FMS geometry (direct, fly-by, loc deviation, GS height), wind triangle, CA/MSAW pure functions, `stepWorld` lateral/vertical modes |
+| `src/core` | Fix lookup, FMS geometry (direct, fix sequencing, loc deviation, GS height), wind triangle, CA/MSAW pure functions, `stepWorld` lateral/vertical modes |
 | `src/parse` | `DCT`, `EXP`, `APP` (already), `VIA`, `X` (if IR extended), `GA` (if IR extended) |
 | `src/pilot` | Resolve DIRECT/VIA/APP/EXP/CROSS/GA; reject unknown fixes; apply modes; readbacks |
 | `src/scope` | CA/MSAW colors, optional loc/GS capture cue, tower-handoff stub UI |
@@ -214,11 +215,11 @@ At KDEM: `50 + 318.4 * distNm` approximately (`tan(3°) * 6076.12 ≈ 318.6`). A
 
 Capture GS when: loc already captured, **from below** (`alt >= gsAlt - 50` is *not* from below — require `alt <= gsAlt + 50` **and** `alt >= gsAlt - 200` after being below), and inside loc length, past a documented point (e.g. within 10 NM). Once captured, vertical mode follows `gsAltFt` at current distance; do not climb on GS. If the aircraft goes above GS by `> 150 ft`, drop capture and level at assigned (or continue descent to assigned) — keep this simple and tested.
 
-**Fly-by (DIRECT and STAR legs):**
+**Fix-to-fix sequencing (DIRECT and procedure legs):**
 
-Turn radius `R_nm ≈ TAS_kt / 188.5` for a 3°/s turn (document the formula next to the phase 1 turn-rate constant; if phase 1 used a different rate, use *that* rate).
-
-Start the fly-by when distance to the fix `≤ R / tan(θ/2)` where `θ` is the course change to the next course (or to present heading if last STAR leg). Sequence the fix when abeam / turn started. **No fly-over** in v1 except the runway threshold at land.
+Command course to the active fix until aircraft reaches that fix. Sequence it
+within one movement step, then command the next leg. Never lead a turn before
+the fix. The same rule applies to direct, SID, and STAR route legs.
 
 ---
 
@@ -405,7 +406,7 @@ Append to the phase 0 log. Suggested names (stable):
 
 | Event | When |
 | --- | --- |
-| `nav.direct.sequenced` | Fly-by fix sequenced |
+| `nav.direct.sequenced` | Active fix sequenced |
 | `nav.star.vectors` | Last STAR leg sequenced |
 | `nav.loc.captured` | INTERCEPT_LOC → LOC |
 | `nav.gs.captured` | vertical → GS |
@@ -421,7 +422,7 @@ Append to the phase 0 log. Suggested names (stable):
 
 | Risk | Mitigation |
 | --- | --- |
-| Fly-by overshoots and looks drunk | Unit-test turn start distance; cap intercept angle; if unstable, sequence as fly-over for STAR last leg only and document it. |
+| Fix sequencing overshoots | Sequence within one movement step and begin the next course only after the fix. |
 | Loc capture oscillates | Capture hysteresis; once LOC, hold until heading breakout or `|δ| > 2.5°` for N seconds. |
 | GS from above | Refuse capture from above; stay at assigned. |
 | CIFP rabbit hole | Fixture-only ACs; KDEM JSON is the product. |
@@ -610,7 +611,7 @@ Do not start phase 5 until every box is true.
 
 - [ ] KDEM demo data is committed under `src/scenario/data/kdem/` (vors, ndbs, ils, fixes, procedures, **sids**), schema-validated (`airportId: string`, `sids` array), and contains DEMO ONE (N/S transitions + MERGE), ILS 27, DIRECT-able ids `DEM`, `NEMAX`, `FI27`. Video map `DEM1` exists as a separate MAPS file (not generated from the STAR).
 - [ ] Spoken/typed ILS clearance *turn right heading … maintain … until established, cleared ILS approach runway 27* parses to heading + altitude(`untilEstablished`) + `CLEARED_APPROACH`; readback uses those words; aircraft holds altitude until loc capture then GS from below.
-- [ ] `DCT <fix>` sequences a fly-by to a catalog fix; unknown fix rejects.
+- [ ] `DCT <fix>` sequences at a catalog fix before starting the next leg; unknown fix rejects.
 - [ ] `EXP ILS27` sets expected approach; does not capture loc.
 - [ ] `APP ILS27` after an intercept heading captures loc, then GS from below; phase 1 no-op is gone. GS does **not** start before loc established.
 - [ ] After last STAR fix, aircraft is on vectors (heading mode).

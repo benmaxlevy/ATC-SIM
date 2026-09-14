@@ -15,7 +15,7 @@
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT`, `datablockAlertTint`);
  * ATPA in-trail pairing (`evaluateAtpa`, `world.alerts.atpa`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
- * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
+ * nav geometry (`courseDeg`, fix-to-fix sequencing, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
  * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`);
@@ -163,15 +163,10 @@ export { magneticToTrueDeg, trueToMagneticDeg } from "./nav/headingFrames";
 export {
   DEG2RAD,
   DIRECT_SEQUENCE_NM,
-  FLYBY_CAP_NM,
-  FLYBY_FLOOR_NM,
-  FLYBY_MIN_TURN_DEG,
   alongTrackNm,
   courseChangeDeg,
   courseDeg,
   distanceNm,
-  flyByStartNm,
-  flyOverSequenceNm,
   latLonToNm,
   nmToLatLon,
   normalizeHeadingDeg,

@@ -70,6 +70,58 @@ test("active executable route starts at its cursor and advances one fix at a tim
   expect(world.flightPlans[0]?.routeRecord).toMatchObject({ nextIndex: 1, revision: 1 });
 });
 
+test("active clearance routes turn at fixes instead of leading every route turn", () => {
+  const registry = buildFixRegistry({
+    fixes: [
+      { id: "TURN", xNm: 0, yNm: 0, kind: "fix" },
+      { id: "OUTBOUND", xNm: 10, yNm: 10, kind: "fix" },
+    ],
+    navaids: [],
+  });
+  const aircraft = createAircraft({
+    id: "ac-turn",
+    callsign: "AAL123",
+    xNm: -3,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 8000,
+    speedKt: 220,
+  });
+  const world = createWorld({
+    aircraft: [aircraft],
+    catalog: {
+      ...catalog,
+      airportId: "TEST",
+      approaches: [],
+      fixes: [...catalog.fixes, { id: "TURN" }, { id: "OUTBOUND" }],
+    },
+    fixRegistry: registry,
+  });
+  const draft = saveFlightPlanDraft(world, { acid: "AAL123", filedRoute: "TURN OUTBOUND" });
+  if (!draft.ok) throw new Error(draft.error.message);
+  const active = applyFlightPlanRouteTransaction(world, draft.plan.id, {
+    source: "AS_FILED",
+    lifecycle: "active",
+  });
+  if (!active.ok) throw new Error(active.error.message);
+
+  expect(startFlightPlanRoute(world, draft.plan.id).ok).toBe(true);
+  expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE" });
+
+  let sequenceDistanceNm = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < 600; i += 1) {
+    const before = Math.hypot(aircraft.xNm, aircraft.yNm);
+    stepWorld(world, 0.1);
+    if (aircraft.intent.lateral?.type === "PROCEDURE" && aircraft.intent.lateral.toFixIndex === 1) {
+      sequenceDistanceNm = before;
+      break;
+    }
+  }
+  expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", toFixIndex: 1 });
+  expect(sequenceDistanceNm).toBeLessThan(0.02);
+  expect(aircraft.headingDeg).toBeCloseTo(89.7, 5);
+});
+
 test("DIRECT to a remaining route fix resumes the stored route without a revision", () => {
   const { world, aircraft, plan } = routeWorld(0, 0);
   expect(startFlightPlanRoute(world, plan.id).ok).toBe(true);

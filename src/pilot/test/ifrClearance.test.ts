@@ -240,7 +240,10 @@ test("airport clearance executes through a separate endpoint registry", async ()
   const xBefore = aircraft.xNm;
   for (let i = 0; i < 20; i += 1) stepWorld(world, 1);
   expect(aircraft.xNm).toBeGreaterThan(xBefore);
-  expect(aircraft.intent.lateral).toMatchObject({ type: "HEADING", headingDeg: 90 });
+  expect(aircraft.intent.lateral).toMatchObject({ type: "HEADING" });
+  expect(
+    aircraft.intent.lateral?.type === "HEADING" ? aircraft.intent.lateral.headingDeg : NaN,
+  ).toBeCloseTo(90, 5);
 });
 
 test("text clearance rejects an unknown airport with empty fixes", async () => {
