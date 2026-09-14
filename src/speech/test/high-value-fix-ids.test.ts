@@ -71,6 +71,15 @@ test("unreferenced navaids/fixes file-order ids do not appear", () => {
   expect(ids.join(",")).not.toBe(dump.slice(0, 64).join(","));
 });
 
+test("active airport ICAO leads the STT prior", () => {
+  expect(
+    highValueFixIds({
+      airportId: "KATL",
+      approaches: [{ locNavaidId: "IATL" }],
+    }),
+  ).toEqual(["KATL", "IATL"]);
+});
+
 test("caps at 16 after sort, extra referenced ids dropped", () => {
   const legs = Array.from({ length: 20 }, (_, i) => ({
     fixId: `M${String.fromCharCode(90 - i)}${String(i).padStart(2, "0")}`,
