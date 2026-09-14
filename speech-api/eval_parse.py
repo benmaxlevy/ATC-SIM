@@ -294,9 +294,9 @@ CASES: list[dict[str, Any]] = [
             "clearanceLimits": [],
             "routeWindow": {
                 "transcript": "swept hound",
-                "candidates": [
-                    {"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]},
-                    {"id": "HOUND", "kind": "NAVAID", "aliases": ["HOUND"], "spans": [{"start": 6, "end": 11, "text": "hound"}]},
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]},
+                    {"span": {"start": 6, "end": 11, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
                 ],
                 "procedures": [],
             },
@@ -318,13 +318,67 @@ CASES: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "clearance-route-unique-near-match",
+        "text": "cleared to KATL via swep hound",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "swep hound",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 4, "text": "swep"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}]},
+                    {"span": {"start": 5, "end": 10, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": "SWEPT"}, {"type": "DIRECT", "fixId": "HOUND"}]},
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-route-ambiguous-alternatives",
+        "text": "cleared to KATL via kimmi",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 5, "text": "kimmi"}, "candidates": [{"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}, {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "clearance-route-airport-not-fix",
+        "text": "cleared to KATL via atlanta",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta"]}],
+            "routeWindow": {
+                "transcript": "atlanta",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 7, "text": "atlanta"}, "candidates": [{"id": "KATL", "kind": "FIX", "score": 1, "method": "exact"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
         "id": "clearance-route-hallucinated-id",
         "text": "cleared to KATL via invented",
         "context": {
             "airports": [{"icao": "KATL", "name": "Atlanta International"}],
             "routeWindow": {
                 "transcript": "invented",
-                "candidates": [],
+                "fixMatches": [],
                 "procedures": [],
             },
         },

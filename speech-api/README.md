@@ -51,10 +51,13 @@ Constrained decoding uses `parse_grammar.gbnf` (JSON matching Command IR v0) whe
 **Roster + catalog grounding (not a vector DB):** the sim may send `context.callsigns` (on-frequency ICAO), `context.selectedCallsign`, `context.fixes` (facility fix ids), `context.procedures`, `context.approaches`, and separate `context.airports` (ICAO/name/aliases for IFR clearance limits). Those go in the **user** turn as `onFrequency=` / `fixes=` / `procedures=` / `approaches=` / `airports=` so the static system prompt stays cacheable. The model must pick an ICAO from the roster (e.g. ASR `giblet 204` → `SWA204`) and a listed fix spelling (e.g. ASR `C-Max` → `SEMAX`). Airport candidates may ground only `IFR_CLEARANCE.limitId`, never `DIRECT` or `CROSS`. Do not send kinematics — Path C is not an executor. The browser also snaps a unique flight-number suffix onto the roster, and a unique noisy `fixId` onto the catalog, when the model still returns junk.
 
 For an IFR route-window deterministic miss, `context.routeWindow` contains
-only the route transcript and catalog-grounded candidate spans. Each candidate
-has an ID, `FIX`/`NAVAID` kind, aliases, and evidence spans; procedure candidates
-carry only catalog-valid transition candidates. `DIRECT` is optional route
-syntax: a supplied fix/navaid without `DIRECT` is an implicit direct segment.
+only the route transcript and per-span `fixMatches`. Each match has one
+transcript span and only the shared-matcher candidate alternatives (canonical
+ID, `FIX`/`NAVAID` kind, score, and method); procedure candidates carry only
+catalog-valid transition candidates. `DIRECT` is optional route syntax: a
+supplied fix/navaid without `DIRECT` is an implicit direct segment. The model
+must select one candidate per route element and cover every non-connector span
+in order; it cannot concatenate tokens or use an airport as a route fix.
 `context.clearanceLimits` and `context.airports` are limit-only namespaces.
 Unknown, ambiguous, malformed, invented, evidence-free, or airport route IDs
 return `PARSE_MISS`.

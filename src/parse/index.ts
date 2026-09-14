@@ -56,6 +56,8 @@ export type {
   PathCProcedureCandidate,
   PathCRouteCandidate,
   PathCRouteCandidateInput,
+  PathCRouteFixMatch,
+  PathCRouteFixMatchCandidate,
   PathCRouteWindow,
   PathCSuccess,
   PathCTranscriptSpan,

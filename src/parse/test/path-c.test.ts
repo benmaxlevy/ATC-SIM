@@ -273,13 +273,55 @@ test("IFR route fallback sends only route-window evidence and accepts canonical 
   });
   expect(captured?.context?.fixes).toBeUndefined();
   expect(captured?.context?.routeWindow?.transcript).toBe("see max cd");
-  expect(captured?.context?.routeWindow?.candidates.map((item) => item.id)).toEqual(
-    expect.arrayContaining(["SEMAX", "CD"]),
-  );
-  expect(captured?.context?.routeWindow?.candidates.every((item) => item.spans.length > 0)).toBe(
-    true,
-  );
+  const fixMatches = captured?.context?.routeWindow?.fixMatches ?? [];
+  expect(
+    fixMatches.some(
+      (match) =>
+        match.span.text === "see max" &&
+        match.candidates.some((candidate) => candidate.id === "SEMAX"),
+    ),
+  ).toBe(true);
+  expect(
+    fixMatches.some(
+      (match) =>
+        match.span.text === "cd" && match.candidates.some((candidate) => candidate.id === "CD"),
+    ),
+  ).toBe(true);
+  expect(fixMatches.every((match) => match.candidates.length > 0)).toBe(true);
   expect(captured?.context?.clearanceLimits?.map((item) => item.id)).toEqual(["KAHN"]);
+});
+
+test("IFR route context groups shared matcher alternatives by transcript span", async () => {
+  let captured: PathCRequest | undefined;
+  const parsePathC = vi.fn<ParsePathCFn>(async (request) => {
+    captured = request;
+    return null;
+  });
+
+  await parseCommand("DAL123 cleared to KATL via kimmi unknown", {
+    source: "voice",
+    fixes: [
+      { id: "KIMMY", kind: "FIX" },
+      { id: "KIMMS", kind: "NAVAID" },
+      { id: "KATL", kind: "FIX" },
+    ],
+    airports: ATLANTA,
+    pathC: true,
+    parsePathC,
+  });
+
+  expect(parsePathC).toHaveBeenCalledOnce();
+  const matches = captured?.context?.routeWindow?.fixMatches ?? [];
+  const kimmi = matches.find((match) => match.span.text === "kimmi");
+  expect(kimmi).toMatchObject({ span: { start: 0, end: 5, text: "kimmi" } });
+  expect(kimmi?.candidates).toEqual([
+    { id: "KIMMY", kind: "FIX", score: 0.8, method: "folded" },
+    { id: "KIMMS", kind: "NAVAID", score: 0.6, method: "levenshtein", distance: 1 },
+  ]);
+  expect(matches.some((match) => match.span.text === "unknown")).toBe(false);
+  expect(
+    matches.flatMap((match) => match.candidates.map((candidate) => candidate.id)),
+  ).not.toContain("KATL");
 });
 
 test("IFR route fallback rejects a partial chain", async () => {

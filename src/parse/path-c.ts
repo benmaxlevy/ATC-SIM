@@ -10,6 +10,7 @@ import {
   type Instruction,
   type TurnDir,
 } from "@core";
+import type { CatalogFixMatchMethod } from "./spoken/catalog-ground";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
@@ -38,6 +39,19 @@ export interface PathCRouteCandidateInput {
   aliases?: readonly string[];
 }
 
+export interface PathCRouteFixMatchCandidate {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  score: number;
+  method: CatalogFixMatchMethod;
+  distance?: number;
+}
+
+export interface PathCRouteFixMatch {
+  span: PathCTranscriptSpan;
+  candidates: PathCRouteFixMatchCandidate[];
+}
+
 export interface PathCTransitionCandidate {
   id: string;
   aliases: string[];
@@ -54,7 +68,7 @@ export interface PathCProcedureCandidate {
 /** Route-scoped evidence. No facility-wide search is allowed in this object. */
 export interface PathCRouteWindow {
   transcript: string;
-  candidates: PathCRouteCandidate[];
+  fixMatches: PathCRouteFixMatch[];
   procedures: PathCProcedureCandidate[];
 }
 
@@ -102,6 +116,13 @@ const ALT_VERBS = new Set(["CLIMB", "DESCEND", "MAINTAIN"]);
 const SPEED_VERBS = new Set(["MAINTAIN", "INCREASE", "REDUCE"]);
 const CROSS_RESTRICTIONS = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 const LEGAL_TYPES = new Set<string>(INSTRUCTION_TYPES);
+const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
+  "exact",
+  "alias",
+  "folded",
+  "levenshtein",
+]);
+const ROUTE_CONNECTORS = new Set(["direct", "then"]);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -334,6 +355,8 @@ function hasEvidence(
     spans.length > 0 &&
     spans.every(
       (span) =>
+        span !== null &&
+        typeof span === "object" &&
         Number.isInteger(span.start) &&
         Number.isInteger(span.end) &&
         span.start >= 0 &&
@@ -351,9 +374,16 @@ function routeSegmentEvidenceIntervals(
   route: PathCRouteWindow,
 ): Array<[number, number]> {
   if (segment.type === "DIRECT") {
-    const candidate = route.candidates.find((item) => item.id === segment.fixId);
-    if (candidate === undefined || !hasEvidence(candidate.spans, route.transcript)) return [];
-    return candidate.spans.map((span) => [span.start, span.end] as [number, number]);
+    return (Array.isArray(route.fixMatches) ? route.fixMatches : [])
+      .filter(
+        (match) =>
+          match !== null &&
+          typeof match === "object" &&
+          Array.isArray(match.candidates) &&
+          match.candidates.some((candidate) => candidate.id === segment.fixId) &&
+          hasEvidence([match.span], route.transcript),
+      )
+      .map((match) => [match.span.start, match.span.end] as [number, number]);
   }
   const procedure = route.procedures.find((item) => item.id === segment.procedureId);
   if (procedure === undefined || !hasEvidence(procedure.spans, route.transcript)) return [];
@@ -418,29 +448,40 @@ function routeEvidenceCovered(
       return false;
     }
   }
-  const covered = (span: PathCTranscriptSpan) =>
-    intervals.some(([start, end]) => span.start < end && span.end > start);
-  for (const candidate of route.candidates) {
+  for (const match of route.fixMatches) {
     if (
-      !hasEvidence(candidate.spans, route.transcript) ||
-      candidate.spans.some((span) => !covered(span))
+      match === null ||
+      typeof match !== "object" ||
+      !hasEvidence([match.span], route.transcript) ||
+      !Array.isArray(match.candidates) ||
+      match.candidates.length === 0 ||
+      match.candidates.some(
+        (candidate) =>
+          typeof candidate.id !== "string" ||
+          candidate.id.length === 0 ||
+          (candidate.kind !== "FIX" && candidate.kind !== "NAVAID") ||
+          !Number.isFinite(candidate.score) ||
+          !ROUTE_FIX_MATCH_METHODS.has(candidate.method),
+      )
+    ) {
+      return false;
+    }
+    if (
+      match.span.text
+        .trim()
+        .split(/\s+/)
+        .some((token) => ROUTE_CONNECTORS.has(token.toLowerCase()))
     ) {
       return false;
     }
   }
   for (const procedure of route.procedures) {
-    if (
-      !hasEvidence(procedure.spans, route.transcript) ||
-      procedure.spans.some((span) => !covered(span))
-    ) {
+    if (!hasEvidence(procedure.spans, route.transcript) || procedure.spans.length === 0) {
       return false;
     }
     for (const transition of procedure.transitions) {
       if (transition.spans.length === 0) continue;
-      if (
-        !hasEvidence(transition.spans, route.transcript) ||
-        transition.spans.some((span) => !covered(span))
-      ) {
+      if (!hasEvidence(transition.spans, route.transcript) || transition.spans.length === 0) {
         return false;
       }
     }
@@ -456,6 +497,7 @@ export function routePathCOutputIsGrounded(
   const route = context?.routeWindow;
   if (route === undefined) return true;
   if (context === undefined) return false;
+  if (!Array.isArray(route.fixMatches) || !Array.isArray(route.procedures)) return false;
   if (instructions.length !== 1 || instructions[0]?.type !== "IFR_CLEARANCE") return false;
   const clearance = instructions[0];
   if (clearance.access.type !== "EXPLICIT_ROUTE" || clearance.access.segments.length === 0) {
@@ -469,15 +511,18 @@ export function routePathCOutputIsGrounded(
   if (!limitIds.has(clearance.limitId)) return false;
   const evidencePaths = orderedRouteEvidencePaths(clearance.access.segments, route);
   if (!evidencePaths.some((path) => routeEvidenceCovered(route, path))) return false;
-  const direct = new Map(route.candidates.map((candidate) => [candidate.id, candidate]));
   const procedures = new Map(route.procedures.map((procedure) => [procedure.id, procedure]));
   for (const segment of clearance.access.segments) {
     if (segment.type === "DIRECT") {
-      const candidate = direct.get(segment.fixId);
       if (
-        candidate === undefined ||
         airportIds.has(segment.fixId) ||
-        !hasEvidence(candidate.spans, route.transcript)
+        !route.fixMatches.some(
+          (match) =>
+            match !== null &&
+            typeof match === "object" &&
+            match.candidates.some((candidate) => candidate.id === segment.fixId) &&
+            hasEvidence([match.span], route.transcript),
+        )
       ) {
         return false;
       }

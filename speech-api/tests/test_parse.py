@@ -90,9 +90,9 @@ def test_path_c_route_guard_requires_supplied_ids_and_transcript_spans() -> None
         ],
         "routeWindow": {
             "transcript": "swept hound",
-            "candidates": [
-                {"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]},
-                {"id": "HOUND", "kind": "NAVAID", "aliases": ["HOUND"], "spans": [{"start": 6, "end": 11, "text": "hound"}]},
+            "fixMatches": [
+                {"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]},
+                {"span": {"start": 6, "end": 11, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
             ],
             "procedures": [],
         },
@@ -140,7 +140,7 @@ def test_path_c_route_guard_requires_supplied_ids_and_transcript_spans() -> None
         **context,
         "routeWindow": {
             "transcript": "swept kimmy",
-            "candidates": [context["routeWindow"]["candidates"][0]],
+            "fixMatches": [context["routeWindow"]["fixMatches"][0]],
             "procedures": [],
         },
     }
@@ -173,13 +173,88 @@ def test_path_c_route_prompt_teaches_optional_direct_and_catalog_transitions() -
             "clearanceLimits": [],
             "routeWindow": {
                 "transcript": "swept hound",
-                "candidates": [{"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]}],
+                "fixMatches": [{"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]}],
                 "procedures": [],
             },
         },
     )
     assert "routeWindow=" in message
     assert "swept hound" in message
+    assert "fixMatches" in message
+    assert "one listed candidate" in message
+
+
+def test_path_c_route_fix_matches_are_span_scoped_and_exclude_airports() -> None:
+    from parse_engine import sanitize_parse_context
+
+    context = sanitize_parse_context(
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 5, "text": "kimmi"},
+                        "candidates": [
+                            {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+                            {"id": "KATL", "kind": "FIX", "score": 1, "method": "exact"},
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert context is not None
+    matches = context["routeWindow"]["fixMatches"]
+    assert matches[0]["span"] == {"start": 0, "end": 5, "text": "kimmi"}
+    assert [item["id"] for item in matches[0]["candidates"]] == ["KIMMY"]
+
+
+def test_path_c_route_guard_requires_ordered_complete_span_segmentation() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+        "clearanceLimits": [],
+        "routeWindow": {
+            "transcript": "swept hound",
+            "fixMatches": [
+                {
+                    "span": {"start": 0, "end": 5, "text": "swept"},
+                    "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}],
+                },
+                {
+                    "span": {"start": 6, "end": 11, "text": "hound"},
+                    "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}],
+                },
+            ],
+            "procedures": [],
+        },
+    }
+
+    def outcome(ids: list[str]) -> ParseOutcome:
+        return ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [{"type": "DIRECT", "fixId": item} for item in ids],
+                    },
+                }
+            ],
+        )
+
+    assert guard_catalog_ids("cleared to KATL via swept hound", context, outcome(["SWEPT", "HOUND"])).ok
+    assert guard_catalog_ids(
+        "cleared to KATL via swept hound", context, outcome(["HOUND", "SWEPT"])
+    ).error == "PARSE_MISS"
+    assert guard_catalog_ids(
+        "cleared to KATL via swept hound", context, outcome(["SWEPT"])
+    ).error == "PARSE_MISS"
 
 
 def test_empty_parse_model_uses_default_and_mock_is_ready() -> None:

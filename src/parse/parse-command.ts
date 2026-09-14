@@ -27,6 +27,7 @@ import {
   groundInstructionFixes,
   groundInstructionProcedures,
   groundProcedureToCatalog,
+  rankFixCandidates,
   sanitizeCatalogAirports,
   normalizeFixKey,
   catalogFixAliases,
@@ -38,6 +39,7 @@ import {
   sanitizeCatalogProcedures,
   type CatalogApproach,
   type CatalogAirport,
+  type CatalogFixMatchMethod,
   type CatalogFixInput,
   type CatalogProcedure,
   type CatalogStarTransitionVocab,
@@ -54,6 +56,8 @@ import {
   type PathCProcedureCandidate,
   type PathCRouteCandidate,
   type PathCRouteCandidateInput,
+  type PathCRouteFixMatch,
+  type PathCRouteFixMatchCandidate,
   type PathCRouteWindow,
   type PathCTranscriptSpan,
   routePathCOutputIsGrounded,
@@ -681,6 +685,91 @@ function tokenSpans(
   return out;
 }
 
+function routeFixMatchCandidates(
+  phraseTokens: readonly string[],
+  inputs: readonly CatalogFixInput[],
+): PathCRouteFixMatchCandidate[] {
+  const phrase = phraseTokens.join(" ");
+  const phraseKey = normalizeFixKey(phrase);
+  const ranked = rankFixCandidates(phrase, inputs, { includeDistanceTwo: true });
+  const allowedIds =
+    phraseTokens.length === 1
+      ? null
+      : new Set(
+          inputs.flatMap((input) => {
+            const entry = sanitizeCatalogFixEntries([input])[0];
+            if (!entry) return [];
+            return catalogFixAliasesForEntry(entry).some(
+              (alias) =>
+                alias.trim().split(/\s+/).length === phraseTokens.length &&
+                normalizeFixKey(alias) === phraseKey,
+            )
+              ? [entry.id]
+              : [];
+          }),
+        );
+  return ranked
+    .filter((candidate) => allowedIds === null || allowedIds.has(candidate.id))
+    .slice(0, MAX_PATH_C_FIXES)
+    .map((candidate) => ({
+      id: candidate.id,
+      kind: candidate.kind,
+      score: candidate.score,
+      method: candidate.method as CatalogFixMatchMethod,
+      ...(candidate.distance !== undefined ? { distance: candidate.distance } : {}),
+    }));
+}
+
+const ROUTE_EVIDENCE_CONTROL_WORDS = new Set([
+  "direct",
+  "then",
+  "alt",
+  "maintain",
+  "cvia",
+  "freq",
+  "frequency",
+  "sq",
+  "squawk",
+  "climb",
+  "descend",
+  "contact",
+  "expect",
+]);
+
+function routeFixMatches(
+  tokens: readonly string[],
+  startIndex: number,
+  endIndex: number,
+  inputs: readonly CatalogFixInput[],
+): PathCRouteFixMatch[] {
+  const offsets: number[] = [];
+  let offset = 0;
+  for (let i = startIndex; i < endIndex; i += 1) {
+    offsets.push(offset);
+    offset += tokens[i]!.length + 1;
+  }
+  const out: PathCRouteFixMatch[] = [];
+  for (let i = startIndex; i < endIndex; i += 1) {
+    for (let length = 1; i + length <= endIndex && length <= 6; length += 1) {
+      const phraseTokens = tokens.slice(i, i + length);
+      if (phraseTokens.some((token) => isRouteEvidenceControlWord(token))) continue;
+      const candidates = routeFixMatchCandidates(phraseTokens, inputs);
+      if (candidates.length === 0) continue;
+      const text = phraseTokens.join(" ");
+      const start = offsets[i - startIndex]!;
+      out.push({
+        span: { start, end: start + text.length, text },
+        candidates,
+      });
+    }
+  }
+  return out;
+}
+
+function isRouteEvidenceControlWord(token: string): boolean {
+  return ROUTE_EVIDENCE_CONTROL_WORDS.has(token.toLowerCase());
+}
+
 function procedureRouteCandidate(
   procedure: CatalogProcedure,
   tokens: readonly string[],
@@ -728,30 +817,21 @@ function routeWindowContext(
   const bounds = routeWindowBounds(tokens, viaIndex + 1);
   if (bounds === null) return null;
   const inputs = routeCandidates.length > 0 ? routeCandidates : catalog;
-  const candidates: PathCRouteCandidate[] = [];
-  const seen = new Set<string>();
   const airportIds = new Set(airports.map((airport) => airport.icao));
-  for (const input of inputs) {
-    const entry = sanitizeCatalogFixEntries([input])[0];
-    if (!entry || airportIds.has(entry.id) || seen.has(entry.id)) continue;
-    const aliases = routeFixAliasList(entry);
-    const spans = tokenSpans(tokens, bounds.startIndex, bounds.endIndex, aliases);
-    if (spans.length === 0) continue;
-    seen.add(entry.id);
-    candidates.push({ id: entry.id, kind: entry.kind, aliases, spans });
-  }
+  const routeInputs = sanitizeCatalogFixEntries(inputs, { excludeIds: airportIds });
+  const fixMatches = routeFixMatches(tokens, bounds.startIndex, bounds.endIndex, routeInputs);
   const procedureRows = procedures
     .map((procedure) =>
       procedureRouteCandidate(procedure, tokens, bounds.startIndex, bounds.endIndex),
     )
     .filter((procedure) => procedure.spans.length > 0);
-  if (candidates.length === 0 && procedureRows.length === 0) return null;
+  if (fixMatches.length === 0 && procedureRows.length === 0) return null;
   return {
     startIndex: bounds.startIndex,
     endIndex: bounds.endIndex,
     routeWindow: {
       transcript: tokens.slice(bounds.startIndex, bounds.endIndex).join(" "),
-      candidates,
+      fixMatches,
       procedures: procedureRows,
     },
   };
@@ -1053,7 +1133,9 @@ function pathCIdentifierListed(
       ...airports,
       ...(context.clearanceLimits ?? []).map((candidate) => candidate.id),
     ]);
-    const fixes = new Set(route.candidates.map((candidate) => candidate.id));
+    const fixes = new Set(
+      route.fixMatches.flatMap((match) => match.candidates.map((candidate) => candidate.id)),
+    );
     const procedures = new Map(route.procedures.map((procedure) => [procedure.id, procedure]));
     for (const inst of instructions) {
       if (inst.type !== "IFR_CLEARANCE") return false;
@@ -1257,7 +1339,7 @@ export async function parseCommand(
   const routeEvidence = routeInfo?.routeWindow;
   const routeFallbackHasEvidence =
     routeEvidence !== undefined &&
-    (routeEvidence.candidates.length > 0 || routeEvidence.procedures.length > 0) &&
+    (routeEvidence.fixMatches.length > 0 || routeEvidence.procedures.length > 0) &&
     (limitInfo.limits.length > 0 || limitInfo.airportMatches.length > 0);
 
   if (
@@ -1307,7 +1389,9 @@ export async function parseCommand(
           spokenCallsignToken(normalized);
         const pathFixes = [
           ...(context?.fixes ?? []),
-          ...(context?.routeWindow?.candidates.map((candidate) => candidate.id) ?? []),
+          ...(context?.routeWindow?.fixMatches.flatMap((match) =>
+            match.candidates.map((candidate) => candidate.id),
+          ) ?? []),
           ...(context?.clearanceLimits?.map((candidate) => candidate.id) ?? []),
         ];
         const pathProcedures = context?.routeWindow?.procedures ?? context?.procedures ?? [];

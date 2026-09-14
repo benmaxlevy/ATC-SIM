@@ -119,11 +119,16 @@ from the standalone `DIRECT` instruction.
 
 When deterministic route segmentation misses or is non-unique, local Path C
 may return this same canonical shape only from supplied route-window evidence.
-Each returned route ID must be listed with a transcript span; `FIX`/`NAVAID`
-candidates are the only `DIRECT` targets. A procedure transition must be
-nested in its supplied procedure candidate. Airport candidates remain
+Each returned route ID must be selected from one candidate in one supplied
+`routeWindow.fixMatches` row whose transcript span supports that route element.
+The selected spans must form one complete, ordered, non-overlapping segmentation
+of the route window; overlapping rows are alternatives, not cumulative evidence.
+`FIX`/`NAVAID` candidates are the only `DIRECT` targets. A procedure transition
+must be nested in its supplied procedure candidate. Airport candidates remain
 clearance-limit-only. Missing `DIRECT` means direct only for a supplied
-fix/navaid candidate; it never authorizes an invented route leg.
+fix/navaid candidate; it never authorizes an invented route leg. Path C may not
+concatenate adjacent tokens, omit an unsupported route token, or choose an ID
+from a different span.
 
 Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
 non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed
