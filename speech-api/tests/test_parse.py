@@ -14,6 +14,7 @@ from parse_engine import (
     ParseOutcome,
     ROUTE_SEGMENT_TYPES,
     guard_catalog_ids,
+    sanitize_parse_context,
     validate_instruction,
     validate_parse_json,
 )
@@ -255,6 +256,118 @@ def test_path_c_route_guard_requires_ordered_complete_span_segmentation() -> Non
     assert guard_catalog_ids(
         "cleared to KATL via swept hound", context, outcome(["SWEPT"])
     ).error == "PARSE_MISS"
+
+
+def test_path_c_route_guard_rejects_equal_best_direct_candidates() -> None:
+    def context(candidates: list[dict[str, object]]) -> dict[str, object]:
+        return {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 5, "text": "kimmi"},
+                        "candidates": candidates,
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+
+    def outcome(fix_id: str) -> ParseOutcome:
+        return ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [{"type": "DIRECT", "fixId": fix_id}],
+                    },
+                }
+            ],
+        )
+
+    equal_best = [
+        {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+        {"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+    ]
+    assert (
+        guard_catalog_ids("cleared to KATL via kimmi", context(equal_best), outcome("KIMMY")).error
+        == "PARSE_MISS"
+    )
+
+    unique_best = [
+        {"id": "KIMMY", "kind": "FIX", "score": 0.8, "method": "folded"},
+        {"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+    ]
+    assert guard_catalog_ids(
+        "cleared to KATL via kimmi", context(unique_best), outcome("KIMMY")
+    ).ok
+
+
+def test_path_c_route_context_accepts_structured_long_navaid_and_keeps_fix_rules() -> None:
+    context = sanitize_parse_context(
+        {
+            "fixes": ["VORABCD1"],
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [
+                {
+                    "id": "VORABCD1",
+                    "kind": "NAVAID",
+                    "spans": [{"start": 0, "end": 8, "text": "vorabcd1"}],
+                }
+            ],
+            "routeWindow": {
+                "transcript": "vorabcd1",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 8, "text": "vorabcd1"},
+                        "candidates": [
+                            {
+                                "id": "VORABCD1",
+                                "kind": "NAVAID",
+                                "score": 1,
+                                "method": "exact",
+                            }
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert context is not None
+    assert context.get("fixes") is None
+    assert context["clearanceLimits"][0]["id"] == "VORABCD1"
+    assert context["routeWindow"]["fixMatches"][0]["candidates"][0]["id"] == "VORABCD1"
+
+    fix_context = sanitize_parse_context(
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "vorabcd1",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 8, "text": "vorabcd1"},
+                        "candidates": [
+                            {
+                                "id": "VORABCD1",
+                                "kind": "FIX",
+                                "score": 1,
+                                "method": "exact",
+                            }
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert fix_context is not None
+    assert fix_context["routeWindow"]["fixMatches"] == []
 
 
 def test_empty_parse_model_uses_default_and_mock_is_ready() -> None:

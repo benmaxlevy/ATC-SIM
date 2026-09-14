@@ -379,8 +379,7 @@ function routeSegmentEvidenceIntervals(
         (match) =>
           match !== null &&
           typeof match === "object" &&
-          Array.isArray(match.candidates) &&
-          match.candidates.some((candidate) => candidate.id === segment.fixId) &&
+          directFixMatchIsUnambiguous(match, segment.fixId) &&
           hasEvidence([match.span], route.transcript),
       )
       .map((match) => [match.span.start, match.span.end] as [number, number]);
@@ -428,6 +427,21 @@ function orderedRouteEvidencePaths(
     if (paths.length === 0) return [];
   }
   return paths;
+}
+
+function directFixMatchIsUnambiguous(match: PathCRouteFixMatch, fixId: string): boolean {
+  if (!Array.isArray(match.candidates) || match.candidates.length === 0) {
+    return false;
+  }
+  const selected = match.candidates.find((candidate) => candidate.id === fixId);
+  if (selected === undefined) {
+    return false;
+  }
+  const bestScore = Math.max(...match.candidates.map((candidate) => candidate.score));
+  return (
+    selected.score === bestScore &&
+    match.candidates.filter((candidate) => candidate.score === bestScore).length === 1
+  );
 }
 
 function routeEvidenceCovered(
@@ -520,7 +534,7 @@ export function routePathCOutputIsGrounded(
           (match) =>
             match !== null &&
             typeof match === "object" &&
-            match.candidates.some((candidate) => candidate.id === segment.fixId) &&
+            directFixMatchIsUnambiguous(match, segment.fixId) &&
             hasEvidence([match.span], route.transcript),
         )
       ) {

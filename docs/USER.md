@@ -262,19 +262,29 @@ scans an arbitrary-length route window until the next clearance boundary:
 `ALT`/`MAINTAIN`, `CVIA`, `FREQ`/`FREQUENCY`, `SQ`/`SQUAWK`, `CLIMB VIA`,
 `DESCEND VIA`, `CONTACT`, or `EXPECT`. Route elements are catalog-grounded
 fixes or navaids, or a catalog-grounded procedure with an optional valid
-transition. `DIRECT` may precede an element; without it, a fix/navaid is an
+transition. Every fix/navaid must be present in the active catalog. Matching
+tries the canonical id, listed aliases or navaid name, normalized spoken
+aliases, and then a unique Levenshtein distance-one repair; equal candidates
+are not guessed. Deterministic local parsing does not apply distance-two
+repairs. `DIRECT` may precede an element; without it, a fix/navaid is an
 implicit direct segment. A terminal `DIRECT` means direct to the clearance
-limit, and `THEN` is only a separator. Unknown, incomplete, ambiguous, or
-airport-name route elements return `PARSE_MISS`; airports remain valid only as
-clearance limits. These route-window and implicit-direct forms are an
+limit, and `THEN` is only a separator. Unknown, incomplete, ambiguous,
+concatenated, or airport-name route elements return `PARSE_MISS` and do not
+change intent or clearance state; airports remain valid only as clearance
+limits. These route-window, matcher, and implicit-direct forms are an
 ATC-SIM trainer extension, not a claim of complete FAA phraseology.
 
 Examples: `VIA DIRECT`; `VIA SIITH VOR1 HOUND ALT 50`; `VIA DIRECT SIITH
 DIRECT VOR1`; and `VIA SID1 NORTH TRANSITION HOUND`. The editable filed plan
 is unchanged, and later plan edits do not retarget an issued clearance.
 When the deterministic paths miss, the trainer-only Path C fallback receives
-only the matched route candidates and transcript spans; it may not invent,
-concatenate, or omit a route element.
+only the matched route candidates grouped by transcript span; it may select
+one unique best listed candidate per supplied span in route order, including a
+unique distance-two retrieval candidate. This is fallback evidence only: an
+unknown token, unlisted candidate, missing span, tie, or unsupported route
+still returns `PARSE_MISS`. Path C may not invent, concatenate, omit, or reuse
+a candidate from another span. If the evidence cannot form one complete
+route, the result is `PARSE_MISS` and the pilot readback is unable.
 `AS FILED` is accepted only when its limit is
 the filed route's terminal endpoint or the filed destination's catalog airport;
 the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and

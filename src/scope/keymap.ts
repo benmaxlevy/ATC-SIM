@@ -114,7 +114,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "DAL123 CLR TO KAHN VIA DIRECT",
         input: "Radio",
         result:
-          "Issues one atomic IFR clearance; VIA accepts an arbitrary catalog-grounded route chain with optional DIRECT markers, and missing markers mean direct. Executable routes fly immediately, while radar vectors wait for a later vector. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
+          "Issues one atomic IFR clearance; every VIA element must match a catalog FIX/NAVAID or procedure using its id, alias/name, spoken folding, or a unique one-edit match. Local parsing does not apply distance-two repairs. DIRECT is optional between elements and missing markers mean direct. If local parsing misses, trainer-only Path C may choose one unique listed candidate per supplied transcript span, including a unique distance-two retrieval candidate. Unknown, unlisted, tied, incomplete, concatenated, or airport route elements are PARSE_MISS and read back unable. It never invents route legs. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
       },
       {
         id: "approach",

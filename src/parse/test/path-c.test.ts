@@ -6,7 +6,9 @@ import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   isLegalInstruction,
+  routePathCOutputIsGrounded,
   type ParsePathCFn,
+  type PathCContext,
   type PathCRequest,
   type PathCSuccess,
 } from "../path-c";
@@ -322,6 +324,75 @@ test("IFR route context groups shared matcher alternatives by transcript span", 
   expect(
     matches.flatMap((match) => match.candidates.map((candidate) => candidate.id)),
   ).not.toContain("KATL");
+});
+
+test("IFR route grounding rejects equal-best DIRECT candidates but accepts unique segmentation", () => {
+  const makeContext = (
+    fixMatches: NonNullable<PathCContext["routeWindow"]>["fixMatches"],
+  ): PathCContext => ({
+    callsigns: [],
+    airports: ATLANTA,
+    routeWindow: {
+      transcript: "kimmi",
+      fixMatches,
+      procedures: [],
+    },
+  });
+  const output = [
+    {
+      type: "IFR_CLEARANCE" as const,
+      limitId: "KATL",
+      access: {
+        type: "EXPLICIT_ROUTE" as const,
+        segments: [{ type: "DIRECT" as const, fixId: "KIMMY" }],
+      },
+    },
+  ];
+
+  const equalBest = makeContext([
+    {
+      span: { start: 0, end: 5, text: "kimmi" },
+      candidates: [
+        { id: "KIMMY", kind: "FIX", score: 0.6, method: "levenshtein" },
+        { id: "KIMMS", kind: "FIX", score: 0.6, method: "levenshtein" },
+      ],
+    },
+  ]);
+  expect(routePathCOutputIsGrounded(output, equalBest)).toBe(false);
+
+  const uniqueBest = makeContext([
+    {
+      span: { start: 0, end: 5, text: "kimmi" },
+      candidates: [
+        { id: "KIMMY", kind: "FIX", score: 0.8, method: "folded" },
+        { id: "KIMMS", kind: "FIX", score: 0.6, method: "levenshtein" },
+      ],
+    },
+  ]);
+  expect(routePathCOutputIsGrounded(output, uniqueBest)).toBe(true);
+});
+
+test("IFR route context preserves a longer structured NAVAID id", async () => {
+  let captured: PathCRequest | undefined;
+  const parsePathC = vi.fn<ParsePathCFn>(async (request) => {
+    captured = request;
+    return null;
+  });
+
+  await parseCommand("DAL123 cleared to KATL via VORABCD1", {
+    source: "voice",
+    routeCandidates: [{ id: "VORABCD1", kind: "NAVAID" }],
+    airports: ATLANTA,
+    pathC: true,
+    parsePathC,
+  });
+
+  const match = captured?.context?.routeWindow?.fixMatches.find(
+    (item) => item.span.text === "vorabcd1",
+  );
+  expect(match?.candidates).toEqual([
+    { id: "VORABCD1", kind: "NAVAID", score: 1, method: "exact" },
+  ]);
 });
 
 test("IFR route fallback rejects a partial chain", async () => {

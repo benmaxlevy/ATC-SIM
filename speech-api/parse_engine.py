@@ -128,6 +128,7 @@ MAX_APPROACHES = 32
 MAX_AIRPORTS = 64
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
+_NAVAID_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 _APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _AIRPORT_RE = re.compile(r"^[A-Z]{4}$")
@@ -287,10 +288,14 @@ def _sanitize_route_candidate(raw: object) -> dict[str, Any] | None:
         return None
     candidate_id = raw.get("id")
     kind = raw.get("kind")
-    if not isinstance(candidate_id, str) or not isinstance(kind, str):
+    if (
+        not isinstance(candidate_id, str)
+        or not isinstance(kind, str)
+        or kind not in {"FIX", "NAVAID"}
+    ):
         return None
     candidate_id = candidate_id.strip().upper()
-    if _FIX_RE.match(candidate_id) is None or kind not in {"FIX", "NAVAID"}:
+    if (_NAVAID_RE if kind == "NAVAID" else _FIX_RE).match(candidate_id) is None:
         return None
     aliases_raw = raw.get("aliases") or []
     aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
@@ -369,7 +374,10 @@ def _sanitize_route_fix_match_candidate(
     ):
         return None
     candidate_id = candidate_id.strip().upper()
-    if _FIX_RE.match(candidate_id) is None or candidate_id in airport_ids:
+    if (
+        (_NAVAID_RE if kind == "NAVAID" else _FIX_RE).match(candidate_id) is None
+        or candidate_id in airport_ids
+    ):
         return None
     out: dict[str, Any] = {
         "id": candidate_id,
@@ -1127,10 +1135,7 @@ def _route_segment_evidence_intervals(
         return [
             (match["span"]["start"], match["span"]["end"])
             for match in route.get("fixMatches") or []
-            if any(
-                candidate.get("id") == segment.get("fixId")
-                for candidate in match.get("candidates") or []
-            )
+            if _direct_fix_match_is_unambiguous(match, segment.get("fixId"))
             and _span_is_evidence(match.get("span") or {}, route["transcript"])
         ]
     procedure = next(
@@ -1155,6 +1160,20 @@ def _route_segment_evidence_intervals(
         if transition_span["start"] >= procedure_span["start"]
         and transition_span["end"] > procedure_span["end"]
     ]
+
+
+def _direct_fix_match_is_unambiguous(match: dict[str, Any], fix_id: object) -> bool:
+    candidates = match.get("candidates") or []
+    selected = next(
+        (candidate for candidate in candidates if candidate.get("id") == fix_id),
+        None,
+    )
+    if selected is None or not candidates:
+        return False
+    best_score = max(candidate["score"] for candidate in candidates)
+    return selected["score"] == best_score and sum(
+        candidate["score"] == best_score for candidate in candidates
+    ) == 1
 
 
 def _ordered_route_evidence_paths(
@@ -1246,7 +1265,7 @@ def _guard_route_window_ids(
             if (
                 segment.get("fixId") in airport_ids
                 or not any(
-                    any(candidate.get("id") == segment.get("fixId") for candidate in match.get("candidates") or [])
+                    _direct_fix_match_is_unambiguous(match, segment.get("fixId"))
                     and _span_is_evidence(match.get("span") or {}, transcript)
                     for match in route.get("fixMatches") or []
                 )
