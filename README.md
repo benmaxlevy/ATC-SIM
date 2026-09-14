@@ -44,6 +44,7 @@ Complete documentation for operators, controllers, and developers:
 | [`src/scenario/README.md`](src/scenario/README.md) | Playable airspace scenarios and facility adaptation catalogs. |
 | [`tools/cifp-import/README.md`](tools/cifp-import/README.md) | FAA CIFP navigation database import tool. |
 | [`tools/crc-videomap-import/README.md`](tools/crc-videomap-import/README.md) | CRC cache to trainer video map converter. |
+| [`tools/aircraft-profiles/README.md`](tools/aircraft-profiles/README.md) | Aircraft performance profiles generator, unified schema, OpenAP WRAP integration, and runtime cascade. |
 | [`phases/README.md`](phases/README.md) | Phased delivery milestones and architecture design decisions. |
 
 ## Development & testing

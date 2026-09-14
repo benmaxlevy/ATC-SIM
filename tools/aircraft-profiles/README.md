@@ -40,7 +40,8 @@ The dataset consists of two top-level sections:
 ```
 
 - **`defaults`**: Defines baseline envelope limits and standard performance parameters across all 7 flight regimes (`initialClimb`, `climb`, `enroute`, `arrival`, `approach`, `landing`, `missedApproach`).
-- **`aircraft`**: Map of ICAO aircraft type codes to sparse override records. Types populated from OpenAP specify `"source": "openap"` along with empirical limits and regime rates. Unpopulated types remain empty objects `{}`.
+- **`aircraft`**: Map of ICAO aircraft type codes to sparse override records (48 types covering commercial, regional, cargo, and business jets). Types populated from OpenAP specify `"source": "openap"` along with empirical limits and regime rates. Unpopulated types remain empty objects `{}` and inherit `defaults`.
+- **OpenAP Aliases**: `build_profiles.py` maps non-standard or synonym ICAO codes to OpenAP aliases (e.g. `E175` -> `E75L`, `B77F` -> `B77W`) to maximize empirical coverage.
 
 ## Runtime resolution cascade
 
