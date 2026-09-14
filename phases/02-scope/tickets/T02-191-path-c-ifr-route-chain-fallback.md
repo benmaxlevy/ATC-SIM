@@ -44,7 +44,7 @@ Validation occurs again after model output. Invalid output becomes
 | Deterministic miss: `via direct swept direct hound` | Path C selects supplied SWEPT/HOUND candidates in order | No mutation before application | Missing evidence -> `PARSE_MISS` | FAA JO 7110.65 §§4-2-5, 4-4-1 |
 | `via swept hound maintain 7000` | Model sees only route window `swept hound` | `MAINTAIN` remains an optional field outside route | Model cannot move `MAINTAIN` into route | FAA JO 7110.65 §4-2-1 |
 | Procedure plus transition candidates | Returns one supplied procedure/transition pair | Canonical IR only | Invented transition or ambiguous pair -> `PARSE_MISS` | FAA JO 7110.65 §§4-2-1, 4-4-2 |
-| Candidate list excludes airport route IDs | Route contains only fixes/navaids/procedures | Airport remains limit-only | Airport ID in segment -> `PARSE_MISS` | Supplied STARS manual §§5.5.5 p. 5-95, 5.6.17 p. 5-167 |
+| Candidate list excludes airport route IDs | Route contains only fixes/navaids/procedures | Airport remains limit-only | Airport ID in segment -> `PARSE_MISS` | Supplied STARS manual §§5.5.5 p. 5-105, 5.6.17 p. 5-167; trainer namespace rule |
 | Model returns unknown ID, duplicate malformed segment, or prose | Validator rejects response | No world/aircraft state change | Exact API error `PARSE_MISS` | Closed Command IR contract |
 | Path C output for any chain | Matches frontend schema and deterministic meaning | Normal existing clearance application only after validation | Unsupported discriminant fails parity guard | T02-182 parity contract |
 
@@ -103,8 +103,9 @@ Python:
 
 - Review route candidate evidence and direct semantics against FAA JO 7110.65
   §§4-2-1, 4-2-5, 4-4-1, and 4-4-2.
-- Review issued route and active snapshot behavior against supplied STARS
-  manual §§5.5.5 p. 5-95 and 5.6.17 p. 5-167.
+- Review flight-plan create/modify behavior against supplied STARS manual
+  §§5.5.5 p. 5-105 and 5.6.17 p. 5-167. Treat active snapshot independence
+  and route-window grammar as trainer contracts.
 - Run local self-hosted evals; confirm no cloud endpoint or metered provider
   is used.
 

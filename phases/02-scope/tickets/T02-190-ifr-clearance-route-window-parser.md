@@ -56,7 +56,7 @@ Ambiguous full-route segmentations do not guess.
 | `via direct SWEPT direct HOUND direct` | Same two direct segments | No special fix branch | Marker with no valid target -> `PARSE_MISS` | FAA JO 7110.65 §§4-2-5, 4-4-1 |
 | `via SID1 NORTH HOUND` | `[PROCEDURE SID1/NORTH, DIRECT HOUND]` | Transition consumed only when catalog-valid | Ambiguous procedure or transition -> `PARSE_MISS` | FAA JO 7110.65 §§4-2-1, 4-4-2 |
 | `via SWEPT HOUND ALT 7000 FREQ 125.5 SQ 1234` | Route ends before `ALT`; optionals parse in order | Optional fields remain separate | Optional field before route completion -> existing parse rejection | FAA JO 7110.65 §§4-2-1, 4-2-5 |
-| Airport name/ICAO inside route section | No route segment emitted | Airport namespace remains clearance-limit-only | `PARSE_MISS`, no airport-as-fix fallback | Supplied STARS manual §§5.5.5 p. 5-95, 5.6.17 p. 5-167; trainer namespace rule |
+| Airport name/ICAO inside route section | No route segment emitted | Airport namespace remains clearance-limit-only | `PARSE_MISS`, no airport-as-fix fallback | Supplied STARS manual §§5.5.5 p. 5-105, 5.6.17 p. 5-167; trainer namespace rule |
 | Two valid catalog segmentations | No command emitted | No state mutation | `PARSE_MISS`; do not choose by file order | Generic catalog ambiguity contract |
 
 ## Scope
@@ -104,7 +104,7 @@ Ambiguous full-route segmentations do not guess.
   JO 7110.65 §§4-2-1 and 4-2-5.
 - Review direct and point-to-point route semantics against §§4-4-1 and 4-4-2.
 - Review displayed/issued route behavior against supplied STARS manual §§5.5.5
-  p. 5-95 and 5.6.17 p. 5-167.
+  p. 5-105 and 5.6.17 p. 5-167; route-window grammar is trainer behavior.
 - Record implicit-direct syntax as ATC-SIM trainer grammar where it extends
   published phraseology.
 

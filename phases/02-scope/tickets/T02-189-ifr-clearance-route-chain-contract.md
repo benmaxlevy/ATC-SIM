@@ -49,7 +49,7 @@ segment must not acquire SID climb-via semantics.
 | `CLR TO KATL VIA SWEPT HOUND` | Ordered `DIRECT SWEPT`, `DIRECT HOUND` | One compiled active snapshot; FMS follows both legs | Unknown route token -> `UNABLE_ROUTE`; no mutation | FAA JO 7110.65 §§4-4-1, 4-4-2 |
 | `CLR TO KATL VIA DIRECT SWEPT DIRECT HOUND DIRECT` | Same two direct segments; final `DIRECT` targets limit | Explicit markers do not create phantom segments | Repeated marker without target -> `PARSE_MISS` | FAA JO 7110.65 §§4-2-5, 4-4-1 |
 | `CLR TO KATL VIA SID1 NORTH HOUND` | Procedure plus transition, then direct HOUND | SID semantics preserved; plan unchanged | Ambiguous procedure/transition -> `UNABLE_ROUTE` | FAA JO 7110.65 §§4-2-1, 4-4-2 |
-| Later plan edit after issued chain | Existing active snapshot remains unchanged | Only later clearance replaces snapshot | No watcher or implicit re-clearance | Supplied STARS manual §§5.5.5 p. 5-95, 5.6.17 p. 5-167 |
+| Later plan edit after issued chain | Existing active snapshot remains unchanged | Only later clearance replaces snapshot | No watcher or implicit re-clearance | Supplied STARS manual §§5.5.5 p. 5-105, 5.6.17 p. 5-167; trainer contract |
 | Invalid segment with existing active clearance | Reject new clearance | Previous active clearance and plan remain unchanged | Exact code `UNABLE_ROUTE`, message begins `unable route:` | FAA JO 7110.65 §4-2-5 |
 
 ## Scope
@@ -90,8 +90,9 @@ segment must not acquire SID climb-via semantics.
 
 - Review route ordering and direct-to-limit behavior against FAA JO 7110.65
   §§4-2-1, 4-2-5, 4-4-1, and 4-4-2.
-- Review active-clearance versus editable-flight-plan behavior against the
-  supplied STARS manual at §§5.5.5 p. 5-95 and 5.6.17 p. 5-167.
+- Review the flight-plan create/modify workflows against the supplied STARS
+  manual at §§5.5.5 p. 5-105 and 5.6.17 p. 5-167. Treat active-clearance
+  independence as an ATC-SIM trainer contract, not a manual requirement.
 - Mark the independent active-snapshot rule as ATC-SIM trainer behavior, not
   FAA phraseology.
 

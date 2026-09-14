@@ -66,8 +66,9 @@ merged and passes `npm run ci`; T02-191 also requires
 **Manual/FAA:** Review route ordering, direct-to/between-NAVAID semantics,
 and clearance item boundaries against FAA JO 7110.65 §§4-2-1, 4-2-5, 4-4-1,
 and 4-4-2. Review active route/readback and plan separation against the
-supplied STARS manual §§5.5.5 p. 5-95 and 5.6.17 p. 5-167. Mark implicit
-direct and constrained Path-C recovery as trainer behavior where applicable.
+supplied STARS manual §§5.5.5 p. 5-105 and 5.6.17 p. 5-167. Mark active
+snapshot independence, implicit direct, and constrained Path-C recovery as
+trainer behavior where applicable.
 
 **Captain return:**
 

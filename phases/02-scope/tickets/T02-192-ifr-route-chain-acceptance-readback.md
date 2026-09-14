@@ -40,7 +40,7 @@ intermediate fix.
 | Mixed procedure/fix chain via deterministic path | Applies canonical route and readback | Plan remains unchanged | Ambiguous procedure/transition -> `PARSE_MISS` or `UNABLE_ROUTE` at existing layer | FAA JO 7110.65 §§4-2-1, 4-4-2 |
 | Same chain recovered by Path C | Same IR, application, and readback | No side effect before validation | Hallucinated candidate -> `PARSE_MISS` | T02-182 closed-schema contract |
 | Route followed by `ALT`, `CVIA`, `FREQ`, `SQ` | Route and optionals apply in existing order | Optional state changes remain aircraft-only where required | Reordered/duplicate optional -> existing `PARSE_MISS`/`UNABLE_CLEARANCE` | FAA JO 7110.65 §§4-2-1, 4-3-2/3, 5-2-1 |
-| Invalid chain with an existing clearance | New clearance rejected | Existing active route, plan, and aircraft state stay unchanged | Exact application code `UNABLE_ROUTE` | Supplied STARS manual §§5.5.5 p. 5-95, 5.6.17 p. 5-167 |
+| Invalid chain with an existing clearance | New clearance rejected | Existing active route, plan, and aircraft state stay unchanged | Exact application code `UNABLE_ROUTE` | Supplied STARS manual §§5.5.5 p. 5-105, 5.6.17 p. 5-167; trainer contract |
 
 ## Scope
 
@@ -82,8 +82,9 @@ intermediate fix.
 
 - Review clearance item order and route content against FAA JO 7110.65
   §§4-2-1, 4-2-5, 4-4-1, and 4-4-2.
-- Review route snapshot/readback presentation against supplied STARS manual
-  §§5.5.5 p. 5-95 and 5.6.17 p. 5-167.
+- Review flight-plan create/modify presentation against supplied STARS manual
+  §§5.5.5 p. 5-105 and 5.6.17 p. 5-167. Treat route snapshot/readback
+  semantics as ATC-SIM trainer behavior.
 - Review Help and `docs/USER.md` text manually for exact grammar.
 - Label implicit-direct parsing and constrained Path-C recovery as ATC-SIM
   trainer behavior where it extends published phraseology.
