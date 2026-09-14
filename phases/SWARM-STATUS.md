@@ -1,5 +1,52 @@
 # Swarm status
 
+## SEVENTY-FIRST SWARM COMPLETE — configurable beacon pools (T02-197–199)
+
+Completed sequentially on `feature/beacon-pools` from the audited
+`feature/clearances` tip. The delivered surface adds a generic validated
+beacon-pool adaptation, deterministic first-free trainer allocation, explicit
+omitted/default versus `A` no-code semantics, F1/F6/abbreviated pool routing,
+scenario/world wiring, assigned-aircraft occupancy, release/reuse, and blank
+no-code FL/TAB/strip projections. Plan-assigned beacon, aircraft-assigned
+squawk, and aircraft-reported squawk remain separate sources of truth.
+
+Captain squash commits:
+
+- T02-197: `d7ec5e8`
+- T02-198: `96a8132`, corrective manual pass `ddffff8`
+- T02-199: `2f9161e`
+
+Focused gates passed after the implementation/correction slices: T02-197 **63**,
+T02-198 **48** correction tests, and T02-199 **51** tests. Final captain
+`npm run ci`: **213 test files passed, 2,099 tests passed, 4 skipped**.
+
+Independent reviews used both supplied manuals:
+
+- T02-197: **CONCERN**, no manual FAIL; the concerns were the intentionally
+  deferred runtime consumers completed by T02-198/T02-199.
+- T02-198: initial **FAIL** corrected by `ddffff8`; re-audit **CONCERN** only
+  for the no-code `1200` projection, completed by T02-199.
+- T02-199/final overall: manual behavior **PASS** for Appendix D Table D-1
+  p. D-2, §§5.5.1/5.5.5/5.5.7–5.5.9, §5.6.15, §5.6.17, and Quick Reference
+  p. 18. The reviewer’s CI concern was closed by the captain’s completed
+  post-merge CI; preserved untracked `.worktrees/` and speech-session files
+  were not staged or changed.
+
+The manuals do not require random allocation or publish trainer pool contents;
+ATC-SIM documents deterministic first-free allocation and keeps shipped pool
+values as explicitly non-operational trainer adaptation. No Command IR,
+speech, radio `SQ`, pilot intent, kinematics, networking, or facility-specific
+allocator branch was added. No push performed.
+
+## SEVENTY-FIRST SWARM EXIT — PHASE EXIT GREEN
+
+Phase: configurable beacon pools T02-197–199
+Merge target: `feature/beacon-pools`
+Merged: T02-197, T02-198, T02-199, including the T02-198 manual correction
+Tests: final `npm run ci` green; focused integration and parser gates green
+Manual: both supplied STARS manuals reviewed after every ticket; final behavior PASS
+Notes: omitted/default vs `A`; deterministic configured pools; no-code projections blank; no push
+
 ## SIXTY-SIXTH SWARM COMPLETE — voice airport, command parity, and clearance separation (T02-181–T02-184)
 
 Completed sequentially on `feature/clearances` with Luna-high workers/reviews
