@@ -25,6 +25,28 @@ export type ParseStage = "typed" | "spoken_a" | "spoken_b" | "llm_c";
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 
+/** One catalog-grounded lateral element in an IFR clearance route. */
+export type ClearanceRouteSegment =
+  | { type: "DIRECT"; fixId: string }
+  | { type: "PROCEDURE"; procedureId: string; transitionId?: string };
+
+/** Canonical IFR clearance access representation. */
+export type IfrClearanceAccess =
+  | { type: "AS_FILED" }
+  | { type: "RADAR_VECTORS" }
+  /** An empty segment list means direct to the clearance limit. */
+  | { type: "EXPLICIT_ROUTE"; segments: ClearanceRouteSegment[] };
+
+/**
+ * Compatibility input forms retained until the deterministic parser migrates
+ * to IfrClearanceAccess. Core application code canonicalizes these at the
+ * clearance boundary; they are not emitted by the new contract.
+ */
+export type LegacyIfrClearanceAccess =
+  | { type: "DIRECT" }
+  | { type: "FIX_THEN_DIRECT"; fixId: string }
+  | { type: "SID"; procedureId: string; transitionId?: string };
+
 /** Runtime list of Instruction `type` discriminants. Keep in sync with `Instruction`. */
 export const INSTRUCTION_TYPES = [
   "FLY_HEADING",
@@ -36,6 +58,9 @@ export const INSTRUCTION_TYPES = [
   "EXPECT_APPROACH",
   "CLEARED_APPROACH",
   "INTERCEPT_LOCALIZER",
+  "ASSIGN_SQUAWK",
+  "MAINTAIN_VFR",
+  "IFR_CLEARANCE",
   "IDENT",
   "SAY_HEADING",
   "SAY_ALTITUDE",
@@ -72,6 +97,18 @@ export type Instruction =
   | { type: "CLEARED_APPROACH"; approachId: string }
   /** Join the loc and track inbound; do not arm GS. APP later clears the approach. */
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
+  | { type: "MAINTAIN_VFR" }
+  | {
+      type: "IFR_CLEARANCE";
+      limitId: string;
+      access: IfrClearanceAccess | LegacyIfrClearanceAccess;
+      altitudeFt?: number;
+      /** Optional climb-via marker for the named SID route. */
+      climbVia?: boolean;
+      frequency?: string;
+      squawk?: string;
+    }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }

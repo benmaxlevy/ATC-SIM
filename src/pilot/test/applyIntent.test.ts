@@ -31,6 +31,20 @@ test("TURN_DEGREES turns from present heading", () => {
   expect(ac.intent.assignedHeadingDeg).toBe(350);
 });
 
+test("ALTITUDE changes flight intent without creating controller altitude provenance", () => {
+  const ac = jet();
+  applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], 0);
+  expect(ac.intent.assignedAltitudeFt).toBe(4000);
+  expect(ac.intent.controllerAssignedAltitudeFt).toBeUndefined();
+});
+
+test("VIA altitude instructions preserve controller altitude provenance", () => {
+  const ac = jet();
+  ac.intent.controllerAssignedAltitudeFt = 9000;
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0);
+  expect(ac.intent.controllerAssignedAltitudeFt).toBe(9000);
+});
+
 test("DESCEND_VIA with catalog joins the STAR", () => {
   const ac = jet();
   applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0, { catalog: dem1Catalog });

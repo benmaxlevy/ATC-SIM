@@ -17,11 +17,17 @@ import {
   isProcedureIdToken,
   isTransitionIdToken,
   isTurnDirLetter,
+  isSquawkCodeToken,
   PARSE_ERROR,
   parseCrossAltitudeToken,
   parseUnsignedInt,
   type ParseErrorCode,
 } from "./tokens";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "./ifr-clearance-syntax";
+import {
+  scanIfrClearanceRouteWindow,
+  type IfrClearanceRouteWindowOptions,
+} from "./ifr-clearance-route-window";
 
 export type ParseResult =
   | {
@@ -42,7 +48,10 @@ const TURN_NUMBER_ONLY = /^T(\d+)$/;
 const TURN_NUMBER_AND_DIR = /^(\d+)([LR])$/;
 const BARE_LETTER = /^[HLRCDAS]$/;
 
-export function parseRadioText(sourceText: string): ParseResult {
+export function parseRadioText(
+  sourceText: string,
+  routeOptions: IfrClearanceRouteWindowOptions = {},
+): ParseResult {
   const normalized = sourceText.trim().replace(/\s+/g, " ").toUpperCase();
   if (normalized === "") {
     return fail(sourceText, PARSE_ERROR.EMPTY);
@@ -60,12 +69,16 @@ export function parseRadioText(sourceText: string): ParseResult {
 
   const instructions: Instruction[] = [];
   while (index < tokens.length) {
-    const parsed = parseOneInstruction(tokens, index);
+    const parsed = parseOneInstruction(tokens, index, routeOptions);
     if (!parsed.ok) {
       return fail(sourceText, parsed.code, parsed.detail);
     }
     instructions.push(parsed.instruction);
     index = parsed.nextIndex;
+  }
+
+  if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
   }
 
   return {
@@ -84,7 +97,16 @@ function isTypedInstructionStart(token: string): boolean {
   if (token in ZERO_ARG_INSTRUCTIONS || token in APPROACH_INSTRUCTIONS) {
     return true;
   }
-  if (token === "DCT" || token === "VIA" || token === "CVIA" || token === "JOIN" || token === "X") {
+  if (
+    token === "DCT" ||
+    token === "VIA" ||
+    token === "CVIA" ||
+    token === "JOIN" ||
+    token === "X" ||
+    token === "SQ" ||
+    token === "MVFR" ||
+    token === "CLR"
+  ) {
     return true;
   }
   return LETTER_NUMBER.test(token) || TURN_COMPACT.test(token) || TURN_NUMBER_ONLY.test(token);
@@ -110,10 +132,108 @@ type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
 
-function parseOneInstruction(tokens: string[], index: number): InstructionParse {
+function parseIfrClearance(
+  tokens: string[],
+  index: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): InstructionParse {
+  let i = index + 1;
+  if (tokens[i] !== "TO") {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
+  }
+  i += 1;
+  const limitId = tokens[i];
+  if (!limitId || !isFixIdToken(limitId)) {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
+  }
+  i += 1;
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (tokens[i] === "ASFILED" || (tokens[i] === "AS" && tokens[i + 1] === "FILED")) {
+    access = { type: "AS_FILED" };
+    i += tokens[i] === "ASFILED" ? 1 : 2;
+  } else {
+    if (tokens[i] !== "VIA") {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+    }
+    i += 1;
+    if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
+      access = { type: "RADAR_VECTORS" };
+      i += 2;
+    } else {
+      const route = scanIfrClearanceRouteWindow(tokens, i, routeOptions);
+      if (!route) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
+      }
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      i = route.nextIndex;
+    }
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const order = newIfrClearanceFieldOrder();
+  while (i < tokens.length) {
+    const field = tokens[i];
+    if (!field) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "duplicate or malformed field" };
+    }
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) {
+      return {
+        ok: false,
+        code: PARSE_ERROR.BAD_CLEARANCE,
+        detail: "duplicate or out-of-order field",
+      };
+    }
+    if (fieldKind === "ALT") {
+      const raw = tokens[i + 1];
+      const value = raw ? parseUnsignedInt(raw) : null;
+      if (value === null || value < 10 || value > 180) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad ALT" };
+      }
+      optional.altitudeFt = value * 100;
+      i += 2;
+    } else if (fieldKind === "CVIA") {
+      optional.climbVia = true;
+      i += 1;
+    } else if (fieldKind === "FREQ") {
+      const value = tokens[i + 1];
+      if (!value || !/^\d{3}(?:\.\d{1,3})?$/.test(value)) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad FREQ" };
+      }
+      optional.frequency = value;
+      i += 2;
+    } else if (fieldKind === "SQ") {
+      const value = tokens[i + 1];
+      if (!value || !isSquawkCodeToken(value)) {
+        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad SQ" };
+      }
+      optional.squawk = value;
+      i += 2;
+    } else {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: field };
+    }
+  }
+  return {
+    ok: true,
+    instruction: { type: "IFR_CLEARANCE", limitId, access, ...optional },
+    nextIndex: i,
+  };
+}
+
+function parseOneInstruction(
+  tokens: string[],
+  index: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): InstructionParse {
   const token = tokens[index];
   if (token === undefined) {
     return { ok: false, code: PARSE_ERROR.EMPTY };
+  }
+
+  if (token === "CLR") {
+    return parseIfrClearance(tokens, index, routeOptions);
   }
 
   const zeroArg = ZERO_ARG_INSTRUCTIONS[token];
@@ -131,6 +251,31 @@ function parseOneInstruction(tokens: string[], index: number): InstructionParse 
       ok: true,
       instruction: { type: approachType, approachId },
       nextIndex: index + 2,
+    };
+  }
+  if (token === "SQ") {
+    const rawCode = tokens[index + 1];
+    if (rawCode === "VFR") {
+      return {
+        ok: true,
+        instruction: { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" },
+        nextIndex: index + 2,
+      };
+    }
+    if (!rawCode || !isSquawkCodeToken(rawCode)) {
+      return { ok: false, code: PARSE_ERROR.BAD_SQUAWK, detail: rawCode };
+    }
+    return {
+      ok: true,
+      instruction: { type: "ASSIGN_SQUAWK", code: rawCode, source: "DISCRETE" },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "MVFR") {
+    return {
+      ok: true,
+      instruction: { type: "MAINTAIN_VFR" },
+      nextIndex: index + 1,
     };
   }
   if (token === "DCT") {

@@ -15,6 +15,7 @@ import {
   formatCallsignSpeech,
   formatDigitString,
   formatHeadingDigits,
+  speakDigitString,
 } from "./telephony";
 
 export { formatCallsignSpeech } from "./telephony";
@@ -38,7 +39,10 @@ export type RejectReason =
   | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
-  | "NOT_ON_APPROACH";
+  | "NOT_ON_APPROACH"
+  | "SQUAWK"
+  | "CLEARANCE"
+  | "UNABLE_ROUTE";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -60,6 +64,9 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   AMBIGUOUS_TRANSITION: "unable, ambiguous transition",
   UNKNOWN_APPROACH: "unable, unknown approach",
   NOT_ON_APPROACH: "unable, not on approach",
+  SQUAWK: "unable squawk",
+  CLEARANCE: "unable clearance",
+  UNABLE_ROUTE: "unable route",
 };
 
 function capitalizeFirst(text: string): string {
@@ -88,7 +95,10 @@ function speakApproachNav(approachId: string): string {
     return id;
   }
   const [, kind, runway, suffix] = match;
-  return `${kind} runway ${runway}${suffix}`.trim();
+  // CIFP uses the compact `I26R` form for an ILS. Read back the published
+  // approach type, not the internal one-letter identifier.
+  const spokenKind = kind === "I" ? "ILS" : kind;
+  return `${spokenKind} runway ${runway}${suffix}`.trim();
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
@@ -140,6 +150,24 @@ function formatInstructionClause(
       return formatSpeedClause(instruction);
     case "IDENT":
       return "ident";
+    case "ASSIGN_SQUAWK":
+      return instruction.source === "VFR"
+        ? "squawk VFR"
+        : `squawk ${speakDigitString(instruction.code)}`;
+    case "MAINTAIN_VFR":
+      return "maintain VFR";
+    case "IFR_CLEARANCE": {
+      const access = formatIfrClearanceAccess(instruction.access);
+      const optional = [
+        instruction.altitudeFt === undefined
+          ? null
+          : `maintain ${formatAltitude(instruction.altitudeFt)}`,
+        instruction.climbVia ? "climb via" : null,
+        instruction.frequency ? `frequency ${instruction.frequency}` : null,
+        instruction.squawk ? `squawk ${speakDigitString(instruction.squawk)}` : null,
+      ].filter((value): value is string => value !== null);
+      return [`cleared to ${instruction.limitId} ${access}`, ...optional].join(", ");
+    }
     case "SAY_HEADING":
       return `heading ${formatHeadingDigits(aircraft.headingDeg)}`;
     case "SAY_ALTITUDE":
@@ -173,6 +201,36 @@ function formatInstructionClause(
       return "going around";
     default: {
       const _exhaustive: never = instruction;
+      return _exhaustive;
+    }
+  }
+}
+
+function formatIfrClearanceAccess(
+  access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"],
+): string {
+  switch (access.type) {
+    case "AS_FILED":
+      return "as filed";
+    case "RADAR_VECTORS":
+      return "via radar vectors";
+    case "DIRECT":
+      return "via direct";
+    case "FIX_THEN_DIRECT":
+      return `via ${access.fixId} then direct`;
+    case "SID":
+      return `via ${access.procedureId}${access.transitionId ? ` ${access.transitionId}` : ""}`;
+    case "EXPLICIT_ROUTE": {
+      if (access.segments.length === 0) return "via direct";
+      const parts = access.segments.map((segment) =>
+        segment.type === "DIRECT"
+          ? `direct ${segment.fixId}`
+          : `${segment.procedureId}${segment.transitionId ? ` ${segment.transitionId}` : ""}`,
+      );
+      return `via ${parts.join(" then ")} then direct`;
+    }
+    default: {
+      const _exhaustive: never = access;
       return _exhaustive;
     }
   }

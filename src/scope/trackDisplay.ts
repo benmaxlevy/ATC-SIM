@@ -18,7 +18,7 @@ import {
   rejectPointout,
   setHandoffNone,
 } from "@core";
-import { sanitizeScratchpad, type DatablockMode } from "./datablock";
+import { flightPlanForDatablock, sanitizeScratchpad, type DatablockMode } from "./datablock";
 import { createHistoryBuf, recordHistoryOnReport, type HistoryBuf } from "./history";
 import {
   createSurveillanceSampler,
@@ -1005,8 +1005,14 @@ export function syncTrackDisplays(
     // path. It is display state only; ownership remains separate. When the
     // reported code changes, remove only the state this derivation created.
     const derivedPlan = flightPlanForAircraft(world, ac.id);
+    const datablockPlan = flightPlanForDatablock(world, ac, td);
     if (derivedPlan) {
       td.derivedPlanId = derivedPlan.id;
+      td.tracked = true;
+      td.unassociated = false;
+      td.datablockMode = "full";
+    } else if (datablockPlan) {
+      td.derivedPlanId = datablockPlan.id;
       td.tracked = true;
       td.unassociated = false;
       td.datablockMode = "full";

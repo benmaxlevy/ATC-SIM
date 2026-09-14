@@ -52,22 +52,18 @@ export function lookupAtpaWakeMinimum(
   }
   const leaderCategory = category(leaderCategoryValue);
   const followerCategory = category(followerCategoryValue);
+  const nowgtResult = {
+    kind: "nowgt" as const,
+    requiredNm: adaptation.nowgtSeparationNm,
+    ...(leaderCategory !== undefined ? { leaderCategory } : {}),
+    ...(followerCategory !== undefined ? { followerCategory } : {}),
+  };
   if (leaderCategory === undefined || followerCategory === undefined) {
-    return {
-      kind: "nowgt",
-      requiredNm: adaptation.nowgtSeparationNm,
-      ...(leaderCategory !== undefined ? { leaderCategory } : {}),
-      ...(followerCategory !== undefined ? { followerCategory } : {}),
-    };
+    return nowgtResult;
   }
   const requiredNm = adaptation.matrix[leaderCategory]?.[followerCategory];
   if (requiredNm === undefined) {
-    return {
-      kind: "nowgt",
-      requiredNm: adaptation.nowgtSeparationNm,
-      ...(leaderCategory !== undefined ? { leaderCategory } : {}),
-      ...(followerCategory !== undefined ? { followerCategory } : {}),
-    };
+    return nowgtResult;
   }
   return {
     kind: "wake",

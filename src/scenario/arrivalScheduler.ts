@@ -96,7 +96,6 @@ function spawnScheduledArrival(world: World, arrival: ScheduledArrival): Aircraf
         starId: arrival.assignment.starId,
         transitionId: arrival.assignment.transitionId,
       },
-      requestedAltitudeFt: pose.altitudeFt,
     },
   );
   aircraft.intent.lateral = {

@@ -58,6 +58,10 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   expect(createHtml).toContain('id="flight-plan-acid" name="acid" disabled="" value="AAL123"');
   expect(createHtml).not.toContain('id="flight-plan-cid"');
   expect(createHtml).not.toContain(">CID<");
+  expect(createHtml).toContain("Assigned altitude (ft)");
+  expect(createHtml).toContain(
+    'id="flight-plan-assignedAltitudeFt" name="assignedAltitudeFt" disabled=""',
+  );
   expect(createHtml).toContain('for="flight-plan-route"');
   expect(createHtml).toContain("Filed route");
   expect(createHtml).toContain("Equipment code");
@@ -82,6 +86,9 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   const amendedHtml = modalHtml(plan);
   expect(amendedHtml).toContain("Amend flight plan");
   expect(amendedHtml).toContain('value="FIXA"');
+  expect(amendedHtml).toContain(
+    'id="flight-plan-assignedAltitudeFt" name="assignedAltitudeFt" disabled=""',
+  );
   expect(amendedHtml).toContain('id="flight-plan-aircraftType" name="aircraftType" value="H/B744"');
 
   const departurePlan: FlightPlan = {
@@ -93,6 +100,145 @@ test("create and amend modes expose one accessible filed-plan dialog", () => {
   expect(departureHtml).toContain(">PTD<");
   expect(departureHtml).not.toContain(">ETA<");
 });
+
+test("active-plan modal prefills and submits assigned altitude separately", () => {
+  const activePlan: FlightPlan = {
+    id: "fp-aal123",
+    status: "active",
+    acid: "AAL123",
+    cid: "123",
+    fixes: [],
+    scratchpads: [],
+    requestedAltitudeFt: 12000,
+    assignedAltitudeFt: 8000,
+  };
+  const html = modalHtml(activePlan);
+  expect(html).toContain(
+    'id="flight-plan-assignedAltitudeFt" name="assignedAltitudeFt" value="8000"',
+  );
+  expect(html).not.toContain(
+    'id="flight-plan-assignedAltitudeFt" name="assignedAltitudeFt" disabled=""',
+  );
+
+  const aircraft = createAircraft({
+    id: "ac-aal123",
+    callsign: "AAL123",
+    xNm: 4,
+    yNm: 5,
+    headingDeg: 180,
+    altitudeFt: 7000,
+    speedKt: 210,
+    squawk: "4321",
+  });
+  const world = createWorld({ flightPlans: [activePlan], aircraft: [aircraft] });
+  const beforeAircraft = structuredClone(aircraft);
+  const draft = flightPlanModalDraftFromPlan("AAL123", activePlan);
+  draft.assignedAltitudeFt = "10000";
+
+  const saved = submitFlightPlanModalDraft(world, activePlan, draft);
+  expect(saved).toMatchObject({
+    ok: true,
+    plan: { requestedAltitudeFt: 12000, assignedAltitudeFt: 10000 },
+  });
+  expect(aircraft).toEqual(beforeAircraft);
+});
+
+test("active-plan modal assigned altitude 0 clears only assigned plan field", () => {
+  const plan: FlightPlan = {
+    id: "fp-aal123",
+    status: "active",
+    acid: "AAL123",
+    fixes: [],
+    scratchpads: [],
+    requestedAltitudeFt: 12000,
+    assignedAltitudeFt: 10000,
+  };
+  const world = createWorld({ flightPlans: [plan] });
+  const draft = flightPlanModalDraftFromPlan("AAL123", plan);
+  draft.assignedAltitudeFt = "0";
+
+  const saved = submitFlightPlanModalDraft(world, plan, draft);
+  expect(saved).toMatchObject({ ok: true, plan: { requestedAltitudeFt: 12000 } });
+  expect(plan.assignedAltitudeFt).toBeUndefined();
+});
+
+test("create and non-active modal assigned altitude stays unavailable and core rejection remains exact", () => {
+  const createDraft = flightPlanModalDraftFromPlan("AAL123");
+  createDraft.assignedAltitudeFt = "10000";
+  const createWorldState = createWorld({
+    catalog: { ...catalog, airportId: "TEST", approaches: [] },
+  });
+  expect(submitFlightPlanModalDraft(createWorldState, undefined, createDraft)).toMatchObject({
+    ok: false,
+    error: {
+      field: "assignedAltitudeFt",
+      message: "assigned altitude requires an active flight",
+    },
+  });
+
+  const pendingPlan: FlightPlan = {
+    id: "fp-aal123",
+    status: "pending",
+    acid: "AAL123",
+    fixes: [],
+    scratchpads: [],
+  };
+  const pendingHtml = modalHtml(pendingPlan);
+  expect(pendingHtml).toContain(
+    'id="flight-plan-assignedAltitudeFt" name="assignedAltitudeFt" disabled=""',
+  );
+  const pendingWorld = createWorld({ flightPlans: [pendingPlan] });
+  const pendingDraft = flightPlanModalDraftFromPlan("AAL123", pendingPlan);
+  pendingDraft.assignedAltitudeFt = "10000";
+  expect(submitFlightPlanModalDraft(pendingWorld, pendingPlan, pendingDraft)).toMatchObject({
+    ok: false,
+    error: {
+      field: "assignedAltitudeFt",
+      message: "assigned altitude requires an active flight",
+    },
+  });
+  expect(pendingPlan.assignedAltitudeFt).toBeUndefined();
+});
+
+test.each([12345, -100, 100000])(
+  "modal preserves atomicity and core altitude error for invalid assigned altitude %s",
+  (assignedAltitudeFt) => {
+    const plan: FlightPlan = {
+      id: "fp-aal123",
+      status: "active",
+      acid: "AAL123",
+      fixes: [],
+      scratchpads: [],
+      requestedAltitudeFt: 12000,
+      assignedAltitudeFt: 8000,
+    };
+    const aircraft = createAircraft({
+      id: "ac-aal123",
+      callsign: "AAL123",
+      xNm: 4,
+      yNm: 5,
+      headingDeg: 180,
+      altitudeFt: 7000,
+      speedKt: 210,
+    });
+    const world = createWorld({ flightPlans: [plan], aircraft: [aircraft] });
+    const beforePlan = structuredClone(plan);
+    const beforeAircraft = structuredClone(aircraft);
+    const draft = flightPlanModalDraftFromPlan("AAL123", plan);
+    draft.assignedAltitudeFt = String(assignedAltitudeFt);
+
+    const failed = submitFlightPlanModalDraft(world, plan, draft);
+    expect(failed).toMatchObject({
+      ok: false,
+      error: {
+        field: "altitude",
+        message: "altitudes must be whole hundreds from 0 through 99000",
+      },
+    });
+    expect(plan).toEqual(beforePlan);
+    expect(aircraft).toEqual(beforeAircraft);
+  },
+);
 
 test("invalid Save is atomic and preserves aircraft surveillance state", () => {
   const aircraft = createAircraft({

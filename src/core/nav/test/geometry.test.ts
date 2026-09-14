@@ -1,17 +1,6 @@
 import { expect, test } from "vitest";
 import { TURN_RATE_DEG_PER_S } from "@core";
-import {
-  DIRECT_SEQUENCE_NM,
-  FLYBY_CAP_NM,
-  FLYBY_FLOOR_NM,
-  alongTrackNm,
-  courseChangeDeg,
-  courseDeg,
-  distanceNm,
-  flyByStartNm,
-  flyOverSequenceNm,
-  turnRadiusNm,
-} from "../geometry";
+import { alongTrackNm, courseChangeDeg, courseDeg, distanceNm, turnRadiusNm } from "../geometry";
 
 test("courseDeg is atan2(east, north) in [0, 360)", () => {
   const origin = { xNm: 0, yNm: 0 };
@@ -36,20 +25,8 @@ test("turnRadiusNm matches TAS / ω with the T01-03 rate", () => {
   expect(turnRadiusNm(0)).toBe(0);
 });
 
-test("fly-by start is R tan(θ/2) with floor 0.2 and cap 4", () => {
-  const tas = 220;
-  const r = turnRadiusNm(tas);
-  const d90 = flyByStartNm(tas, 90);
-  expect(d90).toBeCloseTo(r * Math.tan(Math.PI / 4), 5);
-  expect(flyByStartNm(tas, 0)).toBe(FLYBY_FLOOR_NM);
-  expect(flyByStartNm(tas, 1)).toBeGreaterThanOrEqual(FLYBY_FLOOR_NM);
-  expect(flyByStartNm(tas, 179)).toBeLessThanOrEqual(FLYBY_CAP_NM);
+test("courseChangeDeg returns the shortest course difference", () => {
   expect(courseChangeDeg(270, 90)).toBe(180);
-});
-
-test("flyOverSequenceNm is at least 0.3 NM and grows with TAS dt slack", () => {
-  expect(flyOverSequenceNm(220, 0.05)).toBe(DIRECT_SEQUENCE_NM);
-  expect(flyOverSequenceNm(3600, 1)).toBe(2);
 });
 
 test("alongTrackNm is positive ahead and negative once abeam", () => {

@@ -72,7 +72,7 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       expect(td.sp1).toBe("R22L");
     });
 
-    test("Interim assigned altitude derives 3-digit hundreds in SP1 when no approach is set", () => {
+    test("Altitude commands update intent without deriving controller altitude provenance", () => {
       const ac = makeTestAircraft({
         id: "ac-alt",
         callsign: "AAL200",
@@ -85,19 +85,21 @@ describe("STARS CRC Datablock & Scratchpad Fidelity Acceptance (T02-42)", () => 
       let derived = deriveScratchpads(ac, td);
       expect(derived.sp1).toBe("");
 
-      // Descend clearance to 4,000 ft -> SP1 derives 040
+      // Descend clearance changes flight intent but does not create display provenance.
       applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], 0);
       derived = deriveScratchpads(ac, td);
-      expect(derived.sp1).toBe("040");
+      expect(derived.sp1).toBe("");
+      expect(ac.intent.assignedAltitudeFt).toBe(4000);
+      expect(ac.intent.controllerAssignedAltitudeFt).toBeUndefined();
 
-      // Controller instructs descend via STAR: altitude restriction reverts to procedure -> SP1 clears
+      // Descend via remains intent/FMS state only.
       applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEMO1" }], 0);
       derived = deriveScratchpads(ac, td);
       expect(derived.sp1).toBe("");
 
-      // Re-assign 4,000 ft and level off -> SP1 clears when level
+      // Re-assigning the same altitude still does not create provenance.
       applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], 0);
-      expect(deriveScratchpads(ac, td).sp1).toBe("040");
+      expect(deriveScratchpads(ac, td).sp1).toBe("");
       ac.altitudeFt = 4000;
       const leveled = deriveScratchpads(ac, td);
       expect(leveled.sp1).toBe("");

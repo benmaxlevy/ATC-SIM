@@ -251,6 +251,8 @@ test("T04-35 AC1 — every playable scenario loads catalog through generic loade
   for (const entry of listed) {
     const scenario = loadPlayableScenario(entry.id);
     expect(scenario.catalog.airportId).toBe(entry.airportIcao);
+    expect(scenario.catalog.name.trim().length).toBeGreaterThan(1);
+    expect(scenario.catalog.spokenAliases?.length).toBeGreaterThan(0);
     if (scenario.maps.videoMapSet) {
       const maps = loadVideoMapSet(scenario.maps.videoMapSet);
       expect(maps.length).toBeGreaterThan(0);

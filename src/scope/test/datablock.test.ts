@@ -15,9 +15,14 @@ import {
   pointInDatablock,
   getSpecialPurposeCode,
   buildDatablockRuntimeState,
+  datablockSourceFromWorld,
+  flightPlanForDatablock,
+  normalizeFlightRulesDisplay,
 } from "../datablock";
-import { createWorld } from "@core";
+import { createWorld, modifyFlightPlan, updateAircraftSquawk } from "@core";
+import { applyIntent } from "@pilot";
 import { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "../leader";
+import { syncTrackDisplays } from "../trackDisplay";
 
 test("runtime adapter projects associated plan and preserves beacon provenance", () => {
   const ac = makeTestAircraft({
@@ -70,6 +75,211 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
   expect(state.display.scratchpads).toEqual({ sp1: "ILS2", sp2: "S21" });
   expect(state.options.field0Indicators).toEqual(["CA"]);
   expect(ac.intent).toEqual(beforeIntent);
+});
+
+test("runtime FDB keeps the plan through a reported beacon mismatch", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-beacon-mismatch",
+    callsign: "RAW-MISMATCH",
+    squawk: "4321",
+    reportedSquawk: "4321",
+    altitudeFt: 6000,
+    speedKt: 180,
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-beacon-mismatch-plan",
+        status: "active",
+        acid: "FILED-MISMATCH",
+        assignedBeacon: "4321",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+  const tracks = new Map();
+
+  syncTrackDisplays(tracks, world);
+  expect(tracks.get(ac.id)?.derivedPlanId).toBe("runtime-beacon-mismatch-plan");
+
+  updateAircraftSquawk(world, ac.id, "4322");
+  syncTrackDisplays(tracks, world);
+
+  const track = tracks.get(ac.id);
+  expect(track).toMatchObject({
+    derivedPlanId: "runtime-beacon-mismatch-plan",
+    unassociated: false,
+    datablockMode: "full",
+  });
+  expect(flightPlanForDatablock(world, ac, track)?.assignedBeacon).toBe("4321");
+  const state = buildDatablockRuntimeState(world, ac, { track, mode: "full" });
+  expect(state.source).toMatchObject({
+    callsign: "FILED-MISMATCH",
+    reportedSquawk: "4322",
+    assignedSquawk: "4321",
+  });
+  expect(
+    linesForDatablock(state.source, "full", { ...state.options, timeSharePhase: 0 }).line3,
+  ).toBe("4322  4321");
+});
+
+test("runtime FDB bootstraps an authored mismatch from the aircraft assigned code", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-authored-mismatch",
+    callsign: "RAW-AUTHORED",
+    squawk: "4322",
+    reportedSquawk: "4322",
+    assignedSquawk: "4321",
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-authored-mismatch-plan",
+        status: "active",
+        acid: "FILED-AUTHORED",
+        assignedBeacon: "4321",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+  const tracks = new Map();
+
+  syncTrackDisplays(tracks, world);
+
+  const track = tracks.get(ac.id);
+  expect(track).toMatchObject({
+    derivedPlanId: "runtime-authored-mismatch-plan",
+    unassociated: false,
+    datablockMode: "full",
+  });
+  const state = buildDatablockRuntimeState(world, ac, { track, mode: "full" });
+  expect(
+    linesForDatablock(state.source, "full", { ...state.options, timeSharePhase: 0 }).line3,
+  ).toBe("4322  4321");
+});
+
+test.each([
+  ["VFR", "V"],
+  [" vfr ", "V"],
+  ["IFR", undefined],
+  ["I", undefined],
+  ["E", undefined],
+  [undefined, undefined],
+] as const)("flight-rules display normalizes %j to %j", (rules, expected) => {
+  expect(normalizeFlightRulesDisplay(rules)).toBe(expected);
+});
+
+test("runtime altitude projection uses only associated plan fields", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-altitude-provenance",
+    callsign: "RAWALT",
+    squawk: "4321",
+    altitudeFt: 7000,
+    requestedAltitudeFt: 11000,
+  });
+  ac.intent.requestedAltitudeFt = 12000;
+  ac.intent.controllerAssignedAltitudeFt = 9000;
+  const world = createWorld({ aircraft: [ac] });
+
+  const source = datablockSourceFromWorld(world, ac);
+
+  expect(source.requestedAltitudeFt).toBeUndefined();
+  expect(source.intent.requestedAltitudeFt).toBeUndefined();
+  expect(source.intent.controllerAssignedAltitudeFt).toBeUndefined();
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).not.toContain("R");
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field7).toBe("");
+});
+
+test("associated plan requested and assigned altitudes stay separate from Mode C", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-plan-altitudes",
+    callsign: "RAWPLAN",
+    squawk: "4322",
+    altitudeFt: 7000,
+    speedKt: 210,
+    requestedAltitudeFt: 15000,
+  });
+  ac.intent.controllerAssignedAltitudeFt = 5000;
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-plan-altitudes-plan",
+        status: "active",
+        acid: "FILEDPLAN",
+        assignedBeacon: "4322",
+        requestedAltitudeFt: 12000,
+        assignedAltitudeFt: 8000,
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+  const planBeforeCommand = structuredClone(world.flightPlans[0]);
+  applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 4000, verb: "DESCEND" }], world.simTimeMs);
+  expect(world.flightPlans[0]).toEqual(planBeforeCommand);
+  expect(ac.intent.controllerAssignedAltitudeFt).toBe(5000);
+
+  const source = datablockSourceFromWorld(world, ac);
+  const phase0 = formatDatablockFields(source, { timeSharePhase: 0 });
+  const phase1 = formatDatablockFields(source, { timeSharePhase: 1 });
+
+  expect(phase0.field3).toBe("070");
+  expect(phase0.field7).toBe("A080");
+  expect(phase1.field5).toBe("R120");
+  expect(source.intent.controllerAssignedAltitudeFt).toBe(8000);
+});
+
+test("flight-plan adjustment remains source of assigned altitude display", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-plan-adjust",
+    callsign: "ADJUST1",
+    squawk: "4323",
+    altitudeFt: 6000,
+  });
+  ac.intent.controllerAssignedAltitudeFt = 4000;
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-plan-adjust-plan",
+        status: "active",
+        acid: "ADJUST1",
+        assignedBeacon: "4323",
+        assignedAltitudeFt: 8000,
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+
+  expect(
+    formatDatablockFields(datablockSourceFromWorld(world, ac), { timeSharePhase: 0 }).field7,
+  ).toBe("A080");
+  expect(
+    modifyFlightPlan(world, "runtime-plan-adjust-plan", "assignedAltitudeFt", 9000),
+  ).toMatchObject({
+    ok: true,
+  });
+  expect(
+    formatDatablockFields(datablockSourceFromWorld(world, ac), { timeSharePhase: 0 }).field7,
+  ).toBe("A090");
+});
+
+test("VFR uses V marker while IFR and unsupported rules stay blank", () => {
+  const vfr = makeTestAircraft({ callsign: "VFR1", speedKt: 110, flightRules: "VFR" });
+  const ifr = makeTestAircraft({ callsign: "IFR1", speedKt: 110, flightRules: "IFR" });
+  const unsupported = makeTestAircraft({ callsign: "RULE1", speedKt: 110, flightRules: "E" });
+
+  expect(formatDatablockFields(vfr, { timeSharePhase: 0 }).field5).toBe("11V");
+  expect(formatDatablockFields(vfr, { timeSharePhase: 1 }).field5).toBe("V");
+  expect(formatDatablockFields(ifr, { timeSharePhase: 0 }).field5).toBe("11");
+  expect(formatDatablockFields(ifr, { timeSharePhase: 1 }).field5).toBe("11");
+  expect(formatDatablockFields(unsupported, { timeSharePhase: 0 }).field5).toBe("11");
 });
 
 test("runtime adapter uses derived beacon correlation even when LDB state is stale", () => {

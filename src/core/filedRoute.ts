@@ -2,18 +2,26 @@ import type {
   FiledRoute,
   FiledRouteSegment,
   FlightPlan,
+  FlightPlanRoute,
+  FlightPlanRouteLifecycle,
   FlightPlanStatus,
   FlightPlanErrorCode,
 } from "./flightPlan";
+import type { ClearanceRouteSegment } from "./command/types";
 import {
   allocateBeaconCode,
+  createFlightPlanRoute,
   isValidAcid,
   isValidBeaconCode,
+  routeFixIds,
   validateFlightPlan,
 } from "./flightPlan";
 
 /** The deliberately small catalog surface needed by filed-route entry. */
 export interface FiledRouteCatalog {
+  /** Primary facility identifier and ARP endpoint when available. */
+  airportId?: string;
+  arp?: { xNm?: number; yNm?: number; latDeg?: number; lonDeg?: number };
   navaids: ReadonlyArray<{ id: string }>;
   fixes: ReadonlyArray<{ id: string }>;
   stars: ReadonlyArray<{
@@ -118,6 +126,10 @@ export function parseFiledRoute(routeText: string): FiledRouteResult<ParsedFiled
 
 function idsEqual(left: string, right: string): boolean {
   return upper(left) === upper(right);
+}
+
+function catalogAirport(catalog: FiledRouteCatalog, id: string): boolean {
+  return catalog.airportId !== undefined && idsEqual(catalog.airportId, id);
 }
 
 function legsToIds(legs: ReadonlyArray<{ fixId: string }> | undefined): string[] {
@@ -328,6 +340,148 @@ function procedureMatches(
   return matches;
 }
 
+function resolveClearanceDirectSegment(
+  target: string,
+  catalog: FiledRouteCatalog,
+  allowAirport: boolean,
+): FiledRouteResult<FiledRouteSegment> {
+  const normalized = upper(target);
+  if (!normalized) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_FIX", "direct route segment is blank"),
+    };
+  }
+  const fixes = catalog.fixes.filter((item) => idsEqual(item.id, normalized));
+  const navaids = catalog.navaids.filter((item) => idsEqual(item.id, normalized));
+  const airport = catalogAirport(catalog, normalized);
+  if (airport && !allowAirport) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNSUPPORTED_ROUTE_TOKEN",
+        "airport cannot be a tactical route segment",
+        normalized,
+      ),
+    };
+  }
+  if (fixes.length + navaids.length === 0 && !airport) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNKNOWN_FIX",
+        `direct route segment ${normalized} is not a catalog fix or navaid`,
+        normalized,
+      ),
+    };
+  }
+  if (fixes.length + navaids.length > 1 || (airport && fixes.length + navaids.length > 0)) {
+    return {
+      ok: false,
+      error: routeError(
+        "AMBIGUOUS_ROUTE_TOKEN",
+        `route token ${normalized} is ambiguous`,
+        normalized,
+      ),
+    };
+  }
+  return {
+    ok: true,
+    value: { kind: "DCT", fixId: normalized, fixIds: [normalized] },
+  };
+}
+
+function resolveClearanceProcedureSegment(
+  segment: Extract<ClearanceRouteSegment, { type: "PROCEDURE" }>,
+  catalog: FiledRouteCatalog,
+): FiledRouteResult<FiledRouteSegment> {
+  const procedureId = upper(segment.procedureId);
+  if (!procedureId) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_PROCEDURE", "clearance procedure is blank"),
+    };
+  }
+  if (catalogAirport(catalog, procedureId)) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNSUPPORTED_ROUTE_TOKEN",
+        "airport cannot be a tactical route segment",
+        procedureId,
+      ),
+    };
+  }
+  const transitionId = segment.transitionId === undefined ? undefined : upper(segment.transitionId);
+  const matches = procedureMatches(
+    `${procedureId}${transitionId ? `/${transitionId}` : ""}`,
+    catalog,
+  );
+  if (matches.length === 0) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_PROCEDURE", `unknown procedure ${procedureId}`, procedureId),
+    };
+  }
+  if (matches.length > 1) {
+    return {
+      ok: false,
+      error: routeError(
+        "AMBIGUOUS_ROUTE_TOKEN",
+        `procedure ${procedureId} matches multiple procedures`,
+        procedureId,
+      ),
+    };
+  }
+  const resolved = resolveProcedure(matches[0]!, catalog);
+  if (!resolved.ok) return resolved;
+  return resolved;
+}
+
+/** Resolve typed IFR-clearance segments without changing filed-route parsing. */
+export function resolveClearanceRouteSegments(
+  segments: ReadonlyArray<ClearanceRouteSegment>,
+  limitId: string,
+  catalog: FiledRouteCatalog | null | undefined,
+): FiledRouteResult<FiledRoute> {
+  if (!catalog) {
+    return { ok: false, error: routeError("UNKNOWN_PROCEDURE", "no route catalog is loaded") };
+  }
+  const resolved: FiledRouteSegment[] = [];
+  for (const segment of segments) {
+    const next =
+      segment.type === "DIRECT"
+        ? resolveClearanceDirectSegment(segment.fixId, catalog, false)
+        : resolveClearanceProcedureSegment(segment, catalog);
+    if (!next.ok) return next;
+    if (next.value.kind === "SID" || next.value.kind === "STAR") {
+      for (const fixId of next.value.fixIds) {
+        const known =
+          catalog.fixes.some((item) => idsEqual(item.id, fixId)) ||
+          catalog.navaids.some((item) => idsEqual(item.id, fixId));
+        if (!known) {
+          return {
+            ok: false,
+            error: routeError("UNKNOWN_FIX", `unknown procedure fix ${fixId}`, fixId),
+          };
+        }
+      }
+    }
+    resolved.push(next.value);
+  }
+  const limit = resolveClearanceDirectSegment(limitId, catalog, true);
+  if (!limit.ok) return limit;
+  resolved.push(limit.value);
+  const text = resolved
+    .map((segment) =>
+      segment.kind === "DCT"
+        ? segment.fixId
+        : `${segment.procedureId}${segment.transitionId ? `/${segment.transitionId}` : ""}`,
+    )
+    .join(" ");
+  return { ok: true, value: { text, segments: resolved } };
+}
+
 /** Parse and resolve filed route entries against the loaded facility catalog. */
 export function resolveFiledRoute(
   routeText: string,
@@ -380,13 +534,14 @@ export function resolveFiledRoute(
       const target = token;
       const fixes = catalog.fixes.filter((item) => idsEqual(item.id, target));
       const navaids = catalog.navaids.filter((item) => idsEqual(item.id, target));
-      if (fixes.length + navaids.length === 0) {
+      const airport = catalogAirport(catalog, target);
+      if (fixes.length + navaids.length === 0 && !airport) {
         return {
           ok: false,
           error: routeError("UNKNOWN_FIX", `unknown fix, navaid, or procedure ${target}`, target),
         };
       }
-      if (fixes.length + navaids.length > 1) {
+      if (fixes.length + navaids.length > 1 || (airport && fixes.length + navaids.length > 0)) {
         return {
           ok: false,
           error: routeError("AMBIGUOUS_ROUTE_TOKEN", `route token ${target} is ambiguous`, target),
@@ -404,6 +559,160 @@ export function resolveFiledRoute(
   return { ok: true, value: { text: normalized, segments } };
 }
 
+export type FlightPlanRouteTransactionLifecycle = Exclude<FlightPlanRouteLifecycle, "none">;
+
+export interface FlightPlanRouteTransactionInput {
+  /** New catalog route text. Omit only when `source` is `AS_FILED`. */
+  routeText?: string;
+  /** Reuse the plan's current proposal without parsing clearance syntax. */
+  source?: "AS_FILED";
+  lifecycle?: FlightPlanRouteTransactionLifecycle;
+  nextIndex?: number;
+}
+
+export type FlightPlanRouteTransactionErrorCode =
+  "PLAN_NOT_FOUND" | "UNABLE_ROUTE" | "INVALID_ROUTE_INDEX" | "INVALID_ROUTE_LIFECYCLE";
+
+export interface FlightPlanRouteTransactionError {
+  code: FlightPlanRouteTransactionErrorCode;
+  field: "plan" | "route" | "nextIndex" | "lifecycle";
+  message: string;
+}
+
+export type FlightPlanRouteTransactionResult<T> =
+  { ok: true; route: T; plan?: FlightPlan } | { ok: false; error: FlightPlanRouteTransactionError };
+
+function unableRoute(message: string): FlightPlanRouteTransactionError {
+  return {
+    code: "UNABLE_ROUTE",
+    field: "route",
+    message: `unable route${message ? `: ${message}` : ""}`,
+  };
+}
+
+function routeSourceForPlan(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  input: FlightPlanRouteTransactionInput,
+): FiledRoute | undefined {
+  if (input.source !== "AS_FILED") return undefined;
+  return plan.routeRecord?.route ?? plan.filedRoute;
+}
+
+/**
+ * Purely validate and compile a proposed/current route transaction. No plan,
+ * world, aircraft, or intent is touched on either success or failure.
+ */
+export function validateFlightPlanRouteTransaction(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  input: FlightPlanRouteTransactionInput,
+  catalog: FiledRouteCatalog | null | undefined,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  if (plan.routeRecord?.lifecycle === "cancelled") {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_LIFECYCLE",
+        field: "lifecycle",
+        message: "cancelled route lifecycle is terminal",
+      },
+    };
+  }
+  const source = routeSourceForPlan(plan, input);
+  let resolved: FiledRouteResult<FiledRoute>;
+  if (source !== undefined) {
+    resolved = { ok: true, value: source };
+  } else if (input.routeText?.trim()) {
+    resolved = resolveFiledRoute(input.routeText, catalog);
+  } else {
+    return { ok: false, error: unableRoute("route is blank") };
+  }
+  if (!resolved.ok) return { ok: false, error: unableRoute(resolved.error.message) };
+  return validateResolvedFlightPlanRouteTransaction(plan, resolved.value, input);
+}
+
+/**
+ * Validate a catalog-resolved route transaction without serializing it back to
+ * ambiguous bare tokens. Used by typed clearance routes; filed-route callers
+ * continue through `resolveFiledRoute` above.
+ */
+export function validateResolvedFlightPlanRouteTransaction(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  resolved: FiledRoute,
+  input: Pick<FlightPlanRouteTransactionInput, "lifecycle" | "nextIndex"> = {},
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  if (plan.routeRecord?.lifecycle === "cancelled") {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_LIFECYCLE",
+        field: "lifecycle",
+        message: "cancelled route lifecycle is terminal",
+      },
+    };
+  }
+  if (resolved.segments.length === 0 || routeFixIds(resolved).length === 0) {
+    return { ok: false, error: unableRoute("route is blank") };
+  }
+
+  const nextIndex = input.nextIndex ?? 0;
+  const fixCount = routeFixIds(resolved).length;
+  if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex > fixCount) {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_INDEX",
+        field: "nextIndex",
+        message: `route nextIndex must be an integer from 0 through ${fixCount}`,
+      },
+    };
+  }
+  const lifecycle = input.lifecycle ?? "active";
+  const revision = (plan.routeRecord?.revision ?? 0) + 1;
+  return {
+    ok: true,
+    route: createFlightPlanRoute(resolved, { nextIndex, revision, lifecycle }),
+  };
+}
+
+/**
+ * Atomically replace the one plan route record. The compatibility `filedRoute`
+ * and display `route` fields are updated to the same resolved route object;
+ * they are never independent active/current route sources.
+ */
+export function applyFlightPlanRouteTransaction(
+  world: { flightPlans: FlightPlan[]; catalog?: FiledRouteCatalog | null },
+  planId: string,
+  input: FlightPlanRouteTransactionInput,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  const plan = world.flightPlans.find((item) => item.id === planId && item.status !== "deleted");
+  if (!plan) {
+    return {
+      ok: false,
+      error: { code: "PLAN_NOT_FOUND", field: "plan", message: `flight plan ${planId} not found` },
+    };
+  }
+  const compiled = validateFlightPlanRouteTransaction(plan, input, world.catalog);
+  if (!compiled.ok) return compiled;
+  const next = compiled.route;
+  Object.assign(plan, {
+    routeRecord: next,
+    filedRoute: next.route,
+    route: next.route.text,
+  });
+  return { ok: true, route: next, plan };
+}
+
+/** Cancel the current route without inventing a second route or changing aircraft state. */
+export function cancelFlightPlanRoute(
+  world: { flightPlans: FlightPlan[]; catalog?: FiledRouteCatalog | null },
+  planId: string,
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  return applyFlightPlanRouteTransaction(world, planId, {
+    source: "AS_FILED",
+    lifecycle: "cancelled",
+  });
+}
+
 export type FlightPlanDraftInput = Omit<
   Partial<FlightPlan>,
   "id" | "status" | "filedRoute" | "reportedBeacon"
@@ -416,7 +725,12 @@ export type FlightPlanDraftInput = Omit<
 };
 
 export type FlightPlanDraftErrorCode =
-  FiledRouteErrorCode | "PLAN_NOT_FOUND" | "INVALID_VALUE" | "INVALID_FIELD" | "CAPACITY";
+  | FiledRouteErrorCode
+  | "PLAN_NOT_FOUND"
+  | "INVALID_VALUE"
+  | "INVALID_FIELD"
+  | "INVALID_ROUTE_LIFECYCLE"
+  | "CAPACITY";
 
 export interface FlightPlanDraftError {
   code: FlightPlanDraftErrorCode | FlightPlanErrorCode;
@@ -747,7 +1061,23 @@ export function saveFlightPlanDraft(
       candidateInput.assignedBeacon = allocation.value;
     }
   }
-  const route = resolveFiledRoute(input.filedRoute ?? input.route ?? "", world.catalog);
+  const hasRouteInput =
+    Object.prototype.hasOwnProperty.call(input, "filedRoute") ||
+    Object.prototype.hasOwnProperty.call(input, "route");
+  if (existing?.routeRecord?.lifecycle === "cancelled" && hasRouteInput) {
+    return {
+      ok: false,
+      error: draftError(
+        "INVALID_ROUTE_LIFECYCLE",
+        "route",
+        "cancelled route lifecycle is terminal",
+      ),
+    };
+  }
+  const routeText = hasRouteInput
+    ? (input.filedRoute ?? input.route ?? "")
+    : (existing?.filedRoute?.text ?? existing?.route ?? "");
+  const route = resolveFiledRoute(routeText, world.catalog);
   if (!route.ok) return { ok: false, error: route.error };
   const otherPlans = world.flightPlans.filter(
     (item) => item.status !== "deleted" && item.id !== existing?.id,
@@ -775,11 +1105,26 @@ export function saveFlightPlanDraft(
     status: base.status,
   };
   if (route.value.segments.length > 0) {
-    candidate.filedRoute = route.value;
     candidate.route = route.value.text;
+    const currentRecord = existing?.routeRecord;
+    const fixCount = routeFixIds(route.value).length;
+    candidate.routeRecord = createFlightPlanRoute(route.value, {
+      nextIndex:
+        (currentRecord?.lifecycle === "active" || currentRecord?.lifecycle === "cancelled") &&
+        currentRecord.nextIndex <= fixCount
+          ? currentRecord.nextIndex
+          : 0,
+      revision: currentRecord?.revision ?? 0,
+      lifecycle:
+        currentRecord?.lifecycle === "active" || currentRecord?.lifecycle === "cancelled"
+          ? currentRecord.lifecycle
+          : "none",
+    });
+    candidate.filedRoute = candidate.routeRecord.route;
   } else {
     delete candidate.filedRoute;
     delete candidate.route;
+    delete candidate.routeRecord;
   }
   if (candidate.requestedAltitudeFt === 0) delete candidate.requestedAltitudeFt;
   if (candidate.assignedAltitudeFt === 0) delete candidate.assignedAltitudeFt;

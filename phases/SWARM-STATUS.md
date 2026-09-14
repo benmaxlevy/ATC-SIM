@@ -1,5 +1,81 @@
 # Swarm status
 
+## SIXTY-SIXTH SWARM COMPLETE — voice airport, command parity, and clearance separation (T02-181–T02-184)
+
+Completed sequentially on `feature/clearances` with Luna-high workers/reviews
+and no push. The delivered surface grounds every shipped scenario airport as a
+separate IFR clearance-limit namespace; keeps airport ICAOs out of tactical
+DIRECT/CROSS and FixRegistry; closes self-hosted Path-C parity for squawk,
+maintain-VFR, and IFR clearance IR; repairs `squad <octal>` safely; preserves
+radio/clearance squawk provenance; and executes clearances from an independent
+aircraft-owned route snapshot without editing the flight plan.
+
+Captain commits: `c2096e9`, `85dcea6`, `05905a0`, `ac4a2a9`, `c577bf1`,
+`d0ca50a`, `4031a15`. Planning commits: `e47614f`, `b6c1cc8`.
+
+Final `npm run ci`: **205 test files passed, 1,972 tests passed, 4 skipped**.
+Focused clearance/route tests: **18 passed**; focused Path-C correction tests:
+**10 passed**. Python syntax compilation passed. The speech mock pytest gate
+was not available in the environment (`pytest` absent); the user explicitly
+deferred that gate.
+
+Independent reviews passed:
+
+- T02-181 airport grounding: FAA JO 7110.65 §§4-2-1/4-2-5 and supplied STARS
+  manual airport/fix namespace checks.
+- T02-182 Path-C correction: closed-schema parity, airport-only/overlap
+  rejection, `squad` safety, and self-hosted policy.
+- T02-183 squawk provenance: supplied STARS §§2.12/Appendix A-5 and FAA
+  §§5-2-1/5-2-7.
+- T02-184 clearance separation: FAA §§4-2-5, 4-3-2/3, 5-2-1, 5-6-2 and
+  supplied STARS §§5.5.5/5.6.17.
+
+Scope boundary: VFR-to-IFR pickup/airfile, no-plan airborne clearance creation,
+holds/EFC, release/void, weather/ODP/DVA/LOA, nonradar, SVFR/VFR-on-top,
+advanced beacon modes, CPDLC, broad route amendments, and mismatch-indicator
+UI remain deferred.
+
+## SIXTY-SIXTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: voice airport, command parity, and clearance separation T02-181–T02-184
+Merge target: `feature/clearances`
+Merged: T02-181, T02-182, T02-183, T02-184
+Tests: final CI green; focused suites green; independent FAA/STARS reviews PASS
+Notes: no push; airport remains clearance-limit-only; plan beacon remains manual; clearance issuance does not edit flight plans; speech pytest deferred by user because pytest was unavailable
+
+## SIXTY-FIFTH SWARM COMPLETE — clearance scaffolding (T02-176–T02-180)
+
+Completed sequentially on `feature/clearances` with isolated Luna-high workers,
+captain squash merges, corrective audit passes, and no push. The delivered
+surface is `SQUAWK <octal>`/`SQUAWK VFR` (`1200`), `MAINTAIN VFR`, one
+authoritative executable route, tactical direct/resume/vector handling, and
+the compact IFR-clearance forms `CLR TO <limit> ASFILED`, `VIA DIRECT`, `VIA
+<fix> THEN DIRECT`, `VIA RADAR VECTORS`, and SID access with ordered optional
+`ALT`, `CVIA`, `FREQ`, and `SQ` fields.
+
+Captain commits: `9cbe68e`, `e6d31cf`, `835762c`, `7c43bed`, `027d39d`,
+`3d8818c`, `de679cd`, `b198817`, `b2fa186`, `c8db5a2`, `278b4a4`.
+
+Final `npm run ci`: **205 test files passed, 1,958 tests passed, 4 skipped**.
+Focused clearance tests: **17 passed**. Independent audits against the
+supplied `/home/ben/Documents/stars refs/full_manual.pdf` and current FAA JO
+7110.65 §§4-2-1, 4-2-5, 4-3-2–3, 5-2-1/7, and 5-6-2 passed after all
+corrective passes.
+
+**Scope boundary:** VFR-to-IFR pickup/airfile remains explicitly rejected;
+hold/release/void, weather, ODP/DVA/LOA, nonradar, SVFR/VFR-on-top, advanced
+beacon modes, CPDLC, and broad final E2E work remain deferred. `CLEARED
+DIRECT`/`PROCEED DIRECT` remain lateral-only and never reset the canonical
+route. No facility-specific route branch was added.
+
+## SIXTY-FIFTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: clearance scaffolding T02-176–T02-180
+Merge target: `feature/clearances`
+Merged: T02-176, T02-177, T02-178, T02-179, T02-180
+Tests: CI after each merge; final CI; supplied-manual and FAA online review
+Notes: No push; VFR-to-IFR pickup and final broad acceptance remain deferred
+
 ## SIXTY-SECOND SWARM COMPLETE — Datablock source unification (T02-164–165)
 
 T02-164 and T02-165 are complete on `improvement/db-source-unification`.
@@ -1708,3 +1784,108 @@ three tickets after corrective passes, including STARS §§2.12, 5.5.5, 5.5.9,
 **Manual leftover:** human Chrome/browser positioning and accessibility walk
 (TAB, slew, focus/error, F6/F9/*F/*TV) was not run in this session; automated
 coverage is green. No later phase started; no push performed.
+
+## SIXTY-SEVENTH SWARM COMPLETE — datablock altitude and flight-rules provenance (T02-185–T02-187)
+
+Completed sequentially on `feature/clearances` with isolated Luna workers and
+captain squash merges. T02-185 normalizes datablock flight rules to `V`/blank,
+makes `R###` and `A###` plan-backed only, and prevents climb/descend commands
+from creating controller-altitude display provenance. T02-186 removes
+spawn-pose and scheduled-altitude fallbacks while preserving explicit plan
+requests. T02-187 adds FDB/PDB/LDB association/provenance acceptance coverage
+and updates the phase and user documentation.
+
+Captain commits: `b55dd42`, `ac6ab37`, `316d261`. Final `npm run ci`: **206
+files passed, 2000 passed, 3 skipped, 0 failures**. Supplied-manual reviews
+found no in-scope FAIL: §2.12 pp. 2-63–2-64, Figure 2-20 pp. 2-66–2-67,
+§5.6.3 p. 5-146, and Appendix A Table A-1 p. A-5. CRC was ignored. Reviewers
+noted no independent child reviewer was available; their independent evidence
+passes were used per the skill fallback. No browser visual walk was needed for
+the docs/acceptance-only final ticket.
+
+**Manual leftover:** none for the approved scope. Assigned-altitude editing in
+the Flight Plan modal is not included; it requires a follow-up UI ticket. No
+push performed.
+
+## SIXTY-EIGHTH SWARM COMPLETE — Flight Plan modal assigned altitude (T02-188)
+
+Completed on `feature/clearances` with one sequential Luna worker and captain
+squash merge. T02-188 adds an assigned-altitude field to the Flight Plan modal,
+prefills active plans, disables the control for create/non-active plans, routes
+updates through the existing atomic core transaction, and preserves the
+plan-only altitude provenance contract. `0` clears assigned altitude; no
+command, intent, kinematics, association, or datablock formatter changes were
+made.
+
+Captain commit: `fc635dc`. Final `npm run ci`: **206 files passed, 2006
+passed, 3 skipped, 0 failures**. Supplied-manual review passed against §2.12
+p. 2-63, Figure 2-20 pp. 2-66–67, §§5.6.3/5.6.17 pp. 5-146 and 5-167–168,
+and Table 5-16 p. 5-173. CRC was ignored. Independent evidence agreed; the
+reviewer could not obtain a recursive child report, so the permitted fallback
+was recorded. A pre-existing `99900` validation-message inconsistency was
+noted but not changed.
+
+**Manual leftover:** Chrome walkthrough of active-plan edit, `A###` display,
+`0` clearing, and disabled create/non-active controls was not run. No push
+performed.
+
+## SIXTY-NINTH SWARM COMPLETE — arbitrary IFR route chains (T02-189–T02-192)
+
+Completed sequentially on `feature/clearances` with isolated workers and
+captain squash merges. The prior bad `8080149` commit remains reverted by
+`6766512`. T02-189 adds canonical ordered route segments; T02-190 scans an
+arbitrary `VIA` route window with optional `DIRECT`; T02-191 adds constrained
+Path C grounding and rejects tactical-direct, concatenated-ID, and incomplete
+route fallbacks; T02-192 adds lifecycle acceptance coverage, ordered readback,
+Help/docs, and airport-limit Path C context.
+
+Captain commits: `40abb7c`, `41701db`, `3c3dc81`, `64f53e3`, `5508c72`,
+`d18fe8c`. Final `npm run ci`: **208 files passed, 2040 passed, 3 skipped,
+0 failures**. Speech API mock gate: **77 passed**.
+
+Manual gates found no in-scope FAIL. T02-189 and T02-192 passed; T02-190's
+coverage concern was addressed by its hardening pass; T02-191's incomplete-
+route concern was fixed in `5508c72` and then passed independent review.
+Manual references were supplied STARS manual §§5.5.5 and 5.6.17, pp. 5-105,
+5-108–110, 5-167, and 5-171–173. Route-window chaining, implicit direct,
+ordered readback, and constrained Path C are documented ATC-SIM trainer
+deltas, not claims of full STARS/NAS compatibility.
+
+**Manual leftover:** none for the approved scope. No later phase started; no
+push performed.
+
+**PHASE EXIT GREEN**
+
+## SEVENTIETH SWARM COMPLETE — shared fix matching and per-span route evidence (T02-193–T02-196)
+
+Completed sequentially on `feature/clearances` with one configured worker and
+captain squash merges. T02-193 unifies tactical and IFR route grounding with
+shared exact/alias/folded/unique-distance-one matching, preserves arbitrary
+route backtracking, and rejects accidental token concatenation. T02-194 adds
+generic structured FIX/NAVAID vocabulary, navaid-name aliases, canonical
+`kind`, airport exclusion, and a separate bounded STT ID projection. T02-195
+adds per-span Path C route alternatives and matching frontend/Python evidence
+guards for ordered, complete, non-overlapping, canonical route recovery. T02-196
+adds feature acceptance coverage, ordered FMS/readback checks, atomic rejection
+coverage, and Help/user documentation. Path C remains local, trainer-only,
+catalog/evidence constrained, and may use only a supplied unique distance-two
+retrieval candidate as fallback evidence; it never invents or concatenates IDs.
+
+Captain commits: `f312ec1`, `0757c66`, `8eb7518`, `df684cd`, `93c4f03`,
+`f926950`. Gate corrections addressed route token-boundary collapse, exact-ID
+alias collisions, equal-best route candidates, Python/TypeScript NAVAID-ID
+parity, and the documented distance-two fallback boundary.
+
+Final `npm run ci`: **209 files passed, 2,061 passed, 3 skipped, 0 failures**.
+Final speech API mock gate: **81 passed**. Independent supplied-manual gates
+passed for all four tickets after corrective passes. The supplied manual's
+§5.5.5 p. 5-105 and §5.6.17 p. 5-167 cover STARS flight-plan creation and
+modification rather than spoken route parsing; the route matcher and Path C
+behavior are recorded as trainer deltas with no in-scope manual conflict.
+Live GGUF evaluation was not run; mock/eval coverage is committed.
+
+The prior bad direct-route commit remains reverted by `6766512`. No new phase
+started, no push was performed, and unrelated `.agents/rules/`, `GEMINI.md`,
+and the separate T02-185 worktree were preserved.
+
+**PHASE EXIT GREEN**

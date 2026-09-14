@@ -16,6 +16,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
   TEENS,
   TENS,
 } from "./numbers";
@@ -24,15 +25,19 @@ import {
   groundProcedureToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
+import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 
 interface Cursor {
   tokens: readonly string[];
   i: number;
-  catalog?: readonly string[];
+  catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
+  clearanceLimitIds?: ReadonlySet<string>;
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -177,6 +182,16 @@ function tryPresentHeading(c: Cursor): Instruction | null {
   return null;
 }
 
+/** Exact spoken MAINTAIN VFR instruction; VFR ON TOP is intentionally separate. */
+function tryMaintainVfr(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "maintain") && take(c, "vfr")) {
+    return { type: "MAINTAIN_VFR" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryAltitude(c: Cursor): Instruction | null {
   const start = c.i;
   let verb: "CLIMB" | "DESCEND" | "MAINTAIN" | null = null;
@@ -249,6 +264,142 @@ function tryDirect(c: Cursor): Instruction | null {
     return null;
   }
   return { type: "DIRECT", fixId: fix };
+}
+
+/** Compact trainer IFR clearance; kept ahead of tactical cleared-direct. */
+function tryIfrClearance(c: Cursor): Instruction | null {
+  const start = c.i;
+  if ((!take(c, "cleared") && !take(c, "clear")) || !take(c, "to")) {
+    c.i = start;
+    return null;
+  }
+  const limitId = parseFixId(c, c.clearanceLimitIds);
+  if (!limitId) {
+    c.i = start;
+    return null;
+  }
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (take(c, "asfiled")) {
+    access = { type: "AS_FILED" };
+  } else if (take(c, "as")) {
+    if (!take(c, "filed")) {
+      c.i = start;
+      return null;
+    }
+    access = { type: "AS_FILED" };
+  } else {
+    if (!take(c, "via")) {
+      c.i = start;
+      return null;
+    }
+    if (take(c, "radar")) {
+      if (!take(c, "vectors")) {
+        c.i = start;
+        return null;
+      }
+      access = { type: "RADAR_VECTORS" };
+    } else {
+      const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
+        fixes: c.catalog,
+        procedures: c.procedures,
+      });
+      if (!route) {
+        c.i = start;
+        return null;
+      }
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      c.i = route.nextIndex;
+    }
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const order = newIfrClearanceFieldOrder();
+  while (peek(c) !== undefined) {
+    const field = peek(c)!;
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) {
+      c.i = start;
+      return null;
+    }
+    if (fieldKind === "ALT") {
+      take(c, "alt");
+      const raw = peek(c);
+      const compact = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+      if (compact !== null) {
+        c.i += 1;
+        optional.altitudeFt = compact < 1000 ? compact * 100 : compact;
+      } else {
+        take(c, "maintain");
+        const alt = altitudeAt(c);
+        if (alt === null) {
+          c.i = start;
+          return null;
+        }
+        optional.altitudeFt = alt;
+      }
+    } else if (fieldKind === "CVIA") {
+      take(c, "cvia");
+      optional.climbVia = true;
+    } else if (fieldKind === "FREQ") {
+      take(c, "freq");
+      take(c, "frequency");
+      const whole = peek(c);
+      if (whole && /^\d{3}$/.test(whole)) {
+        c.i += 1;
+        let value = whole;
+        if (take(c, "point")) {
+          const fraction = peek(c);
+          if (!fraction || !/^\d{1,3}$/.test(fraction)) {
+            c.i = start;
+            return null;
+          }
+          value += `.${fraction}`;
+          c.i += 1;
+        }
+        optional.frequency = value;
+      } else {
+        const d1 = singleDigit(peek(c));
+        const d2 = singleDigit(peek(c, 1));
+        const d3 = singleDigit(peek(c, 2));
+        if (d1 === null || d2 === null || d3 === null) {
+          c.i = start;
+          return null;
+        }
+        c.i += 3;
+        let value = `${d1}${d2}${d3}`;
+        if (take(c, "point")) {
+          const fraction = singleDigit(peek(c));
+          if (fraction === null) {
+            c.i = start;
+            return null;
+          }
+          value += `.${fraction}`;
+          c.i += 1;
+        }
+        optional.frequency = value;
+      }
+    } else if (fieldKind === "SQ") {
+      take(c, "sq");
+      take(c, "squawk");
+      const digits: number[] = [];
+      for (let j = 0; j < 4; j += 1) {
+        const digit = squawkDigit(peek(c));
+        if (digit === null) {
+          c.i = start;
+          return null;
+        }
+        digits.push(digit);
+        c.i += 1;
+      }
+      optional.squawk = digits.join("");
+    } else {
+      c.i = start;
+      return null;
+    }
+  }
+  return { type: "IFR_CLEARANCE", limitId, access, ...optional };
 }
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "procedure"]);
@@ -380,7 +531,7 @@ function takePeek(c: Cursor, n: number): string[] | null {
   return slice;
 }
 
-function parseFixId(c: Cursor): string | null {
+function parseFixId(c: Cursor, protectedIds?: ReadonlySet<string>): string | null {
   const phoneticStart = c.i;
   const phonetics: string[] = [];
   while (phonetics.length < 5) {
@@ -394,6 +545,7 @@ function parseFixId(c: Cursor): string | null {
   const catalog = c.catalog ?? [];
   if (phonetics.length >= 2) {
     const id = phonetics.join("");
+    if (protectedIds?.has(id)) return id;
     return groundFixToCatalog(id, catalog) ?? id;
   }
   c.i = phoneticStart;
@@ -406,6 +558,10 @@ function parseFixId(c: Cursor): string | null {
         continue;
       }
       const glued = slice.join("");
+      if (protectedIds?.has(glued.toUpperCase())) {
+        c.i += n;
+        return glued.toUpperCase();
+      }
       const hit = groundFixToCatalog(glued, catalog);
       if (hit) {
         c.i += n;
@@ -419,6 +575,7 @@ function parseFixId(c: Cursor): string | null {
     return null;
   }
   c.i += 1;
+  if (protectedIds?.has(tok.toUpperCase())) return tok.toUpperCase();
   return groundFixToCatalog(tok, catalog) ?? tok.toUpperCase();
 }
 
@@ -448,6 +605,27 @@ function tryIdent(c: Cursor): Instruction | null {
     return { type: "IDENT" };
   }
   return null;
+}
+
+function trySquawk(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "squawk")) {
+    return null;
+  }
+  if (take(c, "vfr")) {
+    return { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" };
+  }
+  const digits: number[] = [];
+  while (digits.length < 4) {
+    const digit = squawkDigit(peek(c));
+    if (digit === null) {
+      c.i = start;
+      return null;
+    }
+    digits.push(digit);
+    c.i += 1;
+  }
+  return { type: "ASSIGN_SQUAWK", code: digits.join(""), source: "DISCRETE" };
 }
 
 function trySay(c: Cursor): Instruction | null {
@@ -683,11 +861,14 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryTurnDegrees(c) ??
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
+    tryMaintainVfr(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??
     trySpeed(c) ??
+    tryIfrClearance(c) ??
     tryDirect(c) ??
+    trySquawk(c) ??
     tryIdent(c) ??
     tryGoAround(c) ??
     trySay(c) ??
@@ -727,8 +908,9 @@ export function parseSpokenGrammar(
   normalized: string,
   selectedCallsign: string | null | undefined,
   sourceText: string,
-  catalogFixes?: readonly string[],
+  catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
+  clearanceLimitIds?: ReadonlySet<string>,
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -740,21 +922,35 @@ export function parseSpokenGrammar(
     i: 0,
     catalog: catalogFixes ?? [],
     procedures: catalogProcedures ?? [],
+    clearanceLimitIds,
   };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
-  if (callsignAttempt.kind === "unknown_telephony") {
+  let callsignToken: string | null = null;
+  if (callsignAttempt.kind === "ok") {
+    callsignToken = callsignAttempt.callsign;
+    c.i = callsignAttempt.next;
+  } else if (selectedCallsign) {
+    const selectedStart = tokens.findIndex(
+      (token, index) => (token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+    );
+    if (selectedStart > 0) {
+      // The selected aircraft supplies the callsign when ASR mangles its prefix;
+      // parse the clearance body locally and never guess a replacement callsign.
+      c.i = selectedStart;
+    } else if (callsignAttempt.kind === "unknown_telephony") {
+      return {
+        ok: false,
+        error: formatParseError(PARSE_ERROR.UNKNOWN_TELEPHONY, callsignAttempt.word),
+        sourceText,
+      };
+    }
+    callsignToken = selectedCallsign;
+  } else if (callsignAttempt.kind === "unknown_telephony") {
     return {
       ok: false,
       error: formatParseError(PARSE_ERROR.UNKNOWN_TELEPHONY, callsignAttempt.word),
       sourceText,
     };
-  }
-  let callsignToken: string | null = null;
-  if (callsignAttempt.kind === "ok") {
-    callsignToken = callsignAttempt.callsign;
-    c.i = callsignAttempt.next;
-  } else {
-    callsignToken = selectedCallsign ?? null;
   }
 
   const instructions: Instruction[] = [];
@@ -775,6 +971,9 @@ export function parseSpokenGrammar(
 
   if (instructions.length === 0) {
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
+  }
+  if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
 
   return { ok: true, callsignToken, instructions, sourceText };

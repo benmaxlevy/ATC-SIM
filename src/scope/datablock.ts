@@ -126,6 +126,7 @@ export interface DatablockRuntimeBuildOptions {
       | "manualSp1"
       | "manualSp2"
       | "squawk"
+      | "derivedPlanId"
     >
   > &
     Pick<TrackDisplay, "ownership">;
@@ -194,6 +195,39 @@ function formatApproachShorthandForRuntime(
   return sanitizeScratchpad(raw);
 }
 
+type DatablockPlanTrack = Pick<TrackDisplay, "squawk" | "unassociated" | "derivedPlanId">;
+
+/**
+ * Resolve the plan that the datablock is already presenting. A beacon mismatch
+ * must keep the last uniquely correlated plan visible long enough to show its
+ * assigned code beside the live reported code (manual §§2.12, 5.6.1).
+ *
+ * The assigned-squawk fallback only bootstraps an authored mismatch. It is
+ * accepted only when exactly one live plan owns that code; it never guesses by
+ * ACID or by array order.
+ */
+export function flightPlanForDatablock(
+  world: World,
+  aircraft: Aircraft,
+  track?: DatablockPlanTrack,
+): ReturnType<typeof flightPlanForAircraft> {
+  const correlated = flightPlanForAircraft(world, aircraft.id);
+  if (correlated) return correlated;
+
+  const retained = track?.derivedPlanId
+    ? world.flightPlans.find((plan) => plan.id === track.derivedPlanId && plan.status !== "deleted")
+    : undefined;
+  if (retained) return retained;
+
+  const assignedSquawk = aircraft.assignedSquawk?.trim().toUpperCase();
+  if (!assignedSquawk) return undefined;
+  const candidates = world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
+  );
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
 /**
  * Build one immutable-in-practice runtime projection for a target.
  * Analog: STARS associated-track datablock source (manual §2.12); trainer
@@ -210,7 +244,7 @@ export function buildDatablockRuntimeState(
   // cached display flag.  The track flag is presentation state and can lag a
   // squawk report by one paint; letting it hide a uniquely correlated plan
   // makes the datablock disagree with TAB, strips, and the flight-plan modal.
-  const plan = flightPlanForAircraft(world, aircraft.id);
+  const plan = flightPlanForDatablock(world, aircraft, track);
   const handoff = handoffFor(world, aircraft.id);
   const simTimeMs = world.simTimeMs;
   const queried = (track?.queriedUntilSimMs ?? 0) > simTimeMs;
@@ -282,11 +316,11 @@ export function buildDatablockRuntimeState(
 export function datablockSourceFromWorld(
   world: World,
   aircraft: Aircraft,
-  track?: Pick<TrackDisplay, "squawk" | "unassociated">,
+  track?: DatablockPlanTrack,
 ): DatablockSource {
   // Correlation is read-only and authoritative here.  `unassociated` is a
   // cached LDB presentation hint, not a second association relationship.
-  const plan = flightPlanForAircraft(world, aircraft.id);
+  const plan = flightPlanForDatablock(world, aircraft, track);
   return datablockSourceFromPlan(aircraft, track, plan);
 }
 
@@ -297,8 +331,11 @@ function datablockSourceFromPlan(
 ): DatablockSource {
   const reportedSquawk = track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
   const assignedSquawk = plan?.assignedBeacon ?? aircraft.assignedSquawk;
-  const assignedAltitudeFt =
-    plan?.assignedAltitudeFt ?? aircraft.intent.controllerAssignedAltitudeFt;
+  const {
+    controllerAssignedAltitudeFt: _aircraftControllerAssignedAltitudeFt,
+    requestedAltitudeFt: _aircraftRequestedAltitudeFt,
+    ...aircraftIntent
+  } = aircraft.intent;
   return {
     ...aircraft,
     callsign: plan?.acid ?? aircraft.callsign,
@@ -306,13 +343,13 @@ function datablockSourceFromPlan(
     assignedSquawk,
     reportedSquawk,
     aircraftType: plan?.aircraftType ?? aircraft.aircraftType,
-    requestedAltitudeFt: plan?.requestedAltitudeFt ?? aircraft.requestedAltitudeFt,
+    requestedAltitudeFt: plan?.requestedAltitudeFt,
     flightRules: plan?.flightRules ?? aircraft.flightRules,
     intent: {
-      ...aircraft.intent,
-      ...(assignedAltitudeFt === undefined
+      ...aircraftIntent,
+      ...(plan?.assignedAltitudeFt === undefined
         ? {}
-        : { controllerAssignedAltitudeFt: assignedAltitudeFt }),
+        : { controllerAssignedAltitudeFt: plan.assignedAltitudeFt }),
       ...(plan?.requestedAltitudeFt === undefined
         ? {}
         : { requestedAltitudeFt: plan.requestedAltitudeFt }),
@@ -554,6 +591,15 @@ export interface GroundSpeedTensOpts {
 }
 
 /**
+ * Normalize the trainer's flight-rules marker at the datablock boundary.
+ * Analog: STARS Table 2-14 permits adapted rule characters (R02). Trainer
+ * delta: only VFR is displayed as `V`; IFR and unsupported rules are blank.
+ */
+export function normalizeFlightRulesDisplay(flightRules: string | undefined): "V" | undefined {
+  return flightRules?.trim().toUpperCase() === "VFR" ? "V" : undefined;
+}
+
+/**
  * Ground speed in tens of knots (e.g. 180 kt -> "18", 210 kt -> "21", 90 kt -> "09").
  * Optionally appends wake/RNAV category indicator (e.g. "18H", "25R"),
  * or flight category ("V" for VFR, "E" for overflights).
@@ -575,8 +621,9 @@ export function formatGroundSpeedTens(
   }
 
   if (typeof opts === "object" && opts !== null) {
-    if (opts.flightRules === "VFR") {
-      return `${base}V`;
+    const flightRules = normalizeFlightRulesDisplay(opts.flightRules);
+    if (flightRules) {
+      return `${base}${flightRules}`;
     }
     if (opts.isOverflight) {
       return `${base}E`;
@@ -727,22 +774,22 @@ export function formatDatablockFields(
           isOverflight: track.isOverflight,
         });
   const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
-  const rules = normalizeDisplayField(track.flightRules, 3) || undefined;
+  const rules = normalizeFlightRulesDisplay(track.flightRules);
   const category = formatWakeCategory(track.wakeCategory) || undefined;
   const count = formatAircraftCount(opts.aircraftCount);
   const type =
     opts.aircraftTypeVisible === false ? undefined : formatAircraftType(track.aircraftType);
-  const requested = formatRequestedAltitude(
-    track.requestedAltitudeFt ?? track.intent?.requestedAltitudeFt,
-  );
+  const requested = formatRequestedAltitude(track.requestedAltitudeFt);
 
   // Fields 6–8 are independently time-shared. Priority follows Figure 2-20;
   // this is an analog-plus-delta formatter contract, not a TSAS/coordination
   // workflow. Absent inputs remain absent; no simulator state is inferred.
-  const reportedBeaconMismatch =
-    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
-      ? normalizeDisplayField(track.reportedSquawk, 4)
-      : undefined;
+  const hasReportedBeaconMismatch = Boolean(
+    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk,
+  );
+  const reportedBeaconMismatch = hasReportedBeaconMismatch
+    ? normalizeDisplayField(track.reportedSquawk, 4)
+    : undefined;
   const field6 = select([
     normalizeDisplayField(opts.atpaInTrailDistance ?? track.atpaDistance, 5) || undefined,
     opts.atpaNowgt ? "NOWGT" : undefined,
@@ -756,19 +803,20 @@ export function formatDatablockFields(
     normalizeDisplayField(opts.selectedBeaconCode, 4) || undefined,
     formatTsasRunwayId(opts.tsasRunwayId),
   ]);
-  const mismatch =
-    track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk
-      ? normalizeDisplayField(track.assignedSquawk, 4)
-      : undefined;
+  const mismatch = hasReportedBeaconMismatch
+    ? normalizeDisplayField(track.assignedSquawk, 4)
+    : undefined;
   const field7 = select([
     targetAssignedAltitude(track),
     mismatch,
     formatAdvisedSpeed(opts.tsasAdvisedSpeedKt),
     formatEarlyLate(opts.tsasEarlyLate),
   ]);
+  const pointoutTcp =
+    opts.pointoutReceiverTcp != null ? formatTcp(opts.pointoutReceiverTcp) : undefined;
   const pointout =
     opts.pointoutReceiverTcp != null
-      ? `PO${formatTcp(opts.pointoutReceiverTcp) ? ` ${formatTcp(opts.pointoutReceiverTcp)}` : ""}`
+      ? `PO${pointoutTcp ? ` ${pointoutTcp}` : ""}`
       : opts.pointoutUn
         ? "UN"
         : opts.pointoutRd
@@ -874,6 +922,7 @@ export function formatFullDatablock(
 export interface FullDatablockLine3Parts {
   assignedField?: string;
   squawkField?: string;
+  assignedBeaconField?: string;
   atpaField?: string;
 }
 
@@ -888,9 +937,12 @@ export function fullDatablockLine3Parts(track: DatablockSource): FullDatablockLi
   const hasSquawkMismatch =
     track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk;
   const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;
+  const assignedBeaconField = hasSquawkMismatch
+    ? normalizeDisplayField(track.assignedSquawk, 4)
+    : undefined;
   const atpaField =
     track.atpaDistance && track.atpaDistance.length > 0 ? track.atpaDistance : undefined;
-  return { assignedField, squawkField, atpaField };
+  return { assignedField, squawkField, assignedBeaconField, atpaField };
 }
 
 /**

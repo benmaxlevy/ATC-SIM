@@ -212,12 +212,20 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
     updateAircraftSquawk(world, aircraft.id, "7053");
     syncTrackDisplays(view.tracks, world);
     expect(view.tracks.get(aircraft.id)).toMatchObject({
-      unassociated: true,
-      datablockMode: "partial",
+      derivedPlanId: made.value.id,
+      unassociated: false,
+      datablockMode: "full",
     });
+    const mismatchSource = datablockSourceFromWorld(world, aircraft, view.tracks.get(aircraft.id));
+    expect(mismatchSource).toMatchObject({
+      callsign: "UAL123",
+      assignedSquawk: "7052",
+      reportedSquawk: "7053",
+    });
+    expect(formatFullDatablock(mismatchSource).line3).toBe("7053  7052");
   });
 
-  it("presents one spawned IFR plan, amends metadata, then removes it on beacon mismatch", () => {
+  it("presents one spawned IFR plan, amends metadata, then shows beacon mismatch", () => {
     const scenario = loadKdem();
     const world = createWorldForSession(
       scenario,
@@ -281,9 +289,17 @@ describe("T02-147 authoritative flight-plan display lifecycle", () => {
 
     updateAircraftSquawk(world, aircraft!.id, "7023");
     syncTrackDisplays(view.tracks, world);
-    expect(datablockSourceFromWorld(world, aircraft!)).toMatchObject({
-      callsign: aircraft!.callsign,
+    const mismatchSource = datablockSourceFromWorld(world, aircraft!);
+    expect(mismatchSource).toMatchObject({
+      callsign: plan!.acid,
+      assignedSquawk: plan!.assignedBeacon,
       reportedSquawk: "7023",
+    });
+    expect(formatFullDatablock(mismatchSource).line3).toBe(`7023  ${plan!.assignedBeacon}`);
+    expect(view.tracks.get(aircraft!.id)).toMatchObject({
+      derivedPlanId: plan!.id,
+      unassociated: false,
+      datablockMode: "full",
     });
     expect(getFlightPlanEntries(world, view)).toContainEqual(
       expect.objectContaining({ planId: plan!.id, callsign: plan!.acid }),

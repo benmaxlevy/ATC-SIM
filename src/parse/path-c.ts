@@ -4,7 +4,13 @@
  * DOM-free: inject fetch. Never throws through the sim tick.
  */
 
-import { INSTRUCTION_TYPES, type Instruction, type TurnDir } from "@core";
+import {
+  INSTRUCTION_TYPES,
+  type ClearanceRouteSegment,
+  type Instruction,
+  type TurnDir,
+} from "@core";
+import type { CatalogFixMatchMethod } from "./spoken/catalog-ground";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
@@ -15,6 +21,60 @@ export const DEFAULT_PARSE_TIMEOUT_MS = 3000;
 /** Retrieved Path C `fixes=` / approaches / procedures cap. Not file-order 64. */
 export const MAX_PATH_C_FIXES = 16;
 
+export type PathCRouteCandidateKind = "FIX" | "NAVAID";
+
+export interface PathCTranscriptSpan {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface PathCRouteCandidate {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+}
+
+export interface PathCRouteCandidateInput {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  aliases?: readonly string[];
+}
+
+export interface PathCRouteFixMatchCandidate {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  score: number;
+  method: CatalogFixMatchMethod;
+  distance?: number;
+}
+
+export interface PathCRouteFixMatch {
+  span: PathCTranscriptSpan;
+  candidates: PathCRouteFixMatchCandidate[];
+}
+
+export interface PathCTransitionCandidate {
+  id: string;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+}
+
+export interface PathCProcedureCandidate {
+  id: string;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+  transitions: PathCTransitionCandidate[];
+}
+
+/** Route-scoped evidence. No facility-wide search is allowed in this object. */
+export interface PathCRouteWindow {
+  transcript: string;
+  fixMatches: PathCRouteFixMatch[];
+  procedures: PathCProcedureCandidate[];
+}
+
 export interface PathCContext {
   callsigns: string[];
   selectedCallsign?: string | null;
@@ -24,6 +84,12 @@ export interface PathCContext {
   procedures?: Array<{ id: string; name?: string }>;
   /** Approach ids + published names/runways. Optional. */
   approaches?: Array<{ id: string; name?: string; runway?: string }>;
+  /** Clearance-limit airport namespace; never a generic fix list. */
+  airports?: Array<{ icao: string; name: string; aliases?: readonly string[] }>;
+  /** Optional route-window evidence for constrained IFR clearance salvage. */
+  routeWindow?: PathCRouteWindow;
+  /** Non-airport clearance-limit candidates, separately scoped from route legs. */
+  clearanceLimits?: PathCRouteCandidate[];
 }
 
 export interface PathCRequest {
@@ -53,6 +119,13 @@ const ALT_VERBS = new Set(["CLIMB", "DESCEND", "MAINTAIN"]);
 const SPEED_VERBS = new Set(["MAINTAIN", "INCREASE", "REDUCE"]);
 const CROSS_RESTRICTIONS = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 const LEGAL_TYPES = new Set<string>(INSTRUCTION_TYPES);
+const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
+  "exact",
+  "alias",
+  "folded",
+  "levenshtein",
+]);
+const ROUTE_CONNECTORS = new Set(["direct", "then"]);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -116,7 +189,8 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "IDENT" ||
     type === "SAY_HEADING" ||
     type === "SAY_ALTITUDE" ||
-    type === "GO_AROUND"
+    type === "GO_AROUND" ||
+    type === "MAINTAIN_VFR"
   ) {
     return keysOk(obj, ["type"]);
   }
@@ -154,6 +228,77 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       typeof obj.approachId === "string" &&
       obj.approachId.length > 0
     );
+  }
+  if (type === "ASSIGN_SQUAWK") {
+    return (
+      keysOk(obj, ["type", "code", "source"]) &&
+      typeof obj.code === "string" &&
+      /^[0-7]{4}$/.test(obj.code) &&
+      (obj.source === "DISCRETE" || obj.source === "VFR") &&
+      (obj.source === "VFR" ? obj.code === "1200" : true)
+    );
+  }
+  if (type === "IFR_CLEARANCE") {
+    if (
+      !keysOk(
+        obj,
+        ["type", "limitId", "access"],
+        ["altitudeFt", "climbVia", "frequency", "squawk"],
+      ) ||
+      typeof obj.limitId !== "string" ||
+      obj.limitId.length === 0
+    ) {
+      return false;
+    }
+    const access = asRecord(obj.access);
+    if (access === null || typeof access.type !== "string") return false;
+    const accessType = access.type;
+    if (accessType === "AS_FILED" || accessType === "DIRECT" || accessType === "RADAR_VECTORS") {
+      if (!keysOk(access, ["type"])) return false;
+    } else if (accessType === "FIX_THEN_DIRECT") {
+      if (!keysOk(access, ["type", "fixId"]) || typeof access.fixId !== "string") return false;
+    } else if (accessType === "SID") {
+      if (
+        !keysOk(access, ["type", "procedureId"], ["transitionId"]) ||
+        typeof access.procedureId !== "string" ||
+        (access.transitionId !== undefined && typeof access.transitionId !== "string")
+      )
+        return false;
+    } else if (accessType === "EXPLICIT_ROUTE") {
+      if (!keysOk(access, ["type", "segments"]) || !Array.isArray(access.segments)) return false;
+      for (const segment of access.segments) {
+        const row = asRecord(segment);
+        if (row === null || typeof row.type !== "string") return false;
+        if (row.type === "DIRECT") {
+          if (!keysOk(row, ["type", "fixId"]) || typeof row.fixId !== "string" || !row.fixId) {
+            return false;
+          }
+        } else if (row.type === "PROCEDURE") {
+          if (
+            !keysOk(row, ["type", "procedureId"], ["transitionId"]) ||
+            typeof row.procedureId !== "string" ||
+            !row.procedureId ||
+            (row.transitionId !== undefined &&
+              (typeof row.transitionId !== "string" || !row.transitionId))
+          ) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    } else {
+      return false;
+    }
+    if (obj.altitudeFt !== undefined && !isFiniteNumber(obj.altitudeFt)) return false;
+    if (obj.climbVia !== undefined && typeof obj.climbVia !== "boolean") return false;
+    if (obj.frequency !== undefined && typeof obj.frequency !== "string") return false;
+    if (
+      obj.squawk !== undefined &&
+      (typeof obj.squawk !== "string" || !/^[0-7]{4}$/.test(obj.squawk))
+    )
+      return false;
+    return true;
   }
   if (type === "DESCEND_VIA" || type === "CLIMB_VIA" || type === "JOIN_PROCEDURE") {
     const trans = obj.transitionId;
@@ -202,6 +347,227 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
     instructions.push(item);
   }
   return { callsignToken, instructions };
+}
+
+function hasEvidence(
+  spans: readonly PathCTranscriptSpan[] | undefined,
+  transcript?: string,
+): boolean {
+  return (
+    Array.isArray(spans) &&
+    spans.length > 0 &&
+    spans.every(
+      (span) =>
+        span !== null &&
+        typeof span === "object" &&
+        Number.isInteger(span.start) &&
+        Number.isInteger(span.end) &&
+        span.start >= 0 &&
+        span.end > span.start &&
+        typeof span.text === "string" &&
+        span.text.trim().length > 0 &&
+        (transcript === undefined ||
+          (span.end <= transcript.length && transcript.slice(span.start, span.end) === span.text)),
+    )
+  );
+}
+
+function routeSegmentEvidenceIntervals(
+  segment: Extract<ClearanceRouteSegment, { type: "DIRECT" | "PROCEDURE" }>,
+  route: PathCRouteWindow,
+): Array<[number, number]> {
+  if (segment.type === "DIRECT") {
+    return (Array.isArray(route.fixMatches) ? route.fixMatches : [])
+      .filter(
+        (match) =>
+          match !== null &&
+          typeof match === "object" &&
+          directFixMatchIsUnambiguous(match, segment.fixId) &&
+          hasEvidence([match.span], route.transcript),
+      )
+      .map((match) => [match.span.start, match.span.end] as [number, number]);
+  }
+  const procedure = route.procedures.find((item) => item.id === segment.procedureId);
+  if (procedure === undefined || !hasEvidence(procedure.spans, route.transcript)) return [];
+  if (segment.transitionId === undefined) {
+    return procedure.spans.map((span) => [span.start, span.end] as [number, number]);
+  }
+  const transition = procedure.transitions.find((item) => item.id === segment.transitionId);
+  if (transition === undefined || !hasEvidence(transition.spans, route.transcript)) return [];
+  return procedure.spans.flatMap((procedureSpan) =>
+    transition.spans
+      .filter(
+        (transitionSpan) =>
+          transitionSpan.start >= procedureSpan.start && transitionSpan.end > procedureSpan.end,
+      )
+      .map((transitionSpan) => [procedureSpan.start, transitionSpan.end] as [number, number]),
+  );
+}
+
+type RouteEvidenceInterval = [number, number];
+
+function orderedRouteEvidencePaths(
+  segments: readonly Extract<ClearanceRouteSegment, { type: "DIRECT" | "PROCEDURE" }>[],
+  route: PathCRouteWindow,
+): RouteEvidenceInterval[][] {
+  let paths: RouteEvidenceInterval[][] = [[]];
+  for (const segment of segments) {
+    const intervals = routeSegmentEvidenceIntervals(segment, route);
+    const next: RouteEvidenceInterval[][] = [];
+    const seen = new Set<string>();
+    for (const path of paths) {
+      const previousEnd = path.at(-1)?.[1] ?? -1;
+      for (const interval of intervals) {
+        if (interval[0] < previousEnd) continue;
+        const candidate = [...path, interval];
+        const key = JSON.stringify(candidate);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(candidate);
+      }
+    }
+    paths = next;
+    if (paths.length === 0) return [];
+  }
+  return paths;
+}
+
+function directFixMatchIsUnambiguous(match: PathCRouteFixMatch, fixId: string): boolean {
+  if (!Array.isArray(match.candidates) || match.candidates.length === 0) {
+    return false;
+  }
+  const selected = match.candidates.find((candidate) => candidate.id === fixId);
+  if (selected === undefined) {
+    return false;
+  }
+  const bestScore = Math.max(...match.candidates.map((candidate) => candidate.score));
+  return (
+    selected.score === bestScore &&
+    match.candidates.filter((candidate) => candidate.score === bestScore).length === 1
+  );
+}
+
+function routeEvidenceCovered(
+  route: PathCRouteWindow,
+  intervals: readonly RouteEvidenceInterval[],
+): boolean {
+  const tokens = route.transcript.trim().split(/\s+/).filter(Boolean);
+  let offset = 0;
+  for (const token of tokens) {
+    const start = offset;
+    const end = start + token.length;
+    offset = end + 1;
+    const control = token.toLowerCase();
+    if (control === "direct" || control === "then") continue;
+    if (
+      !intervals.some(([intervalStart, intervalEnd]) => start < intervalEnd && end > intervalStart)
+    ) {
+      return false;
+    }
+  }
+  for (const match of route.fixMatches) {
+    if (
+      match === null ||
+      typeof match !== "object" ||
+      !hasEvidence([match.span], route.transcript) ||
+      !Array.isArray(match.candidates) ||
+      match.candidates.length === 0 ||
+      match.candidates.some(
+        (candidate) =>
+          typeof candidate.id !== "string" ||
+          candidate.id.length === 0 ||
+          (candidate.kind !== "FIX" && candidate.kind !== "NAVAID") ||
+          !Number.isFinite(candidate.score) ||
+          !ROUTE_FIX_MATCH_METHODS.has(candidate.method),
+      )
+    ) {
+      return false;
+    }
+    if (
+      match.span.text
+        .trim()
+        .split(/\s+/)
+        .some((token) => ROUTE_CONNECTORS.has(token.toLowerCase()))
+    ) {
+      return false;
+    }
+  }
+  for (const procedure of route.procedures) {
+    if (!hasEvidence(procedure.spans, route.transcript)) {
+      return false;
+    }
+    for (const transition of procedure.transitions) {
+      if (transition.spans.length === 0) continue;
+      if (!hasEvidence(transition.spans, route.transcript)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/** Validate route-only Path C output against the exact evidence sent in its request. */
+export function routePathCOutputIsGrounded(
+  instructions: readonly Instruction[],
+  context: PathCContext | undefined,
+): boolean {
+  const route = context?.routeWindow;
+  if (route === undefined) return true;
+  if (context === undefined) return false;
+  if (!Array.isArray(route.fixMatches) || !Array.isArray(route.procedures)) return false;
+  if (instructions.length !== 1 || instructions[0]?.type !== "IFR_CLEARANCE") return false;
+  const clearance = instructions[0];
+  if (clearance.access.type !== "EXPLICIT_ROUTE" || clearance.access.segments.length === 0) {
+    return false;
+  }
+  const airportIds = new Set((context.airports ?? []).map((airport) => airport.icao));
+  const limitIds = new Set([
+    ...airportIds,
+    ...(context.clearanceLimits ?? []).map((candidate) => candidate.id),
+  ]);
+  if (!limitIds.has(clearance.limitId)) return false;
+  const evidencePaths = orderedRouteEvidencePaths(clearance.access.segments, route);
+  if (!evidencePaths.some((path) => routeEvidenceCovered(route, path))) return false;
+  const procedures = new Map(route.procedures.map((procedure) => [procedure.id, procedure]));
+  for (const segment of clearance.access.segments) {
+    if (segment.type === "DIRECT") {
+      if (
+        airportIds.has(segment.fixId) ||
+        !route.fixMatches.some(
+          (match) =>
+            match !== null &&
+            typeof match === "object" &&
+            directFixMatchIsUnambiguous(match, segment.fixId) &&
+            hasEvidence([match.span], route.transcript),
+        )
+      ) {
+        return false;
+      }
+      continue;
+    }
+    const procedure = procedures.get(segment.procedureId);
+    if (procedure === undefined || !hasEvidence(procedure.spans, route.transcript)) return false;
+    if (segment.transitionId !== undefined) {
+      const transition = procedure.transitions.find((item) => item.id === segment.transitionId);
+      if (transition === undefined || !hasEvidence(transition.spans, route.transcript))
+        return false;
+    }
+  }
+  return true;
+}
+
+function requestHasContext(context: PathCContext | undefined): boolean {
+  return Boolean(
+    context &&
+    (context.callsigns.length > 0 ||
+      context.selectedCallsign ||
+      (context.fixes?.length ?? 0) > 0 ||
+      (context.procedures?.length ?? 0) > 0 ||
+      (context.approaches?.length ?? 0) > 0 ||
+      (context.airports?.length ?? 0) > 0 ||
+      context.routeWindow !== undefined ||
+      (context.clearanceLimits?.length ?? 0) > 0),
+  );
 }
 
 /**
@@ -274,6 +640,7 @@ export async function fetchParsePathC(
     }, timeoutMs);
   });
   try {
+    const context = req.context;
     const raced = await Promise.race([
       runFetch(url, {
         method: "POST",
@@ -282,26 +649,26 @@ export async function fetchParsePathC(
           text: req.text,
           source: req.source,
           schemaVersion: PATH_C_SCHEMA_VERSION,
-          ...(req.context &&
-          (req.context.callsigns.length > 0 ||
-            req.context.selectedCallsign ||
-            (req.context.fixes?.length ?? 0) > 0 ||
-            (req.context.procedures?.length ?? 0) > 0 ||
-            (req.context.approaches?.length ?? 0) > 0)
+          ...(requestHasContext(context)
             ? {
                 context: {
-                  callsigns: req.context.callsigns,
-                  ...(req.context.selectedCallsign
-                    ? { selectedCallsign: req.context.selectedCallsign }
+                  callsigns: context!.callsigns,
+                  ...(context!.selectedCallsign
+                    ? { selectedCallsign: context!.selectedCallsign }
                     : {}),
-                  ...(req.context.fixes && req.context.fixes.length > 0
-                    ? { fixes: req.context.fixes }
+                  ...(context!.fixes && context!.fixes.length > 0 ? { fixes: context!.fixes } : {}),
+                  ...(context!.procedures && context!.procedures.length > 0
+                    ? { procedures: context!.procedures }
                     : {}),
-                  ...(req.context.procedures && req.context.procedures.length > 0
-                    ? { procedures: req.context.procedures }
+                  ...(context!.approaches && context!.approaches.length > 0
+                    ? { approaches: context!.approaches }
                     : {}),
-                  ...(req.context.approaches && req.context.approaches.length > 0
-                    ? { approaches: req.context.approaches }
+                  ...(context!.airports && context!.airports.length > 0
+                    ? { airports: context!.airports }
+                    : {}),
+                  ...(context!.routeWindow ? { routeWindow: context!.routeWindow } : {}),
+                  ...(context!.clearanceLimits && context!.clearanceLimits.length > 0
+                    ? { clearanceLimits: context!.clearanceLimits }
                     : {}),
                 },
               }
@@ -326,7 +693,10 @@ export async function fetchParsePathC(
     } catch {
       return null;
     }
-    return schemaCheckPathC(parsed);
+    const checked = schemaCheckPathC(parsed);
+    return checked && routePathCOutputIsGrounded(checked.instructions, req.context)
+      ? checked
+      : null;
   } catch {
     return null;
   } finally {

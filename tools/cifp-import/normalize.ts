@@ -246,6 +246,7 @@ export function emitCatalogFromSource(
     schemaVersion: 1,
     airportId,
     name: airport.name,
+    spokenAliases: [airport.name],
     magVarDeg: airport.magVarDeg,
     fieldElevFt: airport.fieldElevFt,
     arp: airport.arp,

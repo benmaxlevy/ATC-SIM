@@ -169,6 +169,12 @@ def test_spoken_icao_numbers() -> None:
     assert normalize_stt_text("maintain four thousand till established") == "maintain four thousand until established"
 
 
+def test_squad_repair_requires_exactly_four_octal_digits() -> None:
+    assert normalize_stt_text("squad 2222") == "squawk 2222"
+    assert normalize_stt_text("delta squad 2222") == "delta squawk 2222"
+    assert normalize_stt_text("squad 8921") == "squad 8921"
+    assert normalize_stt_text("squad 222") == "squad 222"
+    assert normalize_stt_text("squad 22220") == "squad 22220"
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [

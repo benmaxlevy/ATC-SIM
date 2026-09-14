@@ -62,3 +62,12 @@ test("groups headings, runways, flight levels, and callsign numbers", () => {
     "Delta one twenty three turn left twenty degrees",
   );
 });
+
+test("spells aviation identifiers for TTS without changing display readbacks", () => {
+  expect(readbackForTts("Delta 123 cleared to KATL via direct")).toBe(
+    "Delta one twenty three cleared to K A T L via direct",
+  );
+  expect(readbackForTts("Delta 123 cleared ILS runway 27 approach")).toBe(
+    "Delta one twenty three cleared I L S runway twenty seven approach",
+  );
+});

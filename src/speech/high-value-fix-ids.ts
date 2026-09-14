@@ -16,6 +16,7 @@ interface ProcedureLeg {
 }
 
 interface HighValueFixCatalog {
+  airportId?: string;
   stars?: ReadonlyArray<{
     transitions?: ReadonlyArray<{ legs?: readonly ProcedureLeg[] }>;
     common?: readonly ProcedureLeg[];
@@ -55,8 +56,10 @@ function addLegs(out: Set<string>, legs: readonly ProcedureLeg[] | undefined): v
 }
 
 /**
- * Unique STAR/SID/approach referenced ids, sorted by id, capped at 16.
- * Skips `navaids[]` / `fixes[]` file-order dumps. Empty catalog → [].
+ * Active airport plus unique STAR/SID/approach referenced ids, capped at 16.
+ * The airport comes first so STT preserves clearance-limit ICAO codes before
+ * other valid identifiers. Skips `navaids[]` / `fixes[]` file-order dumps.
+ * Empty catalog → [].
  */
 export function highValueFixIds(catalog?: HighValueFixCatalog | null): string[] {
   if (!catalog) {
@@ -89,5 +92,7 @@ export function highValueFixIds(catalog?: HighValueFixCatalog | null): string[] 
     addId(out, approach.thresholdFixId);
     addId(out, approach.missed?.directFixId);
   }
-  return [...out].sort().slice(0, MAX_STT_FIX_PRIOR);
+  const airportId = catalog.airportId?.trim().toUpperCase() ?? "";
+  const sorted = [...out].sort().filter((id) => id !== airportId);
+  return [...(airportId ? [airportId] : []), ...sorted].slice(0, MAX_STT_FIX_PRIOR);
 }

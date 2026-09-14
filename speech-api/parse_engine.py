@@ -36,6 +36,9 @@ INSTRUCTION_TYPES = frozenset(
         "EXPECT_APPROACH",
         "CLEARED_APPROACH",
         "INTERCEPT_LOCALIZER",
+        "ASSIGN_SQUAWK",
+        "MAINTAIN_VFR",
+        "IFR_CLEARANCE",
         "IDENT",
         "SAY_HEADING",
         "SAY_ALTITUDE",
@@ -46,6 +49,10 @@ INSTRUCTION_TYPES = frozenset(
         "GO_AROUND",
     }
 )
+
+ROUTE_SEGMENT_TYPES = frozenset({"DIRECT", "PROCEDURE"})
+ROUTE_FIX_MATCH_METHODS = frozenset({"exact", "alias", "folded", "levenshtein"})
+ROUTE_CONNECTORS = frozenset({"direct", "then"})
 
 TURN_DIRS = frozenset({"LEFT", "RIGHT", "SHORTEST"})
 TURN_DEGREES_DIRS = frozenset({"LEFT", "RIGHT"})
@@ -66,7 +73,9 @@ Position advisories are not commands, but never stop parsing later sentences. �
 
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
-Catalog lists are authoritative. Never default a facility, procedure, approach, or fix. DIRECT/CROSS use only fixes= ids. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. source is a hint, not another schema.
+New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+
+Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. In routeWindow, fixMatches groups alternatives by one transcript span. A malformed, ambiguous, unknown, airport, unsupported, or evidence-free segment is PARSE_MISS. DIRECT is an optional marker in an IFR route window; when absent, emit one direct segment per supplied fix/navaid candidate, preserving supplied transcript order and spans. Every route segment selects exactly one candidate from one listed fixMatches row; never use an ID from another span, concatenate tokens into an ID such as SWEPT_KIMMY, or move the clearance-limit airport into a tactical DIRECT. A complete route must cover every non-connector token in order; DIRECT and THEN are connectors. An IFR `clear/cleared to ... via ...` transcript is never tactical DIRECT. transitionId only when that transition is nested under the supplied catalog procedure and has transcript evidence. For an IFR clear/cleared-to/via transcript, never output tactical DIRECT. Never invent a field or segment. source is a hint, not another schema.
 """
 
 # Documented mock success (CI / SPEECH_API_MOCK=1). Matches parse-pipeline.md.
@@ -121,10 +130,13 @@ MAX_ROSTER = 64
 MAX_FIXES = 64
 MAX_PROCEDURES = 32
 MAX_APPROACHES = 32
+MAX_AIRPORTS = 64
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
+_NAVAID_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 _APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
+_AIRPORT_RE = re.compile(r"^[A-Z]{4}$")
 
 
 def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
@@ -215,6 +227,239 @@ def _sanitize_approaches(raw: object) -> list[dict[str, str]]:
     return out
 
 
+def _sanitize_airports(raw: object) -> list[dict[str, Any]]:
+    """Sanitize the separate clearance-limit airport namespace."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        raw_icao = item.get("icao")
+        raw_name = item.get("name")
+        if not isinstance(raw_icao, str) or not isinstance(raw_name, str):
+            continue
+        icao = raw_icao.strip().upper()
+        name = raw_name.strip()
+        if _AIRPORT_RE.match(icao) is None or len(name) < 2 or icao in seen:
+            continue
+        aliases: list[str] = []
+        raw_aliases = item.get("aliases")
+        if isinstance(raw_aliases, list):
+            alias_seen: set[str] = set()
+            for alias in raw_aliases:
+                if not isinstance(alias, str):
+                    continue
+                clean = alias.strip()
+                key = clean.casefold()
+                if len(clean) >= 2 and key not in alias_seen:
+                    alias_seen.add(key)
+                    aliases.append(clean)
+        seen.add(icao)
+        out.append({"icao": icao, "name": name, "aliases": aliases})
+        if len(out) >= MAX_AIRPORTS:
+            break
+    return out
+
+
+def _sanitize_spans(raw: object) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        start, end, text = item.get("start"), item.get("end"), item.get("text")
+        if (
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+            or start < 0
+            or end <= start
+            or not isinstance(text, str)
+            or not text.strip()
+        ):
+            continue
+        out.append({"start": start, "end": end, "text": text})
+        if len(out) >= MAX_PATH_CANDIDATES:
+            break
+    return out
+
+
+def _sanitize_aliases(raw: object) -> list[str]:
+    aliases_raw = raw or []
+    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    return list(dict.fromkeys(aliases))
+
+
+def _sanitize_route_candidate(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    candidate_id = raw.get("id")
+    kind = raw.get("kind")
+    if (
+        not isinstance(candidate_id, str)
+        or not isinstance(kind, str)
+        or kind not in {"FIX", "NAVAID"}
+    ):
+        return None
+    candidate_id = candidate_id.strip().upper()
+    if (_NAVAID_RE if kind == "NAVAID" else _FIX_RE).match(candidate_id) is None:
+        return None
+    aliases = _sanitize_aliases(raw.get("aliases"))
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    return {"id": candidate_id, "kind": kind, "aliases": aliases, "spans": spans}
+
+
+def _sanitize_transition_candidate(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    transition_id = raw.get("id")
+    if not isinstance(transition_id, str) or not transition_id.strip():
+        return None
+    aliases = _sanitize_aliases(raw.get("aliases"))
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    return {
+        "id": transition_id.strip().upper(),
+        "aliases": aliases,
+        "spans": spans,
+    }
+
+
+def _sanitize_route_procedure(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    procedure_id = raw.get("id")
+    if not isinstance(procedure_id, str) or not procedure_id.strip():
+        return None
+    aliases = _sanitize_aliases(raw.get("aliases"))
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    transitions: list[dict[str, Any]] = []
+    for item in raw.get("transitions") or []:
+        checked = _sanitize_transition_candidate(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in transitions}:
+            transitions.append(checked)
+    return {
+        "id": procedure_id.strip().upper(),
+        "aliases": aliases,
+        "spans": spans,
+        "transitions": transitions,
+    }
+
+
+MAX_PATH_CANDIDATES = 32
+MAX_PATH_C_FIX_MATCHES = 16
+
+
+def _sanitize_route_fix_match_candidate(
+    raw: object, airport_ids: set[str]
+) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    candidate_id = raw.get("id")
+    kind = raw.get("kind")
+    score = raw.get("score")
+    method = raw.get("method")
+    if (
+        not isinstance(candidate_id, str)
+        or not isinstance(kind, str)
+        or kind not in {"FIX", "NAVAID"}
+        or not isinstance(score, (int, float))
+        or isinstance(score, bool)
+        or not _is_finite_number(score)
+        or score < 0
+        or score > 1
+        or not isinstance(method, str)
+        or method not in ROUTE_FIX_MATCH_METHODS
+    ):
+        return None
+    candidate_id = candidate_id.strip().upper()
+    if (
+        (_NAVAID_RE if kind == "NAVAID" else _FIX_RE).match(candidate_id) is None
+        or candidate_id in airport_ids
+    ):
+        return None
+    out: dict[str, Any] = {
+        "id": candidate_id,
+        "kind": kind,
+        "score": float(score),
+        "method": method,
+    }
+    distance = raw.get("distance")
+    if distance is not None:
+        if (
+            not isinstance(distance, int)
+            or isinstance(distance, bool)
+            or distance < 0
+            or distance > 2
+        ):
+            return None
+        out["distance"] = distance
+    return out
+
+
+def _sanitize_route_fix_match(raw: object, airport_ids: set[str]) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    span = _sanitize_spans([raw.get("span")])
+    if not span:
+        return None
+    if any(token.casefold() in ROUTE_CONNECTORS for token in span[0]["text"].split()):
+        return None
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    raw_candidates = raw.get("candidates")
+    if not isinstance(raw_candidates, list):
+        return None
+    for item in raw_candidates:
+        candidate = _sanitize_route_fix_match_candidate(item, airport_ids)
+        if candidate is None or candidate["id"] in seen:
+            continue
+        seen.add(candidate["id"])
+        candidates.append(candidate)
+        if len(candidates) >= MAX_PATH_C_FIX_MATCHES:
+            break
+    if not candidates:
+        return None
+    return {"span": span[0], "candidates": candidates}
+
+
+def _sanitize_route_window(raw: object, airport_ids: set[str] | None = None) -> dict[str, Any] | None:
+    if not isinstance(raw, dict) or not isinstance(raw.get("transcript"), str):
+        return None
+    transcript = raw["transcript"].strip()
+    if not transcript:
+        return None
+    excluded_airports = airport_ids or set()
+    fix_matches: list[dict[str, Any]] = []
+    seen_spans: set[tuple[int, int]] = set()
+    for item in raw.get("fixMatches") or []:
+        checked = _sanitize_route_fix_match(item, excluded_airports)
+        if checked is None:
+            continue
+        key = (checked["span"]["start"], checked["span"]["end"])
+        if key in seen_spans:
+            continue
+        seen_spans.add(key)
+        fix_matches.append(checked)
+        if len(fix_matches) >= MAX_PATH_CANDIDATES:
+            break
+    procedures: list[dict[str, Any]] = []
+    for item in raw.get("procedures") or []:
+        checked = _sanitize_route_procedure(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in procedures}:
+            procedures.append(checked)
+    return {"transcript": transcript, "fixMatches": fix_matches, "procedures": procedures}
+
+
 def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
@@ -223,13 +468,30 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
     procedures = _sanitize_procedures(raw.get("procedures") or [])
     approaches = _sanitize_approaches(raw.get("approaches") or [])
+    airports = _sanitize_airports(raw.get("airports") or [])
+    airport_ids = {row["icao"] for row in airports}
+    route_window = _sanitize_route_window(raw.get("routeWindow"), airport_ids)
+    clearance_limits: list[dict[str, Any]] = []
+    for item in raw.get("clearanceLimits") or []:
+        checked = _sanitize_route_candidate(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in clearance_limits}:
+            clearance_limits.append(checked)
     selected_raw = raw.get("selectedCallsign")
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
         if up and _CALLSIGN_RE.match(up):
             selected = up
-    if not callsigns and not selected and not fixes and not procedures and not approaches:
+    if (
+        not callsigns
+        and not selected
+        and not fixes
+        and not procedures
+        and not approaches
+        and not airports
+        and route_window is None
+        and not clearance_limits
+    ):
         return None
     out: dict[str, Any] = {"callsigns": callsigns}
     if selected:
@@ -240,6 +502,12 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
         out["procedures"] = procedures
     if approaches:
         out["approaches"] = approaches
+    if airports:
+        out["airports"] = airports
+    if route_window is not None:
+        out["routeWindow"] = route_window
+    if clearance_limits:
+        out["clearanceLimits"] = clearance_limits
     return out
 
 
@@ -295,6 +563,38 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
                     "EXPECT_APPROACH/CLEARED_APPROACH/INTERCEPT_LOCALIZER approachId MUST be a listed catalog id. "
                     "Match spoken runway/approach variants to that id."
                 )
+        airports = ctx.get("airports") or []
+        if airports:
+            bits = []
+            for airport in airports:
+                if not isinstance(airport, dict):
+                    continue
+                icao = str(airport.get("icao") or "")
+                name = str(airport.get("name") or "")
+                aliases = airport.get("aliases") or []
+                alias_text = "/".join(str(alias) for alias in aliases if str(alias).strip())
+                label = f"{icao} ({name}" + (f"; {alias_text}" if alias_text else "") + ")"
+                bits.append(label)
+            if bits:
+                lines.append("airports=" + ",".join(bits))
+                lines.append(
+                    "IFR_CLEARANCE limitId MUST be a listed airport ICAO when the limit is an airport. "
+                    "Airports are clearance limits only, never DIRECT/CROSS fixes."
+                )
+        limits = ctx.get("clearanceLimits") or []
+        if limits:
+            lines.append("clearanceLimits=" + json.dumps(limits, separators=(",", ":")))
+            lines.append("IFR_CLEARANCE limitId may use only one supplied clearanceLimits id.")
+        route = ctx.get("routeWindow")
+        if route:
+            lines.append("routeWindow=" + json.dumps(route, separators=(",", ":")))
+            lines.append(
+                "routeWindow.fixMatches is grouped evidence: choose exactly one listed candidate "
+                "from one row for each route element, cover every non-connector token, and keep "
+                "the selected spans ordered and non-overlapping. DIRECT and THEN are connectors; "
+                "never concatenate tokens, invent IDs, use airports as route fixes, omit a token, "
+                "or emit tactical DIRECT for an IFR clearance."
+            )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")
     return "\n".join(lines)
@@ -402,6 +702,98 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "INTERCEPT_LOCALIZER", "approachId": raw["approachId"]}
+    if instr_type == "ASSIGN_SQUAWK":
+        if not _exact_keys(raw, {"type", "code", "source"}):
+            return None
+        code = raw["code"]
+        source = raw["source"]
+        if not isinstance(code, str) or re.fullmatch(r"[0-7]{4}", code) is None:
+            return None
+        if source not in {"DISCRETE", "VFR"}:
+            return None
+        if source == "VFR" and code != "1200":
+            return None
+        return {"type": "ASSIGN_SQUAWK", "code": code, "source": source}
+    if instr_type == "MAINTAIN_VFR":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "MAINTAIN_VFR"}
+    if instr_type == "IFR_CLEARANCE":
+        optional = {"altitudeFt", "climbVia", "frequency", "squawk"}
+        if not _exact_keys(raw, {"type", "limitId", "access"}, optional):
+            return None
+        if not isinstance(raw["limitId"], str) or not raw["limitId"]:
+            return None
+        access = raw["access"]
+        if not isinstance(access, dict) or not isinstance(access.get("type"), str):
+            return None
+        access_type = access["type"]
+        if access_type in {"AS_FILED", "DIRECT", "RADAR_VECTORS"}:
+            if not _exact_keys(access, {"type"}):
+                return None
+        elif access_type == "FIX_THEN_DIRECT":
+            if (
+                not _exact_keys(access, {"type", "fixId"})
+                or not isinstance(access["fixId"], str)
+                or not access["fixId"]
+            ):
+                return None
+        elif access_type == "SID":
+            if (
+                not _exact_keys(access, {"type", "procedureId"}, {"transitionId"})
+                or not isinstance(access["procedureId"], str)
+                or not access["procedureId"]
+                or ("transitionId" in access and not isinstance(access["transitionId"], str))
+            ):
+                return None
+        elif access_type == "EXPLICIT_ROUTE":
+            segments = access.get("segments")
+            if not _exact_keys(access, {"type", "segments"}) or not isinstance(segments, list):
+                return None
+            for segment in segments:
+                if not isinstance(segment, dict) or segment.get("type") not in ROUTE_SEGMENT_TYPES:
+                    return None
+                if segment["type"] == "DIRECT":
+                    if (
+                        not _exact_keys(segment, {"type", "fixId"})
+                        or not isinstance(segment.get("fixId"), str)
+                        or not segment["fixId"]
+                    ):
+                        return None
+                elif (
+                    not _exact_keys(segment, {"type", "procedureId"}, {"transitionId"})
+                    or not isinstance(segment.get("procedureId"), str)
+                    or not segment["procedureId"]
+                    or (
+                        "transitionId" in segment
+                        and (
+                            not isinstance(segment.get("transitionId"), str)
+                            or not segment["transitionId"]
+                        )
+                    )
+                ):
+                    return None
+        else:
+            return None
+        if "altitudeFt" in raw and not _is_finite_number(raw["altitudeFt"]):
+            return None
+        if "climbVia" in raw and not isinstance(raw["climbVia"], bool):
+            return None
+        if "frequency" in raw and (not isinstance(raw["frequency"], str) or not raw["frequency"]):
+            return None
+        if "squawk" in raw and (
+            not isinstance(raw["squawk"], str) or re.fullmatch(r"[0-7]{4}", raw["squawk"]) is None
+        ):
+            return None
+        out: dict[str, Any] = {
+            "type": "IFR_CLEARANCE",
+            "limitId": raw["limitId"],
+            "access": dict(access),
+        }
+        for key in ("altitudeFt", "climbVia", "frequency", "squawk"):
+            if key in raw:
+                out[key] = _as_number(raw[key]) if key == "altitudeFt" else raw[key]
+        return out
     if instr_type == "IDENT":
         if not _exact_keys(raw, {"type"}):
             return None
@@ -420,28 +812,40 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         return {"type": "GO_AROUND"}
     if instr_type == "DESCEND_VIA":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "DESCEND_VIA", "procedureId": raw["procedureId"]}
+        out = {"type": "DESCEND_VIA", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "CLIMB_VIA":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+        out = {"type": "CLIMB_VIA", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "JOIN_PROCEDURE":
         if (
-            not _exact_keys(raw, {"type", "procedureId"})
+            not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
             or not isinstance(raw["procedureId"], str)
             or not raw["procedureId"]
+            or ("transitionId" in raw and not isinstance(raw["transitionId"], str))
         ):
             return None
-        return {"type": "JOIN_PROCEDURE", "procedureId": raw["procedureId"]}
+        out = {"type": "JOIN_PROCEDURE", "procedureId": raw["procedureId"]}
+        if "transitionId" in raw:
+            out["transitionId"] = raw["transitionId"]
+        return out
     if instr_type == "CROSS":
         if not _exact_keys(raw, {"type", "fixId", "altitudeFt", "restriction"}):
             return None
@@ -545,7 +949,29 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
             return has(r"\b(reduce|slow)\b")
         return not has(r"\b(increase|reduce)\b")
     if instruction_type == "DIRECT":
+        if has(r"\b(?:cleared|clear)\s+to\b"):
+            return False
         return has(r"\b(direct|proceed)\b")
+    if instruction_type == "ASSIGN_SQUAWK":
+        if not has(r"\b(squawk|squad)\b"):
+            return False
+        if instruction.get("source") == "VFR":
+            return has(r"\bvfr\b")
+        return bool(re.search(r"\b[0-7]{4}\b", text))
+    if instruction_type == "MAINTAIN_VFR":
+        return has(r"\bmaintain\s+vfr\b")
+    if instruction_type == "IFR_CLEARANCE":
+        # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
+        # IFR clearance has the clearance limit and an explicit access method.
+        if not bool(
+            has(r"\b(?:cleared|clear)\s+to\b")
+            and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+        ):
+            return False
+        access = instruction.get("access")
+        if isinstance(access, dict) and access.get("type") == "EXPLICIT_ROUTE":
+            return bool(access.get("segments")) and has(r"\bvia\b")
+        return True
     if instruction_type == "EXPECT_APPROACH":
         return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "CLEARED_APPROACH":
@@ -695,6 +1121,183 @@ def _procedure_spoken_overlap(text: str, procedure_id: str, rows: list[dict[str,
     return bool(spoken_letters & _letter_tokens(procedure_id + " " + name))
 
 
+def _span_is_evidence(span: dict[str, Any], transcript: str) -> bool:
+    start, end, text = span.get("start"), span.get("end"), span.get("text")
+    return (
+        isinstance(start, int)
+        and isinstance(end, int)
+        and isinstance(text, str)
+        and 0 <= start < end <= len(transcript)
+        and transcript[start:end].casefold() == text.casefold()
+    )
+
+
+def _candidate_has_evidence(candidate: dict[str, Any], transcript: str) -> bool:
+    return any(_span_is_evidence(span, transcript) for span in candidate.get("spans") or [])
+
+
+def _route_segment_evidence_intervals(
+    segment: dict[str, Any], route: dict[str, Any]
+) -> list[tuple[int, int]]:
+    if segment.get("type") == "DIRECT":
+        return [
+            (match["span"]["start"], match["span"]["end"])
+            for match in route.get("fixMatches") or []
+            if _direct_fix_match_is_unambiguous(match, segment.get("fixId"))
+            and _span_is_evidence(match.get("span") or {}, route["transcript"])
+        ]
+    procedure = next(
+        (item for item in route.get("procedures") or [] if item.get("id") == segment.get("procedureId")),
+        None,
+    )
+    if procedure is None or not _candidate_has_evidence(procedure, route["transcript"]):
+        return []
+    transition_id = segment.get("transitionId")
+    if transition_id is None:
+        return [(span["start"], span["end"]) for span in procedure.get("spans") or []]
+    transition = next(
+        (item for item in procedure.get("transitions") or [] if item.get("id") == transition_id),
+        None,
+    )
+    if transition is None or not _candidate_has_evidence(transition, route["transcript"]):
+        return []
+    return [
+        (procedure_span["start"], transition_span["end"])
+        for procedure_span in procedure.get("spans") or []
+        for transition_span in transition.get("spans") or []
+        if transition_span["start"] >= procedure_span["start"]
+        and transition_span["end"] > procedure_span["end"]
+    ]
+
+
+def _direct_fix_match_is_unambiguous(match: dict[str, Any], fix_id: object) -> bool:
+    candidates = match.get("candidates") or []
+    selected = next(
+        (candidate for candidate in candidates if candidate.get("id") == fix_id),
+        None,
+    )
+    if selected is None or not candidates:
+        return False
+    best_score = max(candidate["score"] for candidate in candidates)
+    return selected["score"] == best_score and sum(
+        candidate["score"] == best_score for candidate in candidates
+    ) == 1
+
+
+def _ordered_route_evidence_paths(
+    segments: list[dict[str, Any]], route: dict[str, Any]
+) -> list[list[tuple[int, int]]]:
+    paths: list[list[tuple[int, int]]] = [[]]
+    for segment in segments:
+        intervals = _route_segment_evidence_intervals(segment, route)
+        next_paths: list[list[tuple[int, int]]] = []
+        seen: set[tuple[tuple[int, int], ...]] = set()
+        for path in paths:
+            previous_end = path[-1][1] if path else -1
+            for interval in intervals:
+                if interval[0] < previous_end:
+                    continue
+                candidate = [*path, interval]
+                key = tuple(candidate)
+                if key in seen:
+                    continue
+                seen.add(key)
+                next_paths.append(candidate)
+        paths = next_paths
+        if not paths:
+            return []
+    return paths
+
+
+def _route_evidence_covered(route: dict[str, Any], intervals: list[tuple[int, int]]) -> bool:
+    for match in re.finditer(r"\S+", route["transcript"]):
+        if match.group(0).lower() in ROUTE_CONNECTORS:
+            continue
+        if not any(
+            match.start() < end and match.end() > start
+            for start, end in intervals
+        ):
+            return False
+
+    return True
+
+
+def _guard_route_window_ids(
+    context: dict[str, Any], outcome: ParseOutcome
+) -> ParseOutcome:
+    route = context.get("routeWindow")
+    if not isinstance(route, dict) or not outcome.ok:
+        return outcome
+    if len(outcome.instructions) != 1:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    instruction = outcome.instructions[0]
+    if instruction.get("type") != "IFR_CLEARANCE":
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    access = instruction.get("access") or {}
+    if access.get("type") != "EXPLICIT_ROUTE" or not access.get("segments"):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    transcript = route.get("transcript")
+    if not isinstance(transcript, str) or not transcript.strip():
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    for match in route.get("fixMatches") or []:
+        if (
+            not isinstance(match, dict)
+            or not _span_is_evidence(match.get("span") or {}, transcript)
+            or not match.get("candidates")
+        ):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+    for procedure in route.get("procedures") or []:
+        if not isinstance(procedure, dict) or not _candidate_has_evidence(procedure, transcript):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+        for transition in procedure.get("transitions") or []:
+            if transition.get("spans") and not _candidate_has_evidence(transition, transcript):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+    airport_ids = {row["icao"] for row in context.get("airports") or [] if isinstance(row, dict)}
+    limit_ids = airport_ids | {
+        row["id"] for row in context.get("clearanceLimits") or [] if isinstance(row, dict)
+    }
+    if instruction.get("limitId") not in limit_ids:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    if not any(
+        _route_evidence_covered(route, path)
+        for path in _ordered_route_evidence_paths(access["segments"], route)
+    ):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    procedures = {
+        row["id"]: row for row in route.get("procedures") or [] if isinstance(row, dict)
+    }
+    for segment in access["segments"]:
+        if not isinstance(segment, dict):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+        if segment.get("type") == "DIRECT":
+            if (
+                segment.get("fixId") in airport_ids
+                or not any(
+                    _direct_fix_match_is_unambiguous(match, segment.get("fixId"))
+                    and _span_is_evidence(match.get("span") or {}, transcript)
+                    for match in route.get("fixMatches") or []
+                )
+            ):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        elif segment.get("type") == "PROCEDURE":
+            procedure = procedures.get(segment.get("procedureId"))
+            if procedure is None or not _candidate_has_evidence(procedure, transcript):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            transition_id = segment.get("transitionId")
+            if transition_id is not None:
+                transitions = {
+                    row["id"]: row
+                    for row in procedure.get("transitions") or []
+                    if isinstance(row, dict)
+                }
+                transition = transitions.get(transition_id)
+                if transition is None or not _candidate_has_evidence(transition, transcript):
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+        else:
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+    return outcome
+
+
 def guard_catalog_ids(
     text: str,
     context: dict[str, Any] | None,
@@ -706,7 +1309,10 @@ def guard_catalog_ids(
     ctx = sanitize_parse_context(context) if context else None
     if not ctx:
         return outcome
+    if ctx.get("routeWindow") is not None:
+        return _guard_route_window_ids(ctx, outcome)
     fixes = set(ctx.get("fixes") or [])
+    airports = {row["icao"] for row in ctx.get("airports") or []}
     procedures = {row["id"] for row in ctx.get("procedures") or []}
     approaches = {row["id"] for row in ctx.get("approaches") or []}
     roster = set(ctx.get("callsigns") or [])
@@ -720,8 +1326,25 @@ def guard_catalog_ids(
         if kind in {"DIRECT", "CROSS"}:
             if roster and instruction.get("fixId") in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+            if instruction.get("fixId") in airports:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
             if fixes and instruction.get("fixId") not in fixes:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "IFR_CLEARANCE":
+            limit_id = instruction.get("limitId")
+            # An IFR limit can be a navaid/fix or a separately grounded
+            # airport. Airport candidates are never added to `fixes`.
+            if (fixes or airports) and limit_id not in fixes and limit_id not in airports:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            access = instruction.get("access") or {}
+            if access.get("type") == "FIX_THEN_DIRECT":
+                if access.get("fixId") in airports:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                if fixes and access.get("fixId") not in fixes:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+            if access.get("type") == "SID" and procedures:
+                if access.get("procedureId") not in procedures:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
         if kind in {"DESCEND_VIA", "CLIMB_VIA", "JOIN_PROCEDURE"}:
             if roster and instruction.get("procedureId") in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
@@ -746,6 +1369,79 @@ def guard_catalog_ids(
     return outcome
 
 
+def _mock_route_parse(context: dict[str, Any]) -> ParseOutcome:
+    route = context.get("routeWindow") if isinstance(context, dict) else None
+    if not isinstance(route, dict):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    entries: list[tuple[int, int, str, dict[str, Any], dict[str, Any] | None]] = []
+    for match in route.get("fixMatches") or []:
+        span = match.get("span") or {}
+        for candidate in match.get("candidates") or []:
+            entries.append(
+                (int(span["start"]), int(span["end"]), "DIRECT", candidate, span)
+            )
+    for procedure in route.get("procedures") or []:
+        spans = procedure.get("spans") or []
+        for span in spans:
+            entries.append(
+                (int(span["start"]), int(span["end"]), "PROCEDURE", procedure, span)
+            )
+    entries.sort(key=lambda item: (item[0], -(item[1] - item[0]), item[2], item[3]["id"]))
+    if not entries:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+
+    route_tokens = list(re.finditer(r"\S+", route["transcript"]))
+    route_tokens = [match for match in route_tokens if match.group(0).lower() not in ROUTE_CONNECTORS]
+
+    def choose(token_index: int, previous_end: int) -> list[tuple[int, int, str, dict[str, Any], dict[str, Any] | None]] | None:
+        if token_index >= len(route_tokens):
+            return []
+        token = route_tokens[token_index]
+        for entry in entries:
+            start, end, *_ = entry
+            if start < previous_end or start > token.start() or end < token.end():
+                continue
+            next_token_index = token_index + 1
+            while (
+                next_token_index < len(route_tokens)
+                and route_tokens[next_token_index].start() < end
+            ):
+                next_token_index += 1
+            tail = choose(next_token_index, end)
+            if tail is not None:
+                return [entry, *tail]
+        return None
+
+    chosen = choose(0, -1)
+    if not chosen:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    segments: list[dict[str, Any]] = []
+    for _, _, kind, candidate, _ in chosen:
+        if kind == "DIRECT":
+            segments.append({"type": "DIRECT", "fixId": candidate["id"]})
+            continue
+        segment = {"type": "PROCEDURE", "procedureId": candidate["id"]}
+        transitions = [item for item in candidate.get("transitions") or [] if item.get("spans")]
+        if len(transitions) == 1:
+            segment["transitionId"] = transitions[0]["id"]
+        segments.append(segment)
+    limits = context.get("clearanceLimits") or []
+    airports = context.get("airports") or []
+    limit_id = (limits[0].get("id") if limits else None) or (airports[0].get("icao") if airports else None)
+    if not limit_id:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    return ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": limit_id,
+                "access": {"type": "EXPLICIT_ROUTE", "segments": segments},
+            }
+        ],
+    )
+
+
 class MockParseEngine:
     """CI / SPEECH_API_MOCK=1. No GGUF download. JSON shape + SCHEMA coverage."""
 
@@ -761,7 +1457,7 @@ class MockParseEngine:
         schema_version: str,
         context: dict[str, Any] | None = None,
     ) -> ParseOutcome:
-        del source, context
+        del source
         if schema_version != SCHEMA_VERSION:
             return ParseOutcome(ok=False, error="SCHEMA")
         stripped = text.strip()
@@ -770,6 +1466,9 @@ class MockParseEngine:
         # Explicit SCHEMA trigger so CI does not need a real model.
         if "[SCHEMA]" in stripped.upper() or stripped.upper().startswith("CHAT"):
             return ParseOutcome(ok=False, error="SCHEMA")
+        if isinstance(context, dict) and context.get("routeWindow") is not None:
+            route = _mock_route_parse(context)
+            return guard_catalog_ids(stripped, context, guard_instruction_semantics(stripped, route))
         return ParseOutcome(
             ok=True,
             callsign_token=MOCK_PARSE_OK["callsignToken"],  # type: ignore[arg-type]

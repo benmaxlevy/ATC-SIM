@@ -8,8 +8,15 @@
  */
 
 import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
-import { assertHandoffOwned, handoffFor } from "@core";
-import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
+import { applyIfrClearance, assertHandoffOwned, handoffFor } from "@core";
+import {
+  approachesFromCatalog,
+  catalogFixEntriesFromCatalog,
+  parseCommand,
+  proceduresFromCatalog,
+  sanitizeCatalogFixEntries,
+  type CatalogFixEntry,
+} from "@parse";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
@@ -101,8 +108,27 @@ function callsignsFromWorld(world: World): string[] {
   return world.aircraft.map((ac) => ac.callsign);
 }
 
-function catalogFixIdsFromWorld(world: World): string[] {
-  return world.fixRegistry ? [...world.fixRegistry.ids()] : [];
+function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {
+  if (world.catalog) {
+    return catalogFixEntriesFromCatalog(world.catalog);
+  }
+  return sanitizeCatalogFixEntries(world.fixRegistry ? [...world.fixRegistry.ids()] : []);
+}
+
+function catalogAirportsFromWorld(world: World): Array<{
+  icao: string;
+  name: string;
+  aliases: string[];
+}> {
+  const catalog = world.catalog;
+  if (!catalog?.name) return [];
+  return [
+    {
+      icao: catalog.airportId,
+      name: catalog.name,
+      aliases: [...(catalog.spokenAliases ?? [])],
+    },
+  ];
 }
 
 function buildCommand(args: {
@@ -162,17 +188,26 @@ export async function handleRadioText(
   opts?: HandleRadioOpts,
 ): Promise<PilotResult> {
   const source = opts?.source ?? "text";
+  const fixEntries = catalogFixEntriesFromWorld(world);
   const parsed = await parseCommand(sourceText, {
     source,
     selectedCallsign: selectedCallsignFromWorld(world),
     callsigns: callsignsFromWorld(world),
-    fixes: catalogFixIdsFromWorld(world),
+    fixes: fixEntries,
+    routeCandidates: fixEntries,
     procedures: proceduresFromCatalog(world.catalog),
     approaches: approachesFromCatalog(world.catalog),
+    airports: catalogAirportsFromWorld(world),
     pathC: opts?.pathC ?? false,
   });
   if (!parsed.ok) {
-    const reason = "PARSE";
+    const normalizedTokens = sourceText.trim().replace(/\s+/g, " ").toUpperCase().split(" ");
+    const reason =
+      parsed.error.startsWith("BAD_CLEARANCE") || normalizedTokens.includes("CLR")
+        ? "CLEARANCE"
+        : parsed.error.startsWith("BAD_SQUAWK") || normalizedTokens.includes("SQ")
+          ? "SQUAWK"
+          : "PARSE";
     logRejected(log, world, atWallMs, { command: null, reason, sourceText });
     return {
       accepted: false,
@@ -258,11 +293,38 @@ export function handleRadioCommand(
     );
   }
 
+  const ifrClearance = resolvedCommand.instructions.find((item) => item.type === "IFR_CLEARANCE");
+  if (ifrClearance) {
+    if (resolvedCommand.instructions.length !== 1) {
+      return reject("CLEARANCE", "clearance must be the only instruction", resolvedCommand);
+    }
+    const applied = applyIfrClearance(world, aircraft, ifrClearance, atWallMs, log);
+    if (!applied.ok) {
+      const reason =
+        applied.error.code === "UNABLE_ROUTE" ||
+        applied.error.code === "PLAN_NOT_FOUND" ||
+        applied.error.code === "NO_AIRCRAFT"
+          ? "UNABLE_ROUTE"
+          : "CLEARANCE";
+      return reject(reason, applied.error.message, resolvedCommand);
+    }
+    const readback = formatReadback({
+      callsign: resolved.callsign,
+      instructions: resolvedCommand.instructions,
+      aircraft,
+    });
+    logAccepted(log, world, atWallMs, resolvedCommand);
+    return { accepted: true, readback, command: resolvedCommand };
+  }
+
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {
     catalog: world.catalog,
     log,
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
     activeRunwayId: world.activeRunwayId,
+    flightPlan: world.flightPlans.find(
+      (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+    ),
   });
   const procedureNames = Object.fromEntries([
     ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),

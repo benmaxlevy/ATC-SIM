@@ -62,5 +62,8 @@ export function applyCommand(world: World, command: Command): void {
     catalog: world.catalog,
     log: world.sessionLog,
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
+    flightPlan: world.flightPlans.find(
+      (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+    ),
   });
 }

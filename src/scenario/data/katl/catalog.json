@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "airportId": "KATL",
   "name": "HARTSFIELD/JACKSON ATLANTA INT",
+  "spokenAliases": [
+    "HARTSFIELD JACKSON ATLANTA AIRPORT",
+    "ATLANTA AIRPORT",
+    "ATLANTA INTERNATIONAL AIRPORT",
+    "HARTSFIELD"
+  ],
   "magVarDeg": -5,
   "fieldElevFt": 1026,
   "arp": {

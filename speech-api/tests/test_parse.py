@@ -9,15 +9,16 @@ from fastapi.testclient import TestClient
 from app import ParseRequest, create_app
 from config import DEFAULT_PARSE_GGUF_FILE, DEFAULT_PARSE_MODEL_ID, Settings
 from parse_engine import (
+    INSTRUCTION_TYPES,
     MOCK_PARSE_OK,
     PARSE_CONTRACT_VERSION,
     ParseOutcome,
+    ROUTE_SEGMENT_TYPES,
     guard_catalog_ids,
+    sanitize_parse_context,
     validate_instruction,
     validate_parse_json,
 )
-
-
 def test_parse_contract_version_is_explicit() -> None:
     assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-1"
 
@@ -61,6 +62,330 @@ def test_parse_request_schema_has_no_nbest_or_confidence() -> None:
     assert "nbest" not in fields
     assert "nBest" not in fields
     assert "n_best" not in fields
+
+
+def test_path_c_instruction_type_parity_with_frontend_union() -> None:
+    """Adding a frontend Command IR type must update Path C in the same change."""
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "src/core/command/types.ts").read_text(encoding="utf-8")
+    block = source.split("export const INSTRUCTION_TYPES = [", 1)[1].split("] as const", 1)[0]
+    frontend = set(re.findall(r'^\s+"([A-Z][A-Z_]+)",\s*$', block, flags=re.MULTILINE))
+    assert frontend == set(INSTRUCTION_TYPES)
+    segment_block = source.split("export type ClearanceRouteSegment =", 1)[1].split(
+        "export type IfrClearanceAccess =", 1
+    )[0]
+    frontend_segments = set(re.findall(r'type: "([A-Z_]+)"', segment_block))
+    assert frontend_segments == set(ROUTE_SEGMENT_TYPES)
+
+
+def test_path_c_route_schema_accepts_arbitrary_canonical_segments() -> None:
+    route = {
+        "type": "IFR_CLEARANCE",
+        "limitId": "KATL",
+        "access": {
+            "type": "EXPLICIT_ROUTE",
+            "segments": [
+                {"type": "DIRECT", "fixId": "SWEPT"},
+                {"type": "DIRECT", "fixId": "HOUND"},
+                {"type": "PROCEDURE", "procedureId": "SID1", "transitionId": "NORTH"},
+            ],
+        },
+    }
+    assert validate_instruction(route) == route
+    assert validate_instruction(
+        {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": "X", "extra": True}]}}
+    ) is None
+
+
+def test_path_c_route_guard_requires_supplied_ids_and_transcript_spans() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+        "clearanceLimits": [
+            {"id": "KATL", "kind": "FIX", "aliases": ["KATL"], "spans": [{"start": 0, "end": 4, "text": "KATL"}]}
+        ],
+        "routeWindow": {
+            "transcript": "swept hound",
+            "fixMatches": [
+                {"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]},
+                {"span": {"start": 6, "end": 11, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
+            ],
+            "procedures": [],
+        },
+    }
+    valid = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {
+                    "type": "EXPLICIT_ROUTE",
+                    "segments": [
+                        {"type": "DIRECT", "fixId": "SWEPT"},
+                        {"type": "DIRECT", "fixId": "HOUND"},
+                    ],
+                },
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to KATL via swept hound", context, valid).ok
+    for bad_id in ("NOPE", "KATL"):
+        bad = ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": bad_id}]},
+                }
+            ],
+        )
+        assert guard_catalog_ids("cleared to KATL via swept", context, bad).error == "PARSE_MISS"
+    tactical = ParseOutcome(
+        ok=True,
+        instructions=[{"type": "DIRECT", "fixId": "ATL"}],
+    )
+    assert guard_catalog_ids(
+        "endeavor 1155 clear to atlanta international airport via direct swept direct kimmy direct bluff direct",
+        context,
+        tactical,
+    ).error == "PARSE_MISS"
+
+    partial_context = {
+        **context,
+        "routeWindow": {
+            "transcript": "swept kimmy",
+            "fixMatches": [context["routeWindow"]["fixMatches"][0]],
+            "procedures": [],
+        },
+    }
+    partial = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {
+                    "type": "EXPLICIT_ROUTE",
+                    "segments": [{"type": "DIRECT", "fixId": "SWEPT"}],
+                },
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to KATL via swept kimmy", partial_context, partial).error == "PARSE_MISS"
+
+
+def test_path_c_route_prompt_teaches_optional_direct_and_catalog_transitions() -> None:
+    from parse_engine import SYSTEM_PROMPT, build_parse_user_message
+
+    assert "DIRECT is an optional marker" in SYSTEM_PROMPT
+    assert "transitionId only when that transition is nested" in SYSTEM_PROMPT
+    message = build_parse_user_message(
+        "cleared to atlanta via swept hound",
+        "voice",
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "swept hound",
+                "fixMatches": [{"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]}],
+                "procedures": [],
+            },
+        },
+    )
+    assert "routeWindow=" in message
+    assert "swept hound" in message
+    assert "fixMatches" in message
+    assert "one listed candidate" in message
+
+
+def test_path_c_route_fix_matches_are_span_scoped_and_exclude_airports() -> None:
+    from parse_engine import sanitize_parse_context
+
+    context = sanitize_parse_context(
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 5, "text": "kimmi"},
+                        "candidates": [
+                            {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+                            {"id": "KATL", "kind": "FIX", "score": 1, "method": "exact"},
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert context is not None
+    matches = context["routeWindow"]["fixMatches"]
+    assert matches[0]["span"] == {"start": 0, "end": 5, "text": "kimmi"}
+    assert [item["id"] for item in matches[0]["candidates"]] == ["KIMMY"]
+
+
+def test_path_c_route_guard_requires_ordered_complete_span_segmentation() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+        "clearanceLimits": [],
+        "routeWindow": {
+            "transcript": "swept hound",
+            "fixMatches": [
+                {
+                    "span": {"start": 0, "end": 5, "text": "swept"},
+                    "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}],
+                },
+                {
+                    "span": {"start": 6, "end": 11, "text": "hound"},
+                    "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}],
+                },
+            ],
+            "procedures": [],
+        },
+    }
+
+    def outcome(ids: list[str]) -> ParseOutcome:
+        return ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [{"type": "DIRECT", "fixId": item} for item in ids],
+                    },
+                }
+            ],
+        )
+
+    assert guard_catalog_ids("cleared to KATL via swept hound", context, outcome(["SWEPT", "HOUND"])).ok
+    assert guard_catalog_ids(
+        "cleared to KATL via swept hound", context, outcome(["HOUND", "SWEPT"])
+    ).error == "PARSE_MISS"
+    assert guard_catalog_ids(
+        "cleared to KATL via swept hound", context, outcome(["SWEPT"])
+    ).error == "PARSE_MISS"
+
+
+def test_path_c_route_guard_rejects_equal_best_direct_candidates() -> None:
+    def context(candidates: list[dict[str, object]]) -> dict[str, object]:
+        return {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 5, "text": "kimmi"},
+                        "candidates": candidates,
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+
+    def outcome(fix_id: str) -> ParseOutcome:
+        return ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [{"type": "DIRECT", "fixId": fix_id}],
+                    },
+                }
+            ],
+        )
+
+    equal_best = [
+        {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+        {"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+    ]
+    assert (
+        guard_catalog_ids("cleared to KATL via kimmi", context(equal_best), outcome("KIMMY")).error
+        == "PARSE_MISS"
+    )
+
+    unique_best = [
+        {"id": "KIMMY", "kind": "FIX", "score": 0.8, "method": "folded"},
+        {"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein"},
+    ]
+    assert guard_catalog_ids(
+        "cleared to KATL via kimmi", context(unique_best), outcome("KIMMY")
+    ).ok
+
+
+def test_path_c_route_context_accepts_structured_long_navaid_and_keeps_fix_rules() -> None:
+    context = sanitize_parse_context(
+        {
+            "fixes": ["VORABCD1"],
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [
+                {
+                    "id": "VORABCD1",
+                    "kind": "NAVAID",
+                    "spans": [{"start": 0, "end": 8, "text": "vorabcd1"}],
+                }
+            ],
+            "routeWindow": {
+                "transcript": "vorabcd1",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 8, "text": "vorabcd1"},
+                        "candidates": [
+                            {
+                                "id": "VORABCD1",
+                                "kind": "NAVAID",
+                                "score": 1,
+                                "method": "exact",
+                            }
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert context is not None
+    assert context.get("fixes") is None
+    assert context["clearanceLimits"][0]["id"] == "VORABCD1"
+    assert context["routeWindow"]["fixMatches"][0]["candidates"][0]["id"] == "VORABCD1"
+
+    fix_context = sanitize_parse_context(
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "vorabcd1",
+                "fixMatches": [
+                    {
+                        "span": {"start": 0, "end": 8, "text": "vorabcd1"},
+                        "candidates": [
+                            {
+                                "id": "VORABCD1",
+                                "kind": "FIX",
+                                "score": 1,
+                                "method": "exact",
+                            }
+                        ],
+                    }
+                ],
+                "procedures": [],
+            },
+        }
+    )
+    assert fix_context is not None
+    assert fix_context["routeWindow"]["fixMatches"] == []
 
 
 def test_empty_parse_model_uses_default_and_mock_is_ready() -> None:
@@ -160,6 +485,120 @@ def test_illegal_chat_instruction_is_schema() -> None:
     assert validate_instruction({"type": "CHAT"}) is None
 
 
+def test_path_c_validates_squawk_vfr_maintain_vfr_and_clearance_variants() -> None:
+    cases = [
+        {"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"},
+        {"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"},
+        {"type": "MAINTAIN_VFR"},
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "AS_FILED"},
+        },
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+            "altitudeFt": 5000,
+            "climbVia": True,
+            "frequency": "119.5",
+            "squawk": "2345",
+        },
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "SID", "procedureId": "RIVR1", "transitionId": "HILL2"},
+        },
+    ]
+    for case in cases:
+        assert validate_instruction(case) == case
+    assert validate_instruction({"type": "ASSIGN_SQUAWK", "code": "8921", "source": "DISCRETE"}) is None
+    assert validate_instruction({"type": "ASSIGN_SQUAWK", "code": "2222", "source": "VFR"}) is None
+    assert validate_instruction({"type": "MAINTAIN_VFR", "extra": True}) is None
+    assert validate_instruction(
+        {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}, "squawk": "9999"}
+    ) is None
+
+
+def test_path_c_semantic_guard_distinguishes_tactical_direct_from_clearance() -> None:
+    from parse_engine import guard_instruction_semantics
+
+    tactical = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "ATL"}])
+    assert guard_instruction_semantics("cleared direct atl vor", tactical).ok
+    assert not guard_instruction_semantics(
+        "cleared to atl via direct",
+        tactical,
+    ).ok
+
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}}
+        ],
+    )
+    assert guard_instruction_semantics("cleared to atl via direct", clearance).ok
+    assert not guard_instruction_semantics("cleared direct atl vor", clearance).ok
+
+
+def test_path_c_catalog_guard_accepts_airport_limit_but_not_airport_direct() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "fixes": ["CEDAR"],
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+    }
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {"type": "DIRECT"},
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to atlanta international via direct", context, clearance).ok
+    direct = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "KATL"}])
+    assert guard_catalog_ids("proceed direct atlanta international", context, direct).error == "PARSE_MISS"
+    unknown = ParseOutcome(
+        ok=True,
+        instructions=[
+            {"type": "IFR_CLEARANCE", "limitId": "KSEA", "access": {"type": "DIRECT"}}
+        ],
+    )
+    assert guard_catalog_ids("cleared to seattle via direct", context, unknown).error == "PARSE_MISS"
+
+
+def test_path_c_catalog_guard_rejects_airport_fix_then_direct_in_airport_only_and_overlap_contexts() -> None:
+    clearance = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {"type": "FIX_THEN_DIRECT", "fixId": "KATL"},
+            }
+        ],
+    )
+    airport_only = {"airports": [{"icao": "KATL", "name": "Atlanta International"}]}
+    overlap = {
+        "fixes": ["KATL"],
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+    }
+    assert (
+        guard_catalog_ids("cleared to KATL via KATL then direct", airport_only, clearance).error
+        == "PARSE_MISS"
+    )
+    assert (
+        guard_catalog_ids("cleared to KATL via KATL then direct", overlap, clearance).error
+        == "PARSE_MISS"
+    )
+
+    direct = ParseOutcome(ok=True, instructions=[{"type": "DIRECT", "fixId": "KATL"}])
+    assert guard_catalog_ids("proceed direct KATL", airport_only, direct).error == "PARSE_MISS"
+    assert guard_catalog_ids("proceed direct KATL", overlap, direct).error == "PARSE_MISS"
+
+
 def test_join_procedure_is_a_closed_instruction() -> None:
     instruction = {"type": "JOIN_PROCEDURE", "procedureId": "DEM1"}
     assert validate_instruction(instruction) == instruction
@@ -203,6 +642,7 @@ def test_parse_context_forwards_approaches_to_engine() -> None:
         "fixes": [],
         "procedures": [],
         "approaches": [{"id": "ILS27", "name": "ILS RWY 27", "runway": "27"}],
+        "airports": [],
     }
 
 
@@ -276,7 +716,34 @@ def test_user_message_includes_on_frequency_roster() -> None:
     assert "fixes=" not in bare
     assert "procedures=" not in bare
     assert "approaches=" not in bare
+    assert "airports=" not in bare
     assert "text=ident" in bare
+
+
+def test_user_message_keeps_airports_separate_from_fix_grounding() -> None:
+    from parse_engine import build_parse_user_message, sanitize_parse_context
+
+    context = {
+        "airports": [
+            {
+                "icao": "katl",
+                "name": "Atlanta International",
+                "aliases": ["Atlanta Airport"],
+            }
+        ],
+        "fixes": ["CEDAR"],
+    }
+    assert sanitize_parse_context(context) == {
+        "callsigns": [],
+        "fixes": ["CEDAR"],
+        "airports": [
+            {"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta Airport"]}
+        ],
+    }
+    message = build_parse_user_message("cleared to atlanta airport via direct", "voice", context)
+    assert "airports=KATL (Atlanta International; Atlanta Airport)" in message
+    assert "Airports are clearance limits only, never DIRECT/CROSS fixes." in message
+    assert "fixes=CEDAR" in message
 
 
 def test_user_message_grounds_any_facility_catalog() -> None:
@@ -334,6 +801,12 @@ def test_system_prompt_guides_semantic_repair_without_schema_duplication() -> No
     assert "Never default a facility" in SYSTEM_PROMPT
     assert "one one thousand is 11000" in SYSTEM_PROMPT
     assert "never map an unmatched spoken name" in SYSTEM_PROMPT
+    assert "squad 2222" in SYSTEM_PROMPT
+    assert "squawk vfr" in SYSTEM_PROMPT
+    assert "maintain vfr" in SYSTEM_PROMPT
+    assert "cleared to KATL via direct" in SYSTEM_PROMPT
+    assert "cleared direct ATL VOR" in SYSTEM_PROMPT
+    assert "airport" in SYSTEM_PROMPT
 
 
 def test_semantic_guard_rejects_wrong_turn_and_via_instructions() -> None:
@@ -635,4 +1108,3 @@ def test_catalog_guard_rejects_callsign_in_slots() -> None:
         instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
     )
     assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
-

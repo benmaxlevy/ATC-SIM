@@ -56,13 +56,14 @@ export type {
   NavFix,
   Navaid,
   ProcedureCatalog,
+  CatalogAirport,
   SidEnrouteTransition,
   SidLeg,
   SidProcedure,
   SidRunwayTransition,
   StarProcedure,
 } from "./procedures/types";
-export { catalogDctIds } from "./procedures/types";
+export { catalogAirport, catalogDctIds } from "./procedures/types";
 export {
   FAA_CWT_WAKE_ADAPTATION,
   FAA_CWT_WAKE_MATRIX,

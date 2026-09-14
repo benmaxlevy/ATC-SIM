@@ -16,6 +16,30 @@ import { singleDigit } from "./numbers";
  */
 export const MAX_CATALOG_FIXES = 4096;
 const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
+const NAVAID_ID = /^[A-Z0-9]{2,10}$/;
+
+export type CatalogFixKind = "FIX" | "NAVAID";
+
+/** Shared parser vocabulary. String ids remain a supported legacy input. */
+export interface CatalogFixEntry {
+  id: string;
+  kind: CatalogFixKind;
+  aliases?: readonly string[];
+}
+
+export type CatalogFixInput = string | CatalogFixEntry;
+
+export interface CatalogFixSource {
+  id: string;
+  name?: string;
+  aliases?: readonly string[];
+}
+
+export interface CatalogFixSourceCatalog {
+  airportId?: string;
+  navaids?: readonly CatalogFixSource[];
+  fixes?: readonly CatalogFixSource[];
+}
 
 export const MAX_CATALOG_PROCEDURES = 256;
 const PROCEDURE_ID = /^[A-Z]{2,8}[0-9]{0,2}$/;
@@ -50,6 +74,58 @@ export interface CatalogProcedure {
   transitions?: readonly CatalogStarTransitionVocab[];
 }
 
+/** Separate clearance-limit namespace; never merge these ids into fixes. */
+export interface CatalogAirport {
+  icao: string;
+  name: string;
+  aliases?: readonly string[];
+}
+
+export function sanitizeCatalogAirports(
+  raw: readonly CatalogAirport[] | undefined | null,
+): CatalogAirport[] {
+  const out: CatalogAirport[] = [];
+  const seen = new Set<string>();
+  for (const item of raw ?? []) {
+    const icao = item.icao.trim().toUpperCase();
+    const name = item.name.trim();
+    if (!/^[A-Z]{4}$/.test(icao) || name.length < 2 || seen.has(icao)) {
+      continue;
+    }
+    const aliases = [
+      ...new Set(
+        (item.aliases ?? []).map((alias) => alias.trim()).filter((alias) => alias.length >= 2),
+      ),
+    ];
+    seen.add(icao);
+    out.push({ icao, name, aliases });
+  }
+  return out;
+}
+
+function airportKey(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Exact canonical/alias match only; ambiguity and unknown names return null. */
+export function groundAirportToCatalog(
+  token: string | null | undefined,
+  airports: readonly CatalogAirport[],
+): string | null {
+  const key = airportKey(token ?? "");
+  if (key.length < 2) return null;
+  const hits = sanitizeCatalogAirports(airports).filter((airport) =>
+    [airport.icao, airport.name, ...(airport.aliases ?? [])].some(
+      (value) => airportKey(value) === key,
+    ),
+  );
+  return hits.length === 1 ? hits[0]!.icao : null;
+}
+
+export function catalogAirportAliases(airport: CatalogAirport): string[] {
+  return [airport.icao, airport.name, ...(airport.aliases ?? [])];
+}
+
 export function levenshtein(a: string, b: string): number {
   if (a === b) {
     return 0;
@@ -74,21 +150,89 @@ export function levenshtein(a: string, b: string): number {
   return row[b.length]!;
 }
 
-export function sanitizeFixIds(raw: readonly string[] | undefined | null): string[] {
-  const out: string[] = [];
+export function sanitizeCatalogFixEntries(
+  raw: readonly CatalogFixInput[] | undefined | null,
+  opts?: { excludeIds?: ReadonlySet<string> },
+): CatalogFixEntry[] {
+  const out: CatalogFixEntry[] = [];
   const seen = new Set<string>();
   for (const item of raw ?? []) {
-    const up = item.trim().toUpperCase();
-    if (!up || seen.has(up) || !FIX_ID.test(up)) {
+    const source = typeof item === "string" ? null : item;
+    const rawId = typeof item === "string" ? item : item.id;
+    const up = rawId.trim().toUpperCase();
+    const validId = source?.kind === "NAVAID" ? NAVAID_ID.test(up) : FIX_ID.test(up);
+    if (
+      !up ||
+      seen.has(up) ||
+      !validId ||
+      opts?.excludeIds?.has(up) ||
+      (source !== null && !["FIX", "NAVAID"].includes(source.kind))
+    ) {
       continue;
     }
     seen.add(up);
-    out.push(up);
+    const aliases = source
+      ? [...new Set((source.aliases ?? []).map((alias) => alias.trim()).filter(Boolean))]
+      : [];
+    const kind = source?.kind ?? "FIX";
+    out.push(aliases.length > 0 ? { id: up, kind, aliases } : { id: up, kind });
     if (out.length >= MAX_CATALOG_FIXES) {
       break;
     }
   }
   return out;
+}
+
+/** Legacy scalar projection for callers that only need canonical ids. */
+export function sanitizeFixIds(
+  raw: readonly CatalogFixInput[] | undefined | null,
+  opts?: { excludeIds?: ReadonlySet<string> },
+): string[] {
+  return sanitizeCatalogFixEntries(raw, opts).map((entry) => entry.id);
+}
+
+/** Build the parser vocabulary from generic catalog rows; airports stay out. */
+export function catalogFixEntriesFromCatalog(
+  catalog: CatalogFixSourceCatalog | null | undefined,
+): CatalogFixEntry[] {
+  if (!catalog) {
+    return [];
+  }
+  const airportIds = new Set<string>();
+  const airportId = catalog.airportId?.trim().toUpperCase();
+  if (airportId) {
+    airportIds.add(airportId);
+  }
+  return sanitizeCatalogFixEntries(
+    [
+      ...(catalog.navaids ?? []).map((item) => ({
+        id: item.id,
+        kind: "NAVAID" as const,
+        aliases: [...(item.aliases ?? []), ...(item.name ? [item.name] : [])],
+      })),
+      ...(catalog.fixes ?? []).map((item) => ({
+        id: item.id,
+        kind: "FIX" as const,
+        aliases: item.aliases,
+      })),
+    ],
+    { excludeIds: airportIds },
+  );
+}
+
+export function catalogFixAliasesForEntry(entry: CatalogFixInput): string[] {
+  const normalized = sanitizeCatalogFixEntries([entry])[0];
+  if (!normalized) {
+    return [];
+  }
+  return [
+    ...new Set([
+      normalized.id,
+      ...catalogFixAliases(normalized.id),
+      ...catalogFixPhraseAliases(normalized.id),
+      ...(normalized.aliases ?? []),
+    ]),
+  ];
 }
 
 /** Letters/digits only, so `C-Max` and `see max` share a key with catalog ids. */
@@ -131,56 +275,226 @@ export function catalogFixAliases(id: string): string[] {
   return [...aliases];
 }
 
+function catalogFixPhraseAliases(id: string): string[] {
+  const key = normalizeFixKey(id);
+  const aliases = [key];
+  if (key.startsWith("SE") && key.length >= 4) {
+    const rest = key.slice(2);
+    aliases.push(`C ${rest}`, `SEE ${rest}`, `SEA ${rest}`);
+  }
+  return aliases;
+}
+
+const SCORE_EXACT = 1;
+const SCORE_ALIAS = 0.9;
+const SCORE_FOLD_ALIAS = 0.8;
+const SCORE_NEAR = 0.6;
+const SCORE_FOLD_NEAR = 0.5;
+/** Raw d==2, token length >= 5. Below the deterministic snap tiers. */
+const SCORE_FAR = 0.45;
+/** Fold d==2, folded length >= 5. Below the deterministic snap tiers. */
+const SCORE_FOLD_FAR = 0.4;
+
+export type CatalogFixMatchMethod = "exact" | "alias" | "folded" | "levenshtein";
+
+export type CatalogFixMatchTier =
+  "exact" | "alias" | "folded-alias" | "near" | "folded-near" | "far" | "folded-far";
+
+export interface RankedFixCandidate {
+  id: string;
+  kind: CatalogFixKind;
+  score: number;
+  tier: CatalogFixMatchTier;
+  method: CatalogFixMatchMethod;
+  distance?: number;
+}
+
+type RankedFixCandidateHit = Omit<RankedFixCandidate, "kind">;
+
+interface IndexedFix {
+  entry: CatalogFixEntry;
+  id: string;
+  key: string;
+  folded: string;
+  aliases: ReadonlySet<string>;
+  phraseAliases: readonly string[];
+}
+
+interface FixIndex {
+  entries: readonly IndexedFix[];
+}
+
+const FIX_INDEX_CACHE = new WeakMap<object, FixIndex>();
+
+function indexFixes(catalog: readonly CatalogFixInput[]): FixIndex {
+  const cached = FIX_INDEX_CACHE.get(catalog);
+  if (cached) {
+    return cached;
+  }
+  const entries = sanitizeCatalogFixEntries(catalog).map((entry) => ({
+    entry,
+    id: entry.id,
+    key: normalizeFixKey(entry.id),
+    folded: foldSpokenFix(entry.id),
+    aliases: new Set([
+      ...catalogFixAliases(entry.id),
+      ...(entry.aliases ?? []).map((alias) => normalizeFixKey(alias)),
+    ]),
+    phraseAliases: catalogFixAliasesForEntry(entry),
+  }));
+  const index: FixIndex = { entries };
+  FIX_INDEX_CACHE.set(catalog, index);
+  return index;
+}
+
+function scoreFix(
+  tokenKey: string,
+  folded: string,
+  entry: IndexedFix,
+  includeDistanceTwo: boolean,
+): RankedFixCandidateHit | null {
+  if (entry.id === tokenKey || entry.key === tokenKey) {
+    return { id: entry.id, score: SCORE_EXACT, tier: "exact", method: "exact" };
+  }
+  if (entry.aliases.has(tokenKey)) {
+    return { id: entry.id, score: SCORE_ALIAS, tier: "alias", method: "alias" };
+  }
+  if (folded !== tokenKey && entry.aliases.has(folded)) {
+    return {
+      id: entry.id,
+      score: SCORE_FOLD_ALIAS,
+      tier: "folded-alias",
+      method: "folded",
+    };
+  }
+  if (tokenKey.length >= 3) {
+    const distance = levenshtein(tokenKey, entry.key);
+    if (distance <= 1) {
+      return {
+        id: entry.id,
+        score: SCORE_NEAR,
+        tier: "near",
+        method: "levenshtein",
+        distance,
+      };
+    }
+    if (includeDistanceTwo && tokenKey.length >= 5 && distance === 2) {
+      return {
+        id: entry.id,
+        score: SCORE_FAR,
+        tier: "far",
+        method: "levenshtein",
+        distance,
+      };
+    }
+  }
+  if (folded.length >= 3) {
+    const distance = levenshtein(folded, entry.folded);
+    if (distance <= 1) {
+      return {
+        id: entry.id,
+        score: SCORE_FOLD_NEAR,
+        tier: "folded-near",
+        method: "levenshtein",
+        distance,
+      };
+    }
+    if (includeDistanceTwo && folded.length >= 5 && distance === 2) {
+      return {
+        id: entry.id,
+        score: SCORE_FOLD_FAR,
+        tier: "folded-far",
+        method: "levenshtein",
+        distance,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Rank one spoken fix phrase against the full sanitized catalog. Deterministic
+ * grounding omits distance-2 candidates; retrieval may opt into them for the
+ * constrained Path C fallback. Every returned id came from `catalog`.
+ */
+export function rankFixCandidates(
+  token: string | null | undefined,
+  catalog: readonly CatalogFixInput[],
+  opts?: { includeDistanceTwo?: boolean },
+): RankedFixCandidate[] {
+  const tokenKey = normalizeFixKey(token ?? "");
+  if (tokenKey.length < 2) {
+    return [];
+  }
+  const folded = foldSpokenFix(tokenKey);
+  const index = indexFixes(catalog);
+  const hits: RankedFixCandidate[] = [];
+  for (const entry of index.entries) {
+    const hit = scoreFix(tokenKey, folded, entry, opts?.includeDistanceTwo === true);
+    if (hit !== null) {
+      hits.push({ ...hit, kind: entry.entry.kind });
+    }
+  }
+  hits.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  return hits;
+}
+
 /**
  * Unique catalog id for a noisy token, or null if nothing unique matches.
  * Empty catalog → null (caller keeps the raw token).
  */
 export function groundFixToCatalog(
   token: string | null | undefined,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): string | null {
-  const list = sanitizeFixIds(catalog);
-  if (list.length === 0) {
+  const ranked = rankFixCandidates(token, catalog);
+  const winner = ranked[0];
+  const exactAliasCollision =
+    winner?.tier === "exact" &&
+    ranked.some(
+      (candidate) =>
+        candidate.id !== winner.id &&
+        (candidate.tier === "alias" || candidate.tier === "folded-alias"),
+    );
+  if (winner === undefined || ranked[1]?.score === winner.score || exactAliasCollision) {
     return null;
   }
-  const key = normalizeFixKey(token ?? "");
-  if (key.length < 2) {
+  return winner.id;
+}
+
+/**
+ * Ground one route phrase without allowing arbitrary token concatenation.
+ * Scalar grounding keeps its compact-key behavior; route phrases may cross
+ * token boundaries only for a declared spoken alias such as SEE MAX.
+ */
+export function groundFixPhraseToCatalog(
+  tokens: readonly string[],
+  catalog: readonly CatalogFixInput[],
+): string | null {
+  if (tokens.length === 0) {
     return null;
   }
-
-  const exact = list.find((id) => id === key || normalizeFixKey(id) === key);
-  if (exact) {
-    return exact;
+  if (tokens.length === 1) {
+    return groundFixToCatalog(tokens[0], catalog);
   }
 
-  const aliasHits = list.filter((id) => catalogFixAliases(id).includes(key));
-  if (aliasHits.length === 1) {
-    return aliasHits[0]!;
+  const phrase = tokens.join(" ");
+  const phraseKey = normalizeFixKey(phrase);
+  const indexed = indexFixes(catalog);
+  const ranked = rankFixCandidates(phrase, catalog).filter(
+    (candidate) =>
+      indexed.entries
+        .find((entry) => entry.id === candidate.id)
+        ?.phraseAliases.some(
+          (alias) =>
+            alias.split(/\s+/).length === tokens.length && normalizeFixKey(alias) === phraseKey,
+        ) ?? false,
+  );
+  const winner = ranked[0];
+  if (winner === undefined || ranked[1]?.score === winner.score) {
+    return null;
   }
-
-  const folded = foldSpokenFix(key);
-  if (folded !== key) {
-    const foldAliasHits = list.filter((id) => catalogFixAliases(id).includes(folded));
-    if (foldAliasHits.length === 1) {
-      return foldAliasHits[0]!;
-    }
-  }
-
-  if (key.length >= 3) {
-    const near = list.filter((id) => levenshtein(key, normalizeFixKey(id)) <= 1);
-    if (near.length === 1) {
-      return near[0]!;
-    }
-  }
-
-  if (folded.length >= 3) {
-    const foldNear = list.filter((id) => levenshtein(folded, foldSpokenFix(id)) <= 1);
-    if (foldNear.length === 1) {
-      return foldNear[0]!;
-    }
-  }
-
-  return null;
+  return winner.id;
 }
 
 export interface GroundedFixInstructions {
@@ -190,7 +504,7 @@ export interface GroundedFixInstructions {
 
 function groundDirectOrCrossFix(
   token: string,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: {
     preferIds?: ReadonlySet<string>;
     rankedFor?: (token: string) => readonly RankedCatalogHit[];
@@ -214,17 +528,49 @@ function groundDirectOrCrossFix(
  */
 export function groundInstructionFixes(
   instructions: readonly Instruction[],
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: {
     preferIds?: ReadonlySet<string>;
     rankedFor?: (token: string) => readonly RankedCatalogHit[];
+    /** Airport ids exempt only when used as an IFR clearance limit. */
+    clearanceLimitIds?: ReadonlySet<string>;
   },
 ): GroundedFixInstructions {
-  if (catalog.length === 0) {
+  if (catalog.length === 0 && (opts?.clearanceLimitIds?.size ?? 0) === 0) {
     return { instructions: [...instructions], ungroundedFixes: [] };
   }
   const ungroundedFixes: string[] = [];
   const next = instructions.map((inst) => {
+    if (inst.type === "IFR_CLEARANCE") {
+      const limit = opts?.clearanceLimitIds?.has(inst.limitId)
+        ? { fixId: inst.limitId, ungrounded: false }
+        : groundDirectOrCrossFix(inst.limitId, catalog, opts);
+      if (limit.ungrounded && !opts?.clearanceLimitIds?.has(inst.limitId)) {
+        ungroundedFixes.push(inst.limitId);
+      }
+      let access = inst.access;
+      if (access.type === "FIX_THEN_DIRECT") {
+        const fix = groundDirectOrCrossFix(access.fixId, catalog, opts);
+        if (fix.ungrounded) ungroundedFixes.push(access.fixId);
+        access = fix.fixId === access.fixId ? access : { ...access, fixId: fix.fixId };
+      }
+      if (access.type === "EXPLICIT_ROUTE") {
+        let changed = false;
+        const segments = access.segments.map((segment) => {
+          if (segment.type !== "DIRECT") return segment;
+          const fix = groundDirectOrCrossFix(segment.fixId, catalog, opts);
+          if (fix.ungrounded) ungroundedFixes.push(segment.fixId);
+          if (fix.fixId === segment.fixId) return segment;
+          changed = true;
+          return { ...segment, fixId: fix.fixId };
+        });
+        if (changed) access = { ...access, segments };
+      }
+      const limitId = limit.fixId;
+      return limitId === inst.limitId && access === inst.access
+        ? inst
+        : { ...inst, limitId, access };
+    }
     if (inst.type !== "DIRECT" && inst.type !== "CROSS") {
       return inst;
     }
@@ -324,7 +670,26 @@ export function groundInstructionProcedures(
   if (catalog.length === 0) {
     return [...instructions];
   }
+  const mapProcedureId = (procedureId: string): string =>
+    groundProcedureToCatalog(procedureId, catalog) ?? procedureId;
   return instructions.map((inst) => {
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "SID") {
+      const procedureId = mapProcedureId(inst.access.procedureId);
+      return procedureId === inst.access.procedureId
+        ? inst
+        : { ...inst, access: { ...inst.access, procedureId } };
+    }
+    if (inst.type === "IFR_CLEARANCE" && inst.access.type === "EXPLICIT_ROUTE") {
+      let changed = false;
+      const segments = inst.access.segments.map((segment) => {
+        if (segment.type !== "PROCEDURE") return segment;
+        const procedureId = mapProcedureId(segment.procedureId);
+        if (procedureId === segment.procedureId) return segment;
+        changed = true;
+        return { ...segment, procedureId };
+      });
+      return changed ? { ...inst, access: { ...inst.access, segments } } : inst;
+    }
     if (
       inst.type !== "DESCEND_VIA" &&
       inst.type !== "CLIMB_VIA" &&
@@ -332,7 +697,7 @@ export function groundInstructionProcedures(
     ) {
       return inst;
     }
-    const procedureId = groundProcedureToCatalog(inst.procedureId, catalog) ?? inst.procedureId;
+    const procedureId = mapProcedureId(inst.procedureId);
     return procedureId === inst.procedureId ? inst : { ...inst, procedureId };
   });
 }

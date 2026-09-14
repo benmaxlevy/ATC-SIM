@@ -20,10 +20,25 @@ export { repairSpokenLexemes } from "./spoken/lexical-repair";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";
 export {
   approachesFromCatalog,
+  catalogFixAliasesForEntry,
+  catalogFixEntriesFromCatalog,
+  rankFixCandidates,
   proceduresFromCatalog,
+  sanitizeCatalogFixEntries,
   sanitizeFixIds,
 } from "./spoken/catalog-ground";
-export type { CatalogApproach, CatalogProcedure } from "./spoken/catalog-ground";
+export type {
+  CatalogApproach,
+  CatalogFixEntry,
+  CatalogFixInput,
+  CatalogFixKind,
+  CatalogFixSource,
+  CatalogFixSourceCatalog,
+  CatalogFixMatchMethod,
+  CatalogFixMatchTier,
+  CatalogProcedure,
+  RankedFixCandidate,
+} from "./spoken/catalog-ground";
 export { MAX_RETRIEVE_CANDIDATES, retrieveFix } from "./spoken/catalog-retrieve";
 export type { RetrieveHit } from "./spoken/catalog-retrieve";
 export { SNAP_SCORE_FLOOR, SNAP_SCORE_MARGIN, snapFix } from "./spoken/catalog-snap";
@@ -36,4 +51,18 @@ export {
   fetchParsePathC,
   schemaCheckPathC,
 } from "./path-c";
-export type { ParsePathCFn, PathCContext, PathCRequest, PathCSuccess } from "./path-c";
+export type {
+  ParsePathCFn,
+  PathCContext,
+  PathCProcedureCandidate,
+  PathCRouteCandidate,
+  PathCRouteCandidateInput,
+  PathCRouteFixMatch,
+  PathCRouteFixMatchCandidate,
+  PathCRouteWindow,
+  PathCSuccess,
+  PathCTranscriptSpan,
+  PathCTransitionCandidate,
+  PathCRequest,
+} from "./path-c";
+export type { CatalogAirport } from "./spoken/catalog-ground";

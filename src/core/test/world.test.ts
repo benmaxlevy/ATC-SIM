@@ -82,6 +82,7 @@ test("createWorld builds fixRegistry from catalog xNm/yNm", () => {
   });
   expect(world.fixRegistry?.get("NEMAX")).toMatchObject({ xNm: 17, yNm: 12 });
   expect(world.fixRegistry?.get("DEM")).toMatchObject({ xNm: 0.4, yNm: 0.8 });
+  expect(world.fixRegistry?.get("KDEM")).toBeUndefined();
 });
 
 test("createWorld merges partial overrides without sharing aircraft arrays", () => {

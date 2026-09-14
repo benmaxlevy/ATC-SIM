@@ -31,6 +31,8 @@ import {
   type TransmitGateEvent,
 } from "./playback/readback-player";
 import { readbackForTts } from "./tts-text";
+import type { PathCRouteCandidateInput } from "../parse/path-c";
+import type { CatalogFixInput } from "../parse/spoken/catalog-ground";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -68,9 +70,11 @@ export type ParseCommandFn = (
     source: "text" | "voice";
     selectedCallsign?: string | null;
     callsigns?: readonly string[];
-    fixes?: readonly string[];
+    fixes?: readonly CatalogFixInput[];
+    routeCandidates?: readonly PathCRouteCandidateInput[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
     approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
+    airports?: ReadonlyArray<{ icao: string; name: string; aliases?: readonly string[] }>;
     pathC?: boolean;
   },
 ) => Promise<VoiceParseResult>;
@@ -96,8 +100,10 @@ export interface VoiceLoopOptions {
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
   getOnFrequencyCallsigns?: () => readonly string[];
-  /** Full facility catalog ids for parseCommand / Path C. Not the STT header. */
-  getCatalogFixIds?: () => readonly string[];
+  /** Full facility fix/navaid vocabulary for parseCommand. Not the STT header. */
+  getCatalogFixIds?: () => readonly CatalogFixInput[];
+  /** Fix/navaid kind and aliases for route-window Path C grounding. */
+  getCatalogRouteCandidates?: () => readonly PathCRouteCandidateInput[];
   /**
    * Tiny optional STT prompt prior (procedure-referenced ids, cap 16). Default none.
    * R11 CIFP ids are catalog lookup, not STT vocabulary; T03-19 does not require
@@ -108,6 +114,12 @@ export interface VoiceLoopOptions {
   getCatalogProcedures?: () => ReadonlyArray<{ id: string; name?: string }>;
   /** Approach catalog for Path C approach grounding. Default none. */
   getCatalogApproaches?: () => ReadonlyArray<{ id: string; name?: string; runway?: string }>;
+  /** Airport identity catalog for clearance-limit grounding only. */
+  getCatalogAirports?: () => ReadonlyArray<{
+    icao: string;
+    name: string;
+    aliases?: readonly string[];
+  }>;
   getIssuedAtSimMs?: () => number;
   now?: () => number;
   /** App-provided eligibility for Path C after a local parse miss. */
@@ -223,13 +235,19 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
   private readonly getOnFrequencyCallsigns: () => readonly string[];
-  private readonly getCatalogFixIds: () => readonly string[];
+  private readonly getCatalogFixIds: () => readonly CatalogFixInput[];
+  private readonly getCatalogRouteCandidates: () => readonly PathCRouteCandidateInput[];
   private readonly getSttFixIds: () => readonly string[];
   private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;
   private readonly getCatalogApproaches: () => ReadonlyArray<{
     id: string;
     name?: string;
     runway?: string;
+  }>;
+  private readonly getCatalogAirports: () => ReadonlyArray<{
+    icao: string;
+    name: string;
+    aliases?: readonly string[];
   }>;
   private readonly getIssuedAtSimMs: () => number;
   private readonly now: () => number;
@@ -252,9 +270,11 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getSelectedCallsign = options.getSelectedCallsign;
     this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
     this.getCatalogFixIds = options.getCatalogFixIds ?? (() => []);
+    this.getCatalogRouteCandidates = options.getCatalogRouteCandidates ?? (() => []);
     this.getSttFixIds = options.getSttFixIds ?? (() => []);
     this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
     this.getCatalogApproaches = options.getCatalogApproaches ?? (() => []);
+    this.getCatalogAirports = options.getCatalogAirports ?? (() => []);
     this.getIssuedAtSimMs = options.getIssuedAtSimMs ?? (() => 0);
     this.now = options.now ?? defaultNow;
     this.pathC = options.pathC ?? false;
@@ -425,6 +445,8 @@ class VoiceLoopImpl implements VoiceLoop {
     this.latencyTracker.recordStage("stt", transcript.latencyMs);
     this.emitMetrics();
 
+    // R01 SAY AGAIN is unreadable radio; T03-15 does not skip parse on low ASR confidence.
+    // Trainer delta: Transcript.confidence is an ASR score, not unreadable radio.
     // STT metadata is telemetry only; parser execution never depends on a score.
     const parseStartedAt = this.now();
     const parsed = await softTimeout(
@@ -433,8 +455,10 @@ class VoiceLoopImpl implements VoiceLoop {
         selectedCallsign: this.getSelectedCallsign(),
         callsigns: this.getOnFrequencyCallsigns(),
         fixes: this.getCatalogFixIds(),
+        routeCandidates: this.getCatalogRouteCandidates(),
         procedures: this.getCatalogProcedures(),
         approaches: this.getCatalogApproaches(),
+        airports: this.getCatalogAirports(),
         pathC: this.pathC,
       }),
       DEFAULT_VOICE_PARSE_TIMEOUT_MS,

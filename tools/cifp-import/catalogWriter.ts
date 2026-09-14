@@ -60,6 +60,7 @@ export function catalogToFileSet(catalog: ProcedureCatalog): CatalogFileSet {
     schemaVersion: catalog.schemaVersion,
     airportId: catalog.airportId,
     name: catalog.name,
+    spokenAliases: catalog.spokenAliases ?? [catalog.name],
     magVarDeg: catalog.magVarDeg,
     fieldElevFt: catalog.fieldElevFt,
     arp: catalog.arp,

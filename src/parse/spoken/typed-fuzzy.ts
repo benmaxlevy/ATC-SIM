@@ -10,6 +10,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
 } from "./numbers";
 import { parseSpokenCallsign } from "./telephony";
 import { takePositionAdvisory } from "./grammar";
@@ -100,12 +101,45 @@ function rewriteOne(c: Cursor): string | null {
     rewriteFlyHeading(c) ??
     rewriteBareHeading(c) ??
     rewritePresent(c) ??
+    rewriteMaintainVfr(c) ??
     rewriteAltitude(c) ??
     rewriteSpeed(c) ??
+    rewriteSquawk(c) ??
     rewriteIdent(c) ??
     rewriteIntercept(c) ??
     rewriteGoAround(c)
   );
+}
+
+function rewriteMaintainVfr(c: Cursor): string | null {
+  const start = c.i;
+  if (take(c, "maintain") && take(c, "vfr")) {
+    return "MVFR";
+  }
+  c.i = start;
+  return null;
+}
+
+function rewriteSquawk(c: Cursor): string | null {
+  const start = c.i;
+  if (!take(c, "squawk")) {
+    return null;
+  }
+  if (take(c, "vfr")) {
+    return "SQ VFR";
+  }
+  const digits: string[] = [];
+  while (digits.length < 4) {
+    const tok = peek(c);
+    const digit = tok === undefined ? null : squawkDigit(tok);
+    if (digit === null) {
+      c.i = start;
+      return null;
+    }
+    digits.push(String(digit));
+    c.i += 1;
+  }
+  return `SQ ${digits.join("")}`;
 }
 
 function rewriteIntercept(c: Cursor): string | null {

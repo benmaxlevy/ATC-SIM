@@ -1,4 +1,4 @@
-import type { Command } from "../command/types";
+import type { Command, IfrClearanceAccess } from "../command/types";
 
 /**
  * Append-only session events.
@@ -44,6 +44,16 @@ export type SessionEvent =
       reason: string;
       /** Required when `command` is null (parse miss). */
       sourceText?: string;
+    }
+  | {
+      type: "clearance.ifr.issued";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      limitId: string;
+      access: IfrClearanceAccess;
+      routeRevision: number;
+      routeText: string;
     }
   | {
       type: "voice.latency";

@@ -214,7 +214,7 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 export const SQUAWK_CODE = /^[0-7]{4}$/;
-const SCRATCHPAD = /^[A][A-Z0-9+/. *]{0,4}$/;
+const SCRATCHPAD = /^Δ[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
 const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
 const FLIGHT_RULES = /^[A-Z]$/;
@@ -284,8 +284,22 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
     scratchpads: [],
   };
   let aircraftSeen = false;
+  let scratchpad1Seen = false;
+  let scratchpad2Seen = false;
   for (const token of tokens.slice(2)) {
-    if (/^\d{3}$/.test(token)) {
+    if (SCRATCHPAD.test(token)) {
+      if (scratchpad1Seen) return invalid("ILL SCR");
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value)) return invalid("ILL SCR");
+      fields.scratchpads = [value, ...fields.scratchpads.slice(1)];
+      scratchpad1Seen = true;
+    } else if (SCRATCHPAD_2.test(token)) {
+      if (scratchpad2Seen) return invalid("ILL SCR");
+      const value = token.slice(1);
+      if (/^(NAT|CST|AMB|RDR|ADB|XXX|\d{3})/.test(value)) return invalid("ILL SCR");
+      fields.scratchpads = [fields.scratchpads[0] ?? "", value];
+      scratchpad2Seen = true;
+    } else if (/^\d{3}$/.test(token)) {
       if (fields.requestedAltitudeFt !== undefined) return invalid("FORMAT");
       fields.requestedAltitudeFt = Number(token) * 100;
     } else if (/^[A-Z][A-Z0-9]{1,3}(?:\/[A-Z])?$/.test(token)) {

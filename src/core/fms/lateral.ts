@@ -1,5 +1,5 @@
 /**
- * Lateral FMS: DIRECT fly-over, PROCEDURE fly-by (T04-03), loc intercept (T04-05).
+ * Lateral FMS: fix-to-fix fly-over sequencing, loc intercept (T04-05).
  *
  * Command heading = course to the active fix until sequence. Pilot owns Command
  * apply; this module sequences `lateral` when the aircraft reaches the fix or
@@ -8,7 +8,7 @@
  * as a sensor.
  */
 
-import type { Aircraft, LateralMode } from "../aircraft";
+import type { Aircraft, DirectContinuation, LateralMode } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
 import {
   shortestDeltaDeg,
@@ -17,15 +17,7 @@ import {
   TURN_RATE_DEG_PER_S,
 } from "../kinematics";
 import type { FixRegistry, RegisteredFix } from "../nav/fixRegistry";
-import {
-  alongTrackNm,
-  courseChangeDeg,
-  courseDeg,
-  distanceNm,
-  flyByStartNm,
-  flyOverSequenceNm,
-  type NmPoint,
-} from "../nav/geometry";
+import { alongTrackNm, courseDeg, distanceNm, type NmPoint } from "../nav/geometry";
 import type { LocAxis } from "../nav/localizer";
 import {
   LOC_BREAKOUT_S,
@@ -56,7 +48,7 @@ export interface LateralFmsContext {
 }
 
 /**
- * Update FMS mode (sequence fly-by / fly-over) and return the heading to fly
+ * Update FMS mode and return the heading to fly
  * this tick, or `undefined` to use assigned heading.
  */
 export function applyLateralFms(
@@ -84,12 +76,18 @@ export function applyLateralFms(
   if (lateral.type === "MISSED") {
     return ac.intent.assignedHeadingDeg;
   }
+  if (lateral.type === "VECTOR_PENDING") {
+    // Radar-vector access is an explicit wait state. Hold the present heading
+    // captured on entry; never fall back to a stale assigned heading or resume
+    // the stored route until a later controller heading is applied.
+    return lateral.holdHeadingDeg;
+  }
   const registry = ctx.registry;
   if (!registry) {
     return undefined;
   }
   if (lateral.type === "DIRECT") {
-    return guideDirect(ac, dtS, lateral.fixId, ctx, registry);
+    return guideDirect(ac, dtS, lateral, ctx, registry);
   }
   if (lateral.type === "PROCEDURE") {
     return guideProcedure(ac, dtS, lateral, ctx, registry);
@@ -139,11 +137,11 @@ export function advanceStarLeg(
 function guideDirect(
   ac: Aircraft,
   dtS: number,
-  fixId: string,
+  lateral: Extract<Aircraft["intent"]["lateral"], { type: "DIRECT" }>,
   ctx: LateralFmsContext,
   registry: FixRegistry,
 ): number {
-  const fix = registry.get(fixId);
+  const fix = registry.get(lateral.fixId);
   if (!fix) {
     return ac.intent.assignedHeadingDeg;
   }
@@ -152,7 +150,7 @@ function guideDirect(
       return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
     }
     emitDirectSequenced(ac, ctx, fix.id);
-    sequenceToPresentHeading(ac);
+    continueAfterDirect(ac, lateral.continuation);
     return ac.headingDeg;
   }
   return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
@@ -189,13 +187,8 @@ function guideProcedure(
       : courseDeg(current, nextFix);
   const inbound = trueToMagneticDeg(inboundTrue, ctx.magVarDeg ?? 0);
   const nextCourse = trueToMagneticDeg(nextCourseTrue, ctx.magVarDeg ?? 0);
-  const startNm = flyByStartNm(
-    ac.speedKt,
-    courseChangeDeg(inbound, nextCourse),
-    turnRateFor(ac, ctx.performance),
-  );
   const dist = distanceNm(ac, current);
-  if (dist > startNm && dist >= flyOverSequenceNm(ac.speedKt, dtS)) {
+  if (dist > flyOverStepNm(ac.speedKt, dtS)) {
     return inbound;
   }
   if (nextFix === undefined && holdFixForLocIntercept(ac, current, ctx.magVarDeg ?? 0)) {
@@ -226,7 +219,7 @@ function shouldSequenceFlyOver(
   magVarDeg: number,
 ): boolean {
   const dist = distanceNm(ac, fix);
-  if (dist < flyOverSequenceNm(ac.speedKt, dtS)) {
+  if (dist < flyOverStepNm(ac.speedKt, dtS)) {
     return true;
   }
   const along = alongTrackNm(ac, fix, magneticToTrueDeg(ac.headingDeg, magVarDeg));
@@ -241,8 +234,25 @@ function holdFixForLocIntercept(ac: Aircraft, fix: NmPoint, magVarDeg: number): 
   return alongTrackNm(ac, fix, magneticToTrueDeg(ac.headingDeg, magVarDeg)) > 0;
 }
 
-function sequenceToPresentHeading(ac: Aircraft): void {
-  const headingDeg = ac.headingDeg;
+function continueAfterDirect(ac: Aircraft, continuation?: DirectContinuation): void {
+  if (
+    continuation?.type === "RESUME_ROUTE" &&
+    continuation.index < continuation.routeFixIds.length
+  ) {
+    ac.intent.lateral = {
+      type: "PROCEDURE",
+      toFixIndex: continuation.index,
+      routeFixIds: continuation.routeFixIds,
+    };
+    return;
+  }
+  const headingDeg =
+    continuation?.type === "PRESENT_HEADING" ? continuation.headingDeg : ac.headingDeg;
+  sequenceToPresentHeading(ac, headingDeg);
+}
+
+function sequenceToPresentHeading(ac: Aircraft, requestedHeadingDeg = ac.headingDeg): void {
+  const headingDeg = requestedHeadingDeg;
   ac.intent.assignedHeadingDeg = headingDeg;
   ac.intent.turn = "SHORTEST";
   const interceptId = ac.intent.locInterceptApproachId;
@@ -251,6 +261,11 @@ function sequenceToPresentHeading(ac: Aircraft): void {
     return;
   }
   ac.intent.lateral = { type: "HEADING", headingDeg };
+}
+
+/** One movement step: turn when aircraft reaches a fix, not on lead. */
+function flyOverStepNm(speedKt: number, dtS: number): number {
+  return (Math.max(0, speedKt) * Math.max(0, dtS)) / 3600;
 }
 
 function emitDirectSequenced(ac: Aircraft, ctx: LateralFmsContext, fixId: string): void {

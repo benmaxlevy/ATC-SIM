@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KDEM",
   "name": "Demo Field",
+  "spokenAliases": ["DEMO FIELD", "DEMO AIRPORT"],
   "magVarDeg": 0,
   "fieldElevFt": 0,
   "arp": { "latDeg": 0, "lonDeg": 0 },

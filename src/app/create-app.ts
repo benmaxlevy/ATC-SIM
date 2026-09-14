@@ -1,6 +1,13 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
-import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
+import {
+  approachesFromCatalog,
+  catalogFixEntriesFromCatalog,
+  parseCommand,
+  proceduresFromCatalog,
+  sanitizeCatalogFixEntries,
+  type CatalogFixEntry,
+} from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
   createPttCaptureController,
@@ -80,6 +87,13 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
+function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {
+  if (world.catalog) {
+    return catalogFixEntriesFromCatalog(world.catalog);
+  }
+  return sanitizeCatalogFixEntries(world.fixRegistry ? [...world.fixRegistry.ids()] : []);
+}
+
 function logVoiceReject(log: SessionLog, world: World, event: VoiceStatusEvent): void {
   if (!shouldLogVoiceReject(event.code)) {
     return;
@@ -149,10 +163,21 @@ export function createApp(deps: AppDeps): AppHandles {
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
-      getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
+      getCatalogFixIds: () => catalogFixEntriesFromWorld(world),
+      getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),
+      getCatalogAirports: () =>
+        world.catalog?.name
+          ? [
+              {
+                icao: world.catalog.airportId,
+                name: world.catalog.name,
+                aliases: world.catalog.spokenAliases ?? [],
+              },
+            ]
+          : [],
       getIssuedAtSimMs: () => world.simTimeMs,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {

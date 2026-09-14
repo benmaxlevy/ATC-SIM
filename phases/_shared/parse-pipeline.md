@@ -29,7 +29,51 @@ normalizeSpoken
     └─ miss (no throw)
 ```
 
-An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / ident / say-\* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
+An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Tactical fix grounding and IFR route-window grounding share one ranked catalog matcher: exact, spoken-alias, folded, then unique Levenshtein-distance-1 candidates are deterministic; distance-2 candidates are retrieval-only Path C evidence. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / ident / say-\* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
+
+## IFR clearance route windows
+
+After an IFR clearance `VIA`, deterministic parsing scans one route window until
+the next known clearance section (`ALT` / `MAINTAIN`, `CVIA`, `FREQ`, or `SQ`,
+plus recognized section starters). The scanner preserves token order and
+accepts arbitrarily many catalog-grounded fixes, navaids, and procedures using
+the same matcher as tactical `DIRECT`.
+`DIRECT` is an optional connector before a fix/navaid; without it, the matched
+fix/navaid is an implicit direct segment. A terminal `DIRECT` means direct to
+the separately grounded clearance limit. `AS FILED` and `RADAR VECTORS` remain
+exclusive access modes. Unknown, ambiguous, malformed, incomplete, or
+airport-only route tokens are a `PARSE_MISS`; the parser never mutates world
+state.
+
+Examples:
+
+```text
+VIA DIRECT
+VIA SWEPT HOUND ALT 50
+VIA DIRECT SWEPT DIRECT HOUND DIRECT
+VIA SID1 NORTH TRANSITION HOUND
+```
+
+The first form has an empty explicit route. The next two forms produce direct
+segments in order. The last form produces a catalog-grounded procedure and a
+direct segment. This implicit-direct grammar is an ATC-SIM trainer extension;
+it is not claimed as complete FAA phraseology.
+
+If deterministic route parsing cannot form one unique complete chain, Path C
+receives the full transcript plus only the route-window transcript spans and
+per-span `fixMatches` alternatives (`span` plus canonical `id`, `kind`, score,
+and method) and valid procedure transitions. A fix candidate is scoped to the
+row containing its transcript span; overlapping rows are alternatives, not a
+global candidate pool. Clearance-limit airport candidates are sent separately
+and cannot become route segments. Path C may repair segmentation, but every
+returned ID and every segment must select one listed candidate from one
+transcript-supported span; selected spans must cover every non-connector token
+in order. Unknown, ambiguous, malformed, invented, concatenated, omitted,
+out-of-order, or airport route output is `PARSE_MISS`. `DIRECT` is optional
+syntax: absent `DIRECT`, a supplied fix/navaid is still an implicit direct
+segment. This is nonstandard trainer salvage (`parseStage: "llm_c"`), not
+7110.65-complete NLU; the deterministic grounded path remains the phraseology
+path.
 
 **First local grounded hit still wins.** Path C is **miss-only**: it never overrides a unique snap (`spoken_a` / `spoken_b` / `typed`).
 
@@ -84,10 +128,24 @@ Optional `context` is prompt grounding, **not** a vector DB, **not** kinematics,
 
 - `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`). Unchanged on non-identifier misses.
 - `fixes` / `approaches` / `procedures` — **retrieved candidates for this transcript** (tied cluster ∪ next-best), cap **8–16** (`MAX_PATH_C_FIXES = 16`). Never `fixRegistry.ids().slice(0, 64)` file-order padding. Empty retrieve on an identifier miss omits `fixes` (or sends `[]`); do not pad with unrelated catalog ids. A non-identifier miss (`"pizza the runway"`) still runs Path C as T03-14 without dumping file-order 64.
+- `airports` — separately retrieved ICAO/name/alias candidates for an
+  `IFR_CLEARANCE` limit. An airport may ground `limitId`, but is never a
+  `DIRECT`/`CROSS` fix and must not be merged into `fixes`.
+- `routeWindow` — route-only transcript plus `fixMatches`, where each
+  transcript span has only its shared-matcher candidate alternatives (`id`,
+  `kind`, `score`, `method`), and catalog procedure/transition candidates. It
+  is sent only for IFR route fallback and never exposes facility-wide search
+  results. Airports never enter `fixMatches`.
+- `clearanceLimits` — separately scoped non-airport limit candidates. Together
+  with `airports`, these may ground `IFR_CLEARANCE.limitId` only.
 
 **STT header is not the search index (T03-19).** `X-ATC-Fixes` is omitted or a tiny high-value prior (published STAR/SID words). It is not `ids().slice(0, 64)` and not the retrieve cluster. Retrieval from the transcript is Path C `context`, not the STT prompt.
 
-The browser snaps unique noisy `fixId` values onto the **listed** Path C candidates after salvage, the same way it snaps flight-number suffixes onto the roster. An id that is not in `context.fixes` / `approaches` / `procedures` is not dispatched.
+The browser snaps unique noisy `fixId` values onto the **listed** Path C
+candidates after salvage, the same way it snaps flight-number suffixes onto the
+roster. For an IFR route, an ID must also be listed in the selected
+`fixMatches` row. An id that is not in `context.fixes` / `approaches` /
+`procedures` is not dispatched.
 
 Success:
 

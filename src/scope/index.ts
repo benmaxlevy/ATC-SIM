@@ -785,6 +785,7 @@ export {
   datablockSourceFromWorld,
   formatGroundSpeedKt,
   formatGroundSpeedTens,
+  normalizeFlightRulesDisplay,
   formatTcp,
   formatLimitedDatablock,
   formatPartialDatablock,

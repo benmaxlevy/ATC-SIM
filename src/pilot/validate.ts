@@ -11,6 +11,7 @@ import type {
   VerticalCatalog,
 } from "@core";
 import { isOnCourseToFix, joinProcedureTransition } from "@core";
+import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -32,7 +33,9 @@ export type ValidateReason =
   | "AMBIGUOUS_TRANSITION"
   | "NOT_ON_COURSE"
   | "UNKNOWN_APPROACH"
-  | "NOT_ON_APPROACH";
+  | "NOT_ON_APPROACH"
+  | "SQUAWK"
+  | "CLEARANCE";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -102,6 +105,44 @@ function validateOne(
       }
       if (!approachKnown(instruction.approachId, opts)) {
         return { ok: false, reason: "UNKNOWN_APPROACH" };
+      }
+      return { ok: true };
+    case "ASSIGN_SQUAWK":
+      if (
+        !isValidBeaconCode(instruction.code) ||
+        (instruction.source === "VFR" && instruction.code !== "1200")
+      ) {
+        return { ok: false, reason: "SQUAWK" };
+      }
+      return { ok: true };
+    case "MAINTAIN_VFR":
+      return { ok: true };
+    case "IFR_CLEARANCE":
+      if (instruction.limitId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (
+        instruction.access.type === "EXPLICIT_ROUTE" &&
+        instruction.access.segments.some((segment) =>
+          segment.type === "DIRECT"
+            ? segment.fixId.trim() === ""
+            : segment.procedureId.trim() === "" ||
+              (segment.transitionId !== undefined && segment.transitionId.trim() === ""),
+        )
+      ) {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (instruction.access.type === "FIX_THEN_DIRECT" && instruction.access.fixId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (instruction.access.type === "SID" && instruction.access.procedureId.trim() === "") {
+        return { ok: false, reason: "CLEARANCE" };
+      }
+      if (
+        instruction.altitudeFt !== undefined &&
+        (!Number.isInteger(instruction.altitudeFt) || instruction.altitudeFt % 100 !== 0)
+      ) {
+        return { ok: false, reason: "CLEARANCE" };
       }
       return { ok: true };
     case "DIRECT":

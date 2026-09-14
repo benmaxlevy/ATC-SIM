@@ -16,6 +16,8 @@ export const PARSE_ERROR = {
   MISSING_FIX_ID: "MISSING_FIX_ID",
   MISSING_PROCEDURE_ID: "MISSING_PROCEDURE_ID",
   BAD_TURN_DEGREES: "BAD_TURN_DEGREES",
+  BAD_SQUAWK: "BAD_SQUAWK",
+  BAD_CLEARANCE: "BAD_CLEARANCE",
   UNKNOWN_TELEPHONY: "unknown_telephony",
   PARSE_MISS: "PARSE_MISS",
 } as const;
@@ -30,8 +32,8 @@ export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 
 const UNSIGNED_INT = /^\d+$/;
 const TURN_DIR_LETTER = /^[LR]$/;
-/** Typed DCT fix: 2–5 letters after uppercase (`NEMAX`, `DEM`). */
-const FIX_ID_TOKEN = /^[A-Z]{2,5}$/;
+/** Typed DCT fix: catalog-compatible 2–6 letters plus optional 1–2 digits (`NEMAX`, `DEM1`). */
+const FIX_ID_TOKEN = /^[A-Z]{2,6}[0-9]{0,2}$/;
 /** STAR / SID id: letters plus optional digits (`DEM1`). `D` stays descend. */
 const PROCEDURE_ID_TOKEN = /^[A-Z]{2,8}[0-9]{0,2}$/;
 /** STAR/SID transition id (`WN`, `N`, `NORMA`, `RW09`). Shorter than a procedure id. */
@@ -89,6 +91,11 @@ export function parseUnsignedInt(raw: string): number | null {
     return null;
   }
   return n;
+}
+
+/** Four-digit Mode 3/A code; each octal digit is 0–7. */
+export function isSquawkCodeToken(raw: string): boolean {
+  return /^[0-7]{4}$/.test(raw);
 }
 
 export function formatParseError(code: ParseErrorCode, detail?: string): string {

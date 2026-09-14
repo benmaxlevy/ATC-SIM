@@ -79,3 +79,30 @@ test("NullSpeechPort transcribe throw does not dispatch", async () => {
   expect(parseSpy).not.toHaveBeenCalled();
   expect(dispatched).toEqual([]);
 });
+
+test("PTT parser receives structured fix vocabulary while STT keeps its id projection", async () => {
+  const parseSpy: ParseCommandFn = vi.fn(async (_text, _options) => ({
+    ok: false as const,
+    error: "PARSE_MISS",
+    sourceText: "proceed direct athens",
+  }));
+  const loop = createVoiceLoop({
+    speechPort: fakePort("proceed direct athens"),
+    parseCommand: parseSpy,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => "DAL123",
+    getCatalogFixIds: () => [{ id: "AHN", kind: "NAVAID", aliases: ["Athens"] }],
+    getCatalogRouteCandidates: () => [{ id: "AHN", kind: "NAVAID", aliases: ["Athens"] }],
+    getSttFixIds: () => ["AHN"],
+  });
+
+  await loop.handlePttEvent({ type: "ptt-up", result: { kind: "clip", clip: nonEmptyClip() } });
+
+  expect(parseSpy).toHaveBeenCalledWith(
+    "proceed direct athens",
+    expect.objectContaining({
+      fixes: [{ id: "AHN", kind: "NAVAID", aliases: ["Athens"] }],
+      routeCandidates: [{ id: "AHN", kind: "NAVAID", aliases: ["Athens"] }],
+    }),
+  );
+});

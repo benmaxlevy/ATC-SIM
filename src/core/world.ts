@@ -25,7 +25,7 @@ import {
 import { MAX_PHYSICS_STEPS_PER_FRAME, SIM_DT_S } from "./clock";
 import type { SessionLog } from "./events/session-log";
 import { stepAircraft } from "./kinematics";
-import type { FixRegistry, FixRegistrySource } from "./nav/fixRegistry";
+import type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 import { buildFixRegistry } from "./nav/fixRegistry";
 import {
   acceptOutboundHandoff,
@@ -47,7 +47,12 @@ import { locAxisForApproach } from "./nav/localizer";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
-import type { FlightPlan } from "./flightPlan";
+import {
+  routeFixIds,
+  synchronizeFlightPlanRoute,
+  updateAircraftSquawk,
+  type FlightPlan,
+} from "./flightPlan";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -77,9 +82,26 @@ export interface World {
    */
   catalog?: {
     airportId: string;
+    name?: string;
+    spokenAliases?: readonly string[];
+    /** Separate clearance-endpoint geometry; never registered as a tactical fix. */
+    airportEndpoint?: { xNm: number; yNm: number };
     magVarDeg?: number;
-    navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
-    fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
+    navaids: ReadonlyArray<{
+      id: string;
+      name?: string;
+      aliases?: readonly string[];
+      xNm?: number;
+      yNm?: number;
+      kind?: string;
+    }>;
+    fixes: ReadonlyArray<{
+      id: string;
+      aliases?: readonly string[];
+      xNm?: number;
+      yNm?: number;
+      kind?: string;
+    }>;
     stars: ReadonlyArray<CatalogStar>;
     fieldElevFt?: number;
     approaches: ReadonlyArray<{
@@ -158,8 +180,10 @@ export interface ScheduledDeparture {
 }
 
 function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistrySource | null {
+  const airportId = catalog.airportId.trim().toUpperCase();
   const navaids: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
   for (const navaid of catalog.navaids) {
+    if (navaid.id.trim().toUpperCase() === airportId) continue;
     if (typeof navaid.xNm !== "number" || typeof navaid.yNm !== "number") {
       return null;
     }
@@ -172,6 +196,7 @@ function catalogToFixSource(catalog: NonNullable<World["catalog"]>): FixRegistry
   }
   const fixes: Array<{ id: string; xNm: number; yNm: number; kind: string }> = [];
   for (const fix of catalog.fixes) {
+    if (fix.id.trim().toUpperCase() === airportId) continue;
     if (typeof fix.xNm !== "number" || typeof fix.yNm !== "number") {
       return null;
     }
@@ -199,15 +224,62 @@ function fixRegistryFromPartial(partial?: Partial<World>): FixRegistry | null {
   return buildFixRegistry(source);
 }
 
+/**
+ * FMS-only navigation view. Airport ARP is executable as a clearance limit,
+ * but stays absent from World.fixRegistry so DIRECT/CROSS cannot ground it.
+ */
+function clearanceRouteRegistry(world: World): FixRegistry | null {
+  const base = world.fixRegistry;
+  const airportId = world.catalog?.airportId.trim().toUpperCase();
+  const activeAirport = world.aircraft.some((aircraft) =>
+    aircraft.activeClearance?.route.route.segments.some((segment) =>
+      segment.fixIds.some((id) => id.trim().toUpperCase() === airportId),
+    ),
+  );
+  if (!activeAirport || !airportId) return base;
+  const endpoint = world.catalog?.airportEndpoint ?? { xNm: 0, yNm: 0 };
+  const airport: RegisteredFix = Object.freeze({
+    id: airportId,
+    xNm: endpoint.xNm,
+    yNm: endpoint.yNm,
+    kind: "airport-endpoint",
+  });
+  return {
+    get(id: string) {
+      const normalized = id.trim().toUpperCase();
+      return normalized === airportId ? airport : base?.get(id);
+    },
+    require(id: string) {
+      const found = this.get(id);
+      if (!found) throw new Error(`Unknown fix ${id.trim().toUpperCase()}`);
+      return found;
+    },
+    has(id: string) {
+      return this.get(id) !== undefined;
+    },
+    ids() {
+      return base?.ids() ?? [];
+    },
+  };
+}
+
 export function createWorld(partial?: Partial<World>): World {
   const magVarDeg = partial?.navigation?.magVarDeg ?? partial?.catalog?.magVarDeg ?? 0;
+  const flightPlans =
+    partial?.flightPlans?.map((plan) => {
+      const synchronized = synchronizeFlightPlanRoute(plan);
+      // Preserve the existing mutable-world contract: callers holding a plan
+      // reference continue to observe edits made through the world.
+      Object.assign(plan, synchronized);
+      return plan;
+    }) ?? [];
   return {
     simTimeMs: partial?.simTimeMs ?? 0,
     paused: partial?.paused ?? false,
     simRate: partial?.simRate ?? 1,
     navigation: { magVarDeg },
     aircraft: partial?.aircraft ?? [],
-    flightPlans: partial?.flightPlans ?? [],
+    flightPlans,
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     activeRunwayId: partial?.activeRunwayId,
@@ -487,6 +559,54 @@ function acceptDueOutboundHandoffs(world: World): void {
   }
 }
 
+/** Apply pilot-reported beacon changes only after the simulated response delay. */
+function applyDueSquawkReports(world: World): void {
+  for (const aircraft of world.aircraft) {
+    const pending = aircraft.pendingReportedSquawk;
+    if (!pending || world.simTimeMs < pending.dueSimMs) {
+      continue;
+    }
+    updateAircraftSquawk(world, aircraft.id, pending.code);
+    aircraft.pendingReportedSquawk = undefined;
+  }
+}
+
+function sameRoute(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
+/** Keep the one route cursor aligned with the lateral FMS walker. */
+function synchronizeRouteCursor(
+  world: World,
+  aircraft: Aircraft,
+  previous: Aircraft["intent"]["lateral"],
+): void {
+  const plan = world.flightPlans.find(
+    (item) =>
+      item.status !== "deleted" &&
+      item.acid.trim().toUpperCase() === aircraft.callsign.trim().toUpperCase() &&
+      item.routeRecord?.lifecycle === "active",
+  );
+  const record = aircraft.activeClearance?.route ?? plan?.routeRecord;
+  if (!record) return;
+  const ids = routeFixIds(record.route);
+  const current = aircraft.intent.lateral;
+  if (current?.type === "PROCEDURE" && sameRoute(current.routeFixIds, ids)) {
+    record.nextIndex = Math.max(record.nextIndex, current.toFixIndex);
+    return;
+  }
+  if (current?.type !== "HEADING" && current?.type !== "INTERCEPT_LOC") return;
+  if (previous?.type === "PROCEDURE" && sameRoute(previous.routeFixIds, ids)) {
+    record.nextIndex = ids.length;
+  } else if (
+    previous?.type === "DIRECT" &&
+    previous.continuation?.type === "RESUME_ROUTE" &&
+    sameRoute(previous.continuation.routeFixIds, ids)
+  ) {
+    record.nextIndex = Math.max(record.nextIndex, previous.continuation.index);
+  }
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
@@ -503,12 +623,14 @@ export function stepWorld(world: World, dtS: number): World {
     return world;
   }
   world.simTimeMs += dtS * 1000;
+  applyDueSquawkReports(world);
   world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
   acceptDueOutboundHandoffs(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);
   for (const ac of world.aircraft) {
+    const previousLateral = ac.intent.lateral;
     applyMissedFms(ac, {
       catalog: world.catalog,
       log: world.sessionLog,
@@ -518,7 +640,7 @@ export function stepWorld(world: World, dtS: number): World {
     const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
     const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
-      registry: world.fixRegistry,
+      registry: clearanceRouteRegistry(world),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       catalog: world.catalog,
@@ -543,6 +665,7 @@ export function stepWorld(world: World, dtS: number): World {
       world.navigation.magVarDeg,
       performance,
     );
+    synchronizeRouteCursor(world, ac, previousLateral);
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }

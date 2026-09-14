@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KSYN",
   "name": "Synthetic Field",
+  "spokenAliases": ["Synthetic Field"],
   "magVarDeg": 0,
   "fieldElevFt": 0,
   "arp": {

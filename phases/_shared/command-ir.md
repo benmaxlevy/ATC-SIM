@@ -52,6 +52,26 @@ export type Instruction =
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
+  | { type: "MAINTAIN_VFR" }
+  | {
+      type: "IFR_CLEARANCE";
+      limitId: string;
+      access:
+        | { type: "AS_FILED" }
+        | { type: "RADAR_VECTORS" }
+        | {
+            type: "EXPLICIT_ROUTE";
+            segments: Array<
+              | { type: "DIRECT"; fixId: string }
+              | { type: "PROCEDURE"; procedureId: string; transitionId?: string }
+            >;
+          };
+      altitudeFt?: number;
+      climbVia?: boolean;
+      frequency?: string;
+      squawk?: string;
+    }
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -85,6 +105,36 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `S210` | `SPEED MAINTAIN 210` |
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
+| `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
+| `SQ 2222` / `SQ VFR` | `ASSIGN_SQUAWK` (`2222` / `1200`) — aircraft transponder state only; never edits the flight plan beacon |
+| `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and `EXPLICIT_ROUTE` with an empty `segments` list; clearance limit and access are mandatory, other fields optional |
+
+An IFR clearance's `EXPLICIT_ROUTE.segments` is an ordered, catalog-grounded
+list. Each `DIRECT` segment names one fix or navaid; each `PROCEDURE` segment
+names one catalog procedure and optional transition. An empty list means direct
+to the clearance limit. The route has no semantic one- or two-segment limit.
+The parser may accept legacy access wording at its boundary, but Command IR
+consumers use only the canonical shape above. This tactical route is separate
+from the standalone `DIRECT` instruction.
+
+When deterministic route segmentation misses or is non-unique, local Path C
+may return this same canonical shape only from supplied route-window evidence.
+Each returned route ID must be selected from one candidate in one supplied
+`routeWindow.fixMatches` row whose transcript span supports that route element.
+The selected spans must form one complete, ordered, non-overlapping segmentation
+of the route window; overlapping rows are alternatives, not cumulative evidence.
+`FIX`/`NAVAID` candidates are the only `DIRECT` targets. A procedure transition
+must be nested in its supplied procedure candidate. Airport candidates remain
+clearance-limit-only. Missing `DIRECT` means direct only for a supplied
+fix/navaid candidate; it never authorizes an invented route leg. Path C may not
+concatenate adjacent tokens, omit an unsupported route token, or choose an ID
+from a different span.
+
+Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
+non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed
+direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an
+`IFR_CLEARANCE`. Airports are a clearance-limit namespace, never generic
+direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |

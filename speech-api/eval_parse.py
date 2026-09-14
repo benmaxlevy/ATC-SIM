@@ -32,6 +32,10 @@ FACILITY: dict[str, Any] = {
         {"id": "ILS09", "name": "ILS RWY 09", "runway": "09"},
         {"id": "RNAV18", "name": "RNAV RWY 18", "runway": "18"},
     ],
+    "airports": [
+        {"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta Airport"]},
+        {"icao": "KSEA", "name": "Seattle Tacoma International", "aliases": ["Seattle Airport"]},
+    ],
 }
 
 CS = "UAL456"
@@ -202,6 +206,198 @@ CASES: list[dict[str, Any]] = [
         "id": "dct-to-fix",
         "text": "direct to mount",
         "expect": {"instructions": [{"type": "DIRECT", "fixId": "MOUNT"}]},
+    },
+    # --- SQUAWK / VFR ---
+    {
+        "id": "squawk-discrete",
+        "text": "squawk two two two two",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}]},
+    },
+    {
+        "id": "squad-discrete-asr",
+        "text": "squad 2222",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}]},
+    },
+    {
+        "id": "squawk-vfr",
+        "text": "squawk vfr",
+        "expect": {"instructions": [{"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"}]},
+    },
+    {
+        "id": "maintain-vfr",
+        "text": "maintain vfr",
+        "expect": {"instructions": [{"type": "MAINTAIN_VFR"}]},
+    },
+    # --- IFR clearance forms ---
+    {
+        "id": "clearance-as-filed-airport-alias",
+        "text": "cleared to Atlanta Airport as filed",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "AS_FILED"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-direct-airport",
+        "text": "cleared to KATL via direct",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "DIRECT"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-fix-then-direct",
+        "text": "cleared to KATL via CEDAR then direct",
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "FIX_THEN_DIRECT", "fixId": "CEDAR"},
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-radar-vectors",
+        "text": "cleared to Seattle Airport via radar vectors",
+        "expect": {
+            "instructions": [
+                {"type": "IFR_CLEARANCE", "limitId": "KSEA", "access": {"type": "RADAR_VECTORS"}}
+            ]
+        },
+    },
+    {
+        "id": "clearance-sid-optionals",
+        "text": "cleared to KATL via RIVR1 transition HILL2 altitude 5000 climb via frequency 119.5 squawk 2345",
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "SID", "procedureId": "RIVR1", "transitionId": "HILL2"},
+                    "altitudeFt": 5000,
+                    "climbVia": True,
+                    "frequency": "119.5",
+                    "squawk": "2345",
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-route-chain-fallback",
+        "text": "cleared to KATL via swept hound",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "swept hound",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 5, "text": "swept"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 1, "method": "exact"}]},
+                    {"span": {"start": 6, "end": 11, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [
+                            {"type": "DIRECT", "fixId": "SWEPT"},
+                            {"type": "DIRECT", "fixId": "HOUND"},
+                        ],
+                    },
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-route-unique-near-match",
+        "text": "cleared to KATL via swep hound",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "swep hound",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 4, "text": "swep"}, "candidates": [{"id": "SWEPT", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}]},
+                    {"span": {"start": 5, "end": 10, "text": "hound"}, "candidates": [{"id": "HOUND", "kind": "NAVAID", "score": 1, "method": "exact"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": "SWEPT"}, {"type": "DIRECT", "fixId": "HOUND"}]},
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-route-ambiguous-alternatives",
+        "text": "cleared to KATL via kimmi",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "kimmi",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 5, "text": "kimmi"}, "candidates": [{"id": "KIMMS", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}, {"id": "KIMMY", "kind": "FIX", "score": 0.6, "method": "levenshtein", "distance": 1}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "clearance-route-airport-not-fix",
+        "text": "cleared to KATL via atlanta",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International", "aliases": ["Atlanta"]}],
+            "routeWindow": {
+                "transcript": "atlanta",
+                "fixMatches": [
+                    {"span": {"start": 0, "end": 7, "text": "atlanta"}, "candidates": [{"id": "KATL", "kind": "FIX", "score": 1, "method": "exact"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "clearance-route-hallucinated-id",
+        "text": "cleared to KATL via invented",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "invented",
+                "fixMatches": [],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "tactical-direct-not-clearance",
+        "text": "cleared direct CEDAR",
+        "expect": {"instructions": [{"type": "DIRECT", "fixId": "CEDAR"}]},
+    },
+    {
+        "id": "clearance-unknown-airport",
+        "text": "cleared to Portland Airport via direct",
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "squad-invalid-octal",
+        "text": "squad 8921",
+        "expect": {"ok": False, "error": "PARSE_MISS"},
     },
     # --- APPROACH ---
     {
@@ -441,13 +637,15 @@ def check_case(body: dict[str, Any], expect: dict[str, Any]) -> str | None:
     return None
 
 
-def parse_http(url: str, text: str, timeout: float) -> dict[str, Any]:
+def parse_http(
+    url: str, text: str, timeout: float, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     payload = json.dumps(
         {
             "text": text,
             "source": "voice",
             "schemaVersion": SCHEMA_VERSION,
-            "context": FACILITY,
+            "context": context or FACILITY,
         }
     ).encode("utf-8")
     req = urllib.request.Request(
@@ -460,8 +658,8 @@ def parse_http(url: str, text: str, timeout: float) -> dict[str, Any]:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def parse_inproc(engine: Any, text: str) -> dict[str, Any]:
-    outcome = engine.parse(text, "voice", SCHEMA_VERSION, FACILITY)
+def parse_inproc(engine: Any, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    outcome = engine.parse(text, "voice", SCHEMA_VERSION, context or FACILITY)
     return outcome.body()
 
 
@@ -496,9 +694,9 @@ def main() -> int:
         t0 = time.perf_counter()
         try:
             if args.url:
-                body = parse_http(args.url, case["text"], args.timeout)
+                body = parse_http(args.url, case["text"], args.timeout, case.get("context"))
             else:
-                body = parse_inproc(engine, case["text"])
+                body = parse_inproc(engine, case["text"], case.get("context"))
         except Exception as exc:  # noqa: BLE001 — eval surface
             body = {"ok": False, "error": f"EXC:{type(exc).__name__}:{exc}"}
         elapsed_ms = int((time.perf_counter() - t0) * 1000)

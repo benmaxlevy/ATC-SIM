@@ -93,6 +93,30 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Sets the aircraft speed.",
       },
       {
+        id: "squawk",
+        command: "SQ <code> / SQ VFR",
+        example: "DAL123 SQ 4721 / SQ VFR",
+        input: "Radio",
+        result:
+          "Assigns a four-digit octal beacon code; VFR assigns 1200. The pilot report is delayed.",
+      },
+      {
+        id: "maintain-vfr",
+        command: "MVFR",
+        example: "DAL123 MVFR",
+        input: "Radio",
+        result:
+          "Marks the aircraft to maintain VFR and reads back maintain VFR; no IFR clearance, route, or plan activation.",
+      },
+      {
+        id: "ifr-clearance",
+        command: "CLR TO <LIMIT> <ASFILED|VIA ...> [ALT] [CVIA] [FREQ] [SQ]",
+        example: "DAL123 CLR TO KAHN VIA DIRECT",
+        input: "Radio",
+        result:
+          "Issues one atomic IFR clearance; every VIA element must match a catalog FIX/NAVAID or procedure using its id, alias/name, spoken folding, or a unique one-edit match. Local parsing does not apply distance-two repairs. DIRECT is optional between elements and missing markers mean direct. If local parsing misses, trainer-only Path C may choose one unique listed candidate per supplied transcript span, including a unique distance-two retrieval candidate. Unknown, unlisted, tied, incomplete, concatenated, or airport route elements are PARSE_MISS and read back unable. It never invents route legs. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
+      },
+      {
         id: "approach",
         command: "A <approach>",
         example: "A ILS27",
@@ -156,16 +180,18 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       {
         id: "flt-data",
         command: "F6 / FLT DATA <ACID> [fields]",
-        example: "F6 UAL1234 2341 KDEM*RW27 B738 250 .A",
+        example: "F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A",
         input: "Any focus, then Preview Area",
-        result: "Creates a local IFR flight plan.",
+        result:
+          "Creates a local IFR flight plan; Δ<text> sets scratchpad 1 and +<text> sets scratchpad 2.",
       },
       {
         id: "vfr-data",
         command: "F9 / VFR DATA",
-        example: "F9 N123AB KDEM*RW27 C172 050 Enter",
+        example: "F9 N123AB KDEM*RW27 ΔVFR C172 050 Enter",
         input: "Any focus, then Preview Area",
-        result: "Creates, edits, or deletes a local VFR plan.",
+        result:
+          "Creates, edits, or deletes a local VFR plan; Δ<text> sets scratchpad 1 and +<text> sets scratchpad 2.",
       },
       {
         id: "plan-create",

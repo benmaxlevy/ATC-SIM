@@ -15,7 +15,7 @@
  * `CA_LATERAL_NM` / `CA_VERTICAL_FT`, `datablockAlertTint`);
  * ATPA in-trail pairing (`evaluateAtpa`, `world.alerts.atpa`);
  * nav fix registry (`buildFixRegistry`, `FixRegistry`);
- * nav geometry (`courseDeg`, fly-by radius, loc deviation, GS height); lateral FMS (`applyLateralFms`);
+ * nav geometry (`courseDeg`, fix-to-fix sequencing, loc deviation, GS height); lateral FMS (`applyLateralFms`);
  * vertical FMS (`targetAltitudeFt`, `applyVerticalFms`); missed stub (`applyMissedFms`);
  * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`);
@@ -35,6 +35,9 @@ export type {
   FlightPlan,
   FiledRoute,
   FiledRouteSegment,
+  ClearedRoute,
+  FlightPlanRoute,
+  FlightPlanRouteLifecycle,
   FlightPlanError,
   FlightPlanErrorCode,
   FlightPlanCorrelationError,
@@ -49,7 +52,13 @@ export type {
   FlightPlanStatus,
   FlightType,
 } from "./flightPlan";
-export { FAA_AIRCRAFT_EQUIPMENT_SUFFIXES } from "./flightPlan";
+export {
+  FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
+  createFlightPlanRoute,
+  routeFixIds,
+  synchronizeFlightPlanRoute,
+  transitionFlightPlanRoute,
+} from "./flightPlan";
 export type {
   FiledRouteCatalog,
   FiledRouteError,
@@ -61,6 +70,11 @@ export type {
   FlightPlanDraftError,
   FlightPlanDraftErrorCode,
   FlightPlanDraftResult,
+  FlightPlanRouteTransactionError,
+  FlightPlanRouteTransactionErrorCode,
+  FlightPlanRouteTransactionInput,
+  FlightPlanRouteTransactionLifecycle,
+  FlightPlanRouteTransactionResult,
 } from "./filedRoute";
 export {
   allocateBeaconCode,
@@ -83,7 +97,14 @@ export {
   withAllocatedBeacon,
   updateAircraftSquawk,
 } from "./flightPlan";
-export { parseFiledRoute, resolveFiledRoute, saveFlightPlanDraft } from "./filedRoute";
+export {
+  applyFlightPlanRouteTransaction,
+  cancelFlightPlanRoute,
+  parseFiledRoute,
+  resolveFiledRoute,
+  saveFlightPlanDraft,
+  validateFlightPlanRouteTransaction,
+} from "./filedRoute";
 export {
   TRACON_BOUNDARY_RADIUS_NM,
   createWorld,
@@ -142,31 +163,44 @@ export { magneticToTrueDeg, trueToMagneticDeg } from "./nav/headingFrames";
 export {
   DEG2RAD,
   DIRECT_SEQUENCE_NM,
-  FLYBY_CAP_NM,
-  FLYBY_FLOOR_NM,
-  FLYBY_MIN_TURN_DEG,
   alongTrackNm,
   courseChangeDeg,
   courseDeg,
   distanceNm,
-  flyByStartNm,
-  flyOverSequenceNm,
   latLonToNm,
   nmToLatLon,
   normalizeHeadingDeg,
   turnRadiusNm,
 } from "./nav/geometry";
-export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
+export type {
+  ClearanceRouteSegment,
+  Command,
+  Instruction,
+  LegacyIfrClearanceAccess,
+  ParseStage,
+  TurnDir,
+} from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/types";
+export type {
+  IfrClearanceAccess,
+  IfrClearanceError,
+  IfrClearanceErrorCode,
+  IfrClearanceResult,
+  IfrClearanceWorld,
+} from "./ifrClearance";
+export { applyIfrClearance } from "./ifrClearance";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
 export type {
+  ActiveIfrClearance,
   Aircraft,
   AircraftInit,
+  ClearanceAccess,
   CwtWakeCategory,
   CrossConstraint,
   CrossRestriction,
+  DirectContinuation,
   Intent,
   LateralMode,
   VerticalMode,
@@ -179,6 +213,18 @@ export {
   normalizeFlightPlanAircraftType,
   normalizeCwtWakeCategory,
 } from "./aircraft";
+export type {
+  RouteExecutionAccess,
+  RouteExecutionError,
+  RouteExecutionErrorCode,
+  RouteExecutionResult,
+} from "./fms/routeExecution";
+export {
+  applyActiveRouteToAircraft,
+  executeClearedRoute,
+  startActiveFlightPlanRoute,
+  startFlightPlanRoute,
+} from "./fms/routeExecution";
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,

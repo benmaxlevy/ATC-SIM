@@ -18,6 +18,71 @@ test("shortest heading 270 has no turn word", () => {
   expect(text).not.toMatch(/turn left|turn right/);
 });
 
+test("compact CIFP ILS identifiers read back as ILS", () => {
+  expect(readback([{ type: "CLEARED_APPROACH", approachId: "I26R" }])).toBe(
+    "Delta 123 cleared ILS runway 26R approach",
+  );
+});
+
 test("ambiguous callsign reject", () => {
   expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toMatch(/ambiguous callsign/i);
+});
+
+test("canonical IFR clearance readback preserves every route segment", () => {
+  const text = readback([
+    {
+      type: "IFR_CLEARANCE",
+      limitId: "KATL",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [
+          { type: "DIRECT", fixId: "SWEPT" },
+          { type: "PROCEDURE", procedureId: "SID1", transitionId: "NORTH" },
+        ],
+      },
+    },
+  ]);
+  expect(text).toBe("Delta 123 cleared to KATL via direct SWEPT then SID1 NORTH then direct");
+});
+
+test("IFR route readback keeps zero, one, and three-leg route shapes", () => {
+  const cases: Array<{
+    name: string;
+    access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"];
+    expected: string;
+  }> = [
+    {
+      name: "zero",
+      access: { type: "EXPLICIT_ROUTE", segments: [] },
+      expected: "Delta 123 cleared to KATL via direct",
+    },
+    {
+      name: "one",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [{ type: "DIRECT", fixId: "SWEPT" }],
+      },
+      expected: "Delta 123 cleared to KATL via direct SWEPT then direct",
+    },
+    {
+      name: "three",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [
+          { type: "DIRECT", fixId: "SWEPT" },
+          { type: "DIRECT", fixId: "KIMMY" },
+          { type: "DIRECT", fixId: "BLUFF" },
+        ],
+      },
+      expected:
+        "Delta 123 cleared to KATL via direct SWEPT then direct KIMMY then direct BLUFF then direct",
+    },
+  ];
+
+  for (const item of cases) {
+    expect(
+      readback([{ type: "IFR_CLEARANCE", limitId: "KATL", access: item.access }]),
+      item.name,
+    ).toBe(item.expected);
+  }
 });

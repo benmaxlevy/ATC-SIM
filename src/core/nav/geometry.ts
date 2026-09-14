@@ -42,9 +42,6 @@ export function normalizeHeadingDeg(deg: number): number {
   return ((deg % 360) + 360) % 360;
 }
 
-export const FLYBY_FLOOR_NM = 0.2;
-export const FLYBY_CAP_NM = 4;
-export const FLYBY_MIN_TURN_DEG = 1;
 export const DIRECT_SEQUENCE_NM = 0.3;
 
 export function courseDeg(from: NmPoint, to: NmPoint): number {
@@ -74,23 +71,4 @@ export function turnRadiusNm(tasKt: number, turnRateDegPerS: number = TURN_RATE_
 
 export function courseChangeDeg(fromCourseDeg: number, toCourseDeg: number): number {
   return Math.abs(shortestDeltaDeg(fromCourseDeg, toCourseDeg));
-}
-
-export function flyByStartNm(
-  tasKt: number,
-  courseChangeAbsDeg: number,
-  turnRateDegPerS: number = TURN_RATE_DEG_PER_S,
-): number {
-  const thetaDeg = Math.max(FLYBY_MIN_TURN_DEG, Math.abs(courseChangeAbsDeg));
-  const thetaRad = thetaDeg * DEG2RAD;
-  const d = turnRadiusNm(tasKt, turnRateDegPerS) * Math.tan(thetaRad / 2);
-  if (!Number.isFinite(d) || d < 0) {
-    return FLYBY_FLOOR_NM;
-  }
-  return Math.min(FLYBY_CAP_NM, Math.max(FLYBY_FLOOR_NM, d));
-}
-
-export function flyOverSequenceNm(tasKt: number, dtS: number): number {
-  const slack = (2 * dtS * Math.max(0, tasKt)) / 3600;
-  return Math.max(DIRECT_SEQUENCE_NM, slack);
 }

@@ -147,6 +147,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     let plan: FlightPlan | undefined;
     let targetAcid: string | undefined;
     let operation: "arrival" | "departure" | undefined;
+    let visibleEntries: ReturnType<typeof getVisibleFlightPlanEntries> | undefined;
     if (request.targetAircraftId) {
       plan = flightPlanForAircraft(app.world, request.targetAircraftId);
       const target = app.world.aircraft.find(
@@ -178,9 +179,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         return;
       }
     } else if (request.index !== undefined) {
-      const entry = getVisibleFlightPlanEntries(app.world, scopeView).find(
-        (item) => item.index === request.index,
-      );
+      visibleEntries = getVisibleFlightPlanEntries(app.world, scopeView);
+      const entry = visibleEntries.find((item) => item.index === request.index);
       plan = entry?.planId
         ? app.world.flightPlans.find(
             (item) => item.id === entry.planId && item.status !== "deleted",
@@ -203,11 +203,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       plan?.acid ??
       request.acid ??
       targetAcid ??
-      (request.index !== undefined
-        ? getVisibleFlightPlanEntries(app.world, scopeView).find(
-            (item) => item.index === request.index,
-          )?.callsign
-        : undefined);
+      visibleEntries?.find((item) => item.index === request.index)?.callsign;
     if (!acid) {
       scopeView.preview.rejection = "ILL ACID";
       refreshScopeUi();

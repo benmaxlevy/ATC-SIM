@@ -45,9 +45,24 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 - **Datablocks**:
   - **Full datablocks (FDB)**: a nine-field STARS-like block (Fields 0–8). Field 0 carries alerts and sequence data; Field 1 carries the aircraft identification; Field 2 carries inhibit indicators; Field 3 carries altitude, scratchpad, or exit data; Field 4 carries the owning TCP; Field 5 carries speed and flight data; Fields 6–8 carry conditional coordination, TSAS, and pointout data.
   - **FDB physical layout**: the normal display has three data lines plus an optional Field 0 alert row. Line 1 shows the identification; line 2 shows the active altitude/data, TCP, and traffic-data fields; line 3 shows active coordination data. Values within a field time-share. Empty fields remain blank.
-  - **FDB data status**: live tracks supply identification, altitude, speed, type, requested and assigned altitude, squawk mismatch, ATPA in-trail distance, ownership, and safety alerts. Exit gate/fix, TSAS, duplicate-beacon `DB`, coordination, and pointout values are formatter inputs and remain blank without a corresponding runtime source.
+  - **FDB data status**: live tracks supply identification, observed Mode C altitude, speed, type, requested and assigned altitude, squawk mismatch, ATPA in-trail distance, ownership, and safety alerts. Requested/assigned altitude metadata is plan-backed; exit gate/fix, TSAS, duplicate-beacon `DB`, coordination, and pointout values are formatter inputs and remain blank without a corresponding runtime source.
   - **Limited datablocks (LDB)**: Compact track display for unowned or filtered targets.
   - **Leader lines**: 8 DCB compass positions (`SW`, `S`, `SE`, `W`, `E`, `NW`, `N`, `NE`); L5 remains an internal overlay mode. STARS leader clock directions (`*1`–`*8`), track-specific and fleet-wide leader direction commands (`*L(1-9)` / `*L(1-9)*` / `*L(1-9)U`), and 0–7 length steps (`/<0-7>`, `*LDR <0-7>`), each adding 1/4 in.
+
+Datablock altitude and flight-rules display follows one shared runtime contract:
+
+- IFR is blank in the flight-rules position. The datablock does not display
+  `I`, `IFR`, or raw `VFR`; VFR displays `V`.
+- Requested altitude is sourced only from the associated flight plan and is
+  shown as `R###`. Assigned altitude is sourced only from an active
+  flight-plan adjustment and is shown as `A###`; values are hundreds of feet
+  MSL.
+- Mode C is the observed aircraft altitude, separate from `R###` and `A###`.
+  Spawn altitude and climb/descend intent do not create or alter plan altitude
+  metadata; flight-plan adjustments are the source.
+- When surveillance correlation is lost, the target becomes surveillance-only:
+  an LDB does not retain stale plan-backed `R###` or `A###` data. FDB, PDB, and
+  LDB use the same source semantics, with each mode's normal field visibility.
 - **Target history & prediction**:
   - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `F8` or `*HIST <count>`).
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (`*R`).
@@ -92,6 +107,13 @@ Pressing `Tab` toggles focus between the command line and the radar scope (PPI /
 > Radio commands stay strictly on the command line or PTT audio channel and issue pilot instructions.
 > Scope keys and STARS Preview Area commands stay on the radar display and never issue radio transmissions.
 
+`MVFR` / "maintain VFR" is a radio-only trainer instruction. It sets only an
+aircraft marker for a future VFR-to-IFR pickup path and produces a deterministic
+readback/log entry. It does not change altitude, route, procedure, correlation,
+flight-plan lifecycle, or clearance state. `VFR ON TOP`, SVFR, flight following,
+airspace authorization, and airborne VFR-to-IFR pickup are not accepted by this
+command.
+
 ### Typed command syntax
 
 Spaces between command letters and numeric parameters are optional (e.g. `H 240` or `H240`, `C 50` or `C50`).
@@ -120,6 +142,9 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `EXP ILS<RWY>` | `DAL123 EXP ILS27` | Expect ILS Runway 27 approach |
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
+| **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
+| **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
+| **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA <ROUTE-WINDOW>\|VIA RADAR VECTORS) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA SIITH DIRECT VOR1 ALT 50` | One limit plus exactly one access method. A route window may contain any number of catalog-grounded fixes, navaids, or procedures/transitions; `DIRECT` is optional between elements. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact route grammar is an ATC-SIM trainer extension. |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -142,12 +167,20 @@ route is never activated in the aircraft FMS or used for clearance execution.
 They update the local authoritative flight-plan list and do not make a pilot
 read back or fly the change.
 
+The Flight Plan modal exposes **Assigned altitude (ft)** only when amending an
+active plan. Saving this field changes only `FlightPlan.assignedAltitudeFt`;
+requested altitude remains separate, and aircraft surveillance, Mode C,
+association, intent, kinematics, and route execution do not change. Enter `0`
+to clear assigned altitude. Create and non-active plan forms keep this control
+unavailable; direct invalid submissions retain the core error
+`assigned altitude requires an active flight`.
+
 | Command | Example | Result |
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Abbreviated creation: creates a pending local plan. Accepts an ACID plus beacon/pool selector, TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
-| `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 C172 050` then Enter | Local VFR create/modify. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible associated VFR track applies active-track data. Resend amended exit/intermediate fix with same ACID (`F9 N123AB *FIX` or `DEP*MID*EXIT`). No ARTCC/network exchange. |
+| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
+| `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 ΔVFR C172 050` then Enter | Local VFR create/modify. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible associated VFR track applies active-track data. Resend amended exit/intermediate fix with same ACID (`F9 N123AB *FIX` or `DEP*MID*EXIT`). No ARTCC/network exchange. |
 | `F1 / INIT CNTL` | `F1 UAL1234 2341` then click a target, or `F1` then identity/click | Pending discrete creation remains an INIT CNTL path. Identity association requires a slew/click; Enter-only identity application is invalid. CID is not an identity. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
@@ -159,6 +192,8 @@ Creation and edit examples:
 
 ```text
 UAL1234 2341 AT A B738 Enter
+F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A Enter
+F9 N123AB KDEM*RW27 ΔVFR C172 050 Enter
 *M UAL1234 5252
 *M UAL1234 Δ5252
 *M UAL1234 +WEST
@@ -172,6 +207,10 @@ UAL1234 2341 AT A B738 Enter
 altitude 12,000 feet. `FIXES` is limited to an optional four-character entry
 fix, `*`, an optional four-character exit fix, and optional `*A`, `*P`, or
 `*E`; it is not a full route editor.
+
+For F6 and F9 flight-plan entry, prefix scratchpad 1 with `Δ` and scratchpad 2
+with `+`. In the Preview Area, press the backquote key (the key above Tab) to
+enter `Δ`.
 
 Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
 valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
@@ -193,6 +232,14 @@ full route/SID/STAR amendment remain in the [later implementation backlog](../ph
 
 When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 ATC phraseology:
 
+Beacon assignment follows JO 7110.65BB §5-2-1 and §5-2-7 (R01) with AIM digit
+pronunciation guidance (R03). This trainer accepts only four octal digits or
+`VFR`; `VFR` maps to 1200. The aircraft's assigned transponder code and the
+flight plan's manually edited beacon are separate fields; neither radio
+assignment nor clearance `SQ` edits the plan. The reported squawk remains
+surveillance data until the simulated pilot report arrives. This delayed report
+is a trainer delta, not NAS timing.
+
 | Clearance Type | Spoken Phrase Example |
 |---|---|
 | **Vector / Heading** | *"Delta one twenty-three, fly heading two four zero"* |
@@ -209,8 +256,50 @@ When using Push-to-Talk (PTT), speak clearances using standard FAA JO 7110.65 AT
 | **Approach Clearance** | *"Delta one twenty-three, turn right heading two four zero, maintain two thousand until established on the localizer, cleared ILS runway two seven approach"* |
 | **Intercept Localizer** | *"Delta one twenty-three, fly heading two four zero, intercept Runway two seven localizer"* |
 | **Ident** | *"Delta one twenty-three, squawk ident"* |
+| **Beacon assignment** | *"Delta one twenty-three, squawk four seven two one"* / *"Delta one twenty-three, squawk VFR"* |
+| **Maintain VFR** | *"Delta one twenty-three, maintain VFR"* |
+| **IFR clearance** | *"Delta one twenty-three, cleared to Kahn via direct"* / *"... cleared to KATL via direct"* / *"... cleared to Hartsfield Jackson Atlanta Airport via direct"* / *"... via Siith then direct"* / *"... via Siith, direct VOR1, then Hound"* / *"... via the DEMO ONE arrival, north transition, then Hound"* / *"... as filed"* / *"... via radar vectors"* |
 | **Go Around** | *"Delta one twenty-three, go around, fly published missed approach"* |
 | **Say Heading / Altitude** | *"Delta one twenty-three, say heading"* \| *"Delta one twenty-three, say altitude"* |
+
+IFR-clearance routing is a compact trainer grammar, not NAS-compatible input. It
+requires one clearance limit and one access method. After `VIA`, the parser
+scans an arbitrary-length route window until the next clearance boundary:
+`ALT`/`MAINTAIN`, `CVIA`, `FREQ`/`FREQUENCY`, `SQ`/`SQUAWK`, `CLIMB VIA`,
+`DESCEND VIA`, `CONTACT`, or `EXPECT`. Route elements are catalog-grounded
+fixes or navaids, or a catalog-grounded procedure with an optional valid
+transition. Every fix/navaid must be present in the active catalog. Matching
+tries the canonical id, listed aliases or navaid name, normalized spoken
+aliases, and then a unique Levenshtein distance-one repair; equal candidates
+are not guessed. Deterministic local parsing does not apply distance-two
+repairs. `DIRECT` may precede an element; without it, a fix/navaid is an
+implicit direct segment. A terminal `DIRECT` means direct to the clearance
+limit, and `THEN` is only a separator. Unknown, incomplete, ambiguous,
+concatenated, or airport-name route elements return `PARSE_MISS` and do not
+change intent or clearance state; airports remain valid only as clearance
+limits. These route-window, matcher, and implicit-direct forms are an
+ATC-SIM trainer extension, not a claim of complete FAA phraseology.
+
+Examples: `VIA DIRECT`; `VIA SIITH VOR1 HOUND ALT 50`; `VIA DIRECT SIITH
+DIRECT VOR1`; and `VIA SID1 NORTH TRANSITION HOUND`. The editable filed plan
+is unchanged, and later plan edits do not retarget an issued clearance.
+When the deterministic paths miss, the trainer-only Path C fallback receives
+only the matched route candidates grouped by transcript span; it may select
+one unique best listed candidate per supplied span in route order, including a
+unique distance-two retrieval candidate. This is fallback evidence only: an
+unknown token, unlisted candidate, missing span, tie, or unsupported route
+still returns `PARSE_MISS`. Path C may not invent, concatenate, omit, or reuse
+a candidate from another span. If the evidence cannot form one complete
+route, the result is `PARSE_MISS` and the pilot readback is unable.
+`AS FILED` is accepted only when its limit is
+the filed route's terminal endpoint or the filed destination's catalog airport;
+the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
+`PROCEED DIRECT` remain tactical lateral amendments and never reset a flight
+plan. Catalog airport ICAOs and listed spoken names are valid only in the IFR
+clearance-limit slot; they are not fixes, so `DIRECT KATL` remains a tactical
+direct command and is rejected unless KATL is an actual catalog fix/navaid.
+VFR-to-IFR pickup, holds, release/void, and full route amendments are not
+implemented.
 
 ## Controls & keybindings
 

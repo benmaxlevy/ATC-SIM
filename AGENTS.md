@@ -105,6 +105,19 @@ Hugging Face inference services). Hugging Face is allowed only for one-time
 weight downloads. Chrome Web Speech is optional prototype code, never default
 or required. See `phases/_shared/speech-port.md`.
 
+## Command IR / Path-C synchronization
+
+Any new or changed Command IR instruction or parser grammar is one coherent
+change across the browser and the self-hosted parser. Update the frontend
+schema and deterministic parser, `speech-api`'s instruction type set, prompt,
+GBNF, semantic validator, mock/contract tests, and live eval corpus together.
+Update `phases/_shared/command-ir.md` and `phases/_shared/parse-pipeline.md`
+when the command contract or grounding rules change. Add or update a parity
+guard so a frontend discriminant cannot silently become unsupported in Path C.
+Do not add a cloud inference fallback or unconstrained fuzzy repair; any ASR
+repair must be narrow, transcript-evidence-gated, and tested with invalid
+near-misses.
+
 ## Subagents and swarm protocol
 
 Use only models/subagent capabilities available in this Codex session; do not

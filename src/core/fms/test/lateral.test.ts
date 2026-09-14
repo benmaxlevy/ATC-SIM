@@ -101,7 +101,7 @@ test("AC4 fly-through — H090 after DIRECT does not keep closing NEMAX", () => 
   expect(distanceNm(dal, nemax)).toBeGreaterThan(before);
 });
 
-test("AC5 — DEMO ONE north PROCEDURE fly-bys then vectors", () => {
+test("AC5 — DEMO ONE north PROCEDURE fix sequences then vectors", () => {
   const registry = buildFixRegistry(kdemSource());
   const nemax = registry.require("NEMAX");
   const dal = createAircraft({

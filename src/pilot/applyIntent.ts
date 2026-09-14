@@ -4,7 +4,15 @@
  * Does not run physics; intent takes effect on the next kinematics tick.
  */
 
-import type { Aircraft, Instruction, MissedCatalog, ProcedureJoinCatalog, SessionLog } from "@core";
+import type {
+  Aircraft,
+  DirectContinuation,
+  FlightPlan,
+  Instruction,
+  MissedCatalog,
+  ProcedureJoinCatalog,
+  SessionLog,
+} from "@core";
 import {
   beginMissedApproach,
   joinNamedProcedure,
@@ -16,6 +24,8 @@ import {
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
+/** Trainer delay before a pilot's assigned beacon appears in surveillance. */
+export const SQUAWK_REPORT_DELAY_MS = 1000;
 
 export interface ApplyIntentOpts {
   catalog?: (MissedCatalog & ProcedureJoinCatalog) | null;
@@ -23,6 +33,9 @@ export interface ApplyIntentOpts {
   fixXy?: ((id: string) => { xNm: number; yNm: number } | undefined) | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
+  squawkReportDelayMs?: number;
+  /** Authoritative plan for the aircraft, when one exists. */
+  flightPlan?: Pick<FlightPlan, "routeRecord">;
 }
 
 export function applyIntent(
@@ -84,6 +97,38 @@ function publishedLateralHint(aircraft: Aircraft):
 function shouldKeepPublishedLateral(aircraft: Aircraft): boolean {
   const type = aircraft.intent.lateral?.type;
   return type === "LOC" || type === "LANDING" || type === "INTERCEPT_LOC" || type === "MISSED";
+}
+
+/**
+ * DIRECT is a lateral amendment only.  If the target is still in the active
+ * route, remember the exact remaining route position; otherwise hold the
+ * present heading after the target.  Neither path edits the route record.
+ */
+function directContinuation(
+  aircraft: Aircraft,
+  fixId: string,
+  flightPlan: ApplyIntentOpts["flightPlan"],
+): DirectContinuation {
+  // Tactical DIRECT is lateral-only. When an IFR clearance is active, its
+  // immutable execution snapshot is the route to resume; never consult a
+  // later-edited plan and silently retarget the aircraft.
+  const record = aircraft.activeClearance?.route ?? flightPlan?.routeRecord;
+  if (record?.lifecycle === "active") {
+    const routeFixIds = record.route.segments.flatMap((segment) => segment.fixIds);
+    const minimumIndex = Math.max(0, record.nextIndex);
+    const targetIndex = routeFixIds.findIndex(
+      (routeFixId, index) => index >= minimumIndex && routeFixId.trim().toUpperCase() === fixId,
+    );
+    if (targetIndex >= minimumIndex) {
+      return {
+        type: "RESUME_ROUTE",
+        routeFixIds: [...routeFixIds],
+        index: targetIndex + 1,
+        routeRevision: record.revision,
+      };
+    }
+  }
+  return { type: "PRESENT_HEADING", headingDeg: aircraft.headingDeg };
 }
 
 /**
@@ -164,7 +209,8 @@ function applyStarTransitionLateral(
 /**
  * Analog: JO 7110.65 Climb Via / Descend Via amendments (R01); AIM phraseology
  * (R03). Trainer delta: named transition is catalog JSON, not NAS. Prove the
- * join before mutating VIA or assignedAltitudeFt.
+ * join before mutating VIA; controller altitude provenance belongs to the
+ * associated flight plan, not aircraft intent.
  */
 function applyVia(
   aircraft: Aircraft,
@@ -182,7 +228,6 @@ function applyVia(
       sense === "CLIMB"
         ? { type: "VIA_SID", sidId: normId }
         : { type: "VIA_STAR", starId: normId, sense };
-    aircraft.intent.controllerAssignedAltitudeFt = undefined;
     aircraft.intent.controllerAssignedSpeedKt = undefined;
     return;
   }
@@ -191,7 +236,6 @@ function applyVia(
     sense === "CLIMB"
       ? { type: "VIA_SID", sidId: normId }
       : { type: "VIA_STAR", starId: normId, sense };
-  aircraft.intent.controllerAssignedAltitudeFt = undefined;
   aircraft.intent.controllerAssignedSpeedKt = undefined;
   joinPublishedLateral(aircraft, procedureId, opts, transitionId);
 }
@@ -241,7 +285,6 @@ function applyOne(
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
-      aircraft.intent.controllerAssignedAltitudeFt = instruction.altitudeFt;
       return;
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;
@@ -264,8 +307,30 @@ function applyOne(
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
       return;
+    case "ASSIGN_SQUAWK":
+      aircraft.assignedSquawk = instruction.code;
+      aircraft.pendingReportedSquawk = {
+        code: instruction.code,
+        dueSimMs: simTimeMs + (opts?.squawkReportDelayMs ?? SQUAWK_REPORT_DELAY_MS),
+      };
+      return;
+    case "MAINTAIN_VFR":
+      // Radio-only VFR marker for a future pickup path; no plan, route, or intent mutation.
+      aircraft.maintainVfr = true;
+      return;
+    case "IFR_CLEARANCE":
+      // IFR clearance application is an atomic world transaction, never a
+      // partial intent-only mutation.
+      return;
     case "DIRECT":
-      aircraft.intent.lateral = { type: "DIRECT", fixId: instruction.fixId.trim().toUpperCase() };
+      {
+        const fixId = instruction.fixId.trim().toUpperCase();
+        aircraft.intent.lateral = {
+          type: "DIRECT",
+          fixId,
+          continuation: directContinuation(aircraft, fixId, opts?.flightPlan),
+        };
+      }
       return;
     case "DESCEND_VIA":
       applyVia(aircraft, instruction.procedureId, "DESCEND", opts, instruction.transitionId);

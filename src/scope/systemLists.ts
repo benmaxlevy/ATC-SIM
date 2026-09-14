@@ -514,11 +514,11 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
   }[] = [];
 
   const seenCallsigns = new Set<string>();
+  const plansByAircraftId = new Map(
+    world.aircraft.map((aircraft) => [aircraft.id, flightPlanForAircraft(world, aircraft.id)]),
+  );
   const correlatedPlanIds = new Set(
-    world.aircraft.flatMap((aircraft) => {
-      const plan = flightPlanForAircraft(world, aircraft.id);
-      return plan ? [plan.id] : [];
-    }),
+    [...plansByAircraftId.values()].flatMap((plan) => (plan ? [plan.id] : [])),
   );
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
@@ -567,7 +567,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
       if (isVfr(ac)) continue;
       // A target with a unique derived plan is already represented by that
       // plan's operational projection, never as a second FL entry.
-      if (flightPlanForAircraft(world, ac.id)) continue;
+      if (plansByAircraftId.get(ac.id)) continue;
 
       const td = view?.tracks?.get(ac.id);
       if (td) {
@@ -992,12 +992,21 @@ export function airportCodesMatch(a?: string, b?: string): boolean {
 }
 
 export function getAircraftDestination(world: World, ac: Aircraft): string | undefined {
-  const fp = flightPlanForAircraft(world, ac.id);
-  const fpExtra = fp as Record<string, unknown> | undefined;
+  const resolvedFp = flightPlanForAircraft(world, ac.id);
+  const legacyFp = ac.flightPlan ?? ac.fp;
+  const resolvedFpExtra = resolvedFp as Record<string, unknown> | undefined;
+  const legacyFpExtra = legacyFp as Record<string, unknown> | undefined;
   const raw =
-    fp?.airportId ??
-    (typeof fpExtra?.dest === "string" ? fpExtra.dest : undefined) ??
-    (typeof fpExtra?.arrivalAirport === "string" ? fpExtra.arrivalAirport : undefined) ??
+    resolvedFp?.airportId ??
+    (typeof resolvedFpExtra?.dest === "string" ? resolvedFpExtra.dest : undefined) ??
+    (typeof resolvedFpExtra?.arrivalAirport === "string"
+      ? resolvedFpExtra.arrivalAirport
+      : undefined) ??
+    legacyFp?.destination ??
+    (typeof legacyFpExtra?.dest === "string" ? legacyFpExtra.dest : undefined) ??
+    (typeof legacyFpExtra?.arrivalAirport === "string"
+      ? legacyFpExtra.arrivalAirport
+      : undefined) ??
     ac.destinationAirport ??
     ac.destination;
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim().toUpperCase() : undefined;
@@ -1319,6 +1328,7 @@ export function isVfrAircraft(
   }
   if (
     ac.flightRules === "VFR" ||
+    ac.flightPlan?.rules === "VFR" ||
     (world && flightPlanForAircraft(world, ac.id)?.flightRules === "VFR")
   ) {
     return true;

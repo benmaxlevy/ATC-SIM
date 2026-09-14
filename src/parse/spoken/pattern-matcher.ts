@@ -15,6 +15,7 @@ import {
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
+  squawkDigit,
 } from "./numbers";
 import {
   groundApproachToCatalog,
@@ -22,10 +23,13 @@ import {
   groundProcedureToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogFixInput,
   type CatalogApproach,
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
+import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -157,7 +161,8 @@ function parseFlightLevel(
 function parseFixIdFrom(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
+  protectedIds?: ReadonlySet<string>,
 ): { fixId: string; next: number } | null {
   let j = i;
   const phonetics: string[] = [];
@@ -167,11 +172,15 @@ function parseFixIdFrom(
   }
   if (phonetics.length >= 2) {
     const id = phonetics.join("");
+    if (protectedIds?.has(id)) return { fixId: id, next: j };
     return { fixId: groundFixToCatalog(id, catalog) ?? id, next: j };
   }
 
   for (let n = Math.min(3, tokens.length - i); n >= 1; n -= 1) {
     const slice = tokens.slice(i, i + n).join("");
+    if (protectedIds?.has(slice.toUpperCase())) {
+      return { fixId: slice.toUpperCase(), next: i + n };
+    }
     const hit = groundFixToCatalog(slice, catalog);
     if (hit) {
       return { fixId: hit, next: i + n };
@@ -180,6 +189,9 @@ function parseFixIdFrom(
 
   const tok = tokens[i];
   if (tok !== undefined && !RESERVED_SPOKEN.has(tok)) {
+    if (protectedIds?.has(tok.toUpperCase())) {
+      return { fixId: tok.toUpperCase(), next: i + 1 };
+    }
     return { fixId: groundFixToCatalog(tok, catalog) ?? tok.toUpperCase(), next: i + 1 };
   }
 
@@ -234,7 +246,7 @@ function matchCatalogApproach(
 function matchCross(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): { instruction: Instruction; next: number } | null {
   if (tokens[i] !== "cross") {
     return null;
@@ -689,7 +701,7 @@ function attachSpokenStarTransition(
 function matchDirect(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): { instruction: Instruction; next: number } | null {
   let j = i;
   if (
@@ -720,6 +732,112 @@ function matchDirect(
   };
 }
 
+function matchIfrClearance(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+  procedures: readonly CatalogProcedure[],
+  protectedIds?: ReadonlySet<string>,
+): { instruction: Instruction; next: number } | null {
+  if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
+    return null;
+  }
+  let j = i + 2;
+  const limit = parseFixIdFrom(tokens, j, catalog, protectedIds);
+  if (!limit) return null;
+  j = limit.next;
+  if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
+  let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
+  if (tokens[j] === "asfiled") {
+    access = { type: "AS_FILED" };
+    j += 1;
+  } else if (tokens[j] === "as" && tokens[j + 1] === "filed") {
+    access = { type: "AS_FILED" };
+    j += 2;
+  } else if (tokens[j] === "via") {
+    j += 1;
+    if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
+      access = { type: "RADAR_VECTORS" };
+      j += 2;
+    } else {
+      const route = scanIfrClearanceRouteWindow(tokens, j, {
+        fixes: catalog,
+        procedures,
+      });
+      if (!route) return null;
+      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
+      j = route.nextIndex;
+    }
+  } else {
+    return null;
+  }
+  const optional: Pick<
+    Extract<Instruction, { type: "IFR_CLEARANCE" }>,
+    "altitudeFt" | "climbVia" | "frequency" | "squawk"
+  > = {};
+  const order = newIfrClearanceFieldOrder();
+  while (j < tokens.length) {
+    const field = tokens[j];
+    if (!field) return null;
+    const fieldKind = acceptIfrClearanceField(order, field);
+    if (!fieldKind) return null;
+    if (fieldKind === "CVIA") {
+      optional.climbVia = true;
+      j += 1;
+    } else if (fieldKind === "ALT") {
+      j += 1;
+      if (tokens[j] === "maintain") j += 1;
+      const alt = parseAltitudeFt(tokens, j);
+      if (!alt) return null;
+      optional.altitudeFt = alt.value < 1000 ? alt.value * 100 : alt.value;
+      j = alt.next;
+    } else if (fieldKind === "FREQ") {
+      j += 1;
+      const whole = tokens[j];
+      if (whole && /^\d{3}$/.test(whole)) {
+        let value = whole;
+        j += 1;
+        if (tokens[j] === "point") {
+          const fraction = tokens[j + 1];
+          if (!fraction || !/^\d{1,3}$/.test(fraction)) return null;
+          value += `.${fraction}`;
+          j += 2;
+        }
+        optional.frequency = value;
+      } else {
+        // Frequencies are decimal, unlike Mode 3/A squawk codes.
+        const d1 = singleDigit(tokens[j]);
+        const d2 = singleDigit(tokens[j + 1]);
+        const d3 = singleDigit(tokens[j + 2]);
+        if (d1 === null || d2 === null || d3 === null) return null;
+        optional.frequency = `${d1}${d2}${d3}`;
+        j += 3;
+        if (tokens[j] === "point") {
+          const fraction = singleDigit(tokens[j + 1]);
+          if (fraction === null) return null;
+          optional.frequency += `.${fraction}`;
+          j += 2;
+        }
+      }
+    } else if (fieldKind === "SQ") {
+      const digits: number[] = [];
+      for (let n = 0; n < 4; n += 1) {
+        const digit = squawkDigit(tokens[j + n + 1]);
+        if (digit === null) return null;
+        digits.push(digit);
+      }
+      optional.squawk = digits.join("");
+      j += 5;
+    } else {
+      return null;
+    }
+  }
+  return {
+    instruction: { type: "IFR_CLEARANCE", limitId: limit.fixId, access, ...optional },
+    next: j,
+  };
+}
+
 function matchPresentHeading(
   tokens: readonly string[],
   i: number,
@@ -735,6 +853,21 @@ function matchPresentHeading(
     return { instruction: { type: "PRESENT_HEADING" }, next: i + 2 };
   }
   return null;
+}
+
+function matchMaintainVfr(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "maintain" || tokens[i + 1] !== "vfr") {
+    return null;
+  }
+  // Keep the exact command closed: "VFR ON TOP" must not become MAINTAIN_VFR.
+  const next = tokens[i + 2];
+  if (next !== undefined && next !== "and" && next !== "then" && !COMMAND_TRIGGERS.has(next)) {
+    return null;
+  }
+  return { instruction: { type: "MAINTAIN_VFR" }, next: i + 2 };
 }
 
 function matchTurnDegrees(
@@ -1062,6 +1195,33 @@ function matchIdent(
   return null;
 }
 
+function matchSquawk(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "squawk") {
+    return null;
+  }
+  if (tokens[i + 1] === "vfr") {
+    return {
+      instruction: { type: "ASSIGN_SQUAWK", code: "1200", source: "VFR" },
+      next: i + 2,
+    };
+  }
+  const digits: number[] = [];
+  for (let offset = 1; offset <= 4; offset += 1) {
+    const digit = squawkDigit(tokens[i + offset]);
+    if (digit === null) {
+      return null;
+    }
+    digits.push(digit);
+  }
+  return {
+    instruction: { type: "ASSIGN_SQUAWK", code: digits.join(""), source: "DISCRETE" },
+    next: i + 5,
+  };
+}
+
 function matchSay(
   tokens: readonly string[],
   i: number,
@@ -1081,9 +1241,10 @@ export function matchSpokenPatterns(
   normalized: string,
   selectedCallsign: string | null | undefined,
   sourceText: string,
-  catalogFixes?: readonly string[],
+  catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   catalogApproaches?: readonly CatalogApproach[],
+  clearanceLimitIds?: ReadonlySet<string>,
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1113,12 +1274,15 @@ export function matchSpokenPatterns(
       matchGoAround(tokens, i) ??
       matchVia(tokens, i, procedures) ??
       matchJoinProcedure(tokens, i, procedures) ??
+      matchIfrClearance(tokens, i, catalog, procedures, clearanceLimitIds) ??
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
+      matchMaintainVfr(tokens, i) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??
       matchSpeed(tokens, i) ??
+      matchSquawk(tokens, i) ??
       matchIdent(tokens, i) ??
       matchSay(tokens, i);
 

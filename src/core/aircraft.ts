@@ -1,8 +1,22 @@
-import type { TurnDir } from "./command/types";
+import type { IfrClearanceAccess, TurnDir } from "./command/types";
+import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
 
 /** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
 export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
+
+export type ClearanceAccess = IfrClearanceAccess;
+
+/** Operational clearance state. It is deliberately not a FlightPlan field. */
+export interface ActiveIfrClearance {
+  /** Deep-owned route snapshot; later plan edits cannot change this route. */
+  route: FlightPlanRoute;
+  limitId: string;
+  access: ClearanceAccess;
+  frequency?: string;
+  climbVia?: boolean;
+  issuedAtSimMs: number;
+}
 
 const CWT_WAKE_CATEGORIES = new Set<CwtWakeCategory>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
 
@@ -33,7 +47,20 @@ export function normalizeCwtWakeCategory(value: unknown): CwtWakeCategory | unde
  */
 export type LateralMode =
   | { type: "HEADING"; headingDeg: number }
-  | { type: "DIRECT"; fixId: string }
+  | {
+      type: "DIRECT";
+      fixId: string;
+      /** Lateral-only continuation after the direct target sequences. */
+      continuation?: DirectContinuation;
+    }
+  /** Active clearance is waiting for a controller vector; it must not turn itself. */
+  | {
+      type: "VECTOR_PENDING";
+      routeFixIds: readonly string[];
+      routeRevision: number;
+      /** Present heading captured when radar-vector access starts. */
+      holdHeadingDeg: number;
+    }
   | {
       type: "PROCEDURE";
       starId?: string;
@@ -45,6 +72,19 @@ export type LateralMode =
   | { type: "LOC"; approachId: string }
   | { type: "MISSED"; approachId: string }
   | { type: "LANDING"; approachId: string };
+
+/**
+ * Result of a lateral DIRECT amendment.  The route is copied into the
+ * continuation so a later plan edit cannot silently invent a rejoin.
+ */
+export type DirectContinuation =
+  | {
+      type: "RESUME_ROUTE";
+      routeFixIds: readonly string[];
+      index: number;
+      routeRevision: number;
+    }
+  | { type: "PRESENT_HEADING"; headingDeg: number };
 
 /**
  * Phase 4 vertical FMS. MSAW inhibit keys on `GS` inside FAF.
@@ -141,6 +181,16 @@ export interface Aircraft {
   assignedSquawk?: string;
   /** Reported squawk code when tracking squawk mismatch. */
   reportedSquawk?: string;
+  /** Pending pilot response to a controller squawk assignment. */
+  pendingReportedSquawk?: { code: string; dueSimMs: number };
+  /** Radio-only VFR instruction marker; does not create or mutate a flight plan. */
+  maintainVfr?: boolean;
+  /** Latest accepted trainer IFR clearance limit/access projection. */
+  clearanceLimit?: string;
+  clearanceAccess?: ClearanceAccess;
+  clearanceFrequency?: string;
+  /** Latest issued IFR clearance, independent of editable flight-plan state. */
+  activeClearance?: ActiveIfrClearance;
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -187,6 +237,13 @@ export interface AircraftInit {
   requestedAltitudeFt?: number;
   assignedSquawk?: string;
   reportedSquawk?: string;
+  pendingReportedSquawk?: { code: string; dueSimMs: number };
+  /** Seed the radio-only MAINTAIN VFR marker for authored/test traffic. */
+  maintainVfr?: boolean;
+  clearanceLimit?: string;
+  clearanceAccess?: ClearanceAccess;
+  clearanceFrequency?: string;
+  activeClearance?: ActiveIfrClearance;
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -279,6 +336,12 @@ export function createAircraft(init: AircraftInit): Aircraft {
       : {}),
     ...(init.assignedSquawk ? { assignedSquawk: init.assignedSquawk } : {}),
     ...(init.reportedSquawk ? { reportedSquawk: init.reportedSquawk } : {}),
+    ...(init.pendingReportedSquawk ? { pendingReportedSquawk: init.pendingReportedSquawk } : {}),
+    maintainVfr: init.maintainVfr ?? false,
+    ...(init.clearanceLimit ? { clearanceLimit: init.clearanceLimit.toUpperCase() } : {}),
+    ...(init.clearanceAccess ? { clearanceAccess: init.clearanceAccess } : {}),
+    ...(init.clearanceFrequency ? { clearanceFrequency: init.clearanceFrequency } : {}),
+    ...(init.activeClearance ? { activeClearance: init.activeClearance } : {}),
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),
