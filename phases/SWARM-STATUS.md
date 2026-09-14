@@ -1797,3 +1797,30 @@ noted but not changed.
 **Manual leftover:** Chrome walkthrough of active-plan edit, `A###` display,
 `0` clearing, and disabled create/non-active controls was not run. No push
 performed.
+
+## SIXTY-NINTH SWARM COMPLETE — arbitrary IFR route chains (T02-189–T02-192)
+
+Completed sequentially on `feature/clearances` with isolated workers and
+captain squash merges. The prior bad `8080149` commit remains reverted by
+`6766512`. T02-189 adds canonical ordered route segments; T02-190 scans an
+arbitrary `VIA` route window with optional `DIRECT`; T02-191 adds constrained
+Path C grounding and rejects tactical-direct, concatenated-ID, and incomplete
+route fallbacks; T02-192 adds lifecycle acceptance coverage, ordered readback,
+Help/docs, and airport-limit Path C context.
+
+Captain commits: `40abb7c`, `41701db`, `3c3dc81`, `64f53e3`, `5508c72`,
+`d18fe8c`. Final `npm run ci`: **208 files passed, 2040 passed, 3 skipped,
+0 failures**. Speech API mock gate: **77 passed**.
+
+Manual gates found no in-scope FAIL. T02-189 and T02-192 passed; T02-190's
+coverage concern was addressed by its hardening pass; T02-191's incomplete-
+route concern was fixed in `5508c72` and then passed independent review.
+Manual references were supplied STARS manual §§5.5.5 and 5.6.17, pp. 5-105,
+5-108–110, 5-167, and 5-171–173. Route-window chaining, implicit direct,
+ordered readback, and constrained Path C are documented ATC-SIM trainer
+deltas, not claims of full STARS/NAS compatibility.
+
+**Manual leftover:** none for the approved scope. No later phase started; no
+push performed.
+
+**PHASE EXIT GREEN**
