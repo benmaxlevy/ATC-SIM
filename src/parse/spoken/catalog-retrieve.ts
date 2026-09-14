@@ -18,7 +18,7 @@
  * Distance 2 is Path C salvage, not snap. Lowering the floor would invent ids.
  */
 
-import { rankFixCandidates } from "./catalog-ground";
+import { rankFixCandidates, type CatalogFixInput } from "./catalog-ground";
 
 export const MAX_RETRIEVE_CANDIDATES = 16;
 
@@ -34,7 +34,7 @@ export interface RetrieveHit {
  */
 export function retrieveFix(
   token: string | null | undefined,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: { limit?: number },
 ): RetrieveHit[] {
   const limit = opts?.limit ?? MAX_RETRIEVE_CANDIDATES;

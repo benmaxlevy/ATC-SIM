@@ -3,6 +3,7 @@ import { vi } from "vitest";
 import { parseCommand, parseRadioText } from "@parse";
 import type { ParsePathCFn } from "@parse";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
+import { catalogFixEntriesFromCatalog } from "../spoken/catalog-ground";
 
 const fixes = ["KAHN", "SIITH", "VOR1"];
 const airports = [
@@ -101,6 +102,68 @@ test("tactical direct and IFR route use the same noisy fix grounding", async () 
       },
     ],
   });
+});
+
+test("navaid ident and published name use the same tactical and route vocabulary", async () => {
+  const vocabulary = [
+    { id: "KAHN", kind: "FIX" as const },
+    { id: "AHN", kind: "NAVAID" as const, aliases: ["Athens"] },
+    { id: "SWEPT", kind: "FIX" as const },
+  ];
+  const direct = await parseCommand("DAL123 proceed direct Athens", {
+    source: "voice",
+    fixes: vocabulary,
+    pathC: false,
+  });
+  const route = await parseCommand("DAL123 cleared to KATL via Athens SWEPT", {
+    source: "voice",
+    fixes: vocabulary,
+    airports,
+    pathC: false,
+  });
+
+  expect(direct).toMatchObject({
+    ok: true,
+    instructions: [{ type: "DIRECT", fixId: "AHN" }],
+  });
+  expect(route).toMatchObject({
+    ok: true,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "AHN" },
+            { type: "DIRECT", fixId: "SWEPT" },
+          ],
+        },
+      },
+    ],
+  });
+});
+
+test("catalog airport is a clearance limit only, never a route candidate", async () => {
+  const vocabulary = catalogFixEntriesFromCatalog({
+    airportId: "KATL",
+    navaids: [{ id: "AHN", name: "Athens" }],
+    fixes: [{ id: "SWEPT" }],
+  });
+  const direct = await parseCommand("DAL123 proceed direct KATL", {
+    source: "voice",
+    fixes: vocabulary,
+    airports,
+    pathC: false,
+  });
+  const route = await parseCommand("DAL123 cleared to KAHN via KATL", {
+    source: "voice",
+    fixes: [...vocabulary, { id: "KAHN", kind: "FIX" as const }],
+    airports,
+    pathC: false,
+  });
+
+  expect(direct).toMatchObject({ ok: false, error: "PARSE_MISS" });
+  expect(route).toMatchObject({ ok: false, error: "PARSE_MISS" });
 });
 
 test("airport ICAO and listed spoken alias ground only the IFR clearance limit", async () => {

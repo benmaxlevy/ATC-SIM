@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
 import { rankFixCandidates, retrieveFix } from "@parse";
-import { groundFixPhraseToCatalog, groundFixToCatalog } from "../spoken/catalog-ground";
+import {
+  catalogFixEntriesFromCatalog,
+  groundFixPhraseToCatalog,
+  groundFixToCatalog,
+  sanitizeCatalogFixEntries,
+} from "../spoken/catalog-ground";
 
 test("ranked candidates expose the shared deterministic match tiers", () => {
   expect(rankFixCandidates("FIX1", ["FIX1", "FIX2"])[0]).toMatchObject({
@@ -52,4 +57,49 @@ test("route grounding preserves token boundaries while scalar grounding stays co
   expect(groundFixToCatalog("AB CD", ["ABCD"])).toBe("ABCD");
   expect(groundFixPhraseToCatalog(["AB", "CD"], ["ABCD"])).toBeNull();
   expect(groundFixPhraseToCatalog(["SEE", "MAX"], ["SEMAX"])).toBe("SEMAX");
+});
+
+test("structured entries preserve canonical ids and navaid aliases", () => {
+  const entries = sanitizeCatalogFixEntries([
+    "fix1",
+    { id: "ahn", kind: "NAVAID", aliases: ["Athens"] },
+  ]);
+
+  expect(entries).toEqual([
+    { id: "FIX1", kind: "FIX" },
+    { id: "AHN", kind: "NAVAID", aliases: ["Athens"] },
+  ]);
+  expect(groundFixToCatalog("ATHENS", entries)).toBe("AHN");
+  expect(rankFixCandidates("ATHENS", entries)[0]).toMatchObject({
+    id: "AHN",
+    kind: "NAVAID",
+    score: 0.9,
+  });
+});
+
+test("duplicate structured aliases remain ambiguous", () => {
+  const entries = [
+    { id: "AHN", kind: "NAVAID" as const, aliases: ["Athens"] },
+    { id: "ATHX", kind: "FIX" as const, aliases: ["Athens"] },
+  ];
+
+  expect(groundFixToCatalog("ATHENS", entries)).toBeNull();
+  expect(groundFixPhraseToCatalog(["ATHENS"], entries)).toBeNull();
+});
+
+test("catalog vocabulary keeps navaids and fixes, excludes the airport, and preserves aliases", () => {
+  const entries = catalogFixEntriesFromCatalog({
+    airportId: "KATL",
+    navaids: [
+      { id: "KATL", name: "Atlanta International" },
+      { id: "AHN", name: "Athens" },
+    ],
+    fixes: [{ id: "SWEPT" }],
+  });
+
+  expect(entries).toEqual([
+    { id: "AHN", kind: "NAVAID", aliases: ["Athens"] },
+    { id: "SWEPT", kind: "FIX" },
+  ]);
+  expect(entries.some((entry) => entry.id === "KATL")).toBe(false);
 });

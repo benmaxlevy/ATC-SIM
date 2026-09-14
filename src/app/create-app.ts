@@ -2,9 +2,11 @@ import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
 import {
   approachesFromCatalog,
+  catalogFixEntriesFromCatalog,
   parseCommand,
   proceduresFromCatalog,
-  type PathCRouteCandidateInput,
+  sanitizeCatalogFixEntries,
+  type CatalogFixEntry,
 } from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
@@ -85,6 +87,13 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
+function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {
+  if (world.catalog) {
+    return catalogFixEntriesFromCatalog(world.catalog);
+  }
+  return sanitizeCatalogFixEntries(world.fixRegistry ? [...world.fixRegistry.ids()] : []);
+}
+
 function logVoiceReject(log: SessionLog, world: World, event: VoiceStatusEvent): void {
   if (!shouldLogVoiceReject(event.code)) {
     return;
@@ -154,17 +163,8 @@ export function createApp(deps: AppDeps): AppHandles {
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
-      getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
-      getCatalogRouteCandidates: (): PathCRouteCandidateInput[] => [
-        ...(world.catalog?.navaids ?? []).map((item) => ({
-          id: item.id,
-          kind: "NAVAID" as const,
-        })),
-        ...(world.catalog?.fixes ?? []).map((item) => ({
-          id: item.id,
-          kind: "FIX" as const,
-        })),
-      ],
+      getCatalogFixIds: () => catalogFixEntriesFromWorld(world),
+      getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),

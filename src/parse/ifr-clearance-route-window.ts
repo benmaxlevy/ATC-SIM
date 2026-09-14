@@ -4,6 +4,7 @@ import {
   groundFixPhraseToCatalog,
   matchSpokenStarTransition,
   sanitizeCatalogProcedures,
+  type CatalogFixInput,
   type CatalogProcedure,
 } from "./spoken/catalog-ground";
 import { isFixIdToken } from "./tokens";
@@ -41,7 +42,7 @@ export function routeWindowBounds(
 }
 
 export interface IfrClearanceRouteWindowOptions {
-  fixes?: readonly string[];
+  fixes?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
 }
 
@@ -68,7 +69,7 @@ function isControlWord(token: string | undefined): boolean {
 function groundedFixMatches(
   tokens: readonly string[],
   index: number,
-  fixes: readonly string[],
+  fixes: readonly CatalogFixInput[],
 ): Array<{ id: string; next: number }> {
   const out: Array<{ id: string; next: number }> = [];
   const seen = new Set<string>();

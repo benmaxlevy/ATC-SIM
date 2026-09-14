@@ -87,8 +87,21 @@ export interface World {
     /** Separate clearance-endpoint geometry; never registered as a tactical fix. */
     airportEndpoint?: { xNm: number; yNm: number };
     magVarDeg?: number;
-    navaids: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
-    fixes: ReadonlyArray<{ id: string; xNm?: number; yNm?: number; kind?: string }>;
+    navaids: ReadonlyArray<{
+      id: string;
+      name?: string;
+      aliases?: readonly string[];
+      xNm?: number;
+      yNm?: number;
+      kind?: string;
+    }>;
+    fixes: ReadonlyArray<{
+      id: string;
+      aliases?: readonly string[];
+      xNm?: number;
+      yNm?: number;
+      kind?: string;
+    }>;
     stars: ReadonlyArray<CatalogStar>;
     fieldElevFt?: number;
     approaches: ReadonlyArray<{

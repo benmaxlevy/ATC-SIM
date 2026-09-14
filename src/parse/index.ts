@@ -19,12 +19,20 @@ export { normalizeSpoken } from "./spoken/normalizer";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";
 export {
   approachesFromCatalog,
+  catalogFixAliasesForEntry,
+  catalogFixEntriesFromCatalog,
   rankFixCandidates,
   proceduresFromCatalog,
+  sanitizeCatalogFixEntries,
   sanitizeFixIds,
 } from "./spoken/catalog-ground";
 export type {
   CatalogApproach,
+  CatalogFixEntry,
+  CatalogFixInput,
+  CatalogFixKind,
+  CatalogFixSource,
+  CatalogFixSourceCatalog,
   CatalogFixMatchMethod,
   CatalogFixMatchTier,
   CatalogProcedure,

@@ -32,11 +32,13 @@ import {
   catalogFixAliases,
   catalogProcedureAliases,
   compactProcedureKey,
+  catalogFixAliasesForEntry,
+  sanitizeCatalogFixEntries,
   sanitizeCatalogApproaches,
   sanitizeCatalogProcedures,
-  sanitizeFixIds,
   type CatalogApproach,
   type CatalogAirport,
+  type CatalogFixInput,
   type CatalogProcedure,
   type CatalogStarTransitionVocab,
 } from "./spoken/catalog-ground";
@@ -63,10 +65,10 @@ export interface ParseCommandOpts {
   /** Live ICAO roster for Path C prompt grounding. Parse stays World-free. */
   callsigns?: readonly string[];
   /**
-   * Facility catalog ids (fixes + navaids) for DIRECT/CROSS snap and Path C
-   * `fixes=` prompt grounding. Not kinematics. Parse stays World-free.
+   * Facility fix/navaid vocabulary for DIRECT/CROSS snap and Path C `fixes=`
+   * prompt grounding. Not kinematics. Parse stays World-free.
    */
-  fixes?: readonly string[];
+  fixes?: readonly CatalogFixInput[];
   /** Optional typed fix/navaid catalog projection for route-window Path C. */
   routeCandidates?: readonly PathCRouteCandidateInput[];
   /**
@@ -173,7 +175,7 @@ function rewriteIfrAirportLimit(normalized: string, airports: readonly CatalogAi
 function localIfrClearanceSyntaxIsValid(
   normalized: string,
   selected: string | null,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
 ): boolean {
   const typed = attachCallsign(
@@ -266,7 +268,10 @@ function identifierSlotTokens(normalized: string): string[] {
   return out;
 }
 
-function mergeRetrievedFixes(tokens: readonly string[], catalog: readonly string[]): string[] {
+function mergeRetrievedFixes(
+  tokens: readonly string[],
+  catalog: readonly CatalogFixInput[],
+): string[] {
   const best = new Map<string, number>();
   for (const token of tokens) {
     for (const hit of retrieveFix(token, catalog, { limit: MAX_PATH_C_FIXES })) {
@@ -562,7 +567,7 @@ function cloneApproaches(list: readonly CatalogApproach[]): CatalogApproach[] {
  * `opts.fixes.slice(0, 64)` file-order padding.
  */
 function pathCFixIds(
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   queryTokens: readonly string[],
   retrieved: readonly string[],
 ): string[] {
@@ -571,7 +576,7 @@ function pathCFixIds(
   }
   if (retrieved.length > 0) {
     if (catalog.length <= MAX_PATH_C_FIXES) {
-      return [...catalog];
+      return sanitizeCatalogFixEntries(catalog).map((entry) => entry.id);
     }
     return [...retrieved];
   }
@@ -579,7 +584,7 @@ function pathCFixIds(
     return [];
   }
   if (catalog.length <= MAX_PATH_C_FIXES) {
-    return [...catalog];
+    return sanitizeCatalogFixEntries(catalog).map((entry) => entry.id);
   }
   return [];
 }
@@ -631,6 +636,16 @@ function routeAliasList(id: string, aliases: readonly string[] = []): string[] {
   return [
     ...new Set(
       [id, ...catalogFixAliases(id), ...aliases].map((value) => value.trim()).filter(Boolean),
+    ),
+  ];
+}
+
+function routeFixAliasList(entry: CatalogFixInput): string[] {
+  return [
+    ...new Set(
+      catalogFixAliasesForEntry(entry)
+        .map((value) => value.trim())
+        .filter(Boolean),
     ),
   ];
 }
@@ -695,7 +710,7 @@ function procedureRouteCandidate(
 
 function routeWindowContext(
   normalized: string,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   routeCandidates: readonly PathCRouteCandidateInput[],
   procedures: readonly CatalogProcedure[],
   airports: readonly CatalogAirport[],
@@ -712,21 +727,18 @@ function routeWindowContext(
   if (viaIndex < 0) return null;
   const bounds = routeWindowBounds(tokens, viaIndex + 1);
   if (bounds === null) return null;
-  const inputs =
-    routeCandidates.length > 0
-      ? routeCandidates
-      : catalog.map((id) => ({ id, kind: "FIX" as const }));
+  const inputs = routeCandidates.length > 0 ? routeCandidates : catalog;
   const candidates: PathCRouteCandidate[] = [];
   const seen = new Set<string>();
   const airportIds = new Set(airports.map((airport) => airport.icao));
   for (const input of inputs) {
-    const id = sanitizeFixIds([input.id])[0];
-    if (!id || airportIds.has(id) || seen.has(id)) continue;
-    const aliases = routeAliasList(id, "aliases" in input ? (input.aliases ?? []) : []);
+    const entry = sanitizeCatalogFixEntries([input])[0];
+    if (!entry || airportIds.has(entry.id) || seen.has(entry.id)) continue;
+    const aliases = routeFixAliasList(entry);
     const spans = tokenSpans(tokens, bounds.startIndex, bounds.endIndex, aliases);
     if (spans.length === 0) continue;
-    seen.add(id);
-    candidates.push({ id, kind: input.kind, aliases, spans });
+    seen.add(entry.id);
+    candidates.push({ id: entry.id, kind: entry.kind, aliases, spans });
   }
   const procedureRows = procedures
     .map((procedure) =>
@@ -747,7 +759,7 @@ function routeWindowContext(
 
 function clearanceLimitCandidates(
   normalized: string,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   routeCandidates: readonly PathCRouteCandidateInput[],
   airports: readonly CatalogAirport[],
 ): { limits: PathCRouteCandidate[]; airportMatches: CatalogAirport[] } {
@@ -763,14 +775,19 @@ function clearanceLimitCandidates(
   const limitEnd = viaIndex < 0 ? tokens.length : viaIndex;
   const spans = (aliases: readonly string[]) =>
     tokenSpans(tokens, clearanceStart + 2, limitEnd, aliases);
-  const inputs = [...routeCandidates, ...catalog.map((id) => ({ id, kind: "FIX" as const }))];
+  const inputs = [...routeCandidates, ...catalog];
   const limits: PathCRouteCandidate[] = [];
+  const airportIds = new Set(airports.map((airport) => airport.icao));
+  const seen = new Set<string>();
   for (const input of inputs) {
-    const id = sanitizeFixIds([input.id])[0];
-    if (!id) continue;
-    const aliases = routeAliasList(id, "aliases" in input ? (input.aliases ?? []) : []);
+    const entry = sanitizeCatalogFixEntries([input])[0];
+    if (!entry || airportIds.has(entry.id) || seen.has(entry.id)) continue;
+    const aliases = routeFixAliasList(entry);
     const evidence = spans(aliases);
-    if (evidence.length > 0) limits.push({ id, kind: input.kind, aliases, spans: evidence });
+    if (evidence.length > 0) {
+      seen.add(entry.id);
+      limits.push({ id: entry.id, kind: entry.kind, aliases, spans: evidence });
+    }
   }
   const airportMatches = airports.filter(
     (airport) => spans([airport.icao, airport.name, ...(airport.aliases ?? [])]).length > 0,
@@ -781,7 +798,7 @@ function clearanceLimitCandidates(
 function pathCContext(
   roster: readonly string[],
   selected: string | null,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
   airports: readonly CatalogAirport[],
@@ -874,7 +891,7 @@ function airportFixSlotTokens(
 
 function ungroundedIdentifierTokens(
   instructions: readonly Instruction[],
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
   airports: readonly CatalogAirport[],
@@ -941,7 +958,7 @@ function okStage(
   parseStage: ParseStage,
   source: "text" | "voice",
   selected: string | null,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
   airports: readonly CatalogAirport[],
@@ -976,7 +993,7 @@ function tryGroundedLocal(
   parseStage: ParseStage,
   source: "text" | "voice",
   selected: string | null,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
   approaches: readonly CatalogApproach[],
   airports: readonly CatalogAirport[],
@@ -1111,10 +1128,12 @@ export async function parseCommand(
 ): Promise<ParseResult> {
   const selected = opts.selectedCallsign ?? null;
   const roster = rosterFromOpts(opts);
-  const catalog = sanitizeFixIds(opts.fixes);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
   const approaches = sanitizeCatalogApproaches(opts.approaches);
   const airports = sanitizeCatalogAirports(opts.airports);
+  const catalog = sanitizeCatalogFixEntries(opts.fixes, {
+    excludeIds: new Set(airports.map((airport) => airport.icao)),
+  });
   const normalized = rewriteIfrAirportLimit(normalizeSpoken(sourceText), airports);
   const ifrCandidate = isIfrClearanceCandidate(normalized);
   const routeInfo = ifrCandidate

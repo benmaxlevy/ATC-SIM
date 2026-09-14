@@ -25,6 +25,7 @@ import {
   groundProcedureToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
@@ -34,7 +35,7 @@ import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 interface Cursor {
   tokens: readonly string[];
   i: number;
-  catalog?: readonly string[];
+  catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
 }
 
@@ -882,7 +883,7 @@ export function parseSpokenGrammar(
   normalized: string,
   selectedCallsign: string | null | undefined,
   sourceText: string,
-  catalogFixes?: readonly string[],
+  catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);

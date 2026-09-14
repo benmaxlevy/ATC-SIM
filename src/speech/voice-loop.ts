@@ -31,6 +31,7 @@ import {
 } from "./playback/readback-player";
 import { readbackForTts } from "./tts-text";
 import type { PathCRouteCandidateInput } from "../parse/path-c";
+import type { CatalogFixInput } from "../parse/spoken/catalog-ground";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -64,7 +65,7 @@ export type ParseCommandFn = (
     source: "text" | "voice";
     selectedCallsign?: string | null;
     callsigns?: readonly string[];
-    fixes?: readonly string[];
+    fixes?: readonly CatalogFixInput[];
     routeCandidates?: readonly PathCRouteCandidateInput[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
     approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
@@ -94,8 +95,8 @@ export interface VoiceLoopOptions {
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
   getOnFrequencyCallsigns?: () => readonly string[];
-  /** Full facility catalog ids for parseCommand / Path C. Not the STT header. */
-  getCatalogFixIds?: () => readonly string[];
+  /** Full facility fix/navaid vocabulary for parseCommand. Not the STT header. */
+  getCatalogFixIds?: () => readonly CatalogFixInput[];
   /** Fix/navaid kind and aliases for route-window Path C grounding. */
   getCatalogRouteCandidates?: () => readonly PathCRouteCandidateInput[];
   /**
@@ -212,7 +213,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
   private readonly getOnFrequencyCallsigns: () => readonly string[];
-  private readonly getCatalogFixIds: () => readonly string[];
+  private readonly getCatalogFixIds: () => readonly CatalogFixInput[];
   private readonly getCatalogRouteCandidates: () => readonly PathCRouteCandidateInput[];
   private readonly getSttFixIds: () => readonly string[];
   private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;

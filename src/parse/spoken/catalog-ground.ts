@@ -16,6 +16,30 @@ import { singleDigit } from "./numbers";
  */
 export const MAX_CATALOG_FIXES = 4096;
 const FIX_ID = /^[A-Z]{2,6}[0-9]{0,2}$/;
+const NAVAID_ID = /^[A-Z0-9]{2,10}$/;
+
+export type CatalogFixKind = "FIX" | "NAVAID";
+
+/** Shared parser vocabulary. String ids remain a supported legacy input. */
+export interface CatalogFixEntry {
+  id: string;
+  kind: CatalogFixKind;
+  aliases?: readonly string[];
+}
+
+export type CatalogFixInput = string | CatalogFixEntry;
+
+export interface CatalogFixSource {
+  id: string;
+  name?: string;
+  aliases?: readonly string[];
+}
+
+export interface CatalogFixSourceCatalog {
+  airportId?: string;
+  navaids?: readonly CatalogFixSource[];
+  fixes?: readonly CatalogFixSource[];
+}
 
 export const MAX_CATALOG_PROCEDURES = 256;
 const PROCEDURE_ID = /^[A-Z]{2,8}[0-9]{0,2}$/;
@@ -126,21 +150,89 @@ export function levenshtein(a: string, b: string): number {
   return row[b.length]!;
 }
 
-export function sanitizeFixIds(raw: readonly string[] | undefined | null): string[] {
-  const out: string[] = [];
+export function sanitizeCatalogFixEntries(
+  raw: readonly CatalogFixInput[] | undefined | null,
+  opts?: { excludeIds?: ReadonlySet<string> },
+): CatalogFixEntry[] {
+  const out: CatalogFixEntry[] = [];
   const seen = new Set<string>();
   for (const item of raw ?? []) {
-    const up = item.trim().toUpperCase();
-    if (!up || seen.has(up) || !FIX_ID.test(up)) {
+    const source = typeof item === "string" ? null : item;
+    const rawId = typeof item === "string" ? item : item.id;
+    const up = rawId.trim().toUpperCase();
+    const validId = source?.kind === "NAVAID" ? NAVAID_ID.test(up) : FIX_ID.test(up);
+    if (
+      !up ||
+      seen.has(up) ||
+      !validId ||
+      opts?.excludeIds?.has(up) ||
+      (source !== null && !["FIX", "NAVAID"].includes(source.kind))
+    ) {
       continue;
     }
     seen.add(up);
-    out.push(up);
+    const aliases = source
+      ? [...new Set((source.aliases ?? []).map((alias) => alias.trim()).filter(Boolean))]
+      : [];
+    const kind = source?.kind ?? "FIX";
+    out.push(aliases.length > 0 ? { id: up, kind, aliases } : { id: up, kind });
     if (out.length >= MAX_CATALOG_FIXES) {
       break;
     }
   }
   return out;
+}
+
+/** Legacy scalar projection for callers that only need canonical ids. */
+export function sanitizeFixIds(
+  raw: readonly CatalogFixInput[] | undefined | null,
+  opts?: { excludeIds?: ReadonlySet<string> },
+): string[] {
+  return sanitizeCatalogFixEntries(raw, opts).map((entry) => entry.id);
+}
+
+/** Build the parser vocabulary from generic catalog rows; airports stay out. */
+export function catalogFixEntriesFromCatalog(
+  catalog: CatalogFixSourceCatalog | null | undefined,
+): CatalogFixEntry[] {
+  if (!catalog) {
+    return [];
+  }
+  const airportIds = new Set<string>();
+  const airportId = catalog.airportId?.trim().toUpperCase();
+  if (airportId) {
+    airportIds.add(airportId);
+  }
+  return sanitizeCatalogFixEntries(
+    [
+      ...(catalog.navaids ?? []).map((item) => ({
+        id: item.id,
+        kind: "NAVAID" as const,
+        aliases: [...(item.aliases ?? []), ...(item.name ? [item.name] : [])],
+      })),
+      ...(catalog.fixes ?? []).map((item) => ({
+        id: item.id,
+        kind: "FIX" as const,
+        aliases: item.aliases,
+      })),
+    ],
+    { excludeIds: airportIds },
+  );
+}
+
+export function catalogFixAliasesForEntry(entry: CatalogFixInput): string[] {
+  const normalized = sanitizeCatalogFixEntries([entry])[0];
+  if (!normalized) {
+    return [];
+  }
+  return [
+    ...new Set([
+      normalized.id,
+      ...catalogFixAliases(normalized.id),
+      ...catalogFixPhraseAliases(normalized.id),
+      ...(normalized.aliases ?? []),
+    ]),
+  ];
 }
 
 /** Letters/digits only, so `C-Max` and `see max` share a key with catalog ids. */
@@ -210,17 +302,22 @@ export type CatalogFixMatchTier =
 
 export interface RankedFixCandidate {
   id: string;
+  kind: CatalogFixKind;
   score: number;
   tier: CatalogFixMatchTier;
   method: CatalogFixMatchMethod;
   distance?: number;
 }
 
+type RankedFixCandidateHit = Omit<RankedFixCandidate, "kind">;
+
 interface IndexedFix {
+  entry: CatalogFixEntry;
   id: string;
   key: string;
   folded: string;
   aliases: ReadonlySet<string>;
+  phraseAliases: readonly string[];
 }
 
 interface FixIndex {
@@ -229,16 +326,21 @@ interface FixIndex {
 
 const FIX_INDEX_CACHE = new WeakMap<object, FixIndex>();
 
-function indexFixes(catalog: readonly string[]): FixIndex {
+function indexFixes(catalog: readonly CatalogFixInput[]): FixIndex {
   const cached = FIX_INDEX_CACHE.get(catalog);
   if (cached) {
     return cached;
   }
-  const entries = sanitizeFixIds(catalog).map((id) => ({
-    id,
-    key: normalizeFixKey(id),
-    folded: foldSpokenFix(id),
-    aliases: new Set(catalogFixAliases(id)),
+  const entries = sanitizeCatalogFixEntries(catalog).map((entry) => ({
+    entry,
+    id: entry.id,
+    key: normalizeFixKey(entry.id),
+    folded: foldSpokenFix(entry.id),
+    aliases: new Set([
+      ...catalogFixAliases(entry.id),
+      ...(entry.aliases ?? []).map((alias) => normalizeFixKey(alias)),
+    ]),
+    phraseAliases: catalogFixAliasesForEntry(entry),
   }));
   const index: FixIndex = { entries };
   FIX_INDEX_CACHE.set(catalog, index);
@@ -250,7 +352,7 @@ function scoreFix(
   folded: string,
   entry: IndexedFix,
   includeDistanceTwo: boolean,
-): RankedFixCandidate | null {
+): RankedFixCandidateHit | null {
   if (entry.id === tokenKey || entry.key === tokenKey) {
     return { id: entry.id, score: SCORE_EXACT, tier: "exact", method: "exact" };
   }
@@ -317,7 +419,7 @@ function scoreFix(
  */
 export function rankFixCandidates(
   token: string | null | undefined,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: { includeDistanceTwo?: boolean },
 ): RankedFixCandidate[] {
   const tokenKey = normalizeFixKey(token ?? "");
@@ -330,7 +432,7 @@ export function rankFixCandidates(
   for (const entry of index.entries) {
     const hit = scoreFix(tokenKey, folded, entry, opts?.includeDistanceTwo === true);
     if (hit !== null) {
-      hits.push(hit);
+      hits.push({ ...hit, kind: entry.entry.kind });
     }
   }
   hits.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
@@ -343,7 +445,7 @@ export function rankFixCandidates(
  */
 export function groundFixToCatalog(
   token: string | null | undefined,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): string | null {
   const ranked = rankFixCandidates(token, catalog);
   const winner = ranked[0];
@@ -360,7 +462,7 @@ export function groundFixToCatalog(
  */
 export function groundFixPhraseToCatalog(
   tokens: readonly string[],
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): string | null {
   if (tokens.length === 0) {
     return null;
@@ -371,11 +473,15 @@ export function groundFixPhraseToCatalog(
 
   const phrase = tokens.join(" ");
   const phraseKey = normalizeFixKey(phrase);
-  const ranked = rankFixCandidates(phrase, catalog).filter((candidate) =>
-    catalogFixPhraseAliases(candidate.id).some(
-      (alias) =>
-        alias.split(/\s+/).length === tokens.length && normalizeFixKey(alias) === phraseKey,
-    ),
+  const indexed = indexFixes(catalog);
+  const ranked = rankFixCandidates(phrase, catalog).filter(
+    (candidate) =>
+      indexed.entries
+        .find((entry) => entry.id === candidate.id)
+        ?.phraseAliases.some(
+          (alias) =>
+            alias.split(/\s+/).length === tokens.length && normalizeFixKey(alias) === phraseKey,
+        ) ?? false,
   );
   const winner = ranked[0];
   if (winner === undefined || ranked[1]?.score === winner.score) {
@@ -391,7 +497,7 @@ export interface GroundedFixInstructions {
 
 function groundDirectOrCrossFix(
   token: string,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: {
     preferIds?: ReadonlySet<string>;
     rankedFor?: (token: string) => readonly RankedCatalogHit[];
@@ -415,7 +521,7 @@ function groundDirectOrCrossFix(
  */
 export function groundInstructionFixes(
   instructions: readonly Instruction[],
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   opts?: {
     preferIds?: ReadonlySet<string>;
     rankedFor?: (token: string) => readonly RankedCatalogHit[];

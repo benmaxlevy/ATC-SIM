@@ -117,6 +117,36 @@ test("unknown route rejects atomically and plain tactical direct never resets th
   expect(aircraft.intent.lateral).toMatchObject({ type: "DIRECT", fixId: "VOR1" });
 });
 
+test("live navaid name projects into tactical grounding", async () => {
+  const aircraft = createAircraft({
+    id: "ac-ahn",
+    callsign: "DAL123",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 8000,
+    speedKt: 220,
+  });
+  const world = createWorld({
+    aircraft: [aircraft],
+    catalog: {
+      airportId: "KATL",
+      name: "Atlanta International",
+      spokenAliases: ["Atlanta Airport"],
+      navaids: [{ id: "AHN", name: "Athens", xNm: 2, yNm: 0, kind: "VOR" }],
+      fixes: [],
+      stars: [],
+      sids: [],
+      approaches: [],
+    },
+  });
+
+  const result = await handleRadioText(world, "DAL123 CLEARED DIRECT ATHENS", new SessionLog());
+
+  expect(result.accepted).toBe(true);
+  expect(result.command?.instructions).toEqual([{ type: "DIRECT", fixId: "AHN" }]);
+});
+
 test("AS FILED rejects a limit unrelated to the filed route", async () => {
   const { world, aircraft, plan } = setup();
   const beforePlan = structuredClone(plan);

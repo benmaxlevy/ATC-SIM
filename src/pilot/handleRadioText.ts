@@ -9,7 +9,14 @@
 
 import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
 import { applyIfrClearance, assertHandoffOwned, handoffFor } from "@core";
-import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
+import {
+  approachesFromCatalog,
+  catalogFixEntriesFromCatalog,
+  parseCommand,
+  proceduresFromCatalog,
+  sanitizeCatalogFixEntries,
+  type CatalogFixEntry,
+} from "@parse";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
@@ -101,8 +108,11 @@ function callsignsFromWorld(world: World): string[] {
   return world.aircraft.map((ac) => ac.callsign);
 }
 
-function catalogFixIdsFromWorld(world: World): string[] {
-  return world.fixRegistry ? [...world.fixRegistry.ids()] : [];
+function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {
+  if (world.catalog) {
+    return catalogFixEntriesFromCatalog(world.catalog);
+  }
+  return sanitizeCatalogFixEntries(world.fixRegistry ? [...world.fixRegistry.ids()] : []);
 }
 
 function catalogAirportsFromWorld(world: World): Array<{
@@ -178,11 +188,13 @@ export async function handleRadioText(
   opts?: HandleRadioOpts,
 ): Promise<PilotResult> {
   const source = opts?.source ?? "text";
+  const fixEntries = catalogFixEntriesFromWorld(world);
   const parsed = await parseCommand(sourceText, {
     source,
     selectedCallsign: selectedCallsignFromWorld(world),
     callsigns: callsignsFromWorld(world),
-    fixes: catalogFixIdsFromWorld(world),
+    fixes: fixEntries,
+    routeCandidates: fixEntries,
     procedures: proceduresFromCatalog(world.catalog),
     approaches: approachesFromCatalog(world.catalog),
     airports: catalogAirportsFromWorld(world),

@@ -23,6 +23,7 @@ import {
   groundProcedureToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogFixInput,
   type CatalogApproach,
   type CatalogProcedure,
 } from "./catalog-ground";
@@ -160,7 +161,7 @@ function parseFlightLevel(
 function parseFixIdFrom(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): { fixId: string; next: number } | null {
   let j = i;
   const phonetics: string[] = [];
@@ -237,7 +238,7 @@ function matchCatalogApproach(
 function matchCross(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): { instruction: Instruction; next: number } | null {
   if (tokens[i] !== "cross") {
     return null;
@@ -692,7 +693,7 @@ function attachSpokenStarTransition(
 function matchDirect(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
 ): { instruction: Instruction; next: number } | null {
   let j = i;
   if (
@@ -726,7 +727,7 @@ function matchDirect(
 function matchIfrClearance(
   tokens: readonly string[],
   i: number,
-  catalog: readonly string[],
+  catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
 ): { instruction: Instruction; next: number } | null {
   if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
@@ -1231,7 +1232,7 @@ export function matchSpokenPatterns(
   normalized: string,
   selectedCallsign: string | null | undefined,
   sourceText: string,
-  catalogFixes?: readonly string[],
+  catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   catalogApproaches?: readonly CatalogApproach[],
 ): ParseResult {
