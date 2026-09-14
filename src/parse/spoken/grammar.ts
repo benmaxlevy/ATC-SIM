@@ -277,15 +277,7 @@ function tryIfrClearance(c: Cursor): Instruction | null {
       return null;
     }
     if (take(c, "direct")) {
-      const routeFixStart = c.i;
-      const routeFix = parseFixId(c);
-      if (routeFix !== null && take(c, "direct")) {
-        // Spoken route form: `via direct SWEPT direct`.
-        access = { type: "FIX_THEN_DIRECT", fixId: routeFix };
-      } else {
-        c.i = routeFixStart;
-        access = { type: "DIRECT" };
-      }
+      access = { type: "DIRECT" };
     } else if (take(c, "radar")) {
       if (!take(c, "vectors")) {
         c.i = start;

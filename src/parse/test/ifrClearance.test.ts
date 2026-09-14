@@ -3,7 +3,7 @@ import { vi } from "vitest";
 import { parseCommand, parseRadioText } from "@parse";
 import type { ParsePathCFn } from "@parse";
 
-const fixes = ["KAHN", "SIITH", "SWEPT", "VOR1"];
+const fixes = ["KAHN", "SIITH", "VOR1"];
 const airports = [
   {
     icao: "KATL",
@@ -95,24 +95,6 @@ test("Endeavor spoken clearance accepts Atlanta International Airport", async ()
     ok: true,
     callsignToken: "EDV7114",
     instructions: [{ type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "DIRECT" } }],
-  });
-});
-
-test("spoken clearance accepts direct-fix-direct route sequence", async () => {
-  const result = await parseCommand(
-    "endeavor seventy one fourteen clear to atlanta international airport via direct swept direct",
-    { source: "voice", fixes, airports, pathC: false },
-  );
-  expect(result).toMatchObject({
-    ok: true,
-    callsignToken: "EDV7114",
-    instructions: [
-      {
-        type: "IFR_CLEARANCE",
-        limitId: "KATL",
-        access: { type: "FIX_THEN_DIRECT", fixId: "SWEPT" },
-      },
-    ],
   });
 });
 

@@ -108,9 +108,8 @@ Suggested v1 tokens (callsign optional if a track is selected):
 Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
 non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed
 direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an
-`IFR_CLEARANCE`. A route sequence such as `cleared to <limit> via direct <fix>
-direct` is `IFR_CLEARANCE` with `FIX_THEN_DIRECT` for that fix. Airports are a
-clearance-limit namespace, never generic direct fixes.
+`IFR_CLEARANCE`. Airports are a clearance-limit namespace, never generic
+direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
