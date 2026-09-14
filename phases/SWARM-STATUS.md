@@ -1824,3 +1824,37 @@ deltas, not claims of full STARS/NAS compatibility.
 push performed.
 
 **PHASE EXIT GREEN**
+
+## SEVENTIETH SWARM COMPLETE — shared fix matching and per-span route evidence (T02-193–T02-196)
+
+Completed sequentially on `feature/clearances` with one configured worker and
+captain squash merges. T02-193 unifies tactical and IFR route grounding with
+shared exact/alias/folded/unique-distance-one matching, preserves arbitrary
+route backtracking, and rejects accidental token concatenation. T02-194 adds
+generic structured FIX/NAVAID vocabulary, navaid-name aliases, canonical
+`kind`, airport exclusion, and a separate bounded STT ID projection. T02-195
+adds per-span Path C route alternatives and matching frontend/Python evidence
+guards for ordered, complete, non-overlapping, canonical route recovery. T02-196
+adds feature acceptance coverage, ordered FMS/readback checks, atomic rejection
+coverage, and Help/user documentation. Path C remains local, trainer-only,
+catalog/evidence constrained, and may use only a supplied unique distance-two
+retrieval candidate as fallback evidence; it never invents or concatenates IDs.
+
+Captain commits: `f312ec1`, `0757c66`, `8eb7518`, `df684cd`, `93c4f03`,
+`f926950`. Gate corrections addressed route token-boundary collapse, exact-ID
+alias collisions, equal-best route candidates, Python/TypeScript NAVAID-ID
+parity, and the documented distance-two fallback boundary.
+
+Final `npm run ci`: **209 files passed, 2,061 passed, 3 skipped, 0 failures**.
+Final speech API mock gate: **81 passed**. Independent supplied-manual gates
+passed for all four tickets after corrective passes. The supplied manual's
+§5.5.5 p. 5-105 and §5.6.17 p. 5-167 cover STARS flight-plan creation and
+modification rather than spoken route parsing; the route matcher and Path C
+behavior are recorded as trainer deltas with no in-scope manual conflict.
+Live GGUF evaluation was not run; mock/eval coverage is committed.
+
+The prior bad direct-route commit remains reverted by `6766512`. No new phase
+started, no push was performed, and unrelated `.agents/rules/`, `GEMINI.md`,
+and the separate T02-185 worktree were preserved.
+
+**PHASE EXIT GREEN**
