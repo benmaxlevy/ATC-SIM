@@ -384,7 +384,14 @@ function applyPreviewArmedAction(
           }
           const edits: Array<
             [
-              "fixes" | "aircraftType" | "equipment" | "requestedAltitudeFt" | "tcp",
+              (
+                | "fixes"
+                | "aircraftType"
+                | "equipment"
+                | "requestedAltitudeFt"
+                | "tcp"
+                | "scratchpads"
+              ),
               string | number | string[] | undefined,
             ]
           > = [
@@ -394,6 +401,9 @@ function applyPreviewArmedAction(
             ["requestedAltitudeFt", action.requestedAltitudeFt],
             ["tcp", action.tcp],
           ];
+          if (action.scratchpads.length > 0) {
+            edits.push(["scratchpads", action.scratchpads]);
+          }
           for (const [field, value] of edits) {
             if (value !== undefined) {
               const edited = modifyFlightPlan(world, existing.id, field, value);
@@ -424,7 +434,7 @@ function applyPreviewArmedAction(
           assignedBeacon: action.assignedBeacon,
           tcp: action.tcp,
           airportId: action.airportId,
-          scratchpads: action.scratchpads.filter((value) => value.length > 0),
+          scratchpads: action.scratchpads,
           aircraftType: action.aircraftType,
           aircraftCount: action.aircraftCount,
           equipment: action.equipment,

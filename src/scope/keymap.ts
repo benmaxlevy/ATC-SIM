@@ -180,16 +180,18 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       {
         id: "flt-data",
         command: "F6 / FLT DATA <ACID> [fields]",
-        example: "F6 UAL1234 2341 KDEM*RW27 B738 250 .A",
+        example: "F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A",
         input: "Any focus, then Preview Area",
-        result: "Creates a local IFR flight plan.",
+        result:
+          "Creates a local IFR flight plan; Δ<text> sets scratchpad 1 and +<text> sets scratchpad 2.",
       },
       {
         id: "vfr-data",
         command: "F9 / VFR DATA",
-        example: "F9 N123AB KDEM*RW27 C172 050 Enter",
+        example: "F9 N123AB KDEM*RW27 ΔVFR C172 050 Enter",
         input: "Any focus, then Preview Area",
-        result: "Creates, edits, or deletes a local VFR plan.",
+        result:
+          "Creates, edits, or deletes a local VFR plan; Δ<text> sets scratchpad 1 and +<text> sets scratchpad 2.",
       },
       {
         id: "plan-create",

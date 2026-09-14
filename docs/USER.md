@@ -179,8 +179,8 @@ unavailable; direct invalid submissions retain the core error
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
 | `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Abbreviated creation: creates a pending local plan. Accepts an ACID plus beacon/pool selector, TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
-| `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 C172 050` then Enter | Local VFR create/modify. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible associated VFR track applies active-track data. Resend amended exit/intermediate fix with same ACID (`F9 N123AB *FIX` or `DEP*MID*EXIT`). No ARTCC/network exchange. |
+| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
+| `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 ΔVFR C172 050` then Enter | Local VFR create/modify. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible associated VFR track applies active-track data. Resend amended exit/intermediate fix with same ACID (`F9 N123AB *FIX` or `DEP*MID*EXIT`). No ARTCC/network exchange. |
 | `F1 / INIT CNTL` | `F1 UAL1234 2341` then click a target, or `F1` then identity/click | Pending discrete creation remains an INIT CNTL path. Identity association requires a slew/click; Enter-only identity application is invalid. CID is not an identity. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
 | `F4` / `TERM CNTL` / `/` | `F4`, then click a target; or `F4 UAL1234` then Enter | TERM CNTL: all three forms share one operation. The first use deletes the associated plan, removes association, clears ownership, and leaves a moving unassociated LDB (`*`). `TERM CNTL ALL` is invalid. |
@@ -192,6 +192,8 @@ Creation and edit examples:
 
 ```text
 UAL1234 2341 AT A B738 Enter
+F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A Enter
+F9 N123AB KDEM*RW27 ΔVFR C172 050 Enter
 *M UAL1234 5252
 *M UAL1234 Δ5252
 *M UAL1234 +WEST
@@ -205,6 +207,10 @@ UAL1234 2341 AT A B738 Enter
 altitude 12,000 feet. `FIXES` is limited to an optional four-character entry
 fix, `*`, an optional four-character exit fix, and optional `*A`, `*P`, or
 `*E`; it is not a full route editor.
+
+For F6 and F9 flight-plan entry, prefix scratchpad 1 with `Δ` and scratchpad 2
+with `+`. In the Preview Area, press the backquote key (the key above Tab) to
+enter `Δ`.
 
 Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
 valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list

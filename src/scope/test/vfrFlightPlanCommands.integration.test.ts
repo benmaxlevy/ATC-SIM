@@ -20,20 +20,23 @@ function typeVfr(
   text: string,
 ) {
   handleScopeKeyDown(key("F9"), view, "scope", world);
-  for (const ch of text) handleScopeKeyDown(key(ch === " " ? " " : ch), view, "scope", world);
+  for (const ch of text) {
+    handleScopeKeyDown(key(ch === "Δ" ? "`" : ch), view, "scope", world);
+  }
   handleScopeKeyDown(key("Enter"), view, "scope", world);
 }
 
 test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
   const world = createWorld();
   const view = createScopeView();
-  typeVfr(view, world, "N123AB KDEM*RW27 C172 050");
+  typeVfr(view, world, "N123AB KDEM*RW27 ΔVFR C172 050");
   expect(world.flightPlans[0]).toMatchObject({
     acid: "N123AB",
     flightRules: "VFR",
     fixes: ["KDEM*RW27"],
     requestedAltitudeFt: 5000,
     assignedBeacon: "1000",
+    scratchpads: ["VFR"],
   });
   expect(getFlightPlanEntries(world, view)).toEqual(
     expect.arrayContaining([expect.objectContaining({ callsign: "N123AB", squawk: "1000" })]),
@@ -43,11 +46,12 @@ test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
     expect.arrayContaining([expect.stringContaining("N123AB  1000")]),
   );
 
-  typeVfr(view, world, "N123AB KDEM*RW28 C182 060");
+  typeVfr(view, world, "N123AB KDEM*RW28 ΔNEW C182 060");
   expect(world.flightPlans[0]).toMatchObject({
     fixes: ["KDEM*RW28"],
     aircraftType: "C182",
     requestedAltitudeFt: 6000,
+    scratchpads: ["NEW"],
   });
   typeVfr(view, world, "N123AB");
   expect(world.flightPlans[0]?.status).toBe("deleted");
@@ -125,6 +129,26 @@ test("F9 accepts omitted departure and records amended exit-fix retransmit", () 
   expect(world.flightPlans[0]).toMatchObject({
     fixes: ["KDEM*RW28"],
     vfrRetransmit: { amendedFix: "KDEM*RW28" },
+  });
+});
+
+test("F9 accepts delta-prefixed scratchpad 1 and plus-prefixed scratchpad 2", () => {
+  expect(parseVfrFlightPlanCommand("N123AB KDEM*RW27 ΔWEST +S21 C172 050")).toEqual({
+    kind: "action",
+    action: {
+      type: "createFlightPlan",
+      pendingDiscrete: false,
+      creationMode: "vfr",
+      acid: "N123AB",
+      flightRules: "VFR",
+      fixes: ["KDEM*RW27"],
+      scratchpads: ["WEST", "S21"],
+      aircraftType: "C172",
+      requestedAltitudeFt: 5000,
+    },
+  });
+  expect(parseVfrFlightPlanCommand("N123AB KDEM*RW27 +S21 ΔWEST C172 050")).toMatchObject({
+    action: { scratchpads: ["WEST", "S21"] },
   });
 });
 

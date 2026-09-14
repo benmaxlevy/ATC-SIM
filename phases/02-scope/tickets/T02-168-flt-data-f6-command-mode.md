@@ -45,7 +45,7 @@ pilot execution.
      [<assigned beacon>]
      [<TCP> | <entry fix>*<exit fix>[*<flight status>]]
      [<ETA or PTD>E]
-     [A<scratchpad 1>]
+     [Δ<scratchpad 1>]
      [+<scratchpad 2>]
      [<aircraft count>/]<aircraft type>[/<equipment suffix>]
      [<requested altitude>]

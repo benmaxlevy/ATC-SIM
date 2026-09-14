@@ -43,6 +43,7 @@ not send network messages or claim interfacility NAS behavior.
   ```text
   F9 <ACID> <departure>*<exit-or-arrival>
      [<aircraft type>[/<equipment suffix>]]
+     [Δ<scratchpad 1>] [+<scratchpad 2>]
      [<requested altitude>]
      [<TCP>]
   Enter

@@ -63,7 +63,7 @@ describe("T02-144 flight-plan creation", () => {
   });
 
   it("parses order-independent abbreviated fields", () => {
-    expect(parseFlightPlanCreation("UAL1234 2341 1R AD ATST +ORH 4/F16/L 250 .E")).toEqual({
+    expect(parseFlightPlanCreation("UAL1234 2341 1R AD ΔTST +ORH 4/F16/L 250 .E")).toEqual({
       kind: "action",
       action: {
         type: "createFlightPlan",
@@ -134,7 +134,7 @@ describe("T02-144 flight-plan creation", () => {
 
   it("parses F6 full IFR fields independently from abbreviated creation", () => {
     expect(
-      parseFlightPlanCreation("UAL1234 .A 250 B738 ATST +ORH KDEM*RW27 1630E 1R 2341", false, true),
+      parseFlightPlanCreation("UAL1234 .A 250 B738 ΔTST +ORH KDEM*RW27 1630E 1R 2341", false, true),
     ).toEqual({
       kind: "action",
       action: {
@@ -220,7 +220,7 @@ describe("T02-144 flight-plan creation", () => {
       kind: "invalid",
       reason: "FORMAT",
     });
-    expect(parseFlightPlanCreation("UAL1234 ANAT", false, true)).toMatchObject({
+    expect(parseFlightPlanCreation("UAL1234 ΔNAT", false, true)).toMatchObject({
       kind: "invalid",
       reason: "ILL SCR",
     });
@@ -281,13 +281,14 @@ describe("T02-144 flight-plan creation", () => {
   it("creates pending plans through scope Preview without mutating aircraft", () => {
     const world = createWorld();
     const view = createScopeView();
-    for (const ch of "UAL1234 2341 ATST") handleScopeKeyDown(key(ch), view, "scope", world);
+    for (const ch of "UAL1234 2341 `TEST") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
     expect(world.aircraft).toEqual([]);
     expect(world.flightPlans).toHaveLength(1);
     expect(world.flightPlans[0]).toMatchObject({
       acid: "UAL1234",
       assignedBeacon: "2341",
+      scratchpads: ["TEST"],
       status: "pending",
     });
     expect(getFlightPlanEntries(world, view)).toMatchObject([
@@ -299,7 +300,7 @@ describe("T02-144 flight-plan creation", () => {
     const world = createWorld();
     const view = createScopeView();
     handleScopeKeyDown(key("F1"), view, "scope", world);
-    for (const ch of "UAL1234 2342 ATEST") handleScopeKeyDown(key(ch), view, "scope", world);
+    for (const ch of "UAL1234 2342 `TEST") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
     expect(world.flightPlans).toHaveLength(1);
     expect(world.flightPlans[0]).toMatchObject({
