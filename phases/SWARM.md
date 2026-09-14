@@ -1,5 +1,85 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Sixty-ninth swarm started — 2026-09-13 (arbitrary IFR route chains)
+
+Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
+`gpt-5.6-luna` high, one sequential worker. T02-189 is authorized first;
+later tickets require the prior squash merge, `npm run ci`, and the required
+speech/manual gates. No push is authorized.
+
+## Proposed sixty-ninth swarm — arbitrary IFR route chains — 2026-09-13
+
+Replace fixed IFR clearance route forms with a generic route-window scanner,
+ordered route segments, and a constrained self-hosted Path-C fallback.
+
+| Key | Value |
+| --- | --- |
+| Goal | Parse and execute arbitrary catalog-grounded IFR chains after `VIA`, with optional `DIRECT` markers and implicit direct semantics. |
+| Include | T02-189 → T02-190 → T02-191 → T02-192. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-192 plus focused tests, `npm run ci`, speech mock pytest, supplied-manual review, and FAA review. |
+| Push | No push. |
+
+**Prerequisite:** The completed T02-188 swarm remains closed. Preserve commit
+`6766512` reverting `8080149`; do not reintroduce the fixed
+`FIX_THEN_DIRECT` route-sequence implementation or cherry-pick `8080149`.
+
+**Product law:** After `VIA`, the route window is scanned until the next
+clearance section. Every catalog-grounded fix/navaid is a direct segment when
+`DIRECT` is absent; `DIRECT` is an explicit connector. Procedure and transition
+matches remain catalog-grounded. The route list has no semantic one- or
+two-segment cap. Path C may choose only supplied catalog candidates supported
+by transcript evidence and may not invent identifiers. Issuing a clearance
+creates an aircraft-owned route snapshot and never edits the flight plan.
+
+**Skip:** airway/radial/arc expansion, route amendments, holds/EFC,
+VFR-to-IFR pickup/airfile, cloud inference, unconstrained fuzzy repair,
+airport search, airport route legs, new tactical commands, and
+facility-specific parser branches.
+
+**Waves:** A T02-189 canonical IR/route execution contract; B T02-190
+deterministic route-window parser; C T02-191 Path-C/speech-api parity and
+constrained fallback; D T02-192 end-to-end acceptance, readback, Help, and
+user documentation. Each starts only after the previous ticket is squash
+merged and passes `npm run ci`; T02-191 also requires
+`cd speech-api && SPEECH_API_MOCK=1 pytest`.
+
+**Ticket ownership:**
+
+- T02-189 owns Command IR, core clearance serialization/application, active
+  snapshot integration, and shared command contract.
+- T02-190 owns the shared route-window scanner, typed/spoken deterministic
+  parsing, grounding, and shared parse-pipeline contract.
+- T02-191 owns frontend Path-C context/schema and all self-hosted speech-api
+  prompt, GBNF, validator, eval, and parity changes.
+- T02-192 owns feature acceptance, readback, Help, `docs/USER.md`, and final
+  manual/FAA evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-189-ifr-clearance-route-chain-contract` → `phases/02-scope/tickets/T02-189-ifr-clearance-route-chain-contract.md`
+- `ticket/T02-190-ifr-clearance-route-window-parser` → `phases/02-scope/tickets/T02-190-ifr-clearance-route-window-parser.md`
+- `ticket/T02-191-path-c-ifr-route-chain-fallback` → `phases/02-scope/tickets/T02-191-path-c-ifr-route-chain-fallback.md`
+- `ticket/T02-192-ifr-route-chain-acceptance-readback` → `phases/02-scope/tickets/T02-192-ifr-route-chain-acceptance-readback.md`
+
+**Manual/FAA:** Review route ordering, direct-to/between-NAVAID semantics,
+and clearance item boundaries against FAA JO 7110.65 §§4-2-1, 4-2-5, 4-4-1,
+and 4-4-2. Review active route/readback and plan separation against the
+supplied STARS manual §§5.5.5 p. 5-95 and 5.6.17 p. 5-167. Mark implicit
+direct and constrained Path-C recovery as trainer behavior where applicable.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: arbitrary IFR route chains T02-189–T02-192
+Merge target: feature/clearances
+Merged: T02-189, T02-190, T02-191, T02-192
+Tests: CI after each merge; speech-api mock pytest; supplied-manual/FAA review
+Notes: No push; arbitrary catalog-grounded chains; implicit DIRECT; constrained self-hosted fallback; 8080149 remains reverted
+```
+
 ## Sixty-eighth swarm started — 2026-09-13 (Flight Plan modal assigned altitude)
 
 Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
