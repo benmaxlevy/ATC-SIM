@@ -309,6 +309,30 @@ test("IFR route fallback rejects a partial chain", async () => {
   expect(parsePathC).toHaveBeenCalledOnce();
 });
 
+test("IFR route fallback rejects an unmatched route token", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "DAL123",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KAHN",
+        access: { type: "EXPLICIT_ROUTE", segments: [{ type: "DIRECT", fixId: "AB" }] },
+      },
+    ],
+  }));
+
+  const result = await parseCommand("DAL123 cleared to KAHN via AB UNKNOWN", {
+    source: "voice",
+    fixes: ["KAHN", "AB"],
+    routeCandidates: [{ id: "AB", kind: "FIX", aliases: ["AB"] }],
+    pathC: true,
+    parsePathC,
+  });
+
+  expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+  expect(parsePathC).toHaveBeenCalledOnce();
+});
+
 test("IFR route fallback rejects a concatenated or tactical direct", async () => {
   const outputs = [
     {

@@ -136,6 +136,29 @@ def test_path_c_route_guard_requires_supplied_ids_and_transcript_spans() -> None
         tactical,
     ).error == "PARSE_MISS"
 
+    partial_context = {
+        **context,
+        "routeWindow": {
+            "transcript": "swept kimmy",
+            "candidates": [context["routeWindow"]["candidates"][0]],
+            "procedures": [],
+        },
+    }
+    partial = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {
+                    "type": "EXPLICIT_ROUTE",
+                    "segments": [{"type": "DIRECT", "fixId": "SWEPT"}],
+                },
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to KATL via swept kimmy", partial_context, partial).error == "PARSE_MISS"
+
 
 def test_path_c_route_prompt_teaches_optional_direct_and_catalog_transitions() -> None:
     from parse_engine import SYSTEM_PROMPT, build_parse_user_message

@@ -1095,6 +1095,15 @@ def _ordered_route_evidence_paths(
 
 
 def _route_evidence_covered(route: dict[str, Any], intervals: list[tuple[int, int]]) -> bool:
+    for match in re.finditer(r"\S+", route["transcript"]):
+        if match.group(0).lower() in {"direct", "then"}:
+            continue
+        if not any(
+            match.start() < end and match.end() > start
+            for start, end in intervals
+        ):
+            return False
+
     def covered(span: dict[str, Any]) -> bool:
         return any(span["start"] < end and span["end"] > start for start, end in intervals)
 

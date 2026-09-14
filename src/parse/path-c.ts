@@ -404,6 +404,20 @@ function routeEvidenceCovered(
   route: PathCRouteWindow,
   intervals: readonly RouteEvidenceInterval[],
 ): boolean {
+  const tokens = route.transcript.trim().split(/\s+/).filter(Boolean);
+  let offset = 0;
+  for (const token of tokens) {
+    const start = offset;
+    const end = start + token.length;
+    offset = end + 1;
+    const control = token.toLowerCase();
+    if (control === "direct" || control === "then") continue;
+    if (
+      !intervals.some(([intervalStart, intervalEnd]) => start < intervalEnd && end > intervalStart)
+    ) {
+      return false;
+    }
+  }
   const covered = (span: PathCTranscriptSpan) =>
     intervals.some(([start, end]) => span.start < end && span.end > start);
   for (const candidate of route.candidates) {
