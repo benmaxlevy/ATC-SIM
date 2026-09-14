@@ -8,7 +8,11 @@ const airports = [
   {
     icao: "KATL",
     name: "Hartsfield/Jackson Atlanta International",
-    aliases: ["Hartsfield Jackson Atlanta Airport", "Atlanta Airport"],
+    aliases: [
+      "Hartsfield Jackson Atlanta Airport",
+      "Atlanta Airport",
+      "Atlanta International Airport",
+    ],
   },
 ];
 
@@ -80,6 +84,18 @@ test("airport ICAO and listed spoken alias ground only the IFR clearance limit",
     pathC: false,
   });
   expect(direct.ok).toBe(false);
+});
+
+test("Endeavor spoken clearance accepts Atlanta International Airport", async () => {
+  const result = await parseCommand(
+    "endeavor seventy one fourteen clear to atlanta international airport via direct",
+    { source: "voice", fixes, airports, pathC: false },
+  );
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: "EDV7114",
+    instructions: [{ type: "IFR_CLEARANCE", limitId: "KATL", access: { type: "DIRECT" } }],
+  });
 });
 
 test("unknown and ambiguous airport names miss without producing a clearance", async () => {
