@@ -70,6 +70,39 @@ test("spoken IFR forms compile like typed forms before tactical direct", async (
   expect(tactical).toMatchObject({ ok: true, instructions: [{ type: "DIRECT", fixId: "KAHN" }] });
 });
 
+test("tactical direct and IFR route use the same noisy fix grounding", async () => {
+  const direct = await parseCommand("DAL123 proceed direct FIXI", {
+    source: "voice",
+    fixes: ["FIX1"],
+    pathC: false,
+  });
+  const route = await parseCommand("DAL123 cleared to KAHN via FIXI HAYNES", {
+    source: "voice",
+    fixes: ["KAHN", "FIX1", "HAINZ"],
+    pathC: false,
+  });
+
+  expect(direct).toMatchObject({
+    ok: true,
+    instructions: [{ type: "DIRECT", fixId: "FIX1" }],
+  });
+  expect(route).toMatchObject({
+    ok: true,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "FIX1" },
+            { type: "DIRECT", fixId: "HAINZ" },
+          ],
+        },
+      },
+    ],
+  });
+});
+
 test("airport ICAO and listed spoken alias ground only the IFR clearance limit", async () => {
   const byName = await parseCommand(
     "DAL123 cleared to Hartsfield Jackson Atlanta Airport via direct",
@@ -276,10 +309,20 @@ test("route windows choose a complete longest exact multi-word catalog alias", (
   });
 });
 
-test("ambiguous complete route segmentations reject with PARSE_MISS", async () => {
+test("route windows do not concatenate adjacent tokens into a compact fix id", async () => {
   const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
     source: "text",
-    fixes: ["KAHN", "AB", "CD", "ABCD"],
+    fixes: ["KAHN", "ABCD"],
+    pathC: false,
+  });
+
+  expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+});
+
+test("ambiguous complete route segmentations reject with PARSE_MISS", async () => {
+  const result = await parseCommand("DAL123 cleared to KAHN via SEE MAX", {
+    source: "text",
+    fixes: ["KAHN", "SEE", "MAX", "SEMAX"],
     pathC: false,
   });
 

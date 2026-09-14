@@ -183,6 +183,160 @@ export function catalogFixAliases(id: string): string[] {
   return [...aliases];
 }
 
+function catalogFixPhraseAliases(id: string): string[] {
+  const key = normalizeFixKey(id);
+  const aliases = [key];
+  if (key.startsWith("SE") && key.length >= 4) {
+    const rest = key.slice(2);
+    aliases.push(`C ${rest}`, `SEE ${rest}`, `SEA ${rest}`);
+  }
+  return aliases;
+}
+
+const SCORE_EXACT = 1;
+const SCORE_ALIAS = 0.9;
+const SCORE_FOLD_ALIAS = 0.8;
+const SCORE_NEAR = 0.6;
+const SCORE_FOLD_NEAR = 0.5;
+/** Raw d==2, token length >= 5. Below the deterministic snap tiers. */
+const SCORE_FAR = 0.45;
+/** Fold d==2, folded length >= 5. Below the deterministic snap tiers. */
+const SCORE_FOLD_FAR = 0.4;
+
+export type CatalogFixMatchMethod = "exact" | "alias" | "folded" | "levenshtein";
+
+export type CatalogFixMatchTier =
+  "exact" | "alias" | "folded-alias" | "near" | "folded-near" | "far" | "folded-far";
+
+export interface RankedFixCandidate {
+  id: string;
+  score: number;
+  tier: CatalogFixMatchTier;
+  method: CatalogFixMatchMethod;
+  distance?: number;
+}
+
+interface IndexedFix {
+  id: string;
+  key: string;
+  folded: string;
+  aliases: ReadonlySet<string>;
+}
+
+interface FixIndex {
+  entries: readonly IndexedFix[];
+}
+
+const FIX_INDEX_CACHE = new WeakMap<object, FixIndex>();
+
+function indexFixes(catalog: readonly string[]): FixIndex {
+  const cached = FIX_INDEX_CACHE.get(catalog);
+  if (cached) {
+    return cached;
+  }
+  const entries = sanitizeFixIds(catalog).map((id) => ({
+    id,
+    key: normalizeFixKey(id),
+    folded: foldSpokenFix(id),
+    aliases: new Set(catalogFixAliases(id)),
+  }));
+  const index: FixIndex = { entries };
+  FIX_INDEX_CACHE.set(catalog, index);
+  return index;
+}
+
+function scoreFix(
+  tokenKey: string,
+  folded: string,
+  entry: IndexedFix,
+  includeDistanceTwo: boolean,
+): RankedFixCandidate | null {
+  if (entry.id === tokenKey || entry.key === tokenKey) {
+    return { id: entry.id, score: SCORE_EXACT, tier: "exact", method: "exact" };
+  }
+  if (entry.aliases.has(tokenKey)) {
+    return { id: entry.id, score: SCORE_ALIAS, tier: "alias", method: "alias" };
+  }
+  if (folded !== tokenKey && entry.aliases.has(folded)) {
+    return {
+      id: entry.id,
+      score: SCORE_FOLD_ALIAS,
+      tier: "folded-alias",
+      method: "folded",
+    };
+  }
+  if (tokenKey.length >= 3) {
+    const distance = levenshtein(tokenKey, entry.key);
+    if (distance <= 1) {
+      return {
+        id: entry.id,
+        score: SCORE_NEAR,
+        tier: "near",
+        method: "levenshtein",
+        distance,
+      };
+    }
+    if (includeDistanceTwo && tokenKey.length >= 5 && distance === 2) {
+      return {
+        id: entry.id,
+        score: SCORE_FAR,
+        tier: "far",
+        method: "levenshtein",
+        distance,
+      };
+    }
+  }
+  if (folded.length >= 3) {
+    const distance = levenshtein(folded, entry.folded);
+    if (distance <= 1) {
+      return {
+        id: entry.id,
+        score: SCORE_FOLD_NEAR,
+        tier: "folded-near",
+        method: "levenshtein",
+        distance,
+      };
+    }
+    if (includeDistanceTwo && folded.length >= 5 && distance === 2) {
+      return {
+        id: entry.id,
+        score: SCORE_FOLD_FAR,
+        tier: "folded-far",
+        method: "levenshtein",
+        distance,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Rank one spoken fix phrase against the full sanitized catalog. Deterministic
+ * grounding omits distance-2 candidates; retrieval may opt into them for the
+ * constrained Path C fallback. Every returned id came from `catalog`.
+ */
+export function rankFixCandidates(
+  token: string | null | undefined,
+  catalog: readonly string[],
+  opts?: { includeDistanceTwo?: boolean },
+): RankedFixCandidate[] {
+  const tokenKey = normalizeFixKey(token ?? "");
+  if (tokenKey.length < 2) {
+    return [];
+  }
+  const folded = foldSpokenFix(tokenKey);
+  const index = indexFixes(catalog);
+  const hits: RankedFixCandidate[] = [];
+  for (const entry of index.entries) {
+    const hit = scoreFix(tokenKey, folded, entry, opts?.includeDistanceTwo === true);
+    if (hit !== null) {
+      hits.push(hit);
+    }
+  }
+  hits.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  return hits;
+}
+
 /**
  * Unique catalog id for a noisy token, or null if nothing unique matches.
  * Empty catalog → null (caller keeps the raw token).
@@ -191,48 +345,43 @@ export function groundFixToCatalog(
   token: string | null | undefined,
   catalog: readonly string[],
 ): string | null {
-  const list = sanitizeFixIds(catalog);
-  if (list.length === 0) {
+  const ranked = rankFixCandidates(token, catalog);
+  const winner = ranked[0];
+  if (winner === undefined || ranked[1]?.score === winner.score) {
     return null;
   }
-  const key = normalizeFixKey(token ?? "");
-  if (key.length < 2) {
+  return winner.id;
+}
+
+/**
+ * Ground one route phrase without allowing arbitrary token concatenation.
+ * Scalar grounding keeps its compact-key behavior; route phrases may cross
+ * token boundaries only for a declared spoken alias such as SEE MAX.
+ */
+export function groundFixPhraseToCatalog(
+  tokens: readonly string[],
+  catalog: readonly string[],
+): string | null {
+  if (tokens.length === 0) {
     return null;
   }
-
-  const exact = list.find((id) => id === key || normalizeFixKey(id) === key);
-  if (exact) {
-    return exact;
+  if (tokens.length === 1) {
+    return groundFixToCatalog(tokens[0], catalog);
   }
 
-  const aliasHits = list.filter((id) => catalogFixAliases(id).includes(key));
-  if (aliasHits.length === 1) {
-    return aliasHits[0]!;
+  const phrase = tokens.join(" ");
+  const phraseKey = normalizeFixKey(phrase);
+  const ranked = rankFixCandidates(phrase, catalog).filter((candidate) =>
+    catalogFixPhraseAliases(candidate.id).some(
+      (alias) =>
+        alias.split(/\s+/).length === tokens.length && normalizeFixKey(alias) === phraseKey,
+    ),
+  );
+  const winner = ranked[0];
+  if (winner === undefined || ranked[1]?.score === winner.score) {
+    return null;
   }
-
-  const folded = foldSpokenFix(key);
-  if (folded !== key) {
-    const foldAliasHits = list.filter((id) => catalogFixAliases(id).includes(folded));
-    if (foldAliasHits.length === 1) {
-      return foldAliasHits[0]!;
-    }
-  }
-
-  if (key.length >= 3) {
-    const near = list.filter((id) => levenshtein(key, normalizeFixKey(id)) <= 1);
-    if (near.length === 1) {
-      return near[0]!;
-    }
-  }
-
-  if (folded.length >= 3) {
-    const foldNear = list.filter((id) => levenshtein(folded, foldSpokenFix(id)) <= 1);
-    if (foldNear.length === 1) {
-      return foldNear[0]!;
-    }
-  }
-
-  return null;
+  return winner.id;
 }
 
 export interface GroundedFixInstructions {

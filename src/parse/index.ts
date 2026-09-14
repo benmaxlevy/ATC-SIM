@@ -19,10 +19,17 @@ export { normalizeSpoken } from "./spoken/normalizer";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";
 export {
   approachesFromCatalog,
+  rankFixCandidates,
   proceduresFromCatalog,
   sanitizeFixIds,
 } from "./spoken/catalog-ground";
-export type { CatalogApproach, CatalogProcedure } from "./spoken/catalog-ground";
+export type {
+  CatalogApproach,
+  CatalogFixMatchMethod,
+  CatalogFixMatchTier,
+  CatalogProcedure,
+  RankedFixCandidate,
+} from "./spoken/catalog-ground";
 export { MAX_RETRIEVE_CANDIDATES, retrieveFix } from "./spoken/catalog-retrieve";
 export type { RetrieveHit } from "./spoken/catalog-retrieve";
 export { SNAP_SCORE_FLOOR, SNAP_SCORE_MARGIN, snapFix } from "./spoken/catalog-snap";

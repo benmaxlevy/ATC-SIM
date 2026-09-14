@@ -1,7 +1,7 @@
 import type { ClearanceRouteSegment } from "@core";
 import {
-  catalogFixAliases,
   compactProcedureKey,
+  groundFixPhraseToCatalog,
   matchSpokenStarTransition,
   sanitizeCatalogProcedures,
   type CatalogProcedure,
@@ -65,7 +65,7 @@ function isControlWord(token: string | undefined): boolean {
   return token !== undefined && ROUTE_STOP_WORDS.has(token.toLowerCase());
 }
 
-function exactFixMatches(
+function groundedFixMatches(
   tokens: readonly string[],
   index: number,
   fixes: readonly string[],
@@ -76,15 +76,10 @@ function exactFixMatches(
   for (let length = max; length >= 1; length -= 1) {
     const slice = tokens.slice(index, index + length);
     if (slice.some((token) => isControlWord(token))) continue;
-    const key = routeKey(slice.join(" "));
-    if (!key) continue;
-    for (const id of fixes) {
-      const normalized = id.trim().toUpperCase();
-      if (!normalized || seen.has(normalized)) continue;
-      if (catalogFixAliases(normalized).some((alias) => routeKey(alias) === key)) {
-        seen.add(normalized);
-        out.push({ id: normalized, next: index + length });
-      }
+    const id = groundFixPhraseToCatalog(slice, fixes);
+    if (id !== null && !seen.has(id)) {
+      seen.add(id);
+      out.push({ id, next: index + length });
     }
   }
   return out;
@@ -230,7 +225,9 @@ export function scanIfrClearanceRouteWindow(
         memo.set(key, []);
         return [];
       }
-      const matches = useCatalog ? exactFixMatches(tokens, next, fixes) : rawFixMatch(tokens, next);
+      const matches = useCatalog
+        ? groundedFixMatches(tokens, next, fixes)
+        : rawFixMatch(tokens, next);
       const paths = matches.flatMap((match) =>
         parse(match.next, [...segments, { type: "DIRECT", fixId: match.id }]),
       );
@@ -247,7 +244,9 @@ export function scanIfrClearanceRouteWindow(
       memo.set(key, []);
       return [];
     }
-    const fixesAt = useCatalog ? exactFixMatches(tokens, index, fixes) : rawFixMatch(tokens, index);
+    const fixesAt = useCatalog
+      ? groundedFixMatches(tokens, index, fixes)
+      : rawFixMatch(tokens, index);
     const matches =
       procedure.matches.length > 0
         ? procedure.matches.map((match) => ({ segment: match.segment, next: match.next }))

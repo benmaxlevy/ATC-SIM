@@ -239,7 +239,7 @@ test("IFR route fallback sends only route-window evidence and accepts canonical 
           access: {
             type: "EXPLICIT_ROUTE",
             segments: [
-              { type: "DIRECT", fixId: "AB" },
+              { type: "DIRECT", fixId: "SEMAX" },
               { type: "DIRECT", fixId: "CD" },
             ],
           },
@@ -248,9 +248,9 @@ test("IFR route fallback sends only route-window evidence and accepts canonical 
     };
   });
 
-  const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
+  const result = await parseCommand("DAL123 cleared to KAHN via SEE MAX CD", {
     source: "voice",
-    fixes: ["KAHN", "AB", "CD", "ABCD"],
+    fixes: ["KAHN", "SEE", "MAX", "SEMAX", "CD"],
     pathC: true,
     parsePathC,
   });
@@ -264,7 +264,7 @@ test("IFR route fallback sends only route-window evidence and accepts canonical 
         access: {
           type: "EXPLICIT_ROUTE",
           segments: [
-            { type: "DIRECT", fixId: "AB" },
+            { type: "DIRECT", fixId: "SEMAX" },
             { type: "DIRECT", fixId: "CD" },
           ],
         },
@@ -272,9 +272,9 @@ test("IFR route fallback sends only route-window evidence and accepts canonical 
     ],
   });
   expect(captured?.context?.fixes).toBeUndefined();
-  expect(captured?.context?.routeWindow?.transcript).toBe("ab cd");
+  expect(captured?.context?.routeWindow?.transcript).toBe("see max cd");
   expect(captured?.context?.routeWindow?.candidates.map((item) => item.id)).toEqual(
-    expect.arrayContaining(["AB", "CD"]),
+    expect.arrayContaining(["SEMAX", "CD"]),
   );
   expect(captured?.context?.routeWindow?.candidates.every((item) => item.spans.length > 0)).toBe(
     true,
