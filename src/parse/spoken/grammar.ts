@@ -250,7 +250,7 @@ function tryDirect(c: Cursor): Instruction | null {
 /** Compact trainer IFR clearance; kept ahead of tactical cleared-direct. */
 function tryIfrClearance(c: Cursor): Instruction | null {
   const start = c.i;
-  if (!take(c, "cleared") || !take(c, "to")) {
+  if ((!take(c, "cleared") && !take(c, "clear")) || !take(c, "to")) {
     c.i = start;
     return null;
   }
@@ -897,19 +897,32 @@ export function parseSpokenGrammar(
     procedures: catalogProcedures ?? [],
   };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
-  if (callsignAttempt.kind === "unknown_telephony") {
+  let callsignToken: string | null = null;
+  if (callsignAttempt.kind === "ok") {
+    callsignToken = callsignAttempt.callsign;
+    c.i = callsignAttempt.next;
+  } else if (selectedCallsign) {
+    const selectedStart = tokens.findIndex(
+      (token, index) => (token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+    );
+    if (selectedStart > 0) {
+      // The selected aircraft supplies the callsign when ASR mangles its prefix;
+      // parse the clearance body locally and never guess a replacement callsign.
+      c.i = selectedStart;
+    } else if (callsignAttempt.kind === "unknown_telephony") {
+      return {
+        ok: false,
+        error: formatParseError(PARSE_ERROR.UNKNOWN_TELEPHONY, callsignAttempt.word),
+        sourceText,
+      };
+    }
+    callsignToken = selectedCallsign;
+  } else if (callsignAttempt.kind === "unknown_telephony") {
     return {
       ok: false,
       error: formatParseError(PARSE_ERROR.UNKNOWN_TELEPHONY, callsignAttempt.word),
       sourceText,
     };
-  }
-  let callsignToken: string | null = null;
-  if (callsignAttempt.kind === "ok") {
-    callsignToken = callsignAttempt.callsign;
-    c.i = callsignAttempt.next;
-  } else {
-    callsignToken = selectedCallsign ?? null;
   }
 
   const instructions: Instruction[] = [];

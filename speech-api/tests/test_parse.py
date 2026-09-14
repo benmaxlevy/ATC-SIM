@@ -12,6 +12,8 @@ from parse_engine import (
     INSTRUCTION_TYPES,
     MOCK_PARSE_OK,
     ParseOutcome,
+    ROUTE_SEGMENT_TYPES,
+    guard_catalog_ids,
     validate_instruction,
     validate_parse_json,
 )
@@ -52,6 +54,109 @@ def test_path_c_instruction_type_parity_with_frontend_union() -> None:
     block = source.split("export const INSTRUCTION_TYPES = [", 1)[1].split("] as const", 1)[0]
     frontend = set(re.findall(r'^\s+"([A-Z][A-Z_]+)",\s*$', block, flags=re.MULTILINE))
     assert frontend == set(INSTRUCTION_TYPES)
+    segment_block = source.split("export type ClearanceRouteSegment =", 1)[1].split(
+        "export type IfrClearanceAccess =", 1
+    )[0]
+    frontend_segments = set(re.findall(r'type: "([A-Z_]+)"', segment_block))
+    assert frontend_segments == set(ROUTE_SEGMENT_TYPES)
+
+
+def test_path_c_route_schema_accepts_arbitrary_canonical_segments() -> None:
+    route = {
+        "type": "IFR_CLEARANCE",
+        "limitId": "KATL",
+        "access": {
+            "type": "EXPLICIT_ROUTE",
+            "segments": [
+                {"type": "DIRECT", "fixId": "SWEPT"},
+                {"type": "DIRECT", "fixId": "HOUND"},
+                {"type": "PROCEDURE", "procedureId": "SID1", "transitionId": "NORTH"},
+            ],
+        },
+    }
+    assert validate_instruction(route) == route
+    assert validate_instruction(
+        {"type": "IFR_CLEARANCE", "limitId": "KATL", "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": "X", "extra": True}]}}
+    ) is None
+
+
+def test_path_c_route_guard_requires_supplied_ids_and_transcript_spans() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+        "clearanceLimits": [
+            {"id": "KATL", "kind": "FIX", "aliases": ["KATL"], "spans": [{"start": 0, "end": 4, "text": "KATL"}]}
+        ],
+        "routeWindow": {
+            "transcript": "swept hound",
+            "candidates": [
+                {"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]},
+                {"id": "HOUND", "kind": "NAVAID", "aliases": ["HOUND"], "spans": [{"start": 6, "end": 11, "text": "hound"}]},
+            ],
+            "procedures": [],
+        },
+    }
+    valid = ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": "KATL",
+                "access": {
+                    "type": "EXPLICIT_ROUTE",
+                    "segments": [
+                        {"type": "DIRECT", "fixId": "SWEPT"},
+                        {"type": "DIRECT", "fixId": "HOUND"},
+                    ],
+                },
+            }
+        ],
+    )
+    assert guard_catalog_ids("cleared to KATL via swept hound", context, valid).ok
+    for bad_id in ("NOPE", "KATL"):
+        bad = ParseOutcome(
+            ok=True,
+            instructions=[
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {"type": "EXPLICIT_ROUTE", "segments": [{"type": "DIRECT", "fixId": bad_id}]},
+                }
+            ],
+        )
+        assert guard_catalog_ids("cleared to KATL via swept", context, bad).error == "PARSE_MISS"
+    tactical = ParseOutcome(
+        ok=True,
+        instructions=[{"type": "DIRECT", "fixId": "ATL"}],
+    )
+    assert guard_catalog_ids(
+        "endeavor 1155 clear to atlanta international airport via direct swept direct kimmy direct bluff direct",
+        context,
+        tactical,
+    ).error == "PARSE_MISS"
+
+
+def test_path_c_route_prompt_teaches_optional_direct_and_catalog_transitions() -> None:
+    from parse_engine import SYSTEM_PROMPT, build_parse_user_message
+
+    assert "DIRECT is an optional marker" in SYSTEM_PROMPT
+    assert "transitionId only when that transition is nested" in SYSTEM_PROMPT
+    message = build_parse_user_message(
+        "cleared to atlanta via swept hound",
+        "voice",
+        {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "swept hound",
+                "candidates": [{"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]}],
+                "procedures": [],
+            },
+        },
+    )
+    assert "routeWindow=" in message
+    assert "swept hound" in message
 
 
 def test_empty_parse_model_uses_default_and_mock_is_ready() -> None:

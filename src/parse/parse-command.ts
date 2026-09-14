@@ -29,20 +29,32 @@ import {
   groundProcedureToCatalog,
   sanitizeCatalogAirports,
   normalizeFixKey,
+  catalogFixAliases,
+  catalogProcedureAliases,
+  compactProcedureKey,
   sanitizeCatalogApproaches,
   sanitizeCatalogProcedures,
   sanitizeFixIds,
   type CatalogApproach,
   type CatalogAirport,
   type CatalogProcedure,
+  type CatalogStarTransitionVocab,
 } from "./spoken/catalog-ground";
+import { routeWindowBounds } from "./ifr-clearance-route-window";
 import { retrieveFix } from "./spoken/catalog-retrieve";
 import {
   MAX_PATH_C_FIXES,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  schemaCheckPathC,
   type ParsePathCFn,
   type PathCContext,
+  type PathCProcedureCandidate,
+  type PathCRouteCandidate,
+  type PathCRouteCandidateInput,
+  type PathCRouteWindow,
+  type PathCTranscriptSpan,
+  routePathCOutputIsGrounded,
 } from "./path-c";
 
 export interface ParseCommandOpts {
@@ -55,6 +67,8 @@ export interface ParseCommandOpts {
    * `fixes=` prompt grounding. Not kinematics. Parse stays World-free.
    */
   fixes?: readonly string[];
+  /** Optional typed fix/navaid catalog projection for route-window Path C. */
+  routeCandidates?: readonly PathCRouteCandidateInput[];
   /**
    * STAR/SID catalog for DESCEND_VIA / CLIMB_VIA / JOIN_PROCEDURE snap (`demo 1` → `DEM1`)
    * and Path C `procedures=` grounding.
@@ -613,6 +627,157 @@ export function pathCApproachList(
   return [];
 }
 
+function routeAliasList(id: string, aliases: readonly string[] = []): string[] {
+  return [
+    ...new Set(
+      [id, ...catalogFixAliases(id), ...aliases].map((value) => value.trim()).filter(Boolean),
+    ),
+  ];
+}
+
+function tokenSpans(
+  tokens: readonly string[],
+  startIndex: number,
+  endIndex: number,
+  aliases: readonly string[],
+): PathCTranscriptSpan[] {
+  const offsets: number[] = [];
+  let offset = 0;
+  for (let i = startIndex; i < endIndex; i += 1) {
+    offsets.push(offset);
+    offset += tokens[i]!.length + 1;
+  }
+  const out: PathCTranscriptSpan[] = [];
+  const seen = new Set<string>();
+  for (let i = startIndex; i < endIndex; i += 1) {
+    for (let length = 1; i + length <= endIndex; length += 1) {
+      const phrase = tokens.slice(i, i + length).join(" ");
+      const phraseKey = compactProcedureKey(phrase);
+      if (!phraseKey) continue;
+      if (!aliases.some((alias) => compactProcedureKey(alias) === phraseKey)) continue;
+      const localStart = offsets[i - startIndex]!;
+      const localEnd = localStart + phrase.length;
+      const key = `${localStart}:${localEnd}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ start: localStart, end: localEnd, text: phrase });
+    }
+  }
+  return out;
+}
+
+function procedureRouteCandidate(
+  procedure: CatalogProcedure,
+  tokens: readonly string[],
+  startIndex: number,
+  endIndex: number,
+): PathCProcedureCandidate {
+  const aliases = catalogProcedureAliases(procedure);
+  const transitions = (procedure.transitions ?? []).map(
+    (transition: CatalogStarTransitionVocab) => ({
+      id: transition.id.trim().toUpperCase(),
+      aliases: routeAliasList(transition.id, transition.name ? [transition.name] : []),
+      spans: tokenSpans(
+        tokens,
+        startIndex,
+        endIndex,
+        routeAliasList(transition.id, transition.name ? [transition.name] : []),
+      ),
+    }),
+  );
+  return {
+    id: procedure.id,
+    aliases,
+    spans: tokenSpans(tokens, startIndex, endIndex, aliases),
+    transitions,
+  };
+}
+
+function routeWindowContext(
+  normalized: string,
+  catalog: readonly string[],
+  routeCandidates: readonly PathCRouteCandidateInput[],
+  procedures: readonly CatalogProcedure[],
+  airports: readonly CatalogAirport[],
+): { routeWindow: PathCRouteWindow; startIndex: number; endIndex: number } | null {
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const clearanceStart = tokens.findIndex(
+    (token, index) =>
+      (token === "clr" || token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+  );
+  if (clearanceStart < 0) return null;
+  const viaIndex = tokens.findIndex(
+    (token, index) => index > clearanceStart + 1 && token === "via",
+  );
+  if (viaIndex < 0) return null;
+  const bounds = routeWindowBounds(tokens, viaIndex + 1);
+  if (bounds === null) return null;
+  const inputs =
+    routeCandidates.length > 0
+      ? routeCandidates
+      : catalog.map((id) => ({ id, kind: "FIX" as const }));
+  const candidates: PathCRouteCandidate[] = [];
+  const seen = new Set<string>();
+  const airportIds = new Set(airports.map((airport) => airport.icao));
+  for (const input of inputs) {
+    const id = sanitizeFixIds([input.id])[0];
+    if (!id || airportIds.has(id) || seen.has(id)) continue;
+    const aliases = routeAliasList(id, "aliases" in input ? (input.aliases ?? []) : []);
+    const spans = tokenSpans(tokens, bounds.startIndex, bounds.endIndex, aliases);
+    if (spans.length === 0) continue;
+    seen.add(id);
+    candidates.push({ id, kind: input.kind, aliases, spans });
+  }
+  const procedureRows = procedures
+    .map((procedure) =>
+      procedureRouteCandidate(procedure, tokens, bounds.startIndex, bounds.endIndex),
+    )
+    .filter((procedure) => procedure.spans.length > 0);
+  if (candidates.length === 0 && procedureRows.length === 0) return null;
+  return {
+    startIndex: bounds.startIndex,
+    endIndex: bounds.endIndex,
+    routeWindow: {
+      transcript: tokens.slice(bounds.startIndex, bounds.endIndex).join(" "),
+      candidates,
+      procedures: procedureRows,
+    },
+  };
+}
+
+function clearanceLimitCandidates(
+  normalized: string,
+  catalog: readonly string[],
+  routeCandidates: readonly PathCRouteCandidateInput[],
+  airports: readonly CatalogAirport[],
+): { limits: PathCRouteCandidate[]; airportMatches: CatalogAirport[] } {
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const clearanceStart = tokens.findIndex(
+    (token, index) =>
+      (token === "clr" || token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+  );
+  if (clearanceStart < 0) return { limits: [], airportMatches: [] };
+  const viaIndex = tokens.findIndex(
+    (token, index) => index > clearanceStart + 1 && token === "via",
+  );
+  const limitEnd = viaIndex < 0 ? tokens.length : viaIndex;
+  const spans = (aliases: readonly string[]) =>
+    tokenSpans(tokens, clearanceStart + 2, limitEnd, aliases);
+  const inputs = [...routeCandidates, ...catalog.map((id) => ({ id, kind: "FIX" as const }))];
+  const limits: PathCRouteCandidate[] = [];
+  for (const input of inputs) {
+    const id = sanitizeFixIds([input.id])[0];
+    if (!id) continue;
+    const aliases = routeAliasList(id, "aliases" in input ? (input.aliases ?? []) : []);
+    const evidence = spans(aliases);
+    if (evidence.length > 0) limits.push({ id, kind: input.kind, aliases, spans: evidence });
+  }
+  const airportMatches = airports.filter(
+    (airport) => spans([airport.icao, airport.name, ...(airport.aliases ?? [])]).length > 0,
+  );
+  return { limits, airportMatches };
+}
+
 function pathCContext(
   roster: readonly string[],
   selected: string | null,
@@ -621,12 +786,15 @@ function pathCContext(
   approaches: readonly CatalogApproach[],
   airports: readonly CatalogAirport[],
   queryTokens: readonly string[],
+  route: PathCRouteWindow | undefined = undefined,
+  limits: readonly PathCRouteCandidate[] = [],
+  clearanceAirports: readonly CatalogAirport[] = [],
 ): PathCContext | undefined {
   const retrieved = mergeRetrievedFixes(queryTokens, catalog);
   const fixes = pathCFixIds(catalog, queryTokens, retrieved);
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
-  const pathAirports = airports
+  const pathAirports = (route ? clearanceAirports : airports)
     .filter((airport) =>
       queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
     )
@@ -638,9 +806,20 @@ function pathCContext(
     fixes.length === 0 &&
     pathProcedures.length === 0 &&
     pathApproaches.length === 0 &&
-    pathAirports.length === 0
+    pathAirports.length === 0 &&
+    route === undefined &&
+    limits.length === 0
   ) {
     return undefined;
+  }
+  if (route !== undefined) {
+    return {
+      callsigns: [...roster],
+      selectedCallsign: selected,
+      routeWindow: route,
+      ...(limits.length > 0 ? { clearanceLimits: [...limits] } : {}),
+      ...(pathAirports.length > 0 ? { airports: pathAirports } : {}),
+    };
   }
   return {
     callsigns: [...roster],
@@ -848,6 +1027,36 @@ function pathCIdentifierListed(
   instructions: readonly Instruction[],
   context: PathCContext | undefined,
 ): boolean {
+  if (context?.routeWindow !== undefined) {
+    const route = context.routeWindow;
+    const airports = new Set((context.airports ?? []).map((airport) => airport.icao));
+    const limits = new Set([
+      ...airports,
+      ...(context.clearanceLimits ?? []).map((candidate) => candidate.id),
+    ]);
+    const fixes = new Set(route.candidates.map((candidate) => candidate.id));
+    const procedures = new Map(route.procedures.map((procedure) => [procedure.id, procedure]));
+    for (const inst of instructions) {
+      if (inst.type !== "IFR_CLEARANCE") return false;
+      if (!limits.has(inst.limitId)) return false;
+      if (inst.access.type !== "EXPLICIT_ROUTE" || inst.access.segments.length === 0) return false;
+      for (const segment of inst.access.segments) {
+        if (segment.type === "DIRECT") {
+          if (!fixes.has(segment.fixId) || airports.has(segment.fixId)) return false;
+        } else {
+          const procedure = procedures.get(segment.procedureId);
+          if (procedure === undefined) return false;
+          if (
+            segment.transitionId !== undefined &&
+            !procedure.transitions.some((transition) => transition.id === segment.transitionId)
+          ) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
   const fixes = new Set(context?.fixes ?? []);
   const procedures = new Set((context?.procedures ?? []).map((item) => item.id));
   const approaches = new Set((context?.approaches ?? []).map((item) => item.id));
@@ -906,6 +1115,12 @@ export async function parseCommand(
   const airports = sanitizeCatalogAirports(opts.airports);
   const normalized = rewriteIfrAirportLimit(normalizeSpoken(sourceText), airports);
   const ifrCandidate = isIfrClearanceCandidate(normalized);
+  const routeInfo = ifrCandidate
+    ? routeWindowContext(normalized, catalog, opts.routeCandidates ?? [], procedures, airports)
+    : null;
+  const limitInfo = ifrCandidate
+    ? clearanceLimitCandidates(normalized, catalog, opts.routeCandidates ?? [], airports)
+    : { limits: [], airportMatches: [] };
   const extraTokens: string[] = [];
 
   const typed = tryGroundedLocal(
@@ -1018,11 +1233,18 @@ export async function parseCommand(
     matchedProcedures.length === 0 &&
     matchedApproaches.length === 0 &&
     matchedAirports.length === 0;
+  const routeEvidence = routeInfo?.routeWindow;
+  const routeFallbackHasEvidence =
+    routeEvidence !== undefined &&
+    (routeEvidence.candidates.length > 0 || routeEvidence.procedures.length > 0) &&
+    (limitInfo.limits.length > 0 || limitInfo.airportMatches.length > 0);
 
   if (
     opts.pathC &&
-    !emptyIdentifierRetrieve &&
-    (!ifrCandidate || localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures))
+    (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
+    (!ifrCandidate ||
+      routeFallbackHasEvidence ||
+      localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures))
   ) {
     const run = opts.parsePathC ?? fetchParsePathC;
     const context = pathCContext(
@@ -1033,6 +1255,9 @@ export async function parseCommand(
       approaches,
       airports,
       queryTokens,
+      routeEvidence,
+      limitInfo.limits,
+      limitInfo.airportMatches,
     );
     try {
       const hit = await run({
@@ -1041,25 +1266,37 @@ export async function parseCommand(
         schemaVersion: PATH_C_SCHEMA_VERSION,
         context,
       });
-      if (hit !== null && hit.instructions.length > 0) {
+      const checkedHit =
+        hit === null
+          ? null
+          : schemaCheckPathC({
+              ok: true,
+              callsignToken: hit.callsignToken,
+              instructions: hit.instructions,
+            });
+      if (checkedHit !== null && checkedHit.instructions.length > 0) {
         const grounded =
           groundCallsignToRoster(
-            hit.callsignToken ?? spokenCallsignToken(normalized),
+            checkedHit.callsignToken ?? spokenCallsignToken(normalized),
             normalized,
             roster,
             selected,
           ) ??
-          hit.callsignToken ??
+          checkedHit.callsignToken ??
           spokenCallsignToken(normalized);
-        const pathFixes = context?.fixes ?? [];
-        const pathProcedures = context?.procedures ?? [];
+        const pathFixes = [
+          ...(context?.fixes ?? []),
+          ...(context?.routeWindow?.candidates.map((candidate) => candidate.id) ?? []),
+          ...(context?.clearanceLimits?.map((candidate) => candidate.id) ?? []),
+        ];
+        const pathProcedures = context?.routeWindow?.procedures ?? context?.procedures ?? [];
         const pathApproaches = context?.approaches ?? [];
         const pathAirports = context?.airports ?? [];
         const salvaged = okStage(
           {
             ok: true,
             callsignToken: grounded,
-            instructions: repairHeadingVsTurnDegrees(normalized, hit.instructions),
+            instructions: repairHeadingVsTurnDegrees(normalized, checkedHit.instructions),
             sourceText,
           },
           sourceText,
@@ -1075,7 +1312,8 @@ export async function parseCommand(
         if (
           ungrounded.length === 0 &&
           (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
-          pathCIdentifierListed(salvaged.instructions, context)
+          pathCIdentifierListed(salvaged.instructions, context) &&
+          routePathCOutputIsGrounded(salvaged.instructions, context)
         ) {
           return salvaged;
         }

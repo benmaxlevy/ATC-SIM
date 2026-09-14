@@ -22,6 +22,8 @@ const REQ: PathCRequest = {
   schemaVersion: PATH_C_SCHEMA_VERSION,
 };
 
+const ATLANTA = [{ icao: "KATL", name: "Atlanta International" }];
+
 test("path-c source does not call paid LLM hosts", async () => {
   const sources = import.meta.glob(["../*.{ts,tsx}", "../spoken/*.{ts,tsx}"], {
     query: "?raw",
@@ -222,4 +224,162 @@ test("Path C payload context includes retained approaches for cleared approach p
   expect(capturedContext).toBeDefined();
   expect(capturedContext?.approaches).toBeDefined();
   expect(capturedContext?.approaches?.some((a) => a.id === "I26R")).toBe(true);
+});
+
+test("IFR route fallback sends only route-window evidence and accepts canonical EXPLICIT_ROUTE", async () => {
+  let captured: PathCRequest | undefined;
+  const parsePathC = vi.fn<ParsePathCFn>(async (request) => {
+    captured = request;
+    return {
+      callsignToken: "DAL123",
+      instructions: [
+        {
+          type: "IFR_CLEARANCE",
+          limitId: "KAHN",
+          access: {
+            type: "EXPLICIT_ROUTE",
+            segments: [
+              { type: "DIRECT", fixId: "AB" },
+              { type: "DIRECT", fixId: "CD" },
+            ],
+          },
+        },
+      ],
+    };
+  });
+
+  const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
+    source: "voice",
+    fixes: ["KAHN", "AB", "CD", "ABCD"],
+    pathC: true,
+    parsePathC,
+  });
+
+  expect(result).toMatchObject({
+    ok: true,
+    parseStage: "llm_c",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "AB" },
+            { type: "DIRECT", fixId: "CD" },
+          ],
+        },
+      },
+    ],
+  });
+  expect(captured?.context?.fixes).toBeUndefined();
+  expect(captured?.context?.routeWindow?.transcript).toBe("ab cd");
+  expect(captured?.context?.routeWindow?.candidates.map((item) => item.id)).toEqual(
+    expect.arrayContaining(["AB", "CD"]),
+  );
+  expect(captured?.context?.routeWindow?.candidates.every((item) => item.spans.length > 0)).toBe(
+    true,
+  );
+  expect(captured?.context?.clearanceLimits?.map((item) => item.id)).toEqual(["KAHN"]);
+});
+
+test("IFR route fallback rejects a partial chain", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: "DAL123",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KAHN",
+        access: { type: "EXPLICIT_ROUTE", segments: [{ type: "DIRECT", fixId: "AB" }] },
+      },
+    ],
+  }));
+
+  const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
+    source: "voice",
+    fixes: ["KAHN", "AB"],
+    routeCandidates: [
+      { id: "AB", kind: "FIX", aliases: ["AB"] },
+      { id: "CD", kind: "FIX", aliases: ["CD"] },
+    ],
+    pathC: true,
+    parsePathC,
+  });
+
+  expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+  expect(parsePathC).toHaveBeenCalledOnce();
+});
+
+test("IFR route fallback rejects a concatenated or tactical direct", async () => {
+  const outputs = [
+    {
+      callsignToken: "EDV7114",
+      instructions: [
+        {
+          type: "IFR_CLEARANCE" as const,
+          limitId: "KATL",
+          access: {
+            type: "EXPLICIT_ROUTE" as const,
+            segments: [{ type: "DIRECT" as const, fixId: "SWEPT_KIMMY" }],
+          },
+        },
+      ],
+    },
+    {
+      callsignToken: "EDV1155",
+      instructions: [{ type: "DIRECT" as const, fixId: "ATL" }],
+    },
+  ];
+  for (const output of outputs) {
+    const parsePathC = vi.fn<ParsePathCFn>(async () => output);
+    const result = await parseCommand(
+      output.instructions[0]?.type === "DIRECT"
+        ? "endeavor 1155 clear to atlanta international airport via direct swept direct kimmy direct bluff direct"
+        : "EDV7114 clear to atlanta international airport via swept kimmy direct",
+      {
+        source: "voice",
+        selectedCallsign: output.callsignToken,
+        fixes: ["SWEPT"],
+        routeCandidates: [
+          { id: "SWEPT", kind: "FIX", aliases: ["SWEPT"] },
+          { id: "KIMMY", kind: "FIX", aliases: ["KIMMY"] },
+          { id: "BLUFF", kind: "FIX", aliases: ["BLUFF"] },
+        ],
+        airports: ATLANTA,
+        pathC: true,
+        parsePathC,
+      },
+    );
+    expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
+    expect(parsePathC).toHaveBeenCalledOnce();
+  }
+});
+
+test.each([
+  {
+    name: "unknown route id",
+    output: { type: "DIRECT", fixId: "NOPE" },
+  },
+  {
+    name: "airport route id",
+    output: { type: "DIRECT", fixId: "KATL" },
+  },
+] as const)("IFR route fallback rejects $name", async ({ output }) => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: null,
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KAHN",
+        access: { type: "EXPLICIT_ROUTE", segments: [output] },
+      },
+    ],
+  }));
+  const result = await parseCommand("DAL123 cleared to KAHN via AB CD", {
+    source: "voice",
+    fixes: ["KAHN", "AB"],
+    airports: [{ icao: "KATL", name: "Atlanta International" }],
+    pathC: true,
+    parsePathC,
+  });
+  expect(result).toMatchObject({ ok: false, error: "PARSE_MISS" });
 });

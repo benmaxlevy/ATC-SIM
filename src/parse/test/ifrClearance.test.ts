@@ -357,6 +357,81 @@ test("procedure transitions and exact Atlanta/SWEPT route regression ground in o
   });
 });
 
+test("adjacent SWEPT KIMMY route chain stays deterministic and local", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => null);
+  const result = await parseCommand(
+    "endeavor seven eight one fourteen clear to atlanta international airport via swept kimmy direct",
+    {
+      source: "voice",
+      selectedCallsign: "EDV7114",
+      fixes: ["SWEPT", "KIMMY"],
+      routeCandidates: [
+        { id: "SWEPT", kind: "FIX", aliases: ["SWEPT"] },
+        { id: "KIMMY", kind: "FIX", aliases: ["KIMMY"] },
+      ],
+      airports,
+      pathC: true,
+      parsePathC,
+    },
+  );
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: "EDV7114",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KATL",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "SWEPT" },
+            { type: "DIRECT", fixId: "KIMMY" },
+          ],
+        },
+      },
+    ],
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+});
+
+test("IFR route chain never falls back to tactical airport direct", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => null);
+  const result = await parseCommand(
+    "endeavor 1155 clear to atlanta international airport via direct swept direct kimmy direct bluff direct",
+    {
+      source: "voice",
+      fixes: ["SWEPT", "KIMMY", "BLUFF"],
+      routeCandidates: [
+        { id: "SWEPT", kind: "FIX", aliases: ["SWEPT"] },
+        { id: "KIMMY", kind: "FIX", aliases: ["KIMMY"] },
+        { id: "BLUFF", kind: "FIX", aliases: ["BLUFF"] },
+      ],
+      airports,
+      pathC: true,
+      parsePathC,
+    },
+  );
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: "EDV1155",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KATL",
+        access: {
+          type: "EXPLICIT_ROUTE",
+          segments: [
+            { type: "DIRECT", fixId: "SWEPT" },
+            { type: "DIRECT", fixId: "KIMMY" },
+            { type: "DIRECT", fixId: "BLUFF" },
+          ],
+        },
+      },
+    ],
+  });
+  expect(parsePathC).not.toHaveBeenCalled();
+});
+
 test("unknown, duplicate, and airport route tokens return PARSE_MISS", async () => {
   for (const text of [
     "DAL123 cleared to KAHN via SIITH NOPE",

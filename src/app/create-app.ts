@@ -1,6 +1,11 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
 import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
-import { approachesFromCatalog, parseCommand, proceduresFromCatalog } from "@parse";
+import {
+  approachesFromCatalog,
+  parseCommand,
+  proceduresFromCatalog,
+  type PathCRouteCandidateInput,
+} from "@parse";
 import { handleRadioCommand, createCheckInQueue } from "@pilot";
 import {
   createPttCaptureController,
@@ -150,6 +155,16 @@ export function createApp(deps: AppDeps): AppHandles {
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
       getCatalogFixIds: () => (world.fixRegistry ? [...world.fixRegistry.ids()] : []),
+      getCatalogRouteCandidates: (): PathCRouteCandidateInput[] => [
+        ...(world.catalog?.navaids ?? []).map((item) => ({
+          id: item.id,
+          kind: "NAVAID" as const,
+        })),
+        ...(world.catalog?.fixes ?? []).map((item) => ({
+          id: item.id,
+          kind: "FIX" as const,
+        })),
+      ],
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),

@@ -287,6 +287,50 @@ CASES: list[dict[str, Any]] = [
         },
     },
     {
+        "id": "clearance-route-chain-fallback",
+        "text": "cleared to KATL via swept hound",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "clearanceLimits": [],
+            "routeWindow": {
+                "transcript": "swept hound",
+                "candidates": [
+                    {"id": "SWEPT", "kind": "FIX", "aliases": ["SWEPT"], "spans": [{"start": 0, "end": 5, "text": "swept"}]},
+                    {"id": "HOUND", "kind": "NAVAID", "aliases": ["HOUND"], "spans": [{"start": 6, "end": 11, "text": "hound"}]},
+                ],
+                "procedures": [],
+            },
+        },
+        "expect": {
+            "instructions": [
+                {
+                    "type": "IFR_CLEARANCE",
+                    "limitId": "KATL",
+                    "access": {
+                        "type": "EXPLICIT_ROUTE",
+                        "segments": [
+                            {"type": "DIRECT", "fixId": "SWEPT"},
+                            {"type": "DIRECT", "fixId": "HOUND"},
+                        ],
+                    },
+                }
+            ]
+        },
+    },
+    {
+        "id": "clearance-route-hallucinated-id",
+        "text": "cleared to KATL via invented",
+        "context": {
+            "airports": [{"icao": "KATL", "name": "Atlanta International"}],
+            "routeWindow": {
+                "transcript": "invented",
+                "candidates": [],
+                "procedures": [],
+            },
+        },
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
         "id": "tactical-direct-not-clearance",
         "text": "cleared direct CEDAR",
         "expect": {"instructions": [{"type": "DIRECT", "fixId": "CEDAR"}]},
@@ -539,13 +583,15 @@ def check_case(body: dict[str, Any], expect: dict[str, Any]) -> str | None:
     return None
 
 
-def parse_http(url: str, text: str, timeout: float) -> dict[str, Any]:
+def parse_http(
+    url: str, text: str, timeout: float, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     payload = json.dumps(
         {
             "text": text,
             "source": "voice",
             "schemaVersion": SCHEMA_VERSION,
-            "context": FACILITY,
+            "context": context or FACILITY,
         }
     ).encode("utf-8")
     req = urllib.request.Request(
@@ -558,8 +604,8 @@ def parse_http(url: str, text: str, timeout: float) -> dict[str, Any]:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def parse_inproc(engine: Any, text: str) -> dict[str, Any]:
-    outcome = engine.parse(text, "voice", SCHEMA_VERSION, FACILITY)
+def parse_inproc(engine: Any, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    outcome = engine.parse(text, "voice", SCHEMA_VERSION, context or FACILITY)
     return outcome.body()
 
 
@@ -594,9 +640,9 @@ def main() -> int:
         t0 = time.perf_counter()
         try:
             if args.url:
-                body = parse_http(args.url, case["text"], args.timeout)
+                body = parse_http(args.url, case["text"], args.timeout, case.get("context"))
             else:
-                body = parse_inproc(engine, case["text"])
+                body = parse_inproc(engine, case["text"], case.get("context"))
         except Exception as exc:  # noqa: BLE001 — eval surface
             body = {"ok": False, "error": f"EXC:{type(exc).__name__}:{exc}"}
         elapsed_ms = int((time.perf_counter() - t0) * 1000)

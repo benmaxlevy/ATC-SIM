@@ -4,13 +4,59 @@
  * DOM-free: inject fetch. Never throws through the sim tick.
  */
 
-import { INSTRUCTION_TYPES, type Instruction, type TurnDir } from "@core";
+import {
+  INSTRUCTION_TYPES,
+  type ClearanceRouteSegment,
+  type Instruction,
+  type TurnDir,
+} from "@core";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 export const DEFAULT_PARSE_TIMEOUT_MS = 15000;
 /** Retrieved Path C `fixes=` / approaches / procedures cap. Not file-order 64. */
 export const MAX_PATH_C_FIXES = 16;
+
+export type PathCRouteCandidateKind = "FIX" | "NAVAID";
+
+export interface PathCTranscriptSpan {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface PathCRouteCandidate {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+}
+
+export interface PathCRouteCandidateInput {
+  id: string;
+  kind: PathCRouteCandidateKind;
+  aliases?: readonly string[];
+}
+
+export interface PathCTransitionCandidate {
+  id: string;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+}
+
+export interface PathCProcedureCandidate {
+  id: string;
+  aliases: string[];
+  spans: PathCTranscriptSpan[];
+  transitions: PathCTransitionCandidate[];
+}
+
+/** Route-scoped evidence. No facility-wide search is allowed in this object. */
+export interface PathCRouteWindow {
+  transcript: string;
+  candidates: PathCRouteCandidate[];
+  procedures: PathCProcedureCandidate[];
+}
 
 export interface PathCContext {
   callsigns: string[];
@@ -23,6 +69,10 @@ export interface PathCContext {
   approaches?: Array<{ id: string; name?: string; runway?: string }>;
   /** Clearance-limit airport namespace; never a generic fix list. */
   airports?: Array<{ icao: string; name: string; aliases?: readonly string[] }>;
+  /** Optional route-window evidence for constrained IFR clearance salvage. */
+  routeWindow?: PathCRouteWindow;
+  /** Non-airport clearance-limit candidates, separately scoped from route legs. */
+  clearanceLimits?: PathCRouteCandidate[];
 }
 
 export interface PathCRequest {
@@ -190,6 +240,29 @@ export function isLegalInstruction(value: unknown): value is Instruction {
         (access.transitionId !== undefined && typeof access.transitionId !== "string")
       )
         return false;
+    } else if (accessType === "EXPLICIT_ROUTE") {
+      if (!keysOk(access, ["type", "segments"]) || !Array.isArray(access.segments)) return false;
+      for (const segment of access.segments) {
+        const row = asRecord(segment);
+        if (row === null || typeof row.type !== "string") return false;
+        if (row.type === "DIRECT") {
+          if (!keysOk(row, ["type", "fixId"]) || typeof row.fixId !== "string" || !row.fixId) {
+            return false;
+          }
+        } else if (row.type === "PROCEDURE") {
+          if (
+            !keysOk(row, ["type", "procedureId"], ["transitionId"]) ||
+            typeof row.procedureId !== "string" ||
+            !row.procedureId ||
+            (row.transitionId !== undefined &&
+              (typeof row.transitionId !== "string" || !row.transitionId))
+          ) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
     } else {
       return false;
     }
@@ -252,6 +325,175 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   return { callsignToken, instructions };
 }
 
+function hasEvidence(
+  spans: readonly PathCTranscriptSpan[] | undefined,
+  transcript?: string,
+): boolean {
+  return (
+    Array.isArray(spans) &&
+    spans.length > 0 &&
+    spans.every(
+      (span) =>
+        Number.isInteger(span.start) &&
+        Number.isInteger(span.end) &&
+        span.start >= 0 &&
+        span.end > span.start &&
+        typeof span.text === "string" &&
+        span.text.trim().length > 0 &&
+        (transcript === undefined ||
+          (span.end <= transcript.length && transcript.slice(span.start, span.end) === span.text)),
+    )
+  );
+}
+
+function routeSegmentEvidenceIntervals(
+  segment: Extract<ClearanceRouteSegment, { type: "DIRECT" | "PROCEDURE" }>,
+  route: PathCRouteWindow,
+): Array<[number, number]> {
+  if (segment.type === "DIRECT") {
+    const candidate = route.candidates.find((item) => item.id === segment.fixId);
+    if (candidate === undefined || !hasEvidence(candidate.spans, route.transcript)) return [];
+    return candidate.spans.map((span) => [span.start, span.end] as [number, number]);
+  }
+  const procedure = route.procedures.find((item) => item.id === segment.procedureId);
+  if (procedure === undefined || !hasEvidence(procedure.spans, route.transcript)) return [];
+  if (segment.transitionId === undefined) {
+    return procedure.spans.map((span) => [span.start, span.end] as [number, number]);
+  }
+  const transition = procedure.transitions.find((item) => item.id === segment.transitionId);
+  if (transition === undefined || !hasEvidence(transition.spans, route.transcript)) return [];
+  return procedure.spans.flatMap((procedureSpan) =>
+    transition.spans
+      .filter(
+        (transitionSpan) =>
+          transitionSpan.start >= procedureSpan.start && transitionSpan.end > procedureSpan.end,
+      )
+      .map((transitionSpan) => [procedureSpan.start, transitionSpan.end] as [number, number]),
+  );
+}
+
+type RouteEvidenceInterval = [number, number];
+
+function orderedRouteEvidencePaths(
+  segments: readonly Extract<ClearanceRouteSegment, { type: "DIRECT" | "PROCEDURE" }>[],
+  route: PathCRouteWindow,
+): RouteEvidenceInterval[][] {
+  let paths: RouteEvidenceInterval[][] = [[]];
+  for (const segment of segments) {
+    const intervals = routeSegmentEvidenceIntervals(segment, route);
+    const next: RouteEvidenceInterval[][] = [];
+    const seen = new Set<string>();
+    for (const path of paths) {
+      const previousEnd = path.at(-1)?.[1] ?? -1;
+      for (const interval of intervals) {
+        if (interval[0] < previousEnd) continue;
+        const candidate = [...path, interval];
+        const key = JSON.stringify(candidate);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(candidate);
+      }
+    }
+    paths = next;
+    if (paths.length === 0) return [];
+  }
+  return paths;
+}
+
+function routeEvidenceCovered(
+  route: PathCRouteWindow,
+  intervals: readonly RouteEvidenceInterval[],
+): boolean {
+  const covered = (span: PathCTranscriptSpan) =>
+    intervals.some(([start, end]) => span.start < end && span.end > start);
+  for (const candidate of route.candidates) {
+    if (
+      !hasEvidence(candidate.spans, route.transcript) ||
+      candidate.spans.some((span) => !covered(span))
+    ) {
+      return false;
+    }
+  }
+  for (const procedure of route.procedures) {
+    if (
+      !hasEvidence(procedure.spans, route.transcript) ||
+      procedure.spans.some((span) => !covered(span))
+    ) {
+      return false;
+    }
+    for (const transition of procedure.transitions) {
+      if (transition.spans.length === 0) continue;
+      if (
+        !hasEvidence(transition.spans, route.transcript) ||
+        transition.spans.some((span) => !covered(span))
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/** Validate route-only Path C output against the exact evidence sent in its request. */
+export function routePathCOutputIsGrounded(
+  instructions: readonly Instruction[],
+  context: PathCContext | undefined,
+): boolean {
+  const route = context?.routeWindow;
+  if (route === undefined) return true;
+  if (context === undefined) return false;
+  if (instructions.length !== 1 || instructions[0]?.type !== "IFR_CLEARANCE") return false;
+  const clearance = instructions[0];
+  if (clearance.access.type !== "EXPLICIT_ROUTE" || clearance.access.segments.length === 0) {
+    return false;
+  }
+  const airportIds = new Set((context.airports ?? []).map((airport) => airport.icao));
+  const limitIds = new Set([
+    ...airportIds,
+    ...(context.clearanceLimits ?? []).map((candidate) => candidate.id),
+  ]);
+  if (!limitIds.has(clearance.limitId)) return false;
+  const evidencePaths = orderedRouteEvidencePaths(clearance.access.segments, route);
+  if (!evidencePaths.some((path) => routeEvidenceCovered(route, path))) return false;
+  const direct = new Map(route.candidates.map((candidate) => [candidate.id, candidate]));
+  const procedures = new Map(route.procedures.map((procedure) => [procedure.id, procedure]));
+  for (const segment of clearance.access.segments) {
+    if (segment.type === "DIRECT") {
+      const candidate = direct.get(segment.fixId);
+      if (
+        candidate === undefined ||
+        airportIds.has(segment.fixId) ||
+        !hasEvidence(candidate.spans, route.transcript)
+      ) {
+        return false;
+      }
+      continue;
+    }
+    const procedure = procedures.get(segment.procedureId);
+    if (procedure === undefined || !hasEvidence(procedure.spans, route.transcript)) return false;
+    if (segment.transitionId !== undefined) {
+      const transition = procedure.transitions.find((item) => item.id === segment.transitionId);
+      if (transition === undefined || !hasEvidence(transition.spans, route.transcript))
+        return false;
+    }
+  }
+  return true;
+}
+
+function requestHasContext(context: PathCContext | undefined): boolean {
+  return Boolean(
+    context &&
+    (context.callsigns.length > 0 ||
+      context.selectedCallsign ||
+      (context.fixes?.length ?? 0) > 0 ||
+      (context.procedures?.length ?? 0) > 0 ||
+      (context.approaches?.length ?? 0) > 0 ||
+      (context.airports?.length ?? 0) > 0 ||
+      context.routeWindow !== undefined ||
+      (context.clearanceLimits?.length ?? 0) > 0),
+  );
+}
+
 function defaultFetch():
   ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | null {
   if (typeof globalThis.fetch === "function") {
@@ -282,6 +524,7 @@ export async function fetchParsePathC(
     }, timeoutMs);
   });
   try {
+    const context = req.context;
     const raced = await Promise.race([
       runFetch(url, {
         method: "POST",
@@ -290,30 +533,26 @@ export async function fetchParsePathC(
           text: req.text,
           source: req.source,
           schemaVersion: PATH_C_SCHEMA_VERSION,
-          ...(req.context &&
-          (req.context.callsigns.length > 0 ||
-            req.context.selectedCallsign ||
-            (req.context.fixes?.length ?? 0) > 0 ||
-            (req.context.procedures?.length ?? 0) > 0 ||
-            (req.context.approaches?.length ?? 0) > 0 ||
-            (req.context.airports?.length ?? 0) > 0)
+          ...(requestHasContext(context)
             ? {
                 context: {
-                  callsigns: req.context.callsigns,
-                  ...(req.context.selectedCallsign
-                    ? { selectedCallsign: req.context.selectedCallsign }
+                  callsigns: context!.callsigns,
+                  ...(context!.selectedCallsign
+                    ? { selectedCallsign: context!.selectedCallsign }
                     : {}),
-                  ...(req.context.fixes && req.context.fixes.length > 0
-                    ? { fixes: req.context.fixes }
+                  ...(context!.fixes && context!.fixes.length > 0 ? { fixes: context!.fixes } : {}),
+                  ...(context!.procedures && context!.procedures.length > 0
+                    ? { procedures: context!.procedures }
                     : {}),
-                  ...(req.context.procedures && req.context.procedures.length > 0
-                    ? { procedures: req.context.procedures }
+                  ...(context!.approaches && context!.approaches.length > 0
+                    ? { approaches: context!.approaches }
                     : {}),
-                  ...(req.context.approaches && req.context.approaches.length > 0
-                    ? { approaches: req.context.approaches }
+                  ...(context!.airports && context!.airports.length > 0
+                    ? { airports: context!.airports }
                     : {}),
-                  ...(req.context.airports && req.context.airports.length > 0
-                    ? { airports: req.context.airports }
+                  ...(context!.routeWindow ? { routeWindow: context!.routeWindow } : {}),
+                  ...(context!.clearanceLimits && context!.clearanceLimits.length > 0
+                    ? { clearanceLimits: context!.clearanceLimits }
                     : {}),
                 },
               }
@@ -338,7 +577,10 @@ export async function fetchParsePathC(
     } catch {
       return null;
     }
-    return schemaCheckPathC(parsed);
+    const checked = schemaCheckPathC(parsed);
+    return checked && routePathCOutputIsGrounded(checked.instructions, req.context)
+      ? checked
+      : null;
   } catch {
     return null;
   } finally {

@@ -30,6 +30,7 @@ import {
   type TransmitGateEvent,
 } from "./playback/readback-player";
 import { readbackForTts } from "./tts-text";
+import type { PathCRouteCandidateInput } from "../parse/path-c";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -64,6 +65,7 @@ export type ParseCommandFn = (
     selectedCallsign?: string | null;
     callsigns?: readonly string[];
     fixes?: readonly string[];
+    routeCandidates?: readonly PathCRouteCandidateInput[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
     approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
     airports?: ReadonlyArray<{ icao: string; name: string; aliases?: readonly string[] }>;
@@ -94,6 +96,8 @@ export interface VoiceLoopOptions {
   getOnFrequencyCallsigns?: () => readonly string[];
   /** Full facility catalog ids for parseCommand / Path C. Not the STT header. */
   getCatalogFixIds?: () => readonly string[];
+  /** Fix/navaid kind and aliases for route-window Path C grounding. */
+  getCatalogRouteCandidates?: () => readonly PathCRouteCandidateInput[];
   /**
    * Tiny optional STT prompt prior (procedure-referenced ids, cap 16). Default none.
    * R11 CIFP ids are catalog lookup, not STT vocabulary; T03-19 does not require
@@ -209,6 +213,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly getSelectedCallsign: () => string | null;
   private readonly getOnFrequencyCallsigns: () => readonly string[];
   private readonly getCatalogFixIds: () => readonly string[];
+  private readonly getCatalogRouteCandidates: () => readonly PathCRouteCandidateInput[];
   private readonly getSttFixIds: () => readonly string[];
   private readonly getCatalogProcedures: () => ReadonlyArray<{ id: string; name?: string }>;
   private readonly getCatalogApproaches: () => ReadonlyArray<{
@@ -240,6 +245,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.getSelectedCallsign = options.getSelectedCallsign;
     this.getOnFrequencyCallsigns = options.getOnFrequencyCallsigns ?? (() => []);
     this.getCatalogFixIds = options.getCatalogFixIds ?? (() => []);
+    this.getCatalogRouteCandidates = options.getCatalogRouteCandidates ?? (() => []);
     this.getSttFixIds = options.getSttFixIds ?? (() => []);
     this.getCatalogProcedures = options.getCatalogProcedures ?? (() => []);
     this.getCatalogApproaches = options.getCatalogApproaches ?? (() => []);
@@ -410,6 +416,7 @@ class VoiceLoopImpl implements VoiceLoop {
       selectedCallsign: this.getSelectedCallsign(),
       callsigns: this.getOnFrequencyCallsigns(),
       fixes: this.getCatalogFixIds(),
+      routeCandidates: this.getCatalogRouteCandidates(),
       procedures: this.getCatalogProcedures(),
       approaches: this.getCatalogApproaches(),
       airports: this.getCatalogAirports(),

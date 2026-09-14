@@ -45,6 +45,8 @@ INSTRUCTION_TYPES = frozenset(
     }
 )
 
+ROUTE_SEGMENT_TYPES = frozenset({"DIRECT", "PROCEDURE"})
+
 TURN_DIRS = frozenset({"LEFT", "RIGHT", "SHORTEST"})
 TURN_DEGREES_DIRS = frozenset({"LEFT", "RIGHT"})
 ALTITUDE_VERBS = frozenset({"CLIMB", "DESCEND", "MAINTAIN"})
@@ -66,7 +68,7 @@ Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; 
 
 New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
 
-Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. source is a hint, not another schema.
+Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. In routeWindow, a malformed, ambiguous, unknown, airport, unsupported, or evidence-free segment is PARSE_MISS. DIRECT is an optional marker in an IFR route window; when absent, emit one direct segment per supplied fix/navaid candidate, preserving supplied transcript order and spans. Every route segment selects exactly one supplied candidate ID; never concatenate tokens into an ID such as SWEPT_KIMMY or move the clearance-limit airport into a tactical DIRECT. An IFR `clear/cleared to ... via ...` transcript is never tactical DIRECT. transitionId only when that transition is nested under the supplied catalog procedure and has transcript evidence. For an IFR clear/cleared-to/via transcript, never output tactical DIRECT. Never invent a field or segment. source is a hint, not another schema.
 """
 
 # Documented mock success (CI / SPEECH_API_MOCK=1). Matches parse-pipeline.md.
@@ -253,6 +255,113 @@ def _sanitize_airports(raw: object) -> list[dict[str, Any]]:
     return out
 
 
+def _sanitize_spans(raw: object) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        start, end, text = item.get("start"), item.get("end"), item.get("text")
+        if (
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+            or start < 0
+            or end <= start
+            or not isinstance(text, str)
+            or not text.strip()
+        ):
+            continue
+        out.append({"start": start, "end": end, "text": text})
+        if len(out) >= MAX_PATH_CANDIDATES:
+            break
+    return out
+
+
+def _sanitize_route_candidate(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    candidate_id = raw.get("id")
+    kind = raw.get("kind")
+    if not isinstance(candidate_id, str) or not isinstance(kind, str):
+        return None
+    candidate_id = candidate_id.strip().upper()
+    if _FIX_RE.match(candidate_id) is None or kind not in {"FIX", "NAVAID"}:
+        return None
+    aliases_raw = raw.get("aliases") or []
+    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    return {"id": candidate_id, "kind": kind, "aliases": list(dict.fromkeys(aliases)), "spans": spans}
+
+
+def _sanitize_transition_candidate(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    transition_id = raw.get("id")
+    if not isinstance(transition_id, str) or not transition_id.strip():
+        return None
+    aliases_raw = raw.get("aliases") or []
+    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    return {
+        "id": transition_id.strip().upper(),
+        "aliases": list(dict.fromkeys(aliases)),
+        "spans": spans,
+    }
+
+
+def _sanitize_route_procedure(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    procedure_id = raw.get("id")
+    if not isinstance(procedure_id, str) or not procedure_id.strip():
+        return None
+    aliases_raw = raw.get("aliases") or []
+    aliases = [alias.strip() for alias in aliases_raw if isinstance(alias, str) and alias.strip()]
+    spans = _sanitize_spans(raw.get("spans"))
+    if not spans:
+        return None
+    transitions: list[dict[str, Any]] = []
+    for item in raw.get("transitions") or []:
+        checked = _sanitize_transition_candidate(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in transitions}:
+            transitions.append(checked)
+    return {
+        "id": procedure_id.strip().upper(),
+        "aliases": list(dict.fromkeys(aliases)),
+        "spans": spans,
+        "transitions": transitions,
+    }
+
+
+MAX_PATH_CANDIDATES = 32
+
+
+def _sanitize_route_window(raw: object) -> dict[str, Any] | None:
+    if not isinstance(raw, dict) or not isinstance(raw.get("transcript"), str):
+        return None
+    transcript = raw["transcript"].strip()
+    if not transcript:
+        return None
+    candidates: list[dict[str, Any]] = []
+    for item in raw.get("candidates") or []:
+        checked = _sanitize_route_candidate(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in candidates}:
+            candidates.append(checked)
+    procedures: list[dict[str, Any]] = []
+    for item in raw.get("procedures") or []:
+        checked = _sanitize_route_procedure(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in procedures}:
+            procedures.append(checked)
+    return {"transcript": transcript, "candidates": candidates, "procedures": procedures}
+
+
 def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
@@ -262,13 +371,28 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     procedures = _sanitize_procedures(raw.get("procedures") or [])
     approaches = _sanitize_approaches(raw.get("approaches") or [])
     airports = _sanitize_airports(raw.get("airports") or [])
+    route_window = _sanitize_route_window(raw.get("routeWindow"))
+    clearance_limits: list[dict[str, Any]] = []
+    for item in raw.get("clearanceLimits") or []:
+        checked = _sanitize_route_candidate(item)
+        if checked is not None and checked["id"] not in {row["id"] for row in clearance_limits}:
+            clearance_limits.append(checked)
     selected_raw = raw.get("selectedCallsign")
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
         if up and _CALLSIGN_RE.match(up):
             selected = up
-    if not callsigns and not selected and not fixes and not procedures and not approaches and not airports:
+    if (
+        not callsigns
+        and not selected
+        and not fixes
+        and not procedures
+        and not approaches
+        and not airports
+        and route_window is None
+        and not clearance_limits
+    ):
         return None
     out: dict[str, Any] = {"callsigns": callsigns}
     if selected:
@@ -281,6 +405,10 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
         out["approaches"] = approaches
     if airports:
         out["airports"] = airports
+    if route_window is not None:
+        out["routeWindow"] = route_window
+    if clearance_limits:
+        out["clearanceLimits"] = clearance_limits
     return out
 
 
@@ -354,6 +482,17 @@ def build_parse_user_message(text: str, source: str, context: dict[str, Any] | N
                     "IFR_CLEARANCE limitId MUST be a listed airport ICAO when the limit is an airport. "
                     "Airports are clearance limits only, never DIRECT/CROSS fixes."
                 )
+        limits = ctx.get("clearanceLimits") or []
+        if limits:
+            lines.append("clearanceLimits=" + json.dumps(limits, separators=(",", ":")))
+            lines.append("IFR_CLEARANCE limitId may use only one supplied clearanceLimits id.")
+        route = ctx.get("routeWindow")
+        if route:
+            lines.append("routeWindow=" + json.dumps(route, separators=(",", ":")))
+            lines.append(
+                "Route transcript is authoritative. Select only supplied candidate IDs whose spans "
+                "overlap routeWindow transcript evidence; order segments by transcript spans."
+            )
     lines.append(f"text={text.strip()}")
     lines.append("Output JSON only.")
     return "\n".join(lines)
@@ -505,6 +644,33 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
                 or ("transitionId" in access and not isinstance(access["transitionId"], str))
             ):
                 return None
+        elif access_type == "EXPLICIT_ROUTE":
+            segments = access.get("segments")
+            if not _exact_keys(access, {"type", "segments"}) or not isinstance(segments, list):
+                return None
+            for segment in segments:
+                if not isinstance(segment, dict) or segment.get("type") not in ROUTE_SEGMENT_TYPES:
+                    return None
+                if segment["type"] == "DIRECT":
+                    if (
+                        not _exact_keys(segment, {"type", "fixId"})
+                        or not isinstance(segment.get("fixId"), str)
+                        or not segment["fixId"]
+                    ):
+                        return None
+                elif (
+                    not _exact_keys(segment, {"type", "procedureId"}, {"transitionId"})
+                    or not isinstance(segment.get("procedureId"), str)
+                    or not segment["procedureId"]
+                    or (
+                        "transitionId" in segment
+                        and (
+                            not isinstance(segment.get("transitionId"), str)
+                            or not segment["transitionId"]
+                        )
+                    )
+                ):
+                    return None
         else:
             return None
         if "altitudeFt" in raw and not _is_finite_number(raw["altitudeFt"]):
@@ -695,10 +861,15 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
     if instruction_type == "IFR_CLEARANCE":
         # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
         # IFR clearance has the clearance limit and an explicit access method.
-        return bool(
+        if not bool(
             has(r"\b(?:cleared|clear)\s+to\b")
             and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
-        )
+        ):
+            return False
+        access = instruction.get("access")
+        if isinstance(access, dict) and access.get("type") == "EXPLICIT_ROUTE":
+            return bool(access.get("segments")) and has(r"\bvia\b")
+        return True
     if instruction_type == "EXPECT_APPROACH":
         return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "CLEARED_APPROACH":
@@ -848,6 +1019,165 @@ def _procedure_spoken_overlap(text: str, procedure_id: str, rows: list[dict[str,
     return bool(spoken_letters & _letter_tokens(procedure_id + " " + name))
 
 
+def _span_is_evidence(span: dict[str, Any], transcript: str) -> bool:
+    start, end, text = span.get("start"), span.get("end"), span.get("text")
+    return (
+        isinstance(start, int)
+        and isinstance(end, int)
+        and isinstance(text, str)
+        and 0 <= start < end <= len(transcript)
+        and transcript[start:end].casefold() == text.casefold()
+    )
+
+
+def _candidate_has_evidence(candidate: dict[str, Any], transcript: str) -> bool:
+    return any(_span_is_evidence(span, transcript) for span in candidate.get("spans") or [])
+
+
+def _route_segment_evidence_intervals(
+    segment: dict[str, Any], route: dict[str, Any]
+) -> list[tuple[int, int]]:
+    if segment.get("type") == "DIRECT":
+        candidate = next(
+            (item for item in route.get("candidates") or [] if item.get("id") == segment.get("fixId")),
+            None,
+        )
+        if candidate is None or not _candidate_has_evidence(candidate, route["transcript"]):
+            return []
+        return [(span["start"], span["end"]) for span in candidate.get("spans") or []]
+    procedure = next(
+        (item for item in route.get("procedures") or [] if item.get("id") == segment.get("procedureId")),
+        None,
+    )
+    if procedure is None or not _candidate_has_evidence(procedure, route["transcript"]):
+        return []
+    transition_id = segment.get("transitionId")
+    if transition_id is None:
+        return [(span["start"], span["end"]) for span in procedure.get("spans") or []]
+    transition = next(
+        (item for item in procedure.get("transitions") or [] if item.get("id") == transition_id),
+        None,
+    )
+    if transition is None or not _candidate_has_evidence(transition, route["transcript"]):
+        return []
+    return [
+        (procedure_span["start"], transition_span["end"])
+        for procedure_span in procedure.get("spans") or []
+        for transition_span in transition.get("spans") or []
+        if transition_span["start"] >= procedure_span["start"]
+        and transition_span["end"] > procedure_span["end"]
+    ]
+
+
+def _ordered_route_evidence_paths(
+    segments: list[dict[str, Any]], route: dict[str, Any]
+) -> list[list[tuple[int, int]]]:
+    paths: list[list[tuple[int, int]]] = [[]]
+    for segment in segments:
+        intervals = _route_segment_evidence_intervals(segment, route)
+        next_paths: list[list[tuple[int, int]]] = []
+        seen: set[tuple[tuple[int, int], ...]] = set()
+        for path in paths:
+            previous_end = path[-1][1] if path else -1
+            for interval in intervals:
+                if interval[0] < previous_end:
+                    continue
+                candidate = [*path, interval]
+                key = tuple(candidate)
+                if key in seen:
+                    continue
+                seen.add(key)
+                next_paths.append(candidate)
+        paths = next_paths
+        if not paths:
+            return []
+    return paths
+
+
+def _route_evidence_covered(route: dict[str, Any], intervals: list[tuple[int, int]]) -> bool:
+    def covered(span: dict[str, Any]) -> bool:
+        return any(span["start"] < end and span["end"] > start for start, end in intervals)
+
+    for candidate in [*(route.get("candidates") or []), *(route.get("procedures") or [])]:
+        if not _candidate_has_evidence(candidate, route["transcript"]):
+            return False
+        if any(not covered(span) for span in candidate.get("spans") or []):
+            return False
+        for transition in candidate.get("transitions") or []:
+            if not transition.get("spans"):
+                continue
+            if not _candidate_has_evidence(transition, route["transcript"]):
+                return False
+            if any(not covered(span) for span in transition.get("spans") or []):
+                return False
+    return True
+
+
+def _guard_route_window_ids(
+    context: dict[str, Any], outcome: ParseOutcome
+) -> ParseOutcome:
+    route = context.get("routeWindow")
+    if not isinstance(route, dict) or not outcome.ok:
+        return outcome
+    if len(outcome.instructions) != 1:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    instruction = outcome.instructions[0]
+    if instruction.get("type") != "IFR_CLEARANCE":
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    access = instruction.get("access") or {}
+    if access.get("type") != "EXPLICIT_ROUTE" or not access.get("segments"):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    transcript = route.get("transcript")
+    if not isinstance(transcript, str) or not transcript.strip():
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    airport_ids = {row["icao"] for row in context.get("airports") or [] if isinstance(row, dict)}
+    limit_ids = airport_ids | {
+        row["id"] for row in context.get("clearanceLimits") or [] if isinstance(row, dict)
+    }
+    if instruction.get("limitId") not in limit_ids:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    if not any(
+        _route_evidence_covered(route, path)
+        for path in _ordered_route_evidence_paths(access["segments"], route)
+    ):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    candidates = {
+        row["id"]: row for row in route.get("candidates") or [] if isinstance(row, dict)
+    }
+    procedures = {
+        row["id"]: row for row in route.get("procedures") or [] if isinstance(row, dict)
+    }
+    for segment in access["segments"]:
+        if not isinstance(segment, dict):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+        if segment.get("type") == "DIRECT":
+            candidate = candidates.get(segment.get("fixId"))
+            if (
+                candidate is None
+                or candidate.get("kind") not in {"FIX", "NAVAID"}
+                or segment.get("fixId") in airport_ids
+                or not _candidate_has_evidence(candidate, transcript)
+            ):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        elif segment.get("type") == "PROCEDURE":
+            procedure = procedures.get(segment.get("procedureId"))
+            if procedure is None or not _candidate_has_evidence(procedure, transcript):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            transition_id = segment.get("transitionId")
+            if transition_id is not None:
+                transitions = {
+                    row["id"]: row
+                    for row in procedure.get("transitions") or []
+                    if isinstance(row, dict)
+                }
+                transition = transitions.get(transition_id)
+                if transition is None or not _candidate_has_evidence(transition, transcript):
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+        else:
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+    return outcome
+
+
 def guard_catalog_ids(
     text: str,
     context: dict[str, Any] | None,
@@ -859,6 +1189,8 @@ def guard_catalog_ids(
     ctx = sanitize_parse_context(context) if context else None
     if not ctx:
         return outcome
+    if ctx.get("routeWindow") is not None:
+        return _guard_route_window_ids(ctx, outcome)
     fixes = set(ctx.get("fixes") or [])
     airports = {row["icao"] for row in ctx.get("airports") or []}
     procedures = {row["id"] for row in ctx.get("procedures") or []}
@@ -915,6 +1247,52 @@ def guard_catalog_ids(
     return outcome
 
 
+def _mock_route_parse(context: dict[str, Any]) -> ParseOutcome:
+    route = context.get("routeWindow") if isinstance(context, dict) else None
+    if not isinstance(route, dict):
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    entries: list[tuple[int, str, dict[str, Any]]] = []
+    for candidate in route.get("candidates") or []:
+        spans = candidate.get("spans") or []
+        if spans:
+            entries.append((int(spans[0]["start"]), "DIRECT", candidate))
+    for procedure in route.get("procedures") or []:
+        spans = procedure.get("spans") or []
+        if spans:
+            entries.append((int(spans[0]["start"]), "PROCEDURE", procedure))
+    entries.sort(key=lambda item: item[0])
+    if not entries:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    for left, right in zip(entries, entries[1:]):
+        if left[0] == right[0] and left[2].get("id") != right[2].get("id"):
+            return ParseOutcome(ok=False, error="PARSE_MISS")
+    segments: list[dict[str, Any]] = []
+    for _, kind, candidate in entries:
+        if kind == "DIRECT":
+            segments.append({"type": "DIRECT", "fixId": candidate["id"]})
+            continue
+        segment: dict[str, Any] = {"type": "PROCEDURE", "procedureId": candidate["id"]}
+        transitions = [item for item in candidate.get("transitions") or [] if item.get("spans")]
+        if len(transitions) == 1:
+            segment["transitionId"] = transitions[0]["id"]
+        segments.append(segment)
+    limits = context.get("clearanceLimits") or []
+    airports = context.get("airports") or []
+    limit_id = (limits[0].get("id") if limits else None) or (airports[0].get("icao") if airports else None)
+    if not limit_id:
+        return ParseOutcome(ok=False, error="PARSE_MISS")
+    return ParseOutcome(
+        ok=True,
+        instructions=[
+            {
+                "type": "IFR_CLEARANCE",
+                "limitId": limit_id,
+                "access": {"type": "EXPLICIT_ROUTE", "segments": segments},
+            }
+        ],
+    )
+
+
 class MockParseEngine:
     """CI / SPEECH_API_MOCK=1. No GGUF download. JSON shape + SCHEMA coverage."""
 
@@ -930,7 +1308,7 @@ class MockParseEngine:
         schema_version: str,
         context: dict[str, Any] | None = None,
     ) -> ParseOutcome:
-        del source, context
+        del source
         if schema_version != SCHEMA_VERSION:
             return ParseOutcome(ok=False, error="SCHEMA")
         stripped = text.strip()
@@ -939,6 +1317,9 @@ class MockParseEngine:
         # Explicit SCHEMA trigger so CI does not need a real model.
         if "[SCHEMA]" in stripped.upper() or stripped.upper().startswith("CHAT"):
             return ParseOutcome(ok=False, error="SCHEMA")
+        if isinstance(context, dict) and context.get("routeWindow") is not None:
+            route = _mock_route_parse(context)
+            return guard_catalog_ids(stripped, context, guard_instruction_semantics(stripped, route))
         return ParseOutcome(
             ok=True,
             callsign_token=MOCK_PARSE_OK["callsignToken"],  # type: ignore[arg-type]

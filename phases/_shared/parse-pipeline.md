@@ -58,6 +58,17 @@ segments in order. The last form produces a catalog-grounded procedure and a
 direct segment. This implicit-direct grammar is an ATC-SIM trainer extension;
 it is not claimed as complete FAA phraseology.
 
+If deterministic route parsing cannot form one unique complete chain, Path C
+receives the full transcript plus only the route-window transcript spans and
+catalog candidates (`id`, `kind`, aliases, and valid procedure transitions).
+Clearance-limit airport candidates are sent separately and cannot become route
+segments. Path C may repair segmentation, but every returned ID and every
+segment must match supplied evidence; unknown, ambiguous, malformed, invented,
+or airport route output is `PARSE_MISS`. `DIRECT` is optional syntax: absent
+`DIRECT`, a supplied fix/navaid is still an implicit direct segment. This is
+nonstandard trainer salvage (`parseStage: "llm_c"`), not 7110.65-complete NLU;
+the deterministic grounded path remains the phraseology path.
+
 **First local grounded hit still wins.** Path C is **miss-only**: it never overrides a unique snap (`spoken_a` / `spoken_b` / `typed`).
 
 Why this is the smallest design:
@@ -114,6 +125,11 @@ Optional `context` is prompt grounding, **not** a vector DB, **not** kinematics,
 - `airports` — separately retrieved ICAO/name/alias candidates for an
   `IFR_CLEARANCE` limit. An airport may ground `limitId`, but is never a
   `DIRECT`/`CROSS` fix and must not be merged into `fixes`.
+- `routeWindow` — route-only transcript plus grounded `FIX`/`NAVAID` spans and
+  catalog procedure/transition candidates. It is sent only for IFR route
+  fallback and never exposes facility-wide search results.
+- `clearanceLimits` — separately scoped non-airport limit candidates. Together
+  with `airports`, these may ground `IFR_CLEARANCE.limitId` only.
 
 **STT header is not the search index (T03-19).** `X-ATC-Fixes` is omitted or a tiny high-value prior (published STAR/SID words). It is not `ids().slice(0, 64)` and not the retrieve cluster. Retrieval from the transcript is Path C `context`, not the STT prompt.
 

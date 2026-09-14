@@ -26,6 +26,20 @@ const ROUTE_BOUNDARIES = new Set([
 const ROUTE_STOP_WORDS = new Set(["direct", "then", ...ROUTE_BOUNDARIES]);
 const MAX_ROUTE_PHRASE_WORDS = 6;
 
+export function isIfrRouteBoundary(tokens: readonly string[], index: number): boolean {
+  return isBoundary(tokens, index);
+}
+
+/** Token bounds for the route body after a clearance `VIA`. */
+export function routeWindowBounds(
+  tokens: readonly string[],
+  startIndex: number,
+): { startIndex: number; endIndex: number } | null {
+  let endIndex = startIndex;
+  while (!isBoundary(tokens, endIndex)) endIndex += 1;
+  return endIndex > startIndex ? { startIndex, endIndex } : null;
+}
+
 export interface IfrClearanceRouteWindowOptions {
   fixes?: readonly string[];
   procedures?: readonly CatalogProcedure[];

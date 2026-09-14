@@ -117,6 +117,14 @@ The parser may accept legacy access wording at its boundary, but Command IR
 consumers use only the canonical shape above. This tactical route is separate
 from the standalone `DIRECT` instruction.
 
+When deterministic route segmentation misses or is non-unique, local Path C
+may return this same canonical shape only from supplied route-window evidence.
+Each returned route ID must be listed with a transcript span; `FIX`/`NAVAID`
+candidates are the only `DIRECT` targets. A procedure transition must be
+nested in its supplied procedure candidate. Airport candidates remain
+clearance-limit-only. Missing `DIRECT` means direct only for a supplied
+fix/navaid candidate; it never authorizes an invented route leg.
+
 Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
 non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed
 direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an

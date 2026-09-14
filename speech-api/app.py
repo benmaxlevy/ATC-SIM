@@ -37,6 +37,8 @@ class ParseContext(BaseModel):
     procedures: List[dict] = Field(default_factory=list)
     approaches: List[dict] = Field(default_factory=list)
     airports: List[dict] = Field(default_factory=list)
+    routeWindow: Optional[dict] = None
+    clearanceLimits: List[dict] = Field(default_factory=list)
 
 
 class ParseRequest(BaseModel):
@@ -152,6 +154,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         try:
             ctx = payload.context.model_dump() if payload.context is not None else None
+            if ctx is not None:
+                if ctx.get("routeWindow") is None:
+                    ctx.pop("routeWindow", None)
+                if not ctx.get("clearanceLimits"):
+                    ctx.pop("clearanceLimits", None)
             outcome = engine.parse(payload.text, payload.source, payload.schemaVersion, ctx)
         except Exception:
             log.exception("parse failed")
