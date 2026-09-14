@@ -121,6 +121,17 @@ function validateOne(
       if (instruction.limitId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };
       }
+      if (
+        instruction.access.type === "EXPLICIT_ROUTE" &&
+        instruction.access.segments.some((segment) =>
+          segment.type === "DIRECT"
+            ? segment.fixId.trim() === ""
+            : segment.procedureId.trim() === "" ||
+              (segment.transitionId !== undefined && segment.transitionId.trim() === ""),
+        )
+      ) {
+        return { ok: false, reason: "CLEARANCE" };
+      }
       if (instruction.access.type === "FIX_THEN_DIRECT" && instruction.access.fixId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };
       }

@@ -21,3 +21,20 @@ test("shortest heading 270 has no turn word", () => {
 test("ambiguous callsign reject", () => {
   expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toMatch(/ambiguous callsign/i);
 });
+
+test("canonical IFR clearance readback preserves every route segment", () => {
+  const text = readback([
+    {
+      type: "IFR_CLEARANCE",
+      limitId: "KATL",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [
+          { type: "DIRECT", fixId: "SWEPT" },
+          { type: "PROCEDURE", procedureId: "SID1", transitionId: "NORTH" },
+        ],
+      },
+    },
+  ]);
+  expect(text).toBe("Delta 123 cleared to KATL via direct SWEPT then SID1 NORTH then direct");
+});

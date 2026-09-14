@@ -1,5 +1,9 @@
-import type { Aircraft, ClearanceAccess } from "./aircraft";
-import type { Instruction } from "./command/types";
+import type { Aircraft } from "./aircraft";
+import type {
+  ClearanceRouteSegment,
+  IfrClearanceAccess as CanonicalIfrClearanceAccess,
+  Instruction,
+} from "./command/types";
 import type { FiledRouteCatalog } from "./filedRoute";
 import { validateFlightPlanRouteTransaction } from "./filedRoute";
 import type { FlightPlan, FlightPlanRoute } from "./flightPlan";
@@ -7,7 +11,7 @@ import { isValidBeaconCode } from "./flightPlan";
 import { applyActiveRouteToAircraft, type RouteExecutionAccess } from "./fms/routeExecution";
 import type { SessionLog } from "./events/session-log";
 
-export type IfrClearanceAccess = ClearanceAccess;
+export type IfrClearanceAccess = CanonicalIfrClearanceAccess;
 
 export type IfrClearanceErrorCode =
   | "PLAN_NOT_FOUND"
@@ -50,28 +54,94 @@ function normalize(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function routeTextFor(
-  clearance: Extract<Instruction, { type: "IFR_CLEARANCE" }>,
-): { input: { source: "AS_FILED" } } | { input: { routeText: string } } {
-  switch (clearance.access.type) {
+type ClearanceInstruction = Extract<Instruction, { type: "IFR_CLEARANCE" }>;
+type ClearanceInputAccess = ClearanceInstruction["access"];
+
+function canonicalizeAccess(access: ClearanceInputAccess): IfrClearanceAccess | null {
+  switch (access.type) {
     case "AS_FILED":
-      return { input: { source: "AS_FILED" } };
-    case "DIRECT":
     case "RADAR_VECTORS":
-      return { input: { routeText: clearance.limitId } };
-    case "FIX_THEN_DIRECT":
-      return { input: { routeText: `${clearance.access.fixId} ${clearance.limitId}` } };
-    case "SID":
+      return { type: access.type };
+    case "EXPLICIT_ROUTE": {
+      const segments: ClearanceRouteSegment[] = [];
+      for (const segment of access.segments) {
+        if (segment.type === "DIRECT") {
+          const fixId = normalize(segment.fixId);
+          if (!fixId) return null;
+          segments.push({ type: "DIRECT", fixId });
+          continue;
+        }
+        const procedureId = normalize(segment.procedureId);
+        const transitionId =
+          segment.transitionId === undefined ? undefined : normalize(segment.transitionId);
+        if (!procedureId || (segment.transitionId !== undefined && !transitionId)) return null;
+        segments.push({
+          type: "PROCEDURE",
+          procedureId,
+          ...(transitionId ? { transitionId } : {}),
+        });
+      }
+      return { type: "EXPLICIT_ROUTE", segments };
+    }
+    case "DIRECT":
+      return { type: "EXPLICIT_ROUTE", segments: [] };
+    case "FIX_THEN_DIRECT": {
+      const fixId = normalize(access.fixId);
+      return fixId ? { type: "EXPLICIT_ROUTE", segments: [{ type: "DIRECT", fixId }] } : null;
+    }
+    case "SID": {
+      const procedureId = normalize(access.procedureId);
+      const transitionId =
+        access.transitionId === undefined ? undefined : normalize(access.transitionId);
+      if (!procedureId || (access.transitionId !== undefined && !transitionId)) return null;
       return {
-        input: {
-          routeText: `${clearance.access.procedureId}${clearance.access.transitionId ? `/${clearance.access.transitionId}` : ""} ${clearance.limitId}`,
-        },
+        type: "EXPLICIT_ROUTE",
+        segments: [
+          {
+            type: "PROCEDURE",
+            procedureId,
+            ...(transitionId ? { transitionId } : {}),
+          },
+        ],
       };
+    }
     default: {
-      const _exhaustive: never = clearance.access;
+      const _exhaustive: never = access;
       return _exhaustive;
     }
   }
+}
+
+/** Serialize the canonical route elements into the existing route compiler's input. */
+export function serializeIfrClearanceRoute(
+  access: IfrClearanceAccess,
+  limitId: string,
+): { input: { source: "AS_FILED" } } | { input: { routeText: string } } {
+  switch (access.type) {
+    case "AS_FILED":
+      return { input: { source: "AS_FILED" } };
+    case "RADAR_VECTORS":
+      return { input: { routeText: normalize(limitId) } };
+    case "EXPLICIT_ROUTE": {
+      const routeTokens = access.segments.map((segment) =>
+        segment.type === "DIRECT"
+          ? normalize(segment.fixId)
+          : `${normalize(segment.procedureId)}${segment.transitionId ? `/${normalize(segment.transitionId)}` : ""}`,
+      );
+      return { input: { routeText: [...routeTokens, normalize(limitId)].join(" ") } };
+    }
+    default: {
+      const _exhaustive: never = access;
+      return _exhaustive;
+    }
+  }
+}
+
+function routeTextFor(
+  access: IfrClearanceAccess,
+  limitId: string,
+): { input: { source: "AS_FILED" } } | { input: { routeText: string } } {
+  return serializeIfrClearanceRoute(access, limitId);
 }
 
 function limitKnown(
@@ -86,6 +156,17 @@ function limitKnown(
     want === normalize(catalog.airportId ?? "") ||
     catalog.fixes.some((item) => normalize(item.id) === want) ||
     catalog.navaids.some((item) => normalize(item.id) === want),
+  );
+}
+
+function hasAirportRouteSegment(
+  access: IfrClearanceAccess,
+  catalog: FiledRouteCatalog | null | undefined,
+): boolean {
+  if (access.type !== "EXPLICIT_ROUTE" || !catalog?.airportId) return false;
+  const airportId = normalize(catalog.airportId);
+  return access.segments.some(
+    (segment) => segment.type === "DIRECT" && normalize(segment.fixId) === airportId,
   );
 }
 
@@ -145,9 +226,14 @@ export function applyIfrClearance(
   );
   if (!plan)
     return error("PLAN_NOT_FOUND", `unable route: no flight plan for ${aircraft.callsign}`);
+  const access = canonicalizeAccess(clearance.access);
+  if (!access) return error("UNABLE_ROUTE", "unable route: invalid route segment");
   const limitId = normalize(clearance.limitId);
   if (!limitId || !limitKnown(limitId, world.catalog, Boolean(plan.routeRecord?.route))) {
     return error("UNABLE_ROUTE", `unable route: unknown clearance limit ${limitId || ""}`);
+  }
+  if (hasAirportRouteSegment(access, world.catalog)) {
+    return error("UNABLE_ROUTE", "unable route: airport cannot be a tactical route segment");
   }
   if (rejectsVfrPickup(plan, aircraft)) {
     return error(
@@ -171,11 +257,7 @@ export function applyIfrClearance(
   if (clearance.squawk !== undefined && !isValidBeaconCode(clearance.squawk)) {
     return error("INVALID_SQUAWK", "unable clearance: invalid beacon code");
   }
-  if (clearance.climbVia && clearance.access.type !== "SID") {
-    return error("INVALID_CLIMB_VIA", "unable clearance: CVIA requires a SID route");
-  }
-
-  const routeInput = routeTextFor({ ...clearance, limitId });
+  const routeInput = routeTextFor(access, limitId);
   const compiled = validateFlightPlanRouteTransaction(
     plan,
     { ...routeInput.input, lifecycle: "active", nextIndex: 0 },
@@ -185,10 +267,11 @@ export function applyIfrClearance(
     return error("UNABLE_ROUTE", compiled.error.message);
   }
   const route = compiled.route;
-  if (
-    clearance.access.type === "AS_FILED" &&
-    !asFiledLimitMatches(plan, limitId, route, world.catalog)
-  ) {
+  const sidSegment = route.route.segments.find((segment) => segment.kind === "SID");
+  if (clearance.climbVia && (access.type !== "EXPLICIT_ROUTE" || !sidSegment)) {
+    return error("INVALID_CLIMB_VIA", "unable clearance: CVIA requires a SID route");
+  }
+  if (access.type === "AS_FILED" && !asFiledLimitMatches(plan, limitId, route, world.catalog)) {
     return error("UNABLE_ROUTE", `unable route: AS FILED route does not terminate at ${limitId}`);
   }
   const routeIds = route.route.segments.flatMap((segment) => segment.fixIds);
@@ -207,8 +290,8 @@ export function applyIfrClearance(
   // All checks are complete. Own a fresh route snapshot on the aircraft, then
   // apply it exactly once. Never project clearance state back into the plan:
   // plan edits and clearance issuance are intentionally independent actions.
-  const access: RouteExecutionAccess =
-    clearance.access.type === "RADAR_VECTORS" ? "RADAR_VECTORS" : "ROUTE";
+  const runtimeAccess: RouteExecutionAccess =
+    access.type === "RADAR_VECTORS" ? "RADAR_VECTORS" : "ROUTE";
   const activeRoute = {
     route: {
       text: route.route.text,
@@ -224,7 +307,7 @@ export function applyIfrClearance(
   matchingAircraft.activeClearance = {
     route: activeRoute,
     limitId,
-    access: clearance.access.type,
+    access,
     ...(clearance.frequency === undefined ? {} : { frequency: clearance.frequency.trim() }),
     ...(clearance.climbVia === undefined ? {} : { climbVia: clearance.climbVia }),
     issuedAtSimMs: world.simTimeMs,
@@ -241,24 +324,24 @@ export function applyIfrClearance(
     };
   }
   matchingAircraft.clearanceLimit = limitId;
-  matchingAircraft.clearanceAccess = clearance.access.type;
+  matchingAircraft.clearanceAccess = access;
   matchingAircraft.clearanceFrequency = clearance.frequency?.trim();
-  if (clearance.climbVia && clearance.access.type === "SID") {
-    matchingAircraft.intent.vertical = { type: "VIA_SID", sidId: clearance.access.procedureId };
+  if (clearance.climbVia && sidSegment?.procedureId) {
+    matchingAircraft.intent.vertical = { type: "VIA_SID", sidId: sidSegment.procedureId };
   } else if (
     matchingAircraft.intent.vertical?.type === "VIA_SID" ||
     matchingAircraft.intent.vertical?.type === "VIA_STAR"
   ) {
     matchingAircraft.intent.vertical = { type: "ASSIGNED" };
   }
-  applyActiveRouteToAircraft(matchingAircraft, activeRoute, access);
+  applyActiveRouteToAircraft(matchingAircraft, activeRoute, runtimeAccess);
   (log ?? world.sessionLog)?.append({
     type: "clearance.ifr.issued",
     atSimMs: world.simTimeMs,
     atWallMs,
     callsign: aircraft.callsign,
     limitId,
-    access: clearance.access.type,
+    access,
     routeRevision: activeRoute.revision,
     routeText: route.route.text,
   });

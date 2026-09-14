@@ -80,10 +80,10 @@ test("new executable IFR clearance activates the canonical route immediately", a
   expect(plan.routeRecord?.route.text).toBe("VOR1");
   expect(aircraft.activeClearance).toMatchObject({
     limitId: "KAHN",
-    access: "DIRECT",
+    access: { type: "EXPLICIT_ROUTE", segments: [] },
     route: { lifecycle: "active", revision: 1 },
   });
-  expect(aircraft.clearanceAccess).toBe("DIRECT");
+  expect(aircraft.clearanceAccess).toEqual({ type: "EXPLICIT_ROUTE", segments: [] });
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", routeFixIds: ["KAHN"] });
   expect(log.byType("clearance.ifr.issued")).toHaveLength(1);
 });

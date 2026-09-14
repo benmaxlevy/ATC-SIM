@@ -1,4 +1,4 @@
-import type { Command } from "../command/types";
+import type { Command, IfrClearanceAccess } from "../command/types";
 
 /**
  * Append-only session events.
@@ -51,7 +51,7 @@ export type SessionEvent =
       atWallMs: number;
       callsign: string;
       limitId: string;
-      access: "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+      access: IfrClearanceAccess;
       routeRevision: number;
       routeText: string;
     }

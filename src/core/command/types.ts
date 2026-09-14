@@ -25,6 +25,28 @@ export type ParseStage = "typed" | "spoken_a" | "spoken_b" | "llm_c";
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 
+/** One catalog-grounded lateral element in an IFR clearance route. */
+export type ClearanceRouteSegment =
+  | { type: "DIRECT"; fixId: string }
+  | { type: "PROCEDURE"; procedureId: string; transitionId?: string };
+
+/** Canonical IFR clearance access representation. */
+export type IfrClearanceAccess =
+  | { type: "AS_FILED" }
+  | { type: "RADAR_VECTORS" }
+  /** An empty segment list means direct to the clearance limit. */
+  | { type: "EXPLICIT_ROUTE"; segments: ClearanceRouteSegment[] };
+
+/**
+ * Compatibility input forms retained until the deterministic parser migrates
+ * to IfrClearanceAccess. Core application code canonicalizes these at the
+ * clearance boundary; they are not emitted by the new contract.
+ */
+export type LegacyIfrClearanceAccess =
+  | { type: "DIRECT" }
+  | { type: "FIX_THEN_DIRECT"; fixId: string }
+  | { type: "SID"; procedureId: string; transitionId?: string };
+
 /** Runtime list of Instruction `type` discriminants. Keep in sync with `Instruction`. */
 export const INSTRUCTION_TYPES = [
   "FLY_HEADING",
@@ -80,12 +102,7 @@ export type Instruction =
   | {
       type: "IFR_CLEARANCE";
       limitId: string;
-      access:
-        | { type: "AS_FILED" }
-        | { type: "DIRECT" }
-        | { type: "FIX_THEN_DIRECT"; fixId: string }
-        | { type: "RADAR_VECTORS" }
-        | { type: "SID"; procedureId: string; transitionId?: string };
+      access: IfrClearanceAccess | LegacyIfrClearanceAccess;
       altitudeFt?: number;
       /** Optional climb-via marker for the named SID route. */
       climbVia?: boolean;

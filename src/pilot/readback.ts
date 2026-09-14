@@ -154,16 +154,7 @@ function formatInstructionClause(
     case "MAINTAIN_VFR":
       return "maintain VFR";
     case "IFR_CLEARANCE": {
-      const access =
-        instruction.access.type === "AS_FILED"
-          ? "as filed"
-          : instruction.access.type === "DIRECT"
-            ? "via direct"
-            : instruction.access.type === "FIX_THEN_DIRECT"
-              ? `via ${instruction.access.fixId} then direct`
-              : instruction.access.type === "RADAR_VECTORS"
-                ? "via radar vectors"
-                : `via ${instruction.access.procedureId}${instruction.access.transitionId ? ` ${instruction.access.transitionId}` : ""}`;
+      const access = formatIfrClearanceAccess(instruction.access);
       const optional = [
         instruction.altitudeFt === undefined
           ? null
@@ -207,6 +198,36 @@ function formatInstructionClause(
       return "going around";
     default: {
       const _exhaustive: never = instruction;
+      return _exhaustive;
+    }
+  }
+}
+
+function formatIfrClearanceAccess(
+  access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"],
+): string {
+  switch (access.type) {
+    case "AS_FILED":
+      return "as filed";
+    case "RADAR_VECTORS":
+      return "via radar vectors";
+    case "DIRECT":
+      return "via direct";
+    case "FIX_THEN_DIRECT":
+      return `via ${access.fixId} then direct`;
+    case "SID":
+      return `via ${access.procedureId}${access.transitionId ? ` ${access.transitionId}` : ""}`;
+    case "EXPLICIT_ROUTE": {
+      if (access.segments.length === 0) return "via direct";
+      const parts = access.segments.map((segment) =>
+        segment.type === "DIRECT"
+          ? `direct ${segment.fixId}`
+          : `${segment.procedureId}${segment.transitionId ? ` ${segment.transitionId}` : ""}`,
+      );
+      return `via ${parts.join(" then ")} then direct`;
+    }
+    default: {
+      const _exhaustive: never = access;
       return _exhaustive;
     }
   }

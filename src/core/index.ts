@@ -177,7 +177,14 @@ export {
   normalizeHeadingDeg,
   turnRadiusNm,
 } from "./nav/geometry";
-export type { Command, Instruction, ParseStage, TurnDir } from "./command/types";
+export type {
+  ClearanceRouteSegment,
+  Command,
+  Instruction,
+  LegacyIfrClearanceAccess,
+  ParseStage,
+  TurnDir,
+} from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/types";
 export type {
   IfrClearanceAccess,
@@ -186,7 +193,7 @@ export type {
   IfrClearanceResult,
   IfrClearanceWorld,
 } from "./ifrClearance";
-export { applyIfrClearance } from "./ifrClearance";
+export { applyIfrClearance, serializeIfrClearanceRoute } from "./ifrClearance";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";

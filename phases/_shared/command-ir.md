@@ -59,10 +59,14 @@ export type Instruction =
       limitId: string;
       access:
         | { type: "AS_FILED" }
-        | { type: "DIRECT" }
-        | { type: "FIX_THEN_DIRECT"; fixId: string }
         | { type: "RADAR_VECTORS" }
-        | { type: "SID"; procedureId: string; transitionId?: string };
+        | {
+            type: "EXPLICIT_ROUTE";
+            segments: Array<
+              | { type: "DIRECT"; fixId: string }
+              | { type: "PROCEDURE"; procedureId: string; transitionId?: string }
+            >;
+          };
       altitudeFt?: number;
       climbVia?: boolean;
       frequency?: string;
@@ -103,7 +107,15 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `I` | `IDENT` |
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
 | `SQ 2222` / `SQ VFR` | `ASSIGN_SQUAWK` (`2222` / `1200`) — aircraft transponder state only; never edits the flight plan beacon |
-| `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and access `DIRECT`; clearance limit and access are mandatory, other fields optional |
+| `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and `EXPLICIT_ROUTE` with an empty `segments` list; clearance limit and access are mandatory, other fields optional |
+
+An IFR clearance's `EXPLICIT_ROUTE.segments` is an ordered, catalog-grounded
+list. Each `DIRECT` segment names one fix or navaid; each `PROCEDURE` segment
+names one catalog procedure and optional transition. An empty list means direct
+to the clearance limit. The route has no semantic one- or two-segment limit.
+The parser may accept legacy access wording at its boundary, but Command IR
+consumers use only the canonical shape above. This tactical route is separate
+from the standalone `DIRECT` instruction.
 
 Spoken `squad 2222` is a narrow ASR repair to `squawk 2222`; invalid or
 non-four-octal forms remain a parse miss. `cleared direct <fix>` and `proceed

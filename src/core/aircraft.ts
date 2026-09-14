@@ -1,11 +1,11 @@
-import type { TurnDir } from "./command/types";
+import type { IfrClearanceAccess, TurnDir } from "./command/types";
 import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
 
 /** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
 export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 
-export type ClearanceAccess = "AS_FILED" | "DIRECT" | "FIX_THEN_DIRECT" | "RADAR_VECTORS" | "SID";
+export type ClearanceAccess = IfrClearanceAccess;
 
 /** Operational clearance state. It is deliberately not a FlightPlan field. */
 export interface ActiveIfrClearance {
