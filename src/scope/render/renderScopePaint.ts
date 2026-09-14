@@ -1121,28 +1121,37 @@ export function drawDatablock(
   if (lines.line3 != null) {
     const line3X = textX;
     const line3Y = textY + 2 * lineH;
+    const fields = formatDatablockFields(datablockSource, runtime.options);
+    const parts = fullDatablockLine3Parts(datablockSource);
+    const mismatchIsCurrentPhase =
+      parts.squawkField != null &&
+      parts.assignedBeaconField != null &&
+      fields.field7 === parts.assignedBeaconField;
     if (atpaReadout) {
-      const parts = fullDatablockLine3Parts(datablockSource);
       const prefix = [parts.assignedField, parts.squawkField]
         .filter((part): part is string => part != null && part.length > 0)
         .join(DATABLOCK_FIELD_GAP);
+      const atpaX =
+        prefix.length > 0
+          ? line3X + ctx.measureText(`${prefix}${DATABLOCK_FIELD_GAP}`).width
+          : line3X;
       if (prefix.length > 0) {
         ctx.fillText(prefix, line3X, line3Y);
-        const prefixW = ctx.measureText(`${prefix}${DATABLOCK_FIELD_GAP}`).width;
         ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
-        ctx.fillText(atpaReadout.text, line3X + prefixW, line3Y);
+        ctx.fillText(atpaReadout.text, atpaX, line3Y);
       } else {
         ctx.fillStyle = applyBrite(atpaReadoutColor(atpaReadout.status), briteCh);
         ctx.fillText(atpaReadout.text, line3X, line3Y);
       }
+      if (mismatchIsCurrentPhase) {
+        const assignedX =
+          atpaX + ctx.measureText(`${atpaReadout.text}${DATABLOCK_FIELD_GAP}`).width;
+        if (isAlertBlinkOn(world.simTimeMs)) {
+          ctx.fillStyle = applyBrite(visual.color, briteCh);
+          ctx.fillText(parts.assignedBeaconField!, assignedX, line3Y);
+        }
+      }
     } else {
-      const fields = formatDatablockFields(datablockSource, runtime.options);
-      const parts = fullDatablockLine3Parts(datablockSource);
-      const mismatchIsCurrentPhase =
-        parts.squawkField != null &&
-        parts.assignedBeaconField != null &&
-        fields.field6 === parts.squawkField &&
-        fields.field7 === parts.assignedBeaconField;
       if (!mismatchIsCurrentPhase) {
         ctx.fillText(lines.line3, line3X, line3Y);
       } else {
