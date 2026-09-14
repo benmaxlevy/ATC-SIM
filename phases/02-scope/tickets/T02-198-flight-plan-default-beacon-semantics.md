@@ -79,12 +79,12 @@ the default allocator.
 
 ## Manual-review checklist
 
-- [ ] F6 maps to `FLT DATA` using Appendix D Table D-1, not handoff/initiate.
-- [ ] F6 and abbreviated forms accept the documented optional-field order.
-- [ ] Omitted beacon and explicit `A` produce the distinct documented policies.
-- [ ] Explicit selectors retain `+`, `/`, `/1`–`/4` meanings.
-- [ ] Pending discrete F1 creation does not accept omitted beacon.
-- [ ] Help/docs match actual Preview routing and trainer deltas.
+- [x] F6 maps to `FLT DATA` using Appendix D Table D-1, not handoff/initiate.
+- [x] F6 and abbreviated forms accept the documented optional-field order.
+- [x] Omitted beacon and explicit `A` produce the distinct documented policies.
+- [x] Explicit selectors retain `+`, `/`, `/1`–`/4` meanings.
+- [x] Pending discrete F1 creation does not accept omitted beacon.
+- [x] Help/docs match actual Preview routing and trainer deltas.
 
 ## Non-goals
 

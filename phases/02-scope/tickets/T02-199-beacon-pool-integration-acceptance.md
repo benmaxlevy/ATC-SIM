@@ -83,14 +83,14 @@ networked allocation, or random selection.
 
 ## Manual-review checklist
 
-- [ ] §5.5.5 / Table 5-7 omitted beacon behavior is visible and correct.
-- [ ] `+`, `/`, `/1`–`/4`, and `A` have exact meanings.
-- [ ] §5.5.7 pending discrete creation still requires a beacon.
-- [ ] §5.5.9 association remains distinct from plan creation/allocation.
-- [ ] §5.6.15 release does not rewrite aircraft-reported squawk.
-- [ ] Help/docs use `assigned beacon`, `reported squawk`, and `beacon pool`
+- [x] §5.5.5 / Table 5-7 omitted beacon behavior is visible and correct.
+- [x] `+`, `/`, `/1`–`/4`, and `A` have exact meanings.
+- [x] §5.5.7 pending discrete creation still requires a beacon.
+- [x] §5.5.9 association remains distinct from plan creation/allocation.
+- [x] §5.6.15 release does not rewrite aircraft-reported squawk.
+- [x] Help/docs use `assigned beacon`, `reported squawk`, and `beacon pool`
       correctly and claim no official NAS compatibility.
-- [ ] Phase 2 scope/radio separation and data-first rules remain intact.
+- [x] Phase 2 scope/radio separation and data-first rules remain intact.
 
 ## Help/docs
 

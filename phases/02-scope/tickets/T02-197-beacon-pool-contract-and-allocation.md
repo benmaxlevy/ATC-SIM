@@ -83,12 +83,12 @@ documentation to call these beacon pools, not an official beacon bank.
 
 ## Manual-review checklist
 
-- [ ] Table 5-3 and Table 5-7 selector meanings remain exact.
-- [ ] Omitted/default behavior is not described as random by implementation or
+- [x] Table 5-3 and Table 5-7 selector meanings remain exact.
+- [x] Omitted/default behavior is not described as random by implementation or
   help.
-- [ ] `A` remains no assigned code and is not an allocator selector.
-- [ ] `CAPACITY — BCN`, `DUP BCN`, and malformed-code behavior are preserved.
-- [ ] Assigned plan beacon and reported aircraft squawk remain distinct.
+- [x] `A` remains no assigned code and is not an allocator selector.
+- [x] `CAPACITY — BCN`, `DUP BCN`, and malformed-code behavior are preserved.
+- [x] Assigned plan beacon and reported aircraft squawk remain distinct.
 
 ## Non-goals
 
