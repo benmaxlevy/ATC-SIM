@@ -17,6 +17,7 @@ import {
   buildDatablockRuntimeState,
   datablockMetrics,
   datablockSourceFromWorld,
+  formatDatablockFields,
   fullDatablockLine3Parts,
   getSpecialPurposeCode,
   linesForDatablock,
@@ -923,6 +924,7 @@ export function datablockRenderSnapshotKey(view: ScopeView, world: World): strin
       track.unassociated,
       track.datablockMode,
       track.forcedFdb,
+      track.derivedPlanId,
       track.scratchpad,
       track.sp1,
       track.sp2,
@@ -1134,7 +1136,31 @@ export function drawDatablock(
         ctx.fillText(atpaReadout.text, line3X, line3Y);
       }
     } else {
-      ctx.fillText(lines.line3, line3X, line3Y);
+      const fields = formatDatablockFields(datablockSource, runtime.options);
+      const parts = fullDatablockLine3Parts(datablockSource);
+      const mismatchIsCurrentPhase =
+        parts.squawkField != null &&
+        parts.assignedBeaconField != null &&
+        fields.field6 === parts.squawkField &&
+        fields.field7 === parts.assignedBeaconField;
+      if (!mismatchIsCurrentPhase) {
+        ctx.fillText(lines.line3, line3X, line3Y);
+      } else {
+        // Manual §2.12 / §5.6.1: RBC stays in Field 6 while the ABC in
+        // Field 7 blinks. Reserve the ABC cell even during its off phase so
+        // the datablock never shifts while Fields 6–8 continue time-sharing.
+        const fieldGap = DATABLOCK_FIELD_GAP;
+        const reportedX = line3X;
+        const assignedX = reportedX + ctx.measureText(`${fields.field6}${fieldGap}`).width;
+        ctx.fillText(fields.field6, reportedX, line3Y);
+        if (isAlertBlinkOn(world.simTimeMs)) {
+          ctx.fillText(fields.field7, assignedX, line3Y);
+        }
+        if (fields.field8.length > 0) {
+          const field8X = assignedX + ctx.measureText(`${fields.field7}${fieldGap}`).width;
+          ctx.fillText(fields.field8, field8X, line3Y);
+        }
+      }
     }
   }
 }

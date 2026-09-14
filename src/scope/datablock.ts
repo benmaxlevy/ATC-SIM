@@ -126,6 +126,7 @@ export interface DatablockRuntimeBuildOptions {
       | "manualSp1"
       | "manualSp2"
       | "squawk"
+      | "derivedPlanId"
     >
   > &
     Pick<TrackDisplay, "ownership">;
@@ -194,6 +195,39 @@ function formatApproachShorthandForRuntime(
   return sanitizeScratchpad(raw);
 }
 
+type DatablockPlanTrack = Pick<TrackDisplay, "squawk" | "unassociated" | "derivedPlanId">;
+
+/**
+ * Resolve the plan that the datablock is already presenting. A beacon mismatch
+ * must keep the last uniquely correlated plan visible long enough to show its
+ * assigned code beside the live reported code (manual §§2.12, 5.6.1).
+ *
+ * The assigned-squawk fallback only bootstraps an authored mismatch. It is
+ * accepted only when exactly one live plan owns that code; it never guesses by
+ * ACID or by array order.
+ */
+export function flightPlanForDatablock(
+  world: World,
+  aircraft: Aircraft,
+  track?: DatablockPlanTrack,
+): ReturnType<typeof flightPlanForAircraft> {
+  const correlated = flightPlanForAircraft(world, aircraft.id);
+  if (correlated) return correlated;
+
+  const retained = track?.derivedPlanId
+    ? world.flightPlans.find((plan) => plan.id === track.derivedPlanId && plan.status !== "deleted")
+    : undefined;
+  if (retained) return retained;
+
+  const assignedSquawk = aircraft.assignedSquawk?.trim().toUpperCase();
+  if (!assignedSquawk) return undefined;
+  const candidates = world.flightPlans.filter(
+    (plan) =>
+      plan.status !== "deleted" && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
+  );
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
 /**
  * Build one immutable-in-practice runtime projection for a target.
  * Analog: STARS associated-track datablock source (manual §2.12); trainer
@@ -210,7 +244,7 @@ export function buildDatablockRuntimeState(
   // cached display flag.  The track flag is presentation state and can lag a
   // squawk report by one paint; letting it hide a uniquely correlated plan
   // makes the datablock disagree with TAB, strips, and the flight-plan modal.
-  const plan = flightPlanForAircraft(world, aircraft.id);
+  const plan = flightPlanForDatablock(world, aircraft, track);
   const handoff = handoffFor(world, aircraft.id);
   const simTimeMs = world.simTimeMs;
   const queried = (track?.queriedUntilSimMs ?? 0) > simTimeMs;
@@ -282,11 +316,11 @@ export function buildDatablockRuntimeState(
 export function datablockSourceFromWorld(
   world: World,
   aircraft: Aircraft,
-  track?: Pick<TrackDisplay, "squawk" | "unassociated">,
+  track?: DatablockPlanTrack,
 ): DatablockSource {
   // Correlation is read-only and authoritative here.  `unassociated` is a
   // cached LDB presentation hint, not a second association relationship.
-  const plan = flightPlanForAircraft(world, aircraft.id);
+  const plan = flightPlanForDatablock(world, aircraft, track);
   return datablockSourceFromPlan(aircraft, track, plan);
 }
 
@@ -885,6 +919,7 @@ export function formatFullDatablock(
 export interface FullDatablockLine3Parts {
   assignedField?: string;
   squawkField?: string;
+  assignedBeaconField?: string;
   atpaField?: string;
 }
 
@@ -899,9 +934,12 @@ export function fullDatablockLine3Parts(track: DatablockSource): FullDatablockLi
   const hasSquawkMismatch =
     track.assignedSquawk && track.reportedSquawk && track.assignedSquawk !== track.reportedSquawk;
   const squawkField = hasSquawkMismatch ? track.reportedSquawk : undefined;
+  const assignedBeaconField = hasSquawkMismatch
+    ? normalizeDisplayField(track.assignedSquawk, 4)
+    : undefined;
   const atpaField =
     track.atpaDistance && track.atpaDistance.length > 0 ? track.atpaDistance : undefined;
-  return { assignedField, squawkField, atpaField };
+  return { assignedField, squawkField, assignedBeaconField, atpaField };
 }
 
 /**

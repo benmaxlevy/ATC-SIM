@@ -58,6 +58,49 @@ describe("Datablock inline alert glyphs", () => {
     expect(mock.fillTexts.filter((fill) => fill.text.includes("EM"))).toHaveLength(1);
   });
 
+  test("beacon mismatch keeps RBC fixed while ABC blinks in place", () => {
+    const ac = makeTestAircraft({
+      id: "ac-beacon-mismatch-paint",
+      callsign: "MISMATCH1",
+      squawk: "4322",
+      reportedSquawk: "4322",
+      assignedSquawk: "4321",
+    });
+    const world = createWorld({
+      aircraft: [ac],
+      flightPlans: [
+        {
+          id: "fp-beacon-mismatch-paint",
+          status: "active",
+          acid: "MISMATCH1",
+          assignedBeacon: "4321",
+          fixes: [],
+          scratchpads: [],
+        },
+      ],
+      simTimeMs: 0,
+    });
+    const view = createScopeView();
+    const td = createTrackDisplay("owned");
+    td.datablockMode = "full";
+    view.tracks.set(ac.id, td);
+
+    const on = createMockCtx();
+    drawDatablock(on.ctx, ac, 100, 100, view, world);
+    const reportedOn = on.fillTexts.find((fill) => fill.text === "4322");
+    const assignedOn = on.fillTexts.find((fill) => fill.text === "4321");
+    expect(reportedOn).toBeDefined();
+    expect(assignedOn).toBeDefined();
+    expect(assignedOn!.x).toBeGreaterThan(reportedOn!.x!);
+
+    world.simTimeMs = 800;
+    const off = createMockCtx();
+    drawDatablock(off.ctx, ac, 100, 100, view, world);
+    const reportedOff = off.fillTexts.find((fill) => fill.text === "4322");
+    expect(reportedOff).toBeDefined();
+    expect(off.fillTexts.some((fill) => fill.text === "4321")).toBe(false);
+  });
+
   test("existing CA Field 0 shares optional row geometry with static Field 0", () => {
     const world = createWorld();
     const view = createScopeView();

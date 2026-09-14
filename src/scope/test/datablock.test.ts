@@ -16,11 +16,13 @@ import {
   getSpecialPurposeCode,
   buildDatablockRuntimeState,
   datablockSourceFromWorld,
+  flightPlanForDatablock,
   normalizeFlightRulesDisplay,
 } from "../datablock";
-import { createWorld, modifyFlightPlan } from "@core";
+import { createWorld, modifyFlightPlan, updateAircraftSquawk } from "@core";
 import { applyIntent } from "@pilot";
 import { DEFAULT_LEADER_DIR, LEADER_LENGTH_PX } from "../leader";
+import { syncTrackDisplays } from "../trackDisplay";
 
 test("runtime adapter projects associated plan and preserves beacon provenance", () => {
   const ac = makeTestAircraft({
@@ -73,6 +75,91 @@ test("runtime adapter projects associated plan and preserves beacon provenance",
   expect(state.display.scratchpads).toEqual({ sp1: "ILS2", sp2: "S21" });
   expect(state.options.field0Indicators).toEqual(["CA"]);
   expect(ac.intent).toEqual(beforeIntent);
+});
+
+test("runtime FDB keeps the plan through a reported beacon mismatch", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-beacon-mismatch",
+    callsign: "RAW-MISMATCH",
+    squawk: "4321",
+    reportedSquawk: "4321",
+    altitudeFt: 6000,
+    speedKt: 180,
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-beacon-mismatch-plan",
+        status: "active",
+        acid: "FILED-MISMATCH",
+        assignedBeacon: "4321",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+  const tracks = new Map();
+
+  syncTrackDisplays(tracks, world);
+  expect(tracks.get(ac.id)?.derivedPlanId).toBe("runtime-beacon-mismatch-plan");
+
+  updateAircraftSquawk(world, ac.id, "4322");
+  syncTrackDisplays(tracks, world);
+
+  const track = tracks.get(ac.id);
+  expect(track).toMatchObject({
+    derivedPlanId: "runtime-beacon-mismatch-plan",
+    unassociated: false,
+    datablockMode: "full",
+  });
+  expect(flightPlanForDatablock(world, ac, track)?.assignedBeacon).toBe("4321");
+  const state = buildDatablockRuntimeState(world, ac, { track, mode: "full" });
+  expect(state.source).toMatchObject({
+    callsign: "FILED-MISMATCH",
+    reportedSquawk: "4322",
+    assignedSquawk: "4321",
+  });
+  expect(
+    linesForDatablock(state.source, "full", { ...state.options, timeSharePhase: 0 }).line3,
+  ).toBe("4322  4321");
+});
+
+test("runtime FDB bootstraps an authored mismatch from the aircraft assigned code", () => {
+  const ac = makeTestAircraft({
+    id: "runtime-authored-mismatch",
+    callsign: "RAW-AUTHORED",
+    squawk: "4322",
+    reportedSquawk: "4322",
+    assignedSquawk: "4321",
+  });
+  const world = createWorld({
+    aircraft: [ac],
+    flightPlans: [
+      {
+        id: "runtime-authored-mismatch-plan",
+        status: "active",
+        acid: "FILED-AUTHORED",
+        assignedBeacon: "4321",
+        fixes: [],
+        scratchpads: [],
+      },
+    ],
+  });
+  const tracks = new Map();
+
+  syncTrackDisplays(tracks, world);
+
+  const track = tracks.get(ac.id);
+  expect(track).toMatchObject({
+    derivedPlanId: "runtime-authored-mismatch-plan",
+    unassociated: false,
+    datablockMode: "full",
+  });
+  const state = buildDatablockRuntimeState(world, ac, { track, mode: "full" });
+  expect(
+    linesForDatablock(state.source, "full", { ...state.options, timeSharePhase: 0 }).line3,
+  ).toBe("4322  4321");
 });
 
 test.each([
