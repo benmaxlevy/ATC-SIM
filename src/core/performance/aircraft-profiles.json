@@ -58,37 +58,433 @@
     }
   },
   "aircraft": {
-    "A20N": {},
-    "A21N": {},
-    "A320": {},
-    "A321": {},
-    "A333": {},
-    "B38M": {},
-    "B39M": {},
-    "B737": {},
-    "B738": {},
-    "B739": {},
-    "B744": {},
-    "B752": {},
+    "A20N": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 350,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2478.3464566929133
+        },
+        "climb": {
+          "nominalClimbFpm": 1659.4488188976377
+        },
+        "approach": {
+          "minSpeedKt": 130.23758099352054,
+          "maxSpeedKt": 149.67602591792658
+        }
+      }
+    },
+    "A21N": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 350,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2478.3464566929133
+        },
+        "climb": {
+          "nominalClimbFpm": 1659.4488188976377
+        },
+        "approach": {
+          "minSpeedKt": 130.23758099352054,
+          "maxSpeedKt": 149.67602591792658
+        }
+      }
+    },
+    "A320": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 350,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2478.3464566929133
+        },
+        "climb": {
+          "nominalClimbFpm": 1659.4488188976377
+        },
+        "approach": {
+          "minSpeedKt": 130.23758099352054,
+          "maxSpeedKt": 149.67602591792658
+        }
+      }
+    },
+    "A321": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 350,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2600.393700787402
+        },
+        "climb": {
+          "nominalClimbFpm": 1608.267716535433
+        },
+        "approach": {
+          "minSpeedKt": 136.06911447084235,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "A333": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 330,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2417.3228346456694
+        },
+        "climb": {
+          "nominalClimbFpm": 1505.9055118110236
+        },
+        "approach": {
+          "minSpeedKt": 134.12526997840175,
+          "maxSpeedKt": 151.61987041036718
+        }
+      }
+    },
+    "B38M": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 340,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2348.4251968503936
+        },
+        "climb": {
+          "nominalClimbFpm": 2305.1181102362207
+        },
+        "approach": {
+          "minSpeedKt": 126.34989200863932,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "B39M": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 340,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2348.4251968503936
+        },
+        "climb": {
+          "nominalClimbFpm": 2305.1181102362207
+        },
+        "approach": {
+          "minSpeedKt": 126.34989200863932,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "B737": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 340,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2348.4251968503936
+        },
+        "climb": {
+          "nominalClimbFpm": 2305.1181102362207
+        },
+        "approach": {
+          "minSpeedKt": 126.34989200863932,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "B738": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 340,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2415.3543307086616
+        },
+        "climb": {
+          "nominalClimbFpm": 2015.748031496063
+        },
+        "approach": {
+          "minSpeedKt": 139.95680345572356,
+          "maxSpeedKt": 159.3952483801296
+        }
+      }
+    },
+    "B739": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 340,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2433.070866141732
+        },
+        "climb": {
+          "nominalClimbFpm": 1748.0314960629923
+        },
+        "approach": {
+          "minSpeedKt": 139.95680345572356,
+          "maxSpeedKt": 161.3390928725702
+        }
+      }
+    },
+    "B744": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 365,
+        "serviceCeilingFt": 13700
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 1818.8976377952756
+        },
+        "climb": {
+          "nominalClimbFpm": 1726.3779527559054
+        },
+        "approach": {
+          "minSpeedKt": 139.95680345572356,
+          "maxSpeedKt": 165.2267818574514
+        }
+      }
+    },
+    "B752": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 350,
+        "serviceCeilingFt": 12800
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2557.0866141732286
+        },
+        "climb": {
+          "nominalClimbFpm": 1761.811023622047
+        },
+        "approach": {
+          "minSpeedKt": 120.5183585313175,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
     "B753": {},
-    "B763": {},
-    "B772": {},
-    "B77W": {},
-    "B788": {},
-    "B789": {},
+    "B763": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 360,
+        "serviceCeilingFt": 13100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2811.023622047244
+        },
+        "climb": {
+          "nominalClimbFpm": 2019.6850393700788
+        },
+        "approach": {
+          "minSpeedKt": 132.18142548596114,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "B772": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 330,
+        "serviceCeilingFt": 13100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2562.9921259842517
+        },
+        "climb": {
+          "nominalClimbFpm": 1683.0708661417325
+        },
+        "approach": {
+          "minSpeedKt": 141.90064794816416,
+          "maxSpeedKt": 161.3390928725702
+        }
+      }
+    },
+    "B77W": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 330,
+        "serviceCeilingFt": 13100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2562.9921259842517
+        },
+        "climb": {
+          "nominalClimbFpm": 1683.0708661417325
+        },
+        "approach": {
+          "minSpeedKt": 141.90064794816416,
+          "maxSpeedKt": 161.3390928725702
+        }
+      }
+    },
+    "B788": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 515,
+        "serviceCeilingFt": 13100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2096.456692913386
+        },
+        "climb": {
+          "nominalClimbFpm": 1775.5905511811022
+        },
+        "approach": {
+          "minSpeedKt": 136.06911447084235,
+          "maxSpeedKt": 155.5075593952484
+        }
+      }
+    },
+    "B789": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 515,
+        "serviceCeilingFt": 13100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2086.6141732283463
+        },
+        "climb": {
+          "nominalClimbFpm": 1708.6614173228347
+        },
+        "approach": {
+          "minSpeedKt": 139.95680345572356,
+          "maxSpeedKt": 161.3390928725702
+        }
+      }
+    },
     "B78X": {},
     "CRJ1": {},
     "CRJ2": {},
     "CRJ7": {},
-    "CRJ9": {},
+    "CRJ9": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 320,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2202.755905511811
+        },
+        "climb": {
+          "nominalClimbFpm": 1757.8740157480315
+        },
+        "approach": {
+          "minSpeedKt": 124.40604751619871,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
     "CRJX": {},
     "E135": {},
     "E140": {},
-    "E145": {},
-    "E170": {},
+    "E145": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 320,
+        "serviceCeilingFt": 11300
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2202.755905511811
+        },
+        "climb": {
+          "nominalClimbFpm": 1757.8740157480315
+        },
+        "approach": {
+          "minSpeedKt": 124.40604751619871,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
+    "E170": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 320,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2202.755905511811
+        },
+        "climb": {
+          "nominalClimbFpm": 1757.8740157480315
+        },
+        "approach": {
+          "minSpeedKt": 124.40604751619871,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
     "E175": {},
-    "E190": {},
-    "E195": {},
+    "E190": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 320,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2202.755905511811
+        },
+        "climb": {
+          "nominalClimbFpm": 1757.8740157480315
+        },
+        "approach": {
+          "minSpeedKt": 124.40604751619871,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
+    "E195": {
+      "source": "openap",
+      "limits": {
+        "maxControlledSpeedKt": 320,
+        "serviceCeilingFt": 12500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 2202.755905511811
+        },
+        "climb": {
+          "nominalClimbFpm": 1757.8740157480315
+        },
+        "approach": {
+          "minSpeedKt": 124.40604751619871,
+          "maxSpeedKt": 147.73218142548598
+        }
+      }
+    },
     "E290": {},
     "E295": {}
   }

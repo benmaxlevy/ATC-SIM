@@ -226,8 +226,12 @@ describe("AircraftPerformanceRegistry with unified dataset", () => {
     expect(b738.status).toBe("SUPPORTED");
     expect(b738.limits?.minControlledSpeedKt).toBe(100);
     expect(b738.limits?.maxControlledSpeedKt).toBe(340);
-    expect(b738.limits?.serviceCeilingFt).toBe(41000);
+    expect(b738.limits?.serviceCeilingFt).toBe(12500);
     expect(b738.regimes?.approach.nominalDescentFpm).toBe(1200);
+
+    const e295 = performanceRegistry.getProfile("E295");
+    expect(e295.status).toBe("SUPPORTED");
+    expect(e295.limits?.serviceCeilingFt).toBe(41000);
   });
 });
 
