@@ -372,6 +372,15 @@ export function parseFlightPlanCreation(
       used.add("beacon");
       continue;
     }
+    // A bare `A` in the beacon position means no assigned code. In the
+    // abbreviated form it is intentionally resolved before the ambiguous
+    // flight-type token so `ACID A` can override a configured default pool.
+    // A second `A` remains available for the abbreviated flight-type field.
+    if (token === "A" && !used.has("beacon")) {
+      fields.beacon = { kind: "none" };
+      used.add("beacon");
+      continue;
+    }
     // Manual FLT DATA allows two-to-four-character aircraft types. A
     // two-character letter/number value would otherwise be consumed by the
     // one/two-character TCP rule. Numeric-leading two-character values stay
@@ -392,11 +401,6 @@ export function parseFlightPlanCreation(
       if (used.has("tcp")) return { kind: "invalid", reason: "FORMAT" };
       fields.tcp = token;
       used.add("tcp");
-      continue;
-    }
-    if (token === "A" && !used.has("beacon") && (fltData || used.has("type"))) {
-      fields.beacon = { kind: "none" };
-      used.add("beacon");
       continue;
     }
     if (fltData && FIX_DATA.test(token)) {
@@ -478,7 +482,9 @@ export function parseFlightPlanCreation(
     if (status === "P") fields.ptd = etaOrPtd;
     else fields.eta = etaOrPtd;
   }
-  if (pendingDiscrete && fields.beacon.kind !== "code")
+  // INIT CNTL requires an explicit beacon field, but the manual's explicit
+  // `A` no-code value is valid. Only an omitted beacon remains incomplete.
+  if (pendingDiscrete && fields.beacon.kind === "default")
     return { kind: "invalid", reason: "FORMAT" };
   return { kind: "action", action: fields };
 }

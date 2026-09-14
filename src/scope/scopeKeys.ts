@@ -487,10 +487,6 @@ function applyPreviewArmedAction(
         }
         plan = allocated.value;
       }
-      if (action.pendingDiscrete && !plan.assignedBeacon) {
-        view.preview.rejection = "FORMAT";
-        return;
-      }
       world.flightPlans.push(plan);
       return;
     }

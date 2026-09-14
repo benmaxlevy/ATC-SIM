@@ -92,6 +92,44 @@ describe("T02-144 flight-plan creation", () => {
     });
   });
 
+  it("accepts every explicit INIT CNTL beacon form, including no-code A", () => {
+    const expected = [
+      ["2341", { kind: "code", code: "2341" }],
+      ["+", { kind: "pool", pool: "ifr" }],
+      ["/", { kind: "pool", pool: "vfr" }],
+      ["/1", { kind: "pool", pool: "general1" }],
+      ["/2", { kind: "pool", pool: "general2" }],
+      ["/3", { kind: "pool", pool: "general3" }],
+      ["/4", { kind: "pool", pool: "general4" }],
+      ["A", { kind: "none" }],
+    ] as const;
+
+    for (const [beacon, spec] of expected) {
+      expect(parseFlightPlanCreation(`UAL1234 ${beacon}`, true)).toMatchObject({
+        kind: "action",
+        action: { pendingDiscrete: true, beacon: spec },
+      });
+    }
+    expect(parseFlightPlanCreation("UAL1234 1289", true)).toMatchObject({
+      kind: "invalid",
+      reason: "FORMAT",
+    });
+  });
+
+  it("uses abbreviated A as explicit no-code before ambiguous flight type A", () => {
+    expect(parseFlightPlanCreation("UAL1234 A")).toMatchObject({
+      kind: "action",
+      action: { beacon: { kind: "none" } },
+    });
+    expect(parseFlightPlanCreation("UAL1234 A")).not.toMatchObject({
+      action: { flightType: "A" },
+    });
+    expect(parseFlightPlanCreation("UAL1234 A A")).toMatchObject({
+      kind: "action",
+      action: { beacon: { kind: "none" }, flightType: "A" },
+    });
+  });
+
   it("distinguishes omitted, selected-pool, explicit-code, and no-code beacons", () => {
     expect(parseFlightPlanCreation("UAL1234")).toMatchObject({
       action: { beacon: { kind: "default" } },
@@ -273,7 +311,7 @@ describe("T02-144 flight-plan creation", () => {
     handleScopeKeyDown(key("F1"), view, "scope", world);
     for (const ch of "NEW123 +") handleScopeKeyDown(key(ch), view, "scope", world);
     handleScopeKeyDown(key("Enter"), view, "scope", world);
-    expect(view.preview.rejection).toBe("FORMAT");
+    expect(view.preview.rejection).toBe("CAPACITY — BCN");
 
     const invalidView = createScopeView();
     for (const ch of "ALL") handleScopeKeyDown(key(ch), invalidView, "scope", world);
@@ -329,6 +367,12 @@ describe("T02-144 flight-plan creation", () => {
     handleScopeKeyDown(key("Enter"), explicitNoneView, "scope", world);
     expect(world.flightPlans).toHaveLength(2);
     expect(world.flightPlans[1]).toMatchObject({ acid: "AAL124", assignedBeacon: undefined });
+
+    const abbreviatedNoneView = createScopeView();
+    for (const ch of "AAL125 A") handleScopeKeyDown(key(ch), abbreviatedNoneView, "scope", world);
+    handleScopeKeyDown(key("Enter"), abbreviatedNoneView, "scope", world);
+    expect(world.flightPlans).toHaveLength(3);
+    expect(world.flightPlans[2]).toMatchObject({ acid: "AAL125", assignedBeacon: undefined });
   });
 
   it("reports FORMAT for F1 creation without a discrete beacon", () => {
@@ -339,6 +383,50 @@ describe("T02-144 flight-plan creation", () => {
     handleScopeKeyDown(key("Enter"), view, "scope", world);
     expect(view.preview.rejection).toBe("FORMAT");
     expect(world.flightPlans).toHaveLength(0);
+  });
+
+  it("creates F1 pending plans from configured pools and explicit no-code A", () => {
+    const config = createBeaconPoolConfig({
+      pools: {
+        ifr: ["6101"],
+        vfr: ["6201"],
+        general1: ["6301"],
+        general2: ["6401"],
+        general3: ["6501"],
+        general4: ["6601"],
+      },
+    });
+    if (!config.ok) throw new Error("test fixture should be valid");
+    const world = createWorld({ beaconPools: config.value });
+
+    const selectors = [
+      ["+", "6101"],
+      ["/", "6201"],
+      ["/1", "6301"],
+      ["/2", "6401"],
+      ["/3", "6501"],
+      ["/4", "6601"],
+    ] as const;
+    for (const [index, [selector, assignedBeacon]] of selectors.entries()) {
+      const view = createScopeView();
+      handleScopeKeyDown(key("F1"), view, "scope", world);
+      for (const ch of `UAL12${index} ${selector}`)
+        handleScopeKeyDown(key(ch), view, "scope", world);
+      handleScopeKeyDown(key("Enter"), view, "scope", world);
+      expect(world.flightPlans.at(-1)).toMatchObject({ acid: `UAL12${index}`, assignedBeacon });
+    }
+
+    const exhaustedView = createScopeView();
+    handleScopeKeyDown(key("F1"), exhaustedView, "scope", world);
+    for (const ch of "UAL130 +") handleScopeKeyDown(key(ch), exhaustedView, "scope", world);
+    handleScopeKeyDown(key("Enter"), exhaustedView, "scope", world);
+    expect(exhaustedView.preview.rejection).toBe("CAPACITY — BCN");
+
+    const noCodeView = createScopeView();
+    handleScopeKeyDown(key("F1"), noCodeView, "scope", world);
+    for (const ch of "UAL129 A") handleScopeKeyDown(key(ch), noCodeView, "scope", world);
+    handleScopeKeyDown(key("Enter"), noCodeView, "scope", world);
+    expect(world.flightPlans.at(-1)).toMatchObject({ acid: "UAL129", assignedBeacon: undefined });
   });
 
   it("creates pending plans through scope Preview without mutating aircraft", () => {
