@@ -250,6 +250,52 @@ test("invalid or airport route segments reject without replacing the active snap
   expect(aircraft.activeClearance).toEqual(beforeClearance);
 });
 
+test("typed route segment kinds never fall through to another catalog namespace", () => {
+  const { world, aircraft, plan } = setup();
+  const first = applyIfrClearance(
+    world,
+    aircraft,
+    clearance({ type: "EXPLICIT_ROUTE", segments: [] }),
+  );
+  expect(first.ok).toBe(true);
+  const beforePlan = structuredClone(plan);
+  const beforeClearance = structuredClone(aircraft.activeClearance);
+
+  const cases: Array<{
+    name: string;
+    access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"];
+  }> = [
+    {
+      name: "procedure-as-airport",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [{ type: "PROCEDURE", procedureId: "TEST" }],
+      },
+    },
+    {
+      name: "direct-as-procedure",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [{ type: "DIRECT", fixId: "SID1" }],
+      },
+    },
+    {
+      name: "procedure-as-fix",
+      access: {
+        type: "EXPLICIT_ROUTE",
+        segments: [{ type: "PROCEDURE", procedureId: "FIXA" }],
+      },
+    },
+  ];
+
+  for (const item of cases) {
+    const result = applyIfrClearance(world, aircraft, clearance(item.access));
+    expect(result, item.name).toMatchObject({ ok: false, error: { code: "UNABLE_ROUTE" } });
+    expect(plan, item.name).toEqual(beforePlan);
+    expect(aircraft.activeClearance, item.name).toEqual(beforeClearance);
+  }
+});
+
 test("legacy direct input normalizes to canonical active-clearance access", () => {
   const { world, aircraft } = setup();
   const result = applyIfrClearance(world, aircraft, clearance({ type: "DIRECT" }));

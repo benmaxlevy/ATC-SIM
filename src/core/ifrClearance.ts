@@ -5,7 +5,11 @@ import type {
   Instruction,
 } from "./command/types";
 import type { FiledRouteCatalog } from "./filedRoute";
-import { validateFlightPlanRouteTransaction } from "./filedRoute";
+import {
+  resolveClearanceRouteSegments,
+  validateFlightPlanRouteTransaction,
+  validateResolvedFlightPlanRouteTransaction,
+} from "./filedRoute";
 import type { FlightPlan, FlightPlanRoute } from "./flightPlan";
 import { isValidBeaconCode } from "./flightPlan";
 import { applyActiveRouteToAircraft, type RouteExecutionAccess } from "./fms/routeExecution";
@@ -159,17 +163,6 @@ function limitKnown(
   );
 }
 
-function hasAirportRouteSegment(
-  access: IfrClearanceAccess,
-  catalog: FiledRouteCatalog | null | undefined,
-): boolean {
-  if (access.type !== "EXPLICIT_ROUTE" || !catalog?.airportId) return false;
-  const airportId = normalize(catalog.airportId);
-  return access.segments.some(
-    (segment) => segment.type === "DIRECT" && normalize(segment.fixId) === airportId,
-  );
-}
-
 function explicitVfr(value: string | undefined): boolean {
   const rules = normalize(value ?? "");
   return rules === "VFR" || rules === "DVFR" || rules === "SVFR";
@@ -232,9 +225,6 @@ export function applyIfrClearance(
   if (!limitId || !limitKnown(limitId, world.catalog, Boolean(plan.routeRecord?.route))) {
     return error("UNABLE_ROUTE", `unable route: unknown clearance limit ${limitId || ""}`);
   }
-  if (hasAirportRouteSegment(access, world.catalog)) {
-    return error("UNABLE_ROUTE", "unable route: airport cannot be a tactical route segment");
-  }
   if (rejectsVfrPickup(plan, aircraft)) {
     return error(
       "VFR_PICKUP_NOT_SUPPORTED",
@@ -257,12 +247,33 @@ export function applyIfrClearance(
   if (clearance.squawk !== undefined && !isValidBeaconCode(clearance.squawk)) {
     return error("INVALID_SQUAWK", "unable clearance: invalid beacon code");
   }
-  const routeInput = routeTextFor(access, limitId);
-  const compiled = validateFlightPlanRouteTransaction(
-    plan,
-    { ...routeInput.input, lifecycle: "active", nextIndex: 0 },
-    world.catalog,
-  );
+  const compiled =
+    access.type === "EXPLICIT_ROUTE"
+      ? (() => {
+          const resolved = resolveClearanceRouteSegments(access.segments, limitId, world.catalog);
+          if (!resolved.ok) {
+            return {
+              ok: false as const,
+              error: {
+                code: "UNABLE_ROUTE" as const,
+                field: "route" as const,
+                message: `unable route: ${resolved.error.message}`,
+              },
+            };
+          }
+          return validateResolvedFlightPlanRouteTransaction(plan, resolved.value, {
+            lifecycle: "active",
+            nextIndex: 0,
+          });
+        })()
+      : (() => {
+          const routeInput = routeTextFor(access, limitId);
+          return validateFlightPlanRouteTransaction(
+            plan,
+            { ...routeInput.input, lifecycle: "active", nextIndex: 0 },
+            world.catalog,
+          );
+        })();
   if (!compiled.ok) {
     return error("UNABLE_ROUTE", compiled.error.message);
   }

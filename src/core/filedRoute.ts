@@ -7,6 +7,7 @@ import type {
   FlightPlanStatus,
   FlightPlanErrorCode,
 } from "./flightPlan";
+import type { ClearanceRouteSegment } from "./command/types";
 import {
   allocateBeaconCode,
   createFlightPlanRoute,
@@ -339,6 +340,148 @@ function procedureMatches(
   return matches;
 }
 
+function resolveClearanceDirectSegment(
+  target: string,
+  catalog: FiledRouteCatalog,
+  allowAirport: boolean,
+): FiledRouteResult<FiledRouteSegment> {
+  const normalized = upper(target);
+  if (!normalized) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_FIX", "direct route segment is blank"),
+    };
+  }
+  const fixes = catalog.fixes.filter((item) => idsEqual(item.id, normalized));
+  const navaids = catalog.navaids.filter((item) => idsEqual(item.id, normalized));
+  const airport = catalogAirport(catalog, normalized);
+  if (airport && !allowAirport) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNSUPPORTED_ROUTE_TOKEN",
+        "airport cannot be a tactical route segment",
+        normalized,
+      ),
+    };
+  }
+  if (fixes.length + navaids.length === 0 && !airport) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNKNOWN_FIX",
+        `direct route segment ${normalized} is not a catalog fix or navaid`,
+        normalized,
+      ),
+    };
+  }
+  if (fixes.length + navaids.length > 1 || (airport && fixes.length + navaids.length > 0)) {
+    return {
+      ok: false,
+      error: routeError(
+        "AMBIGUOUS_ROUTE_TOKEN",
+        `route token ${normalized} is ambiguous`,
+        normalized,
+      ),
+    };
+  }
+  return {
+    ok: true,
+    value: { kind: "DCT", fixId: normalized, fixIds: [normalized] },
+  };
+}
+
+function resolveClearanceProcedureSegment(
+  segment: Extract<ClearanceRouteSegment, { type: "PROCEDURE" }>,
+  catalog: FiledRouteCatalog,
+): FiledRouteResult<FiledRouteSegment> {
+  const procedureId = upper(segment.procedureId);
+  if (!procedureId) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_PROCEDURE", "clearance procedure is blank"),
+    };
+  }
+  if (catalogAirport(catalog, procedureId)) {
+    return {
+      ok: false,
+      error: routeError(
+        "UNSUPPORTED_ROUTE_TOKEN",
+        "airport cannot be a tactical route segment",
+        procedureId,
+      ),
+    };
+  }
+  const transitionId = segment.transitionId === undefined ? undefined : upper(segment.transitionId);
+  const matches = procedureMatches(
+    `${procedureId}${transitionId ? `/${transitionId}` : ""}`,
+    catalog,
+  );
+  if (matches.length === 0) {
+    return {
+      ok: false,
+      error: routeError("UNKNOWN_PROCEDURE", `unknown procedure ${procedureId}`, procedureId),
+    };
+  }
+  if (matches.length > 1) {
+    return {
+      ok: false,
+      error: routeError(
+        "AMBIGUOUS_ROUTE_TOKEN",
+        `procedure ${procedureId} matches multiple procedures`,
+        procedureId,
+      ),
+    };
+  }
+  const resolved = resolveProcedure(matches[0]!, catalog);
+  if (!resolved.ok) return resolved;
+  return resolved;
+}
+
+/** Resolve typed IFR-clearance segments without changing filed-route parsing. */
+export function resolveClearanceRouteSegments(
+  segments: ReadonlyArray<ClearanceRouteSegment>,
+  limitId: string,
+  catalog: FiledRouteCatalog | null | undefined,
+): FiledRouteResult<FiledRoute> {
+  if (!catalog) {
+    return { ok: false, error: routeError("UNKNOWN_PROCEDURE", "no route catalog is loaded") };
+  }
+  const resolved: FiledRouteSegment[] = [];
+  for (const segment of segments) {
+    const next =
+      segment.type === "DIRECT"
+        ? resolveClearanceDirectSegment(segment.fixId, catalog, false)
+        : resolveClearanceProcedureSegment(segment, catalog);
+    if (!next.ok) return next;
+    if (next.value.kind === "SID" || next.value.kind === "STAR") {
+      for (const fixId of next.value.fixIds) {
+        const known =
+          catalog.fixes.some((item) => idsEqual(item.id, fixId)) ||
+          catalog.navaids.some((item) => idsEqual(item.id, fixId));
+        if (!known) {
+          return {
+            ok: false,
+            error: routeError("UNKNOWN_FIX", `unknown procedure fix ${fixId}`, fixId),
+          };
+        }
+      }
+    }
+    resolved.push(next.value);
+  }
+  const limit = resolveClearanceDirectSegment(limitId, catalog, true);
+  if (!limit.ok) return limit;
+  resolved.push(limit.value);
+  const text = resolved
+    .map((segment) =>
+      segment.kind === "DCT"
+        ? segment.fixId
+        : `${segment.procedureId}${segment.transitionId ? `/${segment.transitionId}` : ""}`,
+    )
+    .join(" ");
+  return { ok: true, value: { text, segments: resolved } };
+}
+
 /** Parse and resolve filed route entries against the loaded facility catalog. */
 export function resolveFiledRoute(
   routeText: string,
@@ -484,12 +627,35 @@ export function validateFlightPlanRouteTransaction(
     return { ok: false, error: unableRoute("route is blank") };
   }
   if (!resolved.ok) return { ok: false, error: unableRoute(resolved.error.message) };
-  if (resolved.value.segments.length === 0 || routeFixIds(resolved.value).length === 0) {
+  return validateResolvedFlightPlanRouteTransaction(plan, resolved.value, input);
+}
+
+/**
+ * Validate a catalog-resolved route transaction without serializing it back to
+ * ambiguous bare tokens. Used by typed clearance routes; filed-route callers
+ * continue through `resolveFiledRoute` above.
+ */
+export function validateResolvedFlightPlanRouteTransaction(
+  plan: Pick<FlightPlan, "filedRoute" | "routeRecord">,
+  resolved: FiledRoute,
+  input: Pick<FlightPlanRouteTransactionInput, "lifecycle" | "nextIndex"> = {},
+): FlightPlanRouteTransactionResult<FlightPlanRoute> {
+  if (plan.routeRecord?.lifecycle === "cancelled") {
+    return {
+      ok: false,
+      error: {
+        code: "INVALID_ROUTE_LIFECYCLE",
+        field: "lifecycle",
+        message: "cancelled route lifecycle is terminal",
+      },
+    };
+  }
+  if (resolved.segments.length === 0 || routeFixIds(resolved).length === 0) {
     return { ok: false, error: unableRoute("route is blank") };
   }
 
   const nextIndex = input.nextIndex ?? 0;
-  const fixCount = routeFixIds(resolved.value).length;
+  const fixCount = routeFixIds(resolved).length;
   if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex > fixCount) {
     return {
       ok: false,
@@ -504,7 +670,7 @@ export function validateFlightPlanRouteTransaction(
   const revision = (plan.routeRecord?.revision ?? 0) + 1;
   return {
     ok: true,
-    route: createFlightPlanRoute(resolved.value, { nextIndex, revision, lifecycle }),
+    route: createFlightPlanRoute(resolved, { nextIndex, revision, lifecycle }),
   };
 }
 
