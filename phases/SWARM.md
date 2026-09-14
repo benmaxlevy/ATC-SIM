@@ -1,5 +1,89 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Seventieth swarm planned — shared fix matching and per-span route evidence (2026-09-14)
+
+Human approved the follow-up to the completed arbitrary IFR route-chain work:
+reuse the `groundFixToCatalog` matching policy for route elements, preserve
+navaid names/aliases in the parser vocabulary, and give Path C candidate
+alternatives grouped by transcript span. The prior `8080149` implementation
+remains reverted by `6766512`.
+
+| Key | Value |
+| --- | --- |
+| Goal | Make tactical direct and IFR route parsing share one catalog-grounding implementation, then constrain Path C with per-span candidate evidence. |
+| Phase | `phases/02-scope/` |
+| Include | T02-193 → T02-194 → T02-195 → T02-196. |
+| Merge target | `feature/clearances`. |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high. |
+| Stop | T02-196 plus focused tests, `npm run ci`, speech mock pytest, supplied-manual review, and FAA review. |
+| Push | No push. |
+
+**Product law:** `groundFixToCatalog` remains the scalar grounding API, backed
+by one shared exact/alias/folded/unique-Levenshtein matcher. Route parsing uses
+that policy for every possible route phrase while preserving arbitrary-chain
+backtracking. Live fix and navaid entries may carry spoken aliases. If local
+parsing cannot form one complete chain, Path C receives only route-window
+spans and their supplied candidate alternatives. Path C may select one listed
+candidate per supported span in transcript order; it may not invent,
+concatenate, omit, or convert an IFR clearance into tactical `DIRECT`.
+
+**Skip:** fabricated KATL/KIMMY data, geographic or route-connectivity search,
+airway/radial/arc expansion, route amendments, holds/EFC, cloud inference,
+unconstrained fuzzy repair, airport route legs, new Command IR types, and
+unrelated scope/radio behavior.
+
+**Waves:** A T02-193 shared matcher and deterministic route grounding; B
+T02-194 structured fix/navaid vocabulary; C T02-195 per-span Path C context,
+prompt, and validator; D T02-196 acceptance, docs, and final gates. Each
+ticket starts only after the prior squash merge and required gates.
+
+**Ticket ownership:**
+
+- T02-193 owns the shared fix matcher, retrieval deduplication, deterministic
+  route scanner, and matching tests.
+- T02-194 owns generic catalog fix/navaid vocabulary and live frontend wiring.
+- T02-195 owns the frontend route-evidence contract and self-hosted
+  `speech-api` prompt/validator/eval changes.
+- T02-196 owns end-to-end acceptance, readback/help/docs updates, and final
+  review evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-193-shared-fix-matcher-route-grounding` → `phases/02-scope/tickets/T02-193-shared-fix-matcher-route-grounding.md`
+- `ticket/T02-194-catalog-navaid-vocabulary` → `phases/02-scope/tickets/T02-194-catalog-navaid-vocabulary.md`
+- `ticket/T02-195-route-span-path-c-evidence` → `phases/02-scope/tickets/T02-195-route-span-path-c-evidence.md`
+- `ticket/T02-196-route-matching-acceptance-docs` → `phases/02-scope/tickets/T02-196-route-matching-acceptance-docs.md`
+
+**Manual/FAA:** Review clearance item order and route/direct terminology
+against FAA JO 7110.65 §§ 4-2-1, 4-2-5, 4-4-1, and 4-4-2. Review active
+clearance/flight-plan separation against the supplied STARS manual
+§ 5.5.5 p. 5-105 and § 5.6.17 p. 5-167. Fuzzy matching, implicit direct,
+and constrained Path C are trainer behavior, not claims of FAA/NAS NLU.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: shared fix matching and per-span route evidence T02-193–196
+Merge target: feature/clearances
+Merged: T02-193, T02-194, T02-195, T02-196
+Tests: CI, speech-api mock pytest, Path C evals, supplied-manual and FAA review
+Notes: No push; prior 8080149 remains reverted
+```
+
+## Seventieth swarm started — shared fix matching and per-span route evidence (2026-09-14)
+
+Execution authorized on `feature/clearances`. The captain runs T02-193 through
+T02-196 sequentially with one isolated worker at a time. Every squash merge
+requires focused tests, `npm run ci`, and an independent supplied-manual
+review before the next ticket. T02-195 and T02-196 also require
+`cd speech-api && SPEECH_API_MOCK=1 pytest`. No push is authorized.
+
+Workers implement exactly one ticket, never merge or spawn, and return exactly
+`READY TO MERGE` or `BLOCKED`. On CI or manual-review failure, stop the next
+wave and use one narrowly scoped correction worker only. Preserve unrelated
+untracked artifacts and the prior `6766512` revert of `8080149`.
+
 ## Sixty-ninth swarm started — 2026-09-13 (arbitrary IFR route chains)
 
 Captain: `/root`. Merge lock: `feature/clearances`. Worker model/limit:
