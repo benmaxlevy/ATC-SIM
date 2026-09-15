@@ -58,3 +58,81 @@ test("CLEARED_APPROACH arms INTERCEPT_LOC", () => {
   applyIntent(ac, [{ type: "CLEARED_APPROACH", approachId: "ILS27" }], 0);
   expect(ac.intent.clearedApproachId).toBe("ILS27");
 });
+
+test("AC1: ALTITUDE on STAR transitions vertical to ASSIGNED, clears cross, preserves lateral PROCEDURE", () => {
+  const ac = jet();
+  ac.intent.lateral = {
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 1,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  };
+  ac.intent.vertical = { type: "VIA_STAR", starId: "DEM1", sense: "DESCEND" };
+  ac.intent.cross = { fixId: "NELBO", altitudeFt: 7000, restriction: "AT" };
+
+  applyIntent(ac, [{ type: "ALTITUDE", altitudeFt: 5000, verb: "DESCEND" }], 0);
+
+  expect(ac.intent.assignedAltitudeFt).toBe(5000);
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(ac.intent.cross).toBeUndefined();
+  expect(ac.intent.lateral).toEqual({
+    type: "PROCEDURE",
+    starId: "DEM1",
+    toFixIndex: 1,
+    routeFixIds: ["NEMAX", "NELBO", "NJOIN", "MERGE"],
+  });
+});
+
+test("AC3: FLY_HEADING before localizer capture preserves clearedApproachId and arms INTERCEPT_LOC", () => {
+  const ac = jet();
+  ac.intent.clearedApproachId = "ILS27";
+  ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: "ILS27" };
+
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 240, turn: "LEFT" }], 0);
+
+  expect(ac.intent.assignedHeadingDeg).toBe(240);
+  expect(ac.intent.turn).toBe("LEFT");
+  expect(ac.intent.clearedApproachId).toBe("ILS27");
+  expect(ac.intent.locInterceptApproachId).toBe("ILS27");
+  expect(ac.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+});
+
+test("AC4: FLY_HEADING when established on LOC breaks out to HEADING and clears clearedApproachId", () => {
+  const ac = jet();
+  ac.intent.clearedApproachId = "ILS27";
+  ac.intent.locInterceptApproachId = "ILS27";
+  ac.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  ac.intent.vertical = { type: "GS", approachId: "ILS27" };
+
+  applyIntent(ac, [{ type: "FLY_HEADING", headingDeg: 240, turn: "LEFT" }], 0);
+
+  expect(ac.intent.assignedHeadingDeg).toBe(240);
+  expect(ac.intent.turn).toBe("LEFT");
+  expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.locInterceptApproachId).toBeNull();
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 240 });
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+});
+
+test("AC7: DSR and SPEED intent application and via reset", () => {
+  const ac = jet();
+  ac.intent.controllerAssignedSpeedKt = 210;
+  ac.intent.speedUntil = { type: "DME", distanceNm: 5 };
+
+  // DSR sets speedRestrictionsDeleted = true and clears controllerAssignedSpeedKt and speedUntil
+  applyIntent(ac, [{ type: "DELETE_SPEED_RESTRICTIONS" }], 0);
+  expect(ac.intent.speedRestrictionsDeleted).toBe(true);
+  expect(ac.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(ac.intent.speedUntil).toBeUndefined();
+
+  // Re-clearing via resets the flag to false
+  applyIntent(ac, [{ type: "DESCEND_VIA", procedureId: "DEM1" }], 0, { catalog: dem1Catalog });
+  expect(ac.intent.speedRestrictionsDeleted).toBe(false);
+
+  // Assigning SPEED sets speed, controller speed, speedUntil, and clears speedRestrictionsDeleted
+  applyIntent(ac, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } }], 0);
+  expect(ac.intent.assignedSpeedKt).toBe(180);
+  expect(ac.intent.controllerAssignedSpeedKt).toBe(180);
+  expect(ac.intent.speedUntil).toEqual({ type: "FAF" });
+  expect(ac.intent.speedRestrictionsDeleted).toBeUndefined();
+});

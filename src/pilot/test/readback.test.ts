@@ -147,3 +147,44 @@ test("formatReadback formats SPEED with until FAF, DME, FIX", () => {
     ]),
   ).toBe("Delta 123 maintain 210 knots until MERGE");
 });
+
+test("formatRejectReadback formats approach and speed boundary unable details", () => {
+  expect(
+    formatRejectReadback({
+      callsign: "AAL123",
+      reason: "ALTITUDE",
+      detail: "unable. cleared for the ILS already.",
+    }),
+  ).toBe("American 123 unable. cleared for the ILS already.");
+
+  expect(
+    formatRejectReadback({
+      callsign: "AAL123",
+      reason: "ALTITUDE",
+      detail: "unable. cleared for the approach already.",
+    }),
+  ).toBe("American 123 unable. cleared for the approach already.");
+
+  expect(
+    formatRejectReadback({
+      callsign: "AAL123",
+      reason: "SPEED",
+      detail: "unable. restriction too close to 5 DME",
+    }),
+  ).toBe("American 123 unable. restriction too close to 5 DME");
+
+  expect(
+    formatRejectReadback({
+      callsign: "AAL123",
+      reason: "SPEED",
+      detail: "unable. restriction too close to final approach fix",
+    }),
+  ).toBe("American 123 unable. restriction too close to final approach fix");
+
+  expect(
+    formatRejectReadback({
+      reason: "ALTITUDE",
+      detail: "unable. cleared for the ILS already.",
+    }),
+  ).toBe("Unable. cleared for the ILS already.");
+});

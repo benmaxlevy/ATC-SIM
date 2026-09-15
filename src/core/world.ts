@@ -106,6 +106,7 @@ export interface World {
     fieldElevFt?: number;
     approaches: ReadonlyArray<{
       id: string;
+      type?: string;
       runway?: string;
       runwayId?: string;
       /** Published inbound course, magnetic. `courseDeg` is loader compatibility only. */
@@ -114,6 +115,8 @@ export interface World {
       lengthNm?: number;
       beamHalfWidthDeg?: number;
       thresholdFixId?: string;
+      fafFixId?: string;
+      fafDistanceNm?: number;
       gsAngleDeg?: number;
       tchFt?: number;
       daFt?: number;

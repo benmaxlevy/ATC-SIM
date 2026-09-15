@@ -11,7 +11,7 @@ import type {
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { isOnCourseToFix, joinProcedureTransition, performanceRegistry } from "@core";
+import { alongTrackNm, isOnCourseToFix, joinProcedureTransition, performanceRegistry } from "@core";
 import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -40,9 +40,22 @@ export type ValidateReason =
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
+export interface ValidateApproach {
+  id: string;
+  type?: string;
+  runway?: string;
+  fafDistanceNm?: number;
+  fafFixId?: string;
+  thresholdFixId?: string;
+  courseDeg?: number;
+  publishedCourseMagneticDeg?: number;
+}
+
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
-  catalog?: (VerticalCatalog & ProcedureJoinCatalog) | null;
+  catalog?:
+    | (VerticalCatalog & ProcedureJoinCatalog & { approaches?: ReadonlyArray<ValidateApproach> })
+    | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
@@ -91,9 +104,9 @@ function validateOne(
       }
       return { ok: true };
     case "ALTITUDE":
-      return validateAltitude(aircraft, instruction, profile);
+      return validateAltitude(aircraft, instruction, profile, opts);
     case "SPEED":
-      return validateSpeed(instruction, profile);
+      return validateSpeed(aircraft, instruction, profile, opts);
     case "CLEARED_APPROACH":
     case "INTERCEPT_LOCALIZER":
     case "EXPECT_APPROACH":
@@ -195,11 +208,42 @@ function approachKnown(approachId: string, opts?: ValidateOpts): boolean {
   return opts.approachIds.some((id) => id.trim().toUpperCase() === want);
 }
 
+function isIlsApproach(approachId: string, opts?: ValidateOpts): boolean {
+  const norm = approachId.trim().toUpperCase();
+  const approach = opts?.catalog?.approaches?.find((a) => a.id.trim().toUpperCase() === norm);
+  if (approach) {
+    if (approach.type) {
+      return approach.type.toUpperCase() === "ILS";
+    }
+  }
+  if (
+    norm.includes("RNAV") ||
+    norm.includes("VOR") ||
+    norm.includes("NDB") ||
+    norm.includes("VISUAL")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function validateAltitude(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "ALTITUDE" }>,
   profile?: AircraftPerformanceProfile | null,
+  opts?: ValidateOpts,
 ): ValidateResult {
+  if (aircraft.intent.clearedApproachId) {
+    const isIls = isIlsApproach(aircraft.intent.clearedApproachId, opts);
+    return {
+      ok: false,
+      reason: "ALTITUDE",
+      detail: isIls
+        ? "unable. cleared for the ILS already."
+        : "unable. cleared for the approach already.",
+    };
+  }
+
   const ft = instruction.altitudeFt;
   if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT) {
     return { ok: false, reason: "ALTITUDE" };
@@ -225,12 +269,79 @@ function validateAltitude(
 }
 
 function validateSpeed(
+  aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "SPEED" }>,
   profile?: AircraftPerformanceProfile | null,
+  opts?: ValidateOpts,
 ): ValidateResult {
   if (!Number.isFinite(instruction.speedKt)) {
     return { ok: false, reason: "SPEED" };
   }
+
+  const approachId =
+    aircraft.intent.clearedApproachId ??
+    (aircraft.intent.lateral?.type === "LOC" ||
+    aircraft.intent.lateral?.type === "LANDING" ||
+    aircraft.intent.lateral?.type === "INTERCEPT_LOC"
+      ? aircraft.intent.lateral.approachId
+      : undefined);
+
+  const approach = approachId
+    ? opts?.catalog?.approaches?.find(
+        (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+      )
+    : opts?.catalog?.approaches?.[0];
+
+  const hardBoundaryNm = Math.min(approach?.fafDistanceNm ?? 5, 5);
+  const boundaryName = hardBoundaryNm === 5 ? "5 DME" : "final approach fix";
+
+  const thresholdPoint =
+    approach?.thresholdFixId && opts?.fixRegistry?.has(approach.thresholdFixId)
+      ? opts.fixRegistry.get(approach.thresholdFixId)!
+      : { xNm: 0, yNm: 0 };
+
+  let courseDeg = approach?.publishedCourseMagneticDeg ?? approach?.courseDeg;
+  if (courseDeg === undefined) {
+    const match = approachId ? /(\d{1,2})[LCR]?$/i.exec(approachId) : null;
+    courseDeg = match ? Number.parseInt(match[1], 10) * 10 : 270;
+  }
+
+  const isClearedOrOnApproach = Boolean(approachId);
+  if (isClearedOrOnApproach) {
+    const aircraftDistNm = alongTrackNm(aircraft, thresholdPoint, courseDeg);
+    if (aircraftDistNm <= hardBoundaryNm) {
+      return {
+        ok: false,
+        reason: "SPEED",
+        detail: `unable. restriction too close to ${boundaryName}`,
+      };
+    }
+  }
+
+  if (instruction.until) {
+    if (instruction.until.type === "DME") {
+      if (instruction.until.distanceNm < hardBoundaryNm) {
+        return {
+          ok: false,
+          reason: "SPEED",
+          detail: `unable. restriction too close to ${boundaryName}`,
+        };
+      }
+    } else if (instruction.until.type === "FIX") {
+      const fix = opts?.fixRegistry?.get(instruction.until.fixId);
+      if (fix) {
+        const fixDistNm = alongTrackNm(fix, thresholdPoint, courseDeg);
+        if (fixDistNm < hardBoundaryNm) {
+          return {
+            ok: false,
+            reason: "SPEED",
+            detail: `unable. restriction too close to ${boundaryName}`,
+          };
+        }
+      }
+    }
+  }
+
   const minKt =
     profile?.limits?.minControlledSpeedKt && profile.limits.minControlledSpeedKt > 0
       ? profile.limits.minControlledSpeedKt

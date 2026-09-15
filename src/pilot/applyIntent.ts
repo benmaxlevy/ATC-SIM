@@ -60,7 +60,20 @@ function setHeadingMode(
 ): void {
   aircraft.intent.assignedHeadingDeg = headingDeg;
   aircraft.intent.turn = turn;
-  aircraft.intent.lateral = { type: "HEADING", headingDeg };
+
+  const clearedApproachId = aircraft.intent.clearedApproachId;
+  const isEstablishedOnApproach =
+    aircraft.intent.lateral?.type === "LOC" || aircraft.intent.lateral?.type === "LANDING";
+
+  if (clearedApproachId && !isEstablishedOnApproach) {
+    aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId: clearedApproachId };
+    aircraft.intent.locInterceptApproachId = clearedApproachId;
+  } else {
+    aircraft.intent.lateral = { type: "HEADING", headingDeg };
+    aircraft.intent.clearedApproachId = null;
+    aircraft.intent.locInterceptApproachId = null;
+  }
+
   if (
     aircraft.intent.vertical?.type === "VIA_STAR" ||
     aircraft.intent.vertical?.type === "VIA_SID" ||
@@ -70,8 +83,6 @@ function setHeadingMode(
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
   aircraft.intent.cross = undefined;
-  aircraft.intent.clearedApproachId = null;
-  aircraft.intent.locInterceptApproachId = null;
 }
 
 function publishedLateralHint(aircraft: Aircraft):
@@ -219,6 +230,7 @@ function applyVia(
   opts?: ApplyIntentOpts,
   transitionId?: string,
 ): void {
+  aircraft.intent.speedRestrictionsDeleted = false;
   if (transitionId) {
     if (!applyStarTransitionLateral(aircraft, procedureId, transitionId, opts)) {
       return;
@@ -285,11 +297,19 @@ function applyOne(
       return;
     case "ALTITUDE":
       aircraft.intent.assignedAltitudeFt = instruction.altitudeFt;
+      if (
+        aircraft.intent.vertical?.type === "VIA_STAR" ||
+        aircraft.intent.vertical?.type === "VIA_SID"
+      ) {
+        aircraft.intent.vertical = { type: "ASSIGNED" };
+        aircraft.intent.cross = undefined;
+      }
       return;
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;
       aircraft.intent.controllerAssignedSpeedKt = instruction.speedKt;
       aircraft.intent.speedUntil = instruction.until;
+      aircraft.intent.speedRestrictionsDeleted = undefined;
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
@@ -372,6 +392,8 @@ function applyOne(
       return;
     }
     case "DELETE_SPEED_RESTRICTIONS":
+      aircraft.intent.controllerAssignedSpeedKt = undefined;
+      aircraft.intent.speedUntil = undefined;
       aircraft.intent.speedRestrictionsDeleted = true;
       return;
     case "SAY_HEADING":

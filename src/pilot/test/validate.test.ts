@@ -486,3 +486,211 @@ test("one bad instruction rejects the whole list", () => {
     ]),
   ).toEqual({ ok: false, reason: "CLIMB_NOT_ABOVE" });
 });
+
+test("AC2: altitude rejected when cleared for approach", () => {
+  const ac = jet({ altitudeFt: 3000 });
+  ac.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the ILS already.",
+  });
+
+  const rnavAc = jet({ altitudeFt: 3000 });
+  rnavAc.intent.clearedApproachId = "RNAV27";
+  expect(
+    validateInstructions(rnavAc, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the approach already.",
+  });
+
+  // When clearedApproachId is not set, altitude validates normally
+  const unCleared = jet({ altitudeFt: 3000 });
+  expect(
+    validateInstructions(unCleared, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]).ok,
+  ).toBe(true);
+});
+
+test("AC5: speed rejected inside 5 DME / FAF boundary when on approach", () => {
+  const approaches = [
+    {
+      id: "ILS27",
+      type: "ILS",
+      courseDeg: 270,
+      fafDistanceNm: 6, // hardBoundaryNm = min(6, 5) = 5 -> "5 DME"
+      thresholdFixId: "RW27",
+    },
+    {
+      id: "ILS09",
+      type: "ILS",
+      courseDeg: 90,
+      fafDistanceNm: 4, // hardBoundaryNm = min(4, 5) = 4 -> "final approach fix"
+      thresholdFixId: "RW09",
+    },
+  ];
+  const fixRegistry = {
+    has: (id: string) => id === "RW27" || id === "RW09",
+    get: (id: string) => (id === "RW27" ? { xNm: 0, yNm: 0 } : { xNm: 0, yNm: 0 }),
+  } as unknown as import("@core").FixRegistry;
+
+  const catalog = {
+    stars: [],
+    sids: [],
+    approaches,
+  };
+
+  // Inside 5 DME on ILS27: xNm = 4 (alongTrackNm = 4 <= 5)
+  const inside5Dme = jet({ altitudeFt: 3000 });
+  inside5Dme.xNm = 4;
+  inside5Dme.yNm = 0;
+  inside5Dme.headingDeg = 270;
+  inside5Dme.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(inside5Dme, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // Outside 5 DME on ILS27: xNm = 6 (alongTrackNm = 6 > 5) -> passes
+  const outside5Dme = jet({ altitudeFt: 3000 });
+  outside5Dme.xNm = 6;
+  outside5Dme.yNm = 0;
+  outside5Dme.headingDeg = 270;
+  outside5Dme.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(outside5Dme, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }).ok,
+  ).toBe(true);
+
+  // Inside FAF boundary when fafDistanceNm is 4: heading 90, xNm = -3 (alongTrackNm = 3 <= 4)
+  const insideFaf = jet({ altitudeFt: 3000 });
+  insideFaf.xNm = -3;
+  insideFaf.yNm = 0;
+  insideFaf.headingDeg = 90;
+  insideFaf.intent.clearedApproachId = "ILS09";
+
+  expect(
+    validateInstructions(insideFaf, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to final approach fix",
+  });
+
+  // Not on approach: at xNm = 4, heading 270, but clearedApproachId is null and lateral is not LOC/LANDING
+  const notOnApproach = jet({ altitudeFt: 3000 });
+  notOnApproach.xNm = 4;
+  notOnApproach.yNm = 0;
+  expect(
+    validateInstructions(notOnApproach, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }).ok,
+  ).toBe(true);
+});
+
+test("AC6: speed until validation rejects gates inside boundary", () => {
+  const approaches = [
+    {
+      id: "ILS27",
+      type: "ILS",
+      courseDeg: 270,
+      fafDistanceNm: 6, // hardBoundaryNm = 5
+      thresholdFixId: "RW27",
+    },
+  ];
+  const fixRegistry = {
+    has: (id: string) => id === "RW27" || id === "CLOSE" || id === "FAR",
+    get: (id: string) => {
+      if (id === "RW27") return { xNm: 0, yNm: 0 };
+      if (id === "CLOSE") return { xNm: 3, yNm: 0 }; // 3 NM along-track (< 5)
+      if (id === "FAR") return { xNm: 10, yNm: 0 }; // 10 NM along-track (>= 5)
+      return undefined;
+    },
+  } as unknown as import("@core").FixRegistry;
+
+  const catalog = {
+    stars: [],
+    sids: [],
+    approaches,
+  };
+
+  const ac = jet({ altitudeFt: 5000 });
+  ac.xNm = 15;
+  ac.yNm = 0;
+  ac.intent.clearedApproachId = "ILS27";
+
+  // until 3 DME (< 5 DME) -> rejects
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 3 } }],
+      { catalog, fixRegistry },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // until 5 DME (>= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 5 } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+
+  // until 7 DME (>= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+
+  // until CLOSE fix (3 NM < 5 DME) -> rejects
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FIX", fixId: "CLOSE" } }],
+      { catalog, fixRegistry },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // until FAR fix (10 NM >= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FIX", fixId: "FAR" } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+});
+
+test("DELETE_SPEED_RESTRICTIONS validates successfully", () => {
+  expect(validateInstructions(jet(), [{ type: "DELETE_SPEED_RESTRICTIONS" }]).ok).toBe(true);
+});
