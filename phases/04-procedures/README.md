@@ -297,6 +297,34 @@ expected approach, or `GO_AROUND`. This is a trainer command for local approach
 breakout; it does not cancel IFR clearance and does not start the missed
 approach.
 
+### Cancel approach clearance behavior
+
+Typed form: `DAL123 CAPP H270 A50`. Spoken/PTT form: `DAL123 cancel approach
+clearance, fly heading 270, maintain 5000`. The deterministic readback is
+`Delta 123 cancel approach clearance, heading 270, maintain five thousand`
+(airline telephony varies by callsign). `CAPP` may also stand alone; it clears
+the active approach guidance and continues the present heading and assigned
+vertical mode. A later heading, altitude, speed, or direct instruction is
+validated against that projected post-cancellation state before any part of the
+command is applied.
+
+Cancellation clears `clearedApproachId`, `locInterceptApproachId`,
+`expectedApproachId`, localizer/intercept guidance, and GS. It leaves the
+aircraft in ordinary heading/assigned modes, never starts `nav.missed.started`,
+and does not enter `LANDING` or despawn the aircraft. It is generic across ILS,
+RNAV, and other catalog approach types. With no active approach, or when the
+aircraft is already in `MISSED`/`LANDING`, the command is rejected unchanged
+with `Unable, not on approach`. Duplicate/malformed cancellation, cancellation
+after another instruction, and same-transmission approach re-arm reject without
+partial mutation.
+
+Manual evidence: FAA JO 7110.65 §4-8-1 uses “CANCEL APPROACH CLEARANCE
+(additional instructions as necessary)”; FAA AIM §5-4-5 and §5-4-21 distinguish
+approach cancellation from the missed approach. ATC-SIM applies only a local
+trainer intent breakout. It makes no IFR-cancellation, obstacle-clearance, or
+certified-monitoring claim. The existing command-reference help surface lists
+`CAPP`; no new scope command or Preview Area syntax is added.
+
 `D` remains descend. Do not steal `D` for direct.
 
 If you add any new `Instruction` variant, **patch `phases/_shared/command-ir.md` in the same PR** and extend the TypeScript union from T00-06. The planning task that wrote this folder must not edit `_shared`; the *implementation* ticket must.
