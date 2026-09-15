@@ -28,6 +28,7 @@ import type {
   VfrAircraftMixRow,
   VfrAltitudeMixRow,
   VfrMovementMix,
+  VfrRequestConfig,
   VfrTrafficConfig,
   VfrTrafficZoneConfig,
   VfrZone,
@@ -82,6 +83,91 @@ export function getEligibleVfrDestinations(regional?: RegionalFacility): Regiona
     (apt) =>
       apt.publicUse && apt.runways.length > 0 && controlledAirportIds.has(apt.icao.toUpperCase()),
   );
+}
+
+export const DEFAULT_VFR_REQUEST_CONFIG: Required<VfrRequestConfig> = {
+  flightFollowingPercent: 0,
+  ifrPickupPercent: 0,
+  requestCapPerHour: 0,
+  ifrCancellationPercent: 0,
+};
+
+/**
+ * Validate raw or parsed VfrRequestConfig.
+ * Throws exact stable loader errors per T04-72.
+ */
+export function validateVfrRequestConfig(raw: unknown): VfrRequestConfig | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+
+  if (!isRecord(raw)) {
+    throw new Error("vfrRequests must be an object");
+  }
+
+  let flightFollowingPercent = 0;
+  if (raw.flightFollowingPercent !== undefined) {
+    if (
+      typeof raw.flightFollowingPercent !== "number" ||
+      !Number.isFinite(raw.flightFollowingPercent) ||
+      raw.flightFollowingPercent < 0 ||
+      raw.flightFollowingPercent > 100
+    ) {
+      throw new Error("vfrRequests.flightFollowingPercent must be in [0, 100]");
+    }
+    flightFollowingPercent = raw.flightFollowingPercent;
+  }
+
+  let ifrPickupPercent = 0;
+  if (raw.ifrPickupPercent !== undefined) {
+    if (
+      typeof raw.ifrPickupPercent !== "number" ||
+      !Number.isFinite(raw.ifrPickupPercent) ||
+      raw.ifrPickupPercent < 0 ||
+      raw.ifrPickupPercent > 100
+    ) {
+      throw new Error("vfrRequests.ifrPickupPercent must be in [0, 100]");
+    }
+    ifrPickupPercent = raw.ifrPickupPercent;
+  }
+
+  if (flightFollowingPercent + ifrPickupPercent > 100) {
+    throw new Error(
+      "vfrRequests.flightFollowingPercent + vfrRequests.ifrPickupPercent must be <= 100",
+    );
+  }
+
+  let requestCapPerHour = 0;
+  if (raw.requestCapPerHour !== undefined) {
+    if (
+      typeof raw.requestCapPerHour !== "number" ||
+      !Number.isFinite(raw.requestCapPerHour) ||
+      raw.requestCapPerHour < 0
+    ) {
+      throw new Error("vfrRequests.requestCapPerHour must be a finite number >= 0");
+    }
+    requestCapPerHour = raw.requestCapPerHour;
+  }
+
+  let ifrCancellationPercent = 0;
+  if (raw.ifrCancellationPercent !== undefined) {
+    if (
+      typeof raw.ifrCancellationPercent !== "number" ||
+      !Number.isFinite(raw.ifrCancellationPercent) ||
+      raw.ifrCancellationPercent < 0 ||
+      raw.ifrCancellationPercent > 100
+    ) {
+      throw new Error("vfrRequests.ifrCancellationPercent must be in [0, 100]");
+    }
+    ifrCancellationPercent = raw.ifrCancellationPercent;
+  }
+
+  return {
+    flightFollowingPercent,
+    ifrPickupPercent,
+    requestCapPerHour,
+    ifrCancellationPercent,
+  };
 }
 
 /**

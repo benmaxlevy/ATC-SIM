@@ -56,6 +56,11 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "vfr.spawn.skipped"
     | "vfr.exit"
     | "vfr.tower.handoff"
+    | "vfr.request.transmitted"
+    | "vfr.request.withdrawn"
+    | "pilot.cancel_ifr.scheduled"
+    | "pilot.cancel_ifr.reported"
+    | "pilot.cancel_ifr.withdrawn"
   >();
 });
 

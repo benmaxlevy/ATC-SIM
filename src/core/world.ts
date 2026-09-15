@@ -173,6 +173,8 @@ export interface World {
   arrivalScheduler?: { drain: (world: World) => Aircraft[] };
   /** Optional generic ambient VFR traffic manager (T04-71). */
   vfrTrafficManager?: { step: (world: World, dtS: number) => void };
+  /** Optional regional facility metadata (T04-70). */
+  regional?: unknown;
 }
 
 export interface ScheduledDeparture {

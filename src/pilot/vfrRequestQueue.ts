@@ -1,0 +1,600 @@
+/**
+ * Seeded unsolicited airborne VFR pilot request and cancellation scheduler (T04-72).
+ *
+ * Implements:
+ * - Mutually exclusive seeded draws for flight following, IFR pickup, or silent ambient VFR
+ * - Simulated-time paced admission: (3_600_000 / cap) ms spacing, bounded first slot offset,
+ *   FIFO candidate queue, and hard rolling-hour cap enforcement
+ * - Radio-busy gating with idle gap after previous transmission
+ * - Transmit-time snapshot with structured session log event (vfr.request.transmitted)
+ * - Clean withdrawal when aircraft exits or becomes ineligible before due time
+ * - Independent IFR cancellation candidate scheduling for accepted pickups
+ * - Airspace/Class B validation and withdrawal reporting (pilot.cancel_ifr.withdrawn)
+ *
+ * State boundary: request records only. No mutation of aircraft operational state,
+ * radio contact, radar identification, service, or flight rules.
+ */
+
+import {
+  mulberry32,
+  type Aircraft,
+  type IfrCancellationCandidate,
+  type IfrCancellationState,
+  type SessionLog,
+  type VfrPilotRequest,
+  type VfrPilotRequestKind,
+  type VfrPilotRequestState,
+  type World,
+} from "@core";
+import { isPointInside3dVolume, isVfrAvoidanceVolume } from "../core/vfrNavigation";
+import {
+  DEFAULT_VFR_REQUEST_CONFIG,
+  getEligibleVfrDestinations,
+  validateVfrRequestConfig,
+  VFR_PILOT_REQUEST_XOR,
+  type RegionalFacility,
+  type VfrRequestConfig,
+} from "@scenario";
+
+export type {
+  IfrCancellationCandidate,
+  IfrCancellationState,
+  VfrPilotRequest,
+  VfrPilotRequestKind,
+  VfrPilotRequestState,
+};
+
+export { DEFAULT_VFR_REQUEST_CONFIG, validateVfrRequestConfig };
+
+export const VFR_REQUEST_DEFAULT_SEED = 1;
+export const VFR_REQUEST_IDLE_GAP_MS = 500;
+export const VFR_CANCEL_DELAY_MIN_MS = 30_000;
+export const VFR_CANCEL_DELAY_MAX_MS = 120_000;
+
+export interface VfrRequestRadio {
+  isBusy(): boolean;
+  play?(text: string, callsign: string): void | Promise<void>;
+}
+
+export type IfrCancellationValidator = (
+  aircraft: Aircraft,
+  world: World,
+) => { ok: true } | { ok: false; reason: string };
+
+export interface VfrRequestQueueOptions {
+  config?: VfrRequestConfig;
+  seed?: number;
+  regional?: RegionalFacility;
+  cancellationValidator?: IfrCancellationValidator;
+  /** Custom delay range or fixed delay for cancellation candidate in tests. */
+  cancellationDelayMs?: number | ((rng: () => number) => number);
+  /** Custom first slot offset in ms (for testing). */
+  initialSlotOffsetMs?: number;
+}
+
+export interface DrainVfrRequestsArgs {
+  world: World;
+  log: SessionLog;
+  radio?: VfrRequestRadio;
+  setStatus?: (text: string) => void;
+  nowWallMs?: () => number;
+}
+
+/** Check if an aircraft is eligible for ambient VFR service call scheduling. */
+export function isAirborneVfrEligible(aircraft: Aircraft): boolean {
+  if (aircraft.flightRules !== "VFR") {
+    return false;
+  }
+  if (aircraft.activeClearance) {
+    return false;
+  }
+  if (!aircraft.ambientVfr) {
+    return false;
+  }
+  if (
+    aircraft.ambientVfr.phase === "EXITING" ||
+    aircraft.ambientVfr.phase === "HANDOFF_COMPLETED"
+  ) {
+    return false;
+  }
+  if (aircraft.altitudeFt <= 0) {
+    return false;
+  }
+  return true;
+}
+
+/** Default validator for pilot IFR cancellation candidates outside Class B. */
+export function defaultIfrCancellationValidator(
+  aircraft: Aircraft,
+  world: World,
+): { ok: true } | { ok: false; reason: string } {
+  if (aircraft.flightRules !== "IFR") {
+    return { ok: false, reason: "ALREADY_VFR" };
+  }
+  if (!aircraft.activeClearance) {
+    return { ok: false, reason: "NO_ACTIVE_IFR" };
+  }
+  if (aircraft.altitudeFt <= 0) {
+    return { ok: false, reason: "ON_GROUND" };
+  }
+  // Airspace check: aircraft must be outside all Class B avoidance volumes.
+  const regional = world.regional as RegionalFacility | undefined;
+  if (regional) {
+    const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
+    for (const volume of classBVolumes) {
+      if (
+        isPointInside3dVolume(
+          { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+          volume,
+        )
+      ) {
+        return { ok: false, reason: "INSIDE_CLASS_B" };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+export class VfrRequestQueue {
+  private rng: () => number;
+  private readonly seed: number;
+  private readonly flightFollowingPercent: number;
+  private readonly ifrPickupPercent: number;
+  private readonly requestCapPerHour: number;
+  private readonly ifrCancellationPercent: number;
+  private readonly regional?: RegionalFacility;
+  private readonly cancellationValidator?: IfrCancellationValidator;
+  private readonly cancellationDelayOption?: number | ((rng: () => number) => number);
+  private readonly initialSlotOffsetMs?: number;
+
+  private requests: VfrPilotRequest[] = [];
+  private cancellationCandidates: IfrCancellationCandidate[] = [];
+  private readonly evaluatedAircraftIds = new Set<string>();
+  private admittedTimesSimMs: number[] = [];
+  private nextSlotSimMs: number | null = null;
+  private requestCounter = 0;
+  private cancellationCounter = 0;
+  private playInFlight = false;
+  private lastUtteranceEndSimMs: number | null = null;
+
+  constructor(options?: VfrRequestQueueOptions) {
+    const validated = options?.config ? validateVfrRequestConfig(options.config) : undefined;
+    this.seed = options?.seed ?? VFR_REQUEST_DEFAULT_SEED;
+    this.rng = mulberry32((this.seed >>> 0) ^ VFR_PILOT_REQUEST_XOR);
+
+    this.flightFollowingPercent = validated?.flightFollowingPercent ?? 0;
+    this.ifrPickupPercent = validated?.ifrPickupPercent ?? 0;
+    this.requestCapPerHour = validated?.requestCapPerHour ?? 0;
+    this.ifrCancellationPercent = validated?.ifrCancellationPercent ?? 0;
+
+    this.regional = options?.regional;
+    this.cancellationValidator = options?.cancellationValidator;
+    this.cancellationDelayOption = options?.cancellationDelayMs;
+    this.initialSlotOffsetMs = options?.initialSlotOffsetMs;
+  }
+
+  public getRequests(): readonly VfrPilotRequest[] {
+    return this.requests.slice();
+  }
+
+  public getCancellationCandidates(): readonly IfrCancellationCandidate[] {
+    return this.cancellationCandidates.slice();
+  }
+
+  public reset(): void {
+    this.rng = mulberry32((this.seed >>> 0) ^ VFR_PILOT_REQUEST_XOR);
+    this.requests = [];
+    this.cancellationCandidates = [];
+    this.evaluatedAircraftIds.clear();
+    this.admittedTimesSimMs = [];
+    this.nextSlotSimMs = null;
+    this.requestCounter = 0;
+    this.cancellationCounter = 0;
+    this.playInFlight = false;
+    this.lastUtteranceEndSimMs = null;
+  }
+
+  /**
+   * Schedule requests from all eligible aircraft in the world.
+   */
+  public scheduleFromWorld(world: World, simTimeMs: number = world.simTimeMs): void {
+    for (const aircraft of world.aircraft) {
+      this.evaluateAircraft(aircraft, world, simTimeMs);
+    }
+  }
+
+  /**
+   * Evaluate a single aircraft for VFR request scheduling.
+   * Draw outcome once; if FF/IFR, admit via sim-time pacing.
+   */
+  public evaluateAircraft(aircraft: Aircraft, world: World, simTimeMs: number): void {
+    if (this.evaluatedAircraftIds.has(aircraft.id)) {
+      return;
+    }
+    if (!isAirborneVfrEligible(aircraft)) {
+      return;
+    }
+
+    this.evaluatedAircraftIds.add(aircraft.id);
+
+    const roll = this.rng() * 100;
+    let kind: VfrPilotRequestKind | null = null;
+    if (roll < this.flightFollowingPercent) {
+      kind = "FLIGHT_FOLLOWING";
+    } else if (roll < this.flightFollowingPercent + this.ifrPickupPercent) {
+      kind = "IFR_PICKUP";
+    }
+
+    if (!kind) {
+      // Silent remainder: intentionally silent ambient traffic.
+      return;
+    }
+
+    // Cap 0 disables new requests immediately.
+    if (this.requestCapPerHour <= 0) {
+      const request: VfrPilotRequest = {
+        id: `vfr-req-${++this.requestCounter}`,
+        aircraftId: aircraft.id,
+        callsign: aircraft.callsign,
+        kind,
+        createdAtSimMs: simTimeMs,
+        dueAtSimMs: simTimeMs,
+        state: "WITHDRAWN",
+        withdrawnReason: "CAP_ZERO",
+        positionNm: { xNm: aircraft.xNm, yNm: aircraft.yNm },
+        altitudeFt: aircraft.altitudeFt,
+        headingDeg: aircraft.headingDeg,
+        aircraftType: aircraft.aircraftType,
+      };
+      this.requests.push(request);
+      return;
+    }
+
+    // Determine destination and requested altitude for IFR_PICKUP
+    let destinationAirportId: string | undefined;
+    let requestedAltitudeFt: number | undefined;
+
+    if (kind === "IFR_PICKUP") {
+      const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
+      const eligibleDestinations = getEligibleVfrDestinations(regionalFacility);
+      if (eligibleDestinations.length === 0) {
+        // Missing imported eligible destination withdraws with NO_DESTINATION per contract table
+        const request: VfrPilotRequest = {
+          id: `vfr-req-${++this.requestCounter}`,
+          aircraftId: aircraft.id,
+          callsign: aircraft.callsign,
+          kind,
+          createdAtSimMs: simTimeMs,
+          dueAtSimMs: simTimeMs,
+          state: "WITHDRAWN",
+          withdrawnReason: "NO_DESTINATION",
+          positionNm: { xNm: aircraft.xNm, yNm: aircraft.yNm },
+          altitudeFt: aircraft.altitudeFt,
+          headingDeg: aircraft.headingDeg,
+          aircraftType: aircraft.aircraftType,
+        };
+        this.requests.push(request);
+        return;
+      }
+      const destIndex = Math.floor(this.rng() * eligibleDestinations.length);
+      destinationAirportId = eligibleDestinations[destIndex].icao;
+
+      // Seeded altitude in the existing clearance altitude domain (e.g. 3000-8000 ft)
+      const altitudeChoices = [3000, 4000, 5000, 6000, 7000, 8000];
+      requestedAltitudeFt = altitudeChoices[Math.floor(this.rng() * altitudeChoices.length)];
+    } else {
+      // Flight following: intended destination when known from ambient mission
+      destinationAirportId = aircraft.ambientVfr?.destinationAirportId;
+    }
+
+    // Paced admission spacing: 3_600_000 / cap
+    const slotSpacingMs = 3_600_000 / this.requestCapPerHour;
+    let slotTime: number;
+
+    if (this.nextSlotSimMs === null) {
+      const boundedOffset =
+        this.initialSlotOffsetMs !== undefined
+          ? this.initialSlotOffsetMs
+          : Math.floor(this.rng() * Math.min(slotSpacingMs, 60_000));
+      slotTime = simTimeMs + boundedOffset;
+    } else {
+      let minSlot = Math.max(simTimeMs, this.nextSlotSimMs);
+      // Hard rolling simulated hour cap check: at most `cap` admissions in any 3,600,000 ms window
+      if (this.admittedTimesSimMs.length >= this.requestCapPerHour) {
+        const oldestInWindow =
+          this.admittedTimesSimMs[this.admittedTimesSimMs.length - this.requestCapPerHour];
+        minSlot = Math.max(minSlot, oldestInWindow + 3_600_000);
+      }
+      slotTime = minSlot;
+    }
+
+    this.admittedTimesSimMs.push(slotTime);
+    this.nextSlotSimMs = slotTime + slotSpacingMs;
+
+    const request: VfrPilotRequest = {
+      id: `vfr-req-${++this.requestCounter}`,
+      aircraftId: aircraft.id,
+      callsign: aircraft.callsign,
+      kind,
+      createdAtSimMs: simTimeMs,
+      dueAtSimMs: slotTime,
+      state: "PENDING",
+      positionNm: { xNm: aircraft.xNm, yNm: aircraft.yNm },
+      altitudeFt: aircraft.altitudeFt,
+      headingDeg: aircraft.headingDeg,
+      ...(aircraft.aircraftType ? { aircraftType: aircraft.aircraftType } : {}),
+      ...(destinationAirportId ? { destinationAirportId } : {}),
+      ...(requestedAltitudeFt !== undefined ? { requestedAltitudeFt } : {}),
+    };
+
+    this.requests.push(request);
+  }
+
+  /**
+   * Scheduler hook called by T04-74 after an airborne IFR pickup is accepted.
+   * Samples ifrCancellationPercent once. If selected, schedules delayed cancellation.
+   */
+  public scheduleIfrCancellationCandidate(
+    aircraft: Aircraft,
+    simTimeMs: number,
+    options?: { delayMs?: number; log?: SessionLog },
+  ): IfrCancellationCandidate | null {
+    if (this.ifrCancellationPercent <= 0) {
+      return null;
+    }
+    const roll = this.rng() * 100;
+    if (roll >= this.ifrCancellationPercent) {
+      return null;
+    }
+
+    let delayMs: number;
+    if (options?.delayMs !== undefined) {
+      delayMs = options.delayMs;
+    } else if (typeof this.cancellationDelayOption === "number") {
+      delayMs = this.cancellationDelayOption;
+    } else if (typeof this.cancellationDelayOption === "function") {
+      delayMs = this.cancellationDelayOption(this.rng);
+    } else {
+      delayMs =
+        VFR_CANCEL_DELAY_MIN_MS +
+        Math.floor(this.rng() * (VFR_CANCEL_DELAY_MAX_MS - VFR_CANCEL_DELAY_MIN_MS));
+    }
+
+    const candidate: IfrCancellationCandidate = {
+      id: `vfr-cancel-${++this.cancellationCounter}`,
+      aircraftId: aircraft.id,
+      callsign: aircraft.callsign,
+      scheduledAtSimMs: simTimeMs,
+      dueAtSimMs: simTimeMs + delayMs,
+      state: "PENDING",
+    };
+
+    this.cancellationCandidates.push(candidate);
+
+    const log = options?.log;
+    if (log) {
+      log.append({
+        type: "pilot.cancel_ifr.scheduled",
+        atSimMs: simTimeMs,
+        atWallMs: 0,
+        callsign: aircraft.callsign,
+        aircraftId: aircraft.id,
+        dueSimMs: candidate.dueAtSimMs,
+      });
+    }
+
+    return candidate;
+  }
+
+  /**
+   * Drain requests and cancellation candidates against current simulation time and radio state.
+   */
+  public drain(args: DrainVfrRequestsArgs): void {
+    const { world, log, radio, setStatus, nowWallMs } = args;
+    const nowWall = nowWallMs ? nowWallMs() : 0;
+    this.scheduleFromWorld(world, world.simTimeMs);
+
+    // 1. Drain pending cancellation candidates
+    for (const candidate of this.cancellationCandidates) {
+      if (candidate.state !== "PENDING" || world.simTimeMs < candidate.dueAtSimMs) {
+        continue;
+      }
+
+      const aircraft = world.aircraft.find((ac) => ac.id === candidate.aircraftId);
+      if (!aircraft) {
+        candidate.state = "WITHDRAWN";
+        candidate.withdrawnReason = "AIRCRAFT_NOT_FOUND";
+        log.append({
+          type: "pilot.cancel_ifr.withdrawn",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWall,
+          callsign: candidate.callsign,
+          aircraftId: candidate.aircraftId,
+          reason: candidate.withdrawnReason,
+        });
+        continue;
+      }
+
+      const validator = this.cancellationValidator ?? defaultIfrCancellationValidator;
+      const validation = validator(aircraft, world);
+      if (!validation.ok) {
+        candidate.state = "WITHDRAWN";
+        candidate.withdrawnReason = validation.reason;
+        log.append({
+          type: "pilot.cancel_ifr.withdrawn",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWall,
+          callsign: candidate.callsign,
+          aircraftId: candidate.aircraftId,
+          reason: validation.reason,
+        });
+        continue;
+      }
+
+      // Check radio availability
+      const busy = (radio?.isBusy() ?? false) || this.playInFlight;
+      if (!this.canStart(world.simTimeMs, busy)) {
+        return;
+      }
+
+      candidate.state = "TRANSMITTED";
+      const reportText = `${candidate.callsign}, canceling IFR`;
+      setStatus?.(reportText);
+
+      log.append({
+        type: "pilot.cancel_ifr.reported",
+        atSimMs: world.simTimeMs,
+        atWallMs: nowWall,
+        callsign: candidate.callsign,
+        aircraftId: candidate.aircraftId,
+        text: reportText,
+      });
+
+      if (radio?.play) {
+        this.playInFlight = true;
+        this.beginPlay(radio, reportText, candidate.callsign, world.simTimeMs);
+      }
+      return;
+    }
+
+    // 2. Drain pending VFR pilot requests
+    for (;;) {
+      const next = this.nextDueRequest(world.simTimeMs);
+      if (!next) {
+        return;
+      }
+
+      const aircraft = world.aircraft.find((ac) => ac.id === next.aircraftId);
+      if (!aircraft) {
+        next.state = "WITHDRAWN";
+        next.withdrawnReason = "AIRCRAFT_EXITED";
+        log.append({
+          type: "vfr.request.withdrawn",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWall,
+          callsign: next.callsign,
+          requestId: next.id,
+          reason: next.withdrawnReason,
+        });
+        continue;
+      }
+
+      if (
+        aircraft.ambientVfr?.phase === "EXITING" ||
+        aircraft.ambientVfr?.phase === "HANDOFF_COMPLETED"
+      ) {
+        next.state = "WITHDRAWN";
+        next.withdrawnReason = "AIRCRAFT_EXITED";
+        log.append({
+          type: "vfr.request.withdrawn",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWall,
+          callsign: next.callsign,
+          requestId: next.id,
+          reason: next.withdrawnReason,
+        });
+        continue;
+      }
+
+      if (aircraft.flightRules !== "VFR" || aircraft.activeClearance) {
+        next.state = "WITHDRAWN";
+        next.withdrawnReason = "INELIGIBLE_FLIGHT_RULES";
+        log.append({
+          type: "vfr.request.withdrawn",
+          atSimMs: world.simTimeMs,
+          atWallMs: nowWall,
+          callsign: next.callsign,
+          requestId: next.id,
+          reason: next.withdrawnReason,
+        });
+        continue;
+      }
+
+      // Check radio availability
+      const busy = (radio?.isBusy() ?? false) || this.playInFlight;
+      if (!this.canStart(world.simTimeMs, busy)) {
+        return;
+      }
+
+      // Snapshot aircraft position/altitude/heading at transmit time
+      next.positionNm = { xNm: aircraft.xNm, yNm: aircraft.yNm };
+      next.altitudeFt = aircraft.altitudeFt;
+      next.headingDeg = aircraft.headingDeg;
+      next.state = "TRANSMITTED";
+
+      const requestText =
+        next.kind === "FLIGHT_FOLLOWING"
+          ? `${next.callsign}, request flight following`
+          : `${next.callsign}, request IFR to ${next.destinationAirportId ?? "destination"}`;
+      setStatus?.(requestText);
+
+      log.append({
+        type: "vfr.request.transmitted",
+        atSimMs: world.simTimeMs,
+        atWallMs: nowWall,
+        callsign: next.callsign,
+        kind: next.kind,
+        request: { ...next },
+      });
+
+      if (radio?.play) {
+        this.playInFlight = true;
+        this.beginPlay(radio, requestText, next.callsign, world.simTimeMs);
+      }
+      return;
+    }
+  }
+
+  private nextDueRequest(simTimeMs: number): VfrPilotRequest | undefined {
+    return this.requests
+      .filter((req) => req.state === "PENDING" && simTimeMs >= req.dueAtSimMs)
+      .sort((a, b) => a.dueAtSimMs - b.dueAtSimMs)[0];
+  }
+
+  private canStart(simTimeMs: number, busy: boolean): boolean {
+    if (busy) {
+      return false;
+    }
+    if (
+      this.lastUtteranceEndSimMs !== null &&
+      simTimeMs < this.lastUtteranceEndSimMs + VFR_REQUEST_IDLE_GAP_MS
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  private beginPlay(
+    radio: VfrRequestRadio,
+    text: string,
+    callsign: string,
+    simTimeMs: number,
+  ): void {
+    try {
+      const result = radio.play?.(text, callsign);
+      if (result !== undefined && typeof result.then === "function") {
+        void result.then(
+          () => {
+            this.onPlayEnded(simTimeMs);
+          },
+          () => {
+            this.onPlayEnded(simTimeMs);
+          },
+        );
+        return;
+      }
+      this.onPlayEnded(simTimeMs);
+    } catch {
+      this.onPlayEnded(simTimeMs);
+    }
+  }
+
+  private onPlayEnded(simTimeMs: number): void {
+    this.playInFlight = false;
+    this.lastUtteranceEndSimMs = simTimeMs;
+  }
+}
+
+export function createVfrRequestQueue(options?: VfrRequestQueueOptions): VfrRequestQueue {
+  return new VfrRequestQueue(options);
+}

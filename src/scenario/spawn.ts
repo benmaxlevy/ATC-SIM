@@ -290,7 +290,7 @@ function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
 }
 
 function worldFromScenario(scenario: Scenario): World {
-  return createWorld({
+  const world = createWorld({
     catalog: scenario.catalog,
     activeRunwayId: scenario.activeRunwayId,
     beaconPools: scenario.beaconPools ?? DEFAULT_BEACON_POOL_CONFIG,
@@ -298,6 +298,8 @@ function worldFromScenario(scenario: Scenario): World {
     msawInhibit: msawInhibitFromScenario(scenario),
     sessionLog: new SessionLog(),
   });
+  world.regional = scenario.regional;
+  return world;
 }
 
 function initDepartures(

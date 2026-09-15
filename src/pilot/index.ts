@@ -67,3 +67,27 @@ export function applyCommand(world: World, command: Command): void {
     ),
   });
 }
+
+export type {
+  DrainVfrRequestsArgs,
+  IfrCancellationCandidate,
+  IfrCancellationState,
+  IfrCancellationValidator,
+  VfrPilotRequest,
+  VfrPilotRequestKind,
+  VfrPilotRequestState,
+  VfrRequestQueueOptions,
+  VfrRequestRadio,
+} from "./vfrRequestQueue";
+export {
+  DEFAULT_VFR_REQUEST_CONFIG,
+  VFR_CANCEL_DELAY_MAX_MS,
+  VFR_CANCEL_DELAY_MIN_MS,
+  VFR_REQUEST_DEFAULT_SEED,
+  VFR_REQUEST_IDLE_GAP_MS,
+  VfrRequestQueue,
+  createVfrRequestQueue,
+  defaultIfrCancellationValidator,
+  isAirborneVfrEligible,
+  validateVfrRequestConfig,
+} from "./vfrRequestQueue";

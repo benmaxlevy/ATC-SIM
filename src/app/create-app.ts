@@ -8,7 +8,12 @@ import {
   sanitizeCatalogFixEntries,
   type CatalogFixEntry,
 } from "@parse";
-import { handleRadioCommand, createCheckInQueue } from "@pilot";
+import {
+  handleRadioCommand,
+  createCheckInQueue,
+  createVfrRequestQueue,
+  type VfrRequestQueue,
+} from "@pilot";
 import {
   createPttCaptureController,
   createVoiceLoop,
@@ -56,6 +61,10 @@ export interface AppDeps {
   caAlertTone?: CaAlertTone;
   /** Injected in tests. Browser default plays shipped event WAVs. */
   eventSounds?: EventSounds;
+  /** Optional VFR pilot request stagger seed. Default 1. */
+  vfrRequestSeed?: number;
+  /** Optional VFR pilot request queue instance. */
+  vfrRequestQueue?: VfrRequestQueue;
 }
 
 export interface AppHandles {
@@ -63,6 +72,7 @@ export interface AppHandles {
   setSpeechPort(port: SpeechPort): boolean;
   speechSettings: SpeechSettingsController;
   log: SessionLog;
+  vfrRequestQueue: VfrRequestQueue;
   world: World;
   ptt: PttCaptureController;
   voiceLoop: VoiceLoop;
@@ -248,6 +258,12 @@ export function createApp(deps: AppDeps): AppHandles {
 
   const checkInQueue = createCheckInQueue({ seed: deps.checkInSeed ?? 1 });
   checkInQueue.scheduleFromWorld(world);
+  const vfrRequestQueue =
+    deps.vfrRequestQueue ??
+    createVfrRequestQueue({
+      seed: deps.vfrRequestSeed ?? 1,
+    });
+  vfrRequestQueue.scheduleFromWorld(world);
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
 
@@ -255,6 +271,17 @@ export function createApp(deps: AppDeps): AppHandles {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
     checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
+      world,
+      log,
+      radio: {
+        isBusy: () => voiceLoop.busy,
+        play: (text, callsign) => voiceLoop.playReadback(text, callsign),
+      },
+      setStatus: emitVoiceStatus,
+      nowWallMs: () => Date.now(),
+    });
+    vfrRequestQueue.scheduleFromWorld(world);
+    vfrRequestQueue.drain({
       world,
       log,
       radio: {
@@ -282,6 +309,7 @@ export function createApp(deps: AppDeps): AppHandles {
     setSpeechPort,
     speechSettings,
     log,
+    vfrRequestQueue,
     get world() {
       return world;
     },
@@ -301,6 +329,8 @@ export function createApp(deps: AppDeps): AppHandles {
       world.sessionLog = log;
       checkInQueue.reset();
       checkInQueue.scheduleFromWorld(world);
+      vfrRequestQueue.reset();
+      vfrRequestQueue.scheduleFromWorld(world);
     },
   };
 }

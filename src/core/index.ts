@@ -471,3 +471,10 @@ export {
   segmentsIntersect2D,
   stepVfrAircraftNavigation,
 } from "./vfrNavigation";
+export type {
+  IfrCancellationCandidate,
+  IfrCancellationState,
+  VfrPilotRequest,
+  VfrPilotRequestKind,
+  VfrPilotRequestState,
+} from "./vfrRequest";

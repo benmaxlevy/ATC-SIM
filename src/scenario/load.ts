@@ -29,7 +29,7 @@ import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
 import { hasRegionalPack, loadRegionalPack, type RegionalFacility } from "./regional";
-import { validateVfrTrafficConfig } from "./vfrTraffic";
+import { validateVfrRequestConfig, validateVfrTrafficConfig } from "./vfrTraffic";
 import {
   coastlineFromVideoMaps,
   loadVideoMapGroups,
@@ -732,9 +732,11 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     ...(() => {
       const vfrZones = parseVfrZones(s.vfrZones, arp);
       const vfrTraffic = validateVfrTrafficConfig(s.vfrTraffic, { vfrZones, regional });
+      const vfrRequests = validateVfrRequestConfig(s.vfrRequests);
       return {
         ...(vfrZones !== undefined ? { vfrZones } : {}),
         ...(vfrTraffic !== undefined ? { vfrTraffic } : {}),
+        ...(vfrRequests !== undefined ? { vfrRequests } : {}),
       };
     })(),
   };

@@ -271,6 +271,8 @@ export interface Scenario {
   vfrTraffic?: VfrTrafficConfig;
   /** Optional authored VFR practice/geographic zones for ambient traffic. */
   vfrZones?: VfrZone[];
+  /** Optional unsolicited airborne VFR pilot request scheduling (T04-72). */
+  vfrRequests?: VfrRequestConfig;
 }
 
 export interface VfrTrafficZoneConfig {
@@ -322,4 +324,11 @@ export interface VfrZone {
   radiusNm?: number;
   polygon?: NmEastNorth[];
   waypoints?: NmEastNorth[];
+}
+
+export interface VfrRequestConfig {
+  flightFollowingPercent?: number;
+  ifrPickupPercent?: number;
+  requestCapPerHour?: number;
+  ifrCancellationPercent?: number;
 }

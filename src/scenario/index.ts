@@ -235,6 +235,7 @@ export type {
   VfrAircraftMixRow,
   VfrAltitudeMixRow,
   VfrMovementMix,
+  VfrRequestConfig,
   VfrTrafficConfig,
   VfrTrafficZoneConfig,
   VfrZone,
@@ -243,6 +244,7 @@ export {
   DEFAULT_VFR_AIRCRAFT_MIX,
   DEFAULT_VFR_ALTITUDE_MIX,
   DEFAULT_VFR_MOVEMENT_MIX,
+  DEFAULT_VFR_REQUEST_CONFIG,
   VFR_FUTURE_ENTRY_XOR,
   VFR_INITIAL_PLACEMENT_XOR,
   VFR_MISSION_ZONE_XOR,
@@ -252,5 +254,6 @@ export {
   allocateVfrCallsign,
   chooseWeighted,
   getEligibleVfrDestinations,
+  validateVfrRequestConfig,
   validateVfrTrafficConfig,
 } from "./vfrTraffic";
