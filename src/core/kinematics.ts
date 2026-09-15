@@ -93,6 +93,11 @@ export function stepAircraft(
   commandedSpeedKt?: number,
   magVarDeg = 0,
   limits?: PerformanceRegimeLimits,
+  overallLimits?: {
+    minControlledSpeedKt?: number;
+    maxControlledSpeedKt?: number;
+    serviceCeilingFt?: number;
+  } | null,
 ): void {
   const headingFrom = normalizeHeading(ac.headingDeg);
   const headingTo = normalizeHeading(
@@ -110,7 +115,13 @@ export function stepAircraft(
     ac.headingDeg = normalizeHeading(headingFrom + sign * maxTurnDeg);
   }
 
-  const altitudeTo = commandedAltitudeFt ?? ac.intent.assignedAltitudeFt;
+  let altitudeTo = commandedAltitudeFt ?? ac.intent.assignedAltitudeFt;
+  if (
+    overallLimits?.serviceCeilingFt !== undefined &&
+    Number.isFinite(overallLimits.serviceCeilingFt)
+  ) {
+    altitudeTo = Math.min(altitudeTo, overallLimits.serviceCeilingFt);
+  }
   const altitudeRate =
     altitudeTo >= ac.altitudeFt
       ? (limits?.nominalClimbFpm ?? CLIMB_RATE_FT_PER_MIN)
@@ -118,7 +129,15 @@ export function stepAircraft(
   const maxAltFt = (altitudeRate / 60) * dtS;
   ac.altitudeFt = toward(ac.altitudeFt, altitudeTo, maxAltFt);
 
-  const speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
+  let speedTo = commandedSpeedKt ?? ac.intent.assignedSpeedKt;
+  const minSpeed = limits?.minSpeedKt ?? overallLimits?.minControlledSpeedKt;
+  if (minSpeed !== undefined && Number.isFinite(minSpeed)) {
+    speedTo = Math.max(speedTo, minSpeed);
+  }
+  const maxSpeed = limits?.maxSpeedKt ?? overallLimits?.maxControlledSpeedKt;
+  if (maxSpeed !== undefined && Number.isFinite(maxSpeed)) {
+    speedTo = Math.min(speedTo, maxSpeed);
+  }
   const speedRate =
     speedTo >= ac.speedKt
       ? (limits?.accelKtPerS ?? ACCEL_KT_PER_S)

@@ -225,3 +225,56 @@ test("kinematics tests run without window, document, or rAF (AC7)", () => {
   expect(typeof globalThis.document).toBe("undefined");
   expect(typeof globalThis.requestAnimationFrame).toBe("undefined");
 });
+
+test("flight envelope protection clamps altitude to service ceiling", () => {
+  const ac = makeTestAircraft({ altitudeFt: 40000 });
+  ac.intent.assignedAltitudeFt = 50000;
+  const overallLimits = {
+    serviceCeilingFt: 41000,
+    minControlledSpeedKt: 100,
+    maxControlledSpeedKt: 350,
+  };
+  // Step for 120 seconds with 1800 fpm climb = 3600 ft potential climb, but ceiling is 41000
+  stepAircraft(ac, 120, undefined, undefined, undefined, 0, undefined, overallLimits);
+  expect(ac.altitudeFt).toBe(41000);
+});
+
+test("flight envelope protection clamps speed to overall profile limits", () => {
+  const acSlow = makeTestAircraft({ speedKt: 150 });
+  acSlow.intent.assignedSpeedKt = 80;
+  const acFast = makeTestAircraft({ speedKt: 300 });
+  acFast.intent.assignedSpeedKt = 400;
+  const overallLimits = {
+    minControlledSpeedKt: 120,
+    maxControlledSpeedKt: 350,
+    serviceCeilingFt: 41000,
+  };
+
+  // Step 60 seconds with 1 kt/s accel/decel
+  stepAircraft(acSlow, 60, undefined, undefined, undefined, 0, undefined, overallLimits);
+  expect(acSlow.speedKt).toBe(120);
+
+  stepAircraft(acFast, 60, undefined, undefined, undefined, 0, undefined, overallLimits);
+  expect(acFast.speedKt).toBe(350);
+});
+
+test("flight envelope protection prefers regime speed limits when specified", () => {
+  const ac = makeTestAircraft({ speedKt: 200 });
+  ac.intent.assignedSpeedKt = 100;
+  const regimeLimits = {
+    minSpeedKt: 140,
+    maxSpeedKt: 250,
+    nominalClimbFpm: 2000,
+    nominalDescentFpm: 1500,
+    accelKtPerS: 1,
+    decelKtPerS: 1,
+    maxBankDeg: 25,
+  };
+  const overallLimits = {
+    minControlledSpeedKt: 100,
+    maxControlledSpeedKt: 350,
+  };
+  stepAircraft(ac, 100, undefined, undefined, undefined, 0, regimeLimits, overallLimits);
+  // Regime minSpeedKt (140) wins over overall minControlledSpeedKt (100)
+  expect(ac.speedKt).toBe(140);
+});

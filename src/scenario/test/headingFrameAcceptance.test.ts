@@ -26,7 +26,7 @@ function stepUntil(
   world: ReturnType<typeof createWorldFromScenario>,
   predicate: () => boolean,
 ): void {
-  for (let i = 0; i < 1800 && !predicate(); i += 1) stepWorld(world, SIM_DT_S);
+  for (let i = 0; i < 3000 && !predicate(); i += 1) stepWorld(world, SIM_DT_S);
   expect(predicate()).toBe(true);
 }
 

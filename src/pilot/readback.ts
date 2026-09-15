@@ -289,6 +289,8 @@ export function formatRejectReadback(args: {
   let after = REJECT_AFTER_CALLSIGN[reason] ?? "unable, say again";
   if (reason === "NOT_ON_COURSE") {
     after = args.detail ? `unable, not on course to ${args.detail}` : "unable, not on course";
+  } else if ((reason === "SPEED" || reason === "ALTITUDE") && args.detail) {
+    after = args.detail;
   }
   const cs = args.callsign ? formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy }) : "";
   return capitalizeFirst(cs ? `${cs} ${after}` : after);

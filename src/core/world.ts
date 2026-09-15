@@ -664,6 +664,7 @@ export function stepWorld(world: World, dtS: number): World {
       vertical.speedKt,
       world.navigation.magVarDeg,
       performance,
+      profile.limits,
     );
     synchronizeRouteCursor(world, ac, previousLateral);
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {

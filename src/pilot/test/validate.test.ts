@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createAircraft, type Instruction } from "@core";
+import { createAircraft, performanceRegistry, type Instruction } from "@core";
 import { validateInstructions } from "../validate";
 
 function jet(overrides: { altitudeFt?: number; headingDeg?: number; speedKt?: number } = {}) {
@@ -85,10 +85,12 @@ test("speed outside [150, 280] is SPEED; edges pass", () => {
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 149, verb: "MAINTAIN" }])).toEqual({
     ok: false,
     reason: "SPEED",
+    detail: "unable speed 149, minimum is 150",
   });
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 281, verb: "MAINTAIN" }])).toEqual({
     ok: false,
     reason: "SPEED",
+    detail: "unable speed 281, maximum is 280",
   });
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 150, verb: "MAINTAIN" }]).ok).toBe(
     true,
@@ -96,6 +98,117 @@ test("speed outside [150, 280] is SPEED; edges pass", () => {
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 280, verb: "MAINTAIN" }]).ok).toBe(
     true,
   );
+});
+
+test("performance profile overrides min/max controlled speed with unable details", () => {
+  const customProfile = {
+    icaoType: "CUSTOM",
+    representativeVariant: "custom",
+    representativeEngine: "custom",
+    status: "SUPPORTED" as const,
+    limits: {
+      minControlledSpeedKt: 140,
+      maxControlledSpeedKt: 350,
+      serviceCeilingFt: 41000,
+    },
+    regimes: null,
+  };
+  const ac = jet({ speedKt: 250 });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 120, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable speed 120, minimum is 140",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 380, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable speed 380, maximum is 350",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 250, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }).ok,
+  ).toBe(true);
+});
+
+test("performance profile service ceiling rejects higher altitude with detail", () => {
+  const customProfile = {
+    icaoType: "CUSTOM",
+    representativeVariant: "custom",
+    representativeEngine: "custom",
+    status: "SUPPORTED" as const,
+    limits: {
+      minControlledSpeedKt: 140,
+      maxControlledSpeedKt: 350,
+      serviceCeilingFt: 41000,
+    },
+    regimes: null,
+  };
+  const ac = jet({ altitudeFt: 30000 });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 45000, verb: "CLIMB" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable altitude 45000, ceiling is 41000",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 41000, verb: "CLIMB" }], {
+      performanceProfile: customProfile,
+    }).ok,
+  ).toBe(true);
+});
+
+test("aircraftType in registry validates against registered profile limits", () => {
+  const a320 = createAircraft({
+    id: "ac-a320",
+    callsign: "AAL100",
+    aircraftType: "A320",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 10000,
+    speedKt: 250,
+  });
+  const profile = performanceRegistry.getProfile("A320");
+  const minKt = profile.limits?.minControlledSpeedKt ?? 100;
+  const maxKt = profile.limits?.maxControlledSpeedKt ?? 350;
+  const ceilingFt = profile.limits?.serviceCeilingFt ?? 41010;
+
+  expect(
+    validateInstructions(a320, [{ type: "SPEED", speedKt: minKt - 20, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: `unable speed ${minKt - 20}, minimum is ${minKt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "SPEED", speedKt: maxKt + 10, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: `unable speed ${maxKt + 10}, maximum is ${maxKt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "ALTITUDE", altitudeFt: 45000, verb: "CLIMB" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: `unable altitude 45000, ceiling is ${ceilingFt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "ALTITUDE", altitudeFt: 35000, verb: "CLIMB" }]).ok,
+  ).toBe(true);
 });
 
 test("CLEARED_APPROACH needs a known approachId when catalog is present", () => {

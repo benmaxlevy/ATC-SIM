@@ -86,3 +86,42 @@ test("IFR route readback keeps zero, one, and three-leg route shapes", () => {
     ).toBe(item.expected);
   }
 });
+
+test("formatRejectReadback speaks speed and altitude unable details with callsign", () => {
+  expect(
+    formatRejectReadback({
+      callsign: "DAL123",
+      reason: "SPEED",
+      detail: "unable speed 120, minimum is 140",
+    }),
+  ).toBe("Delta 123 unable speed 120, minimum is 140");
+
+  expect(
+    formatRejectReadback({
+      callsign: "DAL123",
+      reason: "ALTITUDE",
+      detail: "unable altitude 45000, ceiling is 41000",
+    }),
+  ).toBe("Delta 123 unable altitude 45000, ceiling is 41000");
+
+  expect(
+    formatRejectReadback({
+      callsign: "DAL123",
+      reason: "SPEED",
+    }),
+  ).toBe("Delta 123 unable speed");
+
+  expect(
+    formatRejectReadback({
+      callsign: "DAL123",
+      reason: "ALTITUDE",
+    }),
+  ).toBe("Delta 123 unable altitude");
+
+  expect(
+    formatRejectReadback({
+      reason: "SPEED",
+      detail: "unable speed 120, minimum is 140",
+    }),
+  ).toBe("Unable speed 120, minimum is 140");
+});

@@ -203,4 +203,35 @@ describe("end-to-end simulation integration acceptance (AC4)", () => {
     expect(b753DeltaAlt).toBeGreaterThan(b738DeltaAlt);
     expect(b738DeltaAlt).toBeGreaterThan(unlistedDeltaAlt);
   });
+
+  test("stepWorld enforces profile service ceiling and speed limits in simulation", () => {
+    const a320Profile = performanceRegistry.getProfile("A320");
+    const ceilingFt = a320Profile.limits!.serviceCeilingFt!;
+    const maxSpeedKt = a320Profile.limits!.maxControlledSpeedKt;
+
+    const ac = createAircraft({
+      id: "ac-envelope",
+      callsign: "AAL500",
+      aircraftType: "A320",
+      xNm: 0,
+      yNm: 0,
+      altitudeFt: ceilingFt - 100,
+      speedKt: 250,
+      headingDeg: 90,
+    });
+    // Request altitude above ceiling and speed above maxControlledSpeedKt
+    ac.intent.assignedAltitudeFt = ceilingFt + 10000;
+    ac.intent.assignedSpeedKt = maxSpeedKt + 100;
+
+    const world = createWorld({ aircraft: [ac] });
+    // Step forward 60 seconds
+    for (let i = 0; i < 10; i++) {
+      stepWorld(world, 6);
+    }
+
+    // Altitude clamped at ceiling, speed cannot exceed profile max
+    expect(ac.altitudeFt).toBeCloseTo(ceilingFt, 1);
+    expect(ac.altitudeFt).toBeLessThanOrEqual(ceilingFt);
+    expect(ac.speedKt).toBeLessThanOrEqual(maxSpeedKt);
+  });
 });

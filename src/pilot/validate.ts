@@ -5,12 +5,13 @@
 
 import type {
   Aircraft,
+  AircraftPerformanceProfile,
   FixRegistry,
   Instruction,
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { isOnCourseToFix, joinProcedureTransition } from "@core";
+import { isOnCourseToFix, joinProcedureTransition, performanceRegistry } from "@core";
 import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -46,6 +47,7 @@ export interface ValidateOpts {
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
+  performanceProfile?: AircraftPerformanceProfile | null;
 }
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -57,8 +59,9 @@ export function validateInstructions(
   if (instructions.length === 0) {
     return { ok: false, reason: "EMPTY" };
   }
+  const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
   for (const instruction of instructions) {
-    const result = validateOne(aircraft, instruction, opts);
+    const result = validateOne(aircraft, instruction, opts, profile);
     if (!result.ok) {
       return result;
     }
@@ -70,6 +73,7 @@ function validateOne(
   aircraft: Aircraft,
   instruction: Instruction,
   opts?: ValidateOpts,
+  profile?: AircraftPerformanceProfile | null,
 ): ValidateResult {
   switch (instruction.type) {
     case "FLY_HEADING":
@@ -87,16 +91,9 @@ function validateOne(
       }
       return { ok: true };
     case "ALTITUDE":
-      return validateAltitude(aircraft, instruction);
+      return validateAltitude(aircraft, instruction, profile);
     case "SPEED":
-      if (
-        !Number.isFinite(instruction.speedKt) ||
-        instruction.speedKt < SPEED_MIN_KT ||
-        instruction.speedKt > SPEED_MAX_KT
-      ) {
-        return { ok: false, reason: "SPEED" };
-      }
-      return { ok: true };
+      return validateSpeed(instruction, profile);
     case "CLEARED_APPROACH":
     case "INTERCEPT_LOCALIZER":
     case "EXPECT_APPROACH":
@@ -158,7 +155,7 @@ function validateOne(
     case "JOIN_PROCEDURE":
       return validateDescendViaOrJoin(aircraft, instruction, opts);
     case "CROSS":
-      return validateCross(aircraft, instruction, opts);
+      return validateCross(aircraft, instruction, opts, profile);
     case "GO_AROUND":
       if (!aircraft.intent.clearedApproachId) {
         return { ok: false, reason: "NOT_ON_APPROACH" };
@@ -180,12 +177,12 @@ function headingInRange(headingDeg: number): boolean {
   return Number.isFinite(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 }
 
-function isAltitudeValid(altitudeFt: number): boolean {
+function isAltitudeValid(altitudeFt: number, maxFt: number = ALTITUDE_MAX_FT): boolean {
   return (
     Number.isFinite(altitudeFt) &&
     altitudeFt % 100 === 0 &&
     altitudeFt >= ALTITUDE_MIN_FT &&
-    altitudeFt <= ALTITUDE_MAX_FT
+    altitudeFt <= maxFt
   );
 }
 
@@ -200,9 +197,21 @@ function approachKnown(approachId: string, opts?: ValidateOpts): boolean {
 function validateAltitude(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "ALTITUDE" }>,
+  profile?: AircraftPerformanceProfile | null,
 ): ValidateResult {
   const ft = instruction.altitudeFt;
-  if (!isAltitudeValid(ft)) {
+  if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT) {
+    return { ok: false, reason: "ALTITUDE" };
+  }
+  if (profile?.limits?.serviceCeilingFt !== undefined) {
+    if (ft > profile.limits.serviceCeilingFt) {
+      return {
+        ok: false,
+        reason: "ALTITUDE",
+        detail: `unable altitude ${ft}, ceiling is ${profile.limits.serviceCeilingFt}`,
+      };
+    }
+  } else if (ft > ALTITUDE_MAX_FT) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (instruction.verb === "CLIMB" && ft <= aircraft.altitudeFt) {
@@ -210,6 +219,39 @@ function validateAltitude(
   }
   if (instruction.verb === "DESCEND" && ft >= aircraft.altitudeFt) {
     return { ok: false, reason: "DESCEND_NOT_BELOW" };
+  }
+  return { ok: true };
+}
+
+function validateSpeed(
+  instruction: Extract<Instruction, { type: "SPEED" }>,
+  profile?: AircraftPerformanceProfile | null,
+): ValidateResult {
+  if (!Number.isFinite(instruction.speedKt)) {
+    return { ok: false, reason: "SPEED" };
+  }
+  const minKt =
+    profile?.limits?.minControlledSpeedKt && profile.limits.minControlledSpeedKt > 0
+      ? profile.limits.minControlledSpeedKt
+      : SPEED_MIN_KT;
+  const maxKt =
+    profile?.limits?.maxControlledSpeedKt && Number.isFinite(profile.limits.maxControlledSpeedKt)
+      ? profile.limits.maxControlledSpeedKt
+      : SPEED_MAX_KT;
+
+  if (instruction.speedKt < minKt) {
+    return {
+      ok: false,
+      reason: "SPEED",
+      detail: `unable speed ${instruction.speedKt}, minimum is ${minKt}`,
+    };
+  }
+  if (instruction.speedKt > maxKt) {
+    return {
+      ok: false,
+      reason: "SPEED",
+      detail: `unable speed ${instruction.speedKt}, maximum is ${maxKt}`,
+    };
   }
   return { ok: true };
 }
@@ -289,11 +331,13 @@ function validateCross(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "CROSS" }>,
   opts?: ValidateOpts,
+  profile?: AircraftPerformanceProfile | null,
 ): ValidateResult {
   if (instruction.fixId.trim() === "") {
     return { ok: false, reason: "EMPTY" };
   }
-  if (!isAltitudeValid(instruction.altitudeFt)) {
+  const maxFt = profile?.limits?.serviceCeilingFt ?? ALTITUDE_MAX_FT;
+  if (!isAltitudeValid(instruction.altitudeFt, maxFt)) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (!opts?.fixRegistry?.has(instruction.fixId)) {
