@@ -192,9 +192,31 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "SAY_ALTITUDE" ||
     type === "GO_AROUND" ||
     type === "CANCEL_APPROACH" ||
-    type === "MAINTAIN_VFR"
+    type === "MAINTAIN_VFR" ||
+    type === "REQUEST_DETAILS" ||
+    type === "STANDBY_REQUEST" ||
+    type === "APPROVE_FLIGHT_FOLLOWING" ||
+    type === "TERMINATE_RADAR_SERVICE"
   ) {
     return keysOk(obj, ["type"]);
+  }
+  if (type === "DECLINE_REQUEST") {
+    return (
+      keysOk(obj, ["type", "service"]) &&
+      typeof obj.service === "string" &&
+      (obj.service === "FLIGHT_FOLLOWING" || obj.service === "IFR_PICKUP")
+    );
+  }
+  if (type === "RADAR_CONTACT") {
+    return (
+      keysOk(obj, ["type", "distanceNm", "referenceId", "referenceKind"]) &&
+      isFiniteNumber(obj.distanceNm) &&
+      obj.distanceNm > 0 &&
+      typeof obj.referenceId === "string" &&
+      obj.referenceId.length > 0 &&
+      typeof obj.referenceKind === "string" &&
+      (obj.referenceKind === "FIX" || obj.referenceKind === "NAVAID")
+    );
   }
   if (type === "ALTITUDE") {
     if (
@@ -614,6 +636,24 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     return false;
   }
   if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
+    return false;
+  }
+  if (has(/\bsay\s+request\b/) && !hasType("REQUEST_DETAILS")) {
+    return false;
+  }
+  if (has(/\bstand\s*by\b/) && !hasType("STANDBY_REQUEST")) {
+    return false;
+  }
+  if (has(/\bapprove\s+flight\s+following\b/) && !hasType("APPROVE_FLIGHT_FOLLOWING")) {
+    return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/) && !hasType("DECLINE_REQUEST")) {
+    return false;
+  }
+  if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
+    return false;
+  }
+  if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {
     return false;
   }
   return instructions.length > 0;

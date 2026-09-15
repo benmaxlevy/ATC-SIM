@@ -11,15 +11,18 @@ import type {
   Instruction,
   MissedCatalog,
   ProcedureJoinCatalog,
+  RadioRequest,
   SessionLog,
 } from "@core";
 import {
   beginMissedApproach,
+  findOpenRadioRequest,
   joinNamedProcedure,
   joinProcedureTransition,
   missedApproachId,
   missedSpecFor,
   normalizeHeading,
+  transitionRequestToIdentifying,
 } from "@core";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
@@ -36,6 +39,7 @@ export interface ApplyIntentOpts {
   squawkReportDelayMs?: number;
   /** Authoritative plan for the aircraft, when one exists. */
   flightPlan?: Pick<FlightPlan, "routeRecord">;
+  radioRequests?: RadioRequest[];
 }
 
 export function applyIntent(
@@ -355,6 +359,12 @@ function applyOne(
       return;
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
+      if (opts?.radioRequests) {
+        const openReq = findOpenRadioRequest(opts.radioRequests, aircraft.id);
+        if (openReq) {
+          transitionRequestToIdentifying(openReq, simTimeMs);
+        }
+      }
       return;
     case "ASSIGN_SQUAWK":
       aircraft.assignedSquawk = instruction.code;
@@ -429,6 +439,12 @@ function applyOne(
       return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
+    case "REQUEST_DETAILS":
+    case "STANDBY_REQUEST":
+    case "APPROVE_FLIGHT_FOLLOWING":
+    case "DECLINE_REQUEST":
+    case "RADAR_CONTACT":
+    case "TERMINATE_RADAR_SERVICE":
       return;
     default: {
       const _exhaustive: never = instruction;

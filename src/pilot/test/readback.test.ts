@@ -192,3 +192,34 @@ test("formatRejectReadback formats approach and speed boundary unable details", 
     }),
   ).toBe("Unable. cleared for the ILS already.");
 });
+
+test("VFR flight following and radio contact readbacks (T04-73)", () => {
+  expect(readback([{ type: "REQUEST_DETAILS" }])).toBe("Delta 123 say request");
+  expect(readback([{ type: "STANDBY_REQUEST" }])).toBe("Delta 123 standby");
+  expect(readback([{ type: "APPROVE_FLIGHT_FOLLOWING" }])).toBe(
+    "Delta 123 flight following approved",
+  );
+  expect(readback([{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }])).toBe(
+    "Delta 123 unable flight following",
+  );
+  expect(
+    readback([
+      {
+        type: "RADAR_CONTACT",
+        distanceNm: 5,
+        referenceId: "DEM",
+        referenceKind: "NAVAID",
+      },
+    ]),
+  ).toBe("Delta 123 radar contact, 5 miles from DEM");
+  expect(readback([{ type: "TERMINATE_RADAR_SERVICE" }])).toBe(
+    "Delta 123 radar service terminated",
+  );
+
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "REQUEST" })).toBe(
+    "Delta 123 unable request",
+  );
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "RADAR_CONTACT" })).toBe(
+    "Delta 123 unable radar contact",
+  );
+});

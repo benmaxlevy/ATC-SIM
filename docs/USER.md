@@ -145,6 +145,12 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
 | **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA <ROUTE-WINDOW>\|VIA RADAR VECTORS) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA SIITH DIRECT VOR1 ALT 50` | One limit plus exactly one access method. A route window may contain any number of catalog-grounded fixes, navaids, or procedures/transitions; `DIRECT` is optional between elements. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact route grammar is an ATC-SIM trainer extension. |
+| **VFR Flight Following & Radar Contact** | `say request` | `DAL123 say request` | Request flight following or route details from the pilot |
+| | `stand by` | `DAL123 stand by` | Tell pilot to standby on open radio request |
+| | `approve flight following` | `DAL123 approve flight following` | Approve flight following for radar-identified aircraft |
+| | `unable flight following` / `unable to provide flight following` | `DAL123 unable flight following` | Decline flight following request |
+| | `radar contact <distance> miles from <fix>` | `DAL123 radar contact 5 miles from MERGE` | Establish radar identification with informational position report |
+| | `radar service terminated` | `DAL123 radar service terminated` | Terminate radar advisory service (transponder squawk is not automatically reset to 1200) |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |

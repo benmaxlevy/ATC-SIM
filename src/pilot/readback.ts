@@ -42,7 +42,9 @@ export type RejectReason =
   | "NOT_ON_APPROACH"
   | "SQUAWK"
   | "CLEARANCE"
-  | "UNABLE_ROUTE";
+  | "UNABLE_ROUTE"
+  | "REQUEST"
+  | "RADAR_CONTACT";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -67,6 +69,8 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   SQUAWK: "unable squawk",
   CLEARANCE: "unable clearance",
   UNABLE_ROUTE: "unable route",
+  REQUEST: "unable request",
+  RADAR_CONTACT: "unable radar contact",
 };
 
 function capitalizeFirst(text: string): string {
@@ -213,6 +217,20 @@ function formatInstructionClause(
       return "going around";
     case "DELETE_SPEED_RESTRICTIONS":
       return "delete speed restrictions";
+    case "REQUEST_DETAILS":
+      return "say request";
+    case "STANDBY_REQUEST":
+      return "standby";
+    case "APPROVE_FLIGHT_FOLLOWING":
+      return "flight following approved";
+    case "DECLINE_REQUEST":
+      return instruction.service === "FLIGHT_FOLLOWING"
+        ? "unable flight following"
+        : "unable IFR pickup";
+    case "RADAR_CONTACT":
+      return `radar contact, ${instruction.distanceNm} miles from ${instruction.referenceId}`;
+    case "TERMINATE_RADAR_SERVICE":
+      return "radar service terminated";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

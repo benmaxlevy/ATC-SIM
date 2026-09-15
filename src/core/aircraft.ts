@@ -1,6 +1,7 @@
 import type { IfrClearanceAccess, SpeedUntil, TurnDir } from "./command/types";
 import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
+import type { RadioContactReport } from "./radio/requests";
 
 /** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
 export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
@@ -221,6 +222,14 @@ export interface Aircraft {
   flightRules?: string;
   /** Ambient VFR traffic state marker (T04-71). */
   ambientVfr?: AmbientVfrState;
+  /** VFR flight following advisory service state (T04-73). */
+  flightFollowing?: {
+    active: boolean;
+    approvedAtSimMs?: number;
+    requestId?: string;
+  };
+  /** Confirmed radar identification state from RADAR_CONTACT (T04-73). */
+  radarContact?: RadioContactReport;
 }
 
 export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND";

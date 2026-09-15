@@ -571,6 +571,18 @@ export function groundInstructionFixes(
         ? inst
         : { ...inst, limitId, access };
     }
+    if (inst.type === "RADAR_CONTACT") {
+      const grounded = groundReferenceToCatalog(inst.referenceId, catalog);
+      if (grounded) {
+        return {
+          ...inst,
+          referenceId: grounded.referenceId,
+          referenceKind: grounded.referenceKind,
+        };
+      }
+      ungroundedFixes.push(inst.referenceId);
+      return inst;
+    }
     if (inst.type !== "DIRECT" && inst.type !== "CROSS") {
       return inst;
     }
@@ -582,6 +594,27 @@ export function groundInstructionFixes(
     return grounded.fixId === inst.fixId ? inst : { ...inst, fixId: grounded.fixId };
   });
   return { instructions: next, ungroundedFixes };
+}
+
+export function groundReferenceToCatalog(
+  reference: string,
+  catalog: readonly CatalogFixInput[],
+): { referenceId: string; referenceKind: "FIX" | "NAVAID" } | null {
+  const cleanRef = reference.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
+  const ranked = rankFixCandidates(cleanRef, catalog);
+  const winner = ranked[0];
+  const collision =
+    winner?.tier === "exact" &&
+    ranked.some(
+      (c) =>
+        c.id !== winner.id &&
+        (c.tier === "alias" || c.tier === "folded-alias") &&
+        c.score === winner.score,
+    );
+  if (winner && ranked[1]?.score !== winner.score && !collision) {
+    return { referenceId: winner.id, referenceKind: winner.kind };
+  }
+  return null;
 }
 
 export function sanitizeCatalogProcedures(

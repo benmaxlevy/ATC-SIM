@@ -92,6 +92,12 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "mile",
   "airport",
   "transition",
+  "stand",
+  "standby",
+  "approve",
+  "unable",
+  "radar",
+  "following",
 ]);
 
 const TABLE = { ...telephonyTable, giant: "GTI" } as Record<string, string>;

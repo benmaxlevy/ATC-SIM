@@ -114,7 +114,7 @@ test("AC2 — Command IR includes the 20 supported instruction types", () => {
   expectTypeOf<keyof Command>().toEqualTypeOf<
     "id" | "issuedAtSimMs" | "callsign" | "instructions" | "sourceText" | "source" | "parseStage"
   >();
-  expect(INSTRUCTION_TYPES).toHaveLength(22);
+  expect(INSTRUCTION_TYPES).toHaveLength(28);
   expectTypeOf<Instruction["type"]>().toEqualTypeOf<(typeof INSTRUCTION_TYPES)[number]>();
 });
 

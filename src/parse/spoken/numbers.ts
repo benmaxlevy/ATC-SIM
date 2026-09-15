@@ -278,3 +278,31 @@ export function countNumberWordsFrom(tokens: readonly string[], start: number): 
   }
   return n;
 }
+
+export function parseDistanceNmValue(
+  tokens: readonly string[],
+  i: number,
+): { value: number; next: number } | null {
+  const tok = tokens[i];
+  if (tok === undefined) return null;
+  if (/^\d+(?:\.\d+)?$/.test(tok)) {
+    const val = Number(tok);
+    if (Number.isFinite(val) && val > 0) {
+      return { value: val, next: i + 1 };
+    }
+  }
+  const turnVal = parseTurnDegreesValue(tokens, i);
+  if (turnVal && turnVal.value > 0) {
+    if (
+      (tokens[turnVal.next] === "point" || tokens[turnVal.next] === "dot") &&
+      tokens[turnVal.next + 1] !== undefined
+    ) {
+      const dec = singleDigit(tokens[turnVal.next + 1]);
+      if (dec !== null) {
+        return { value: turnVal.value + dec / 10, next: turnVal.next + 2 };
+      }
+    }
+    return turnVal;
+  }
+  return null;
+}

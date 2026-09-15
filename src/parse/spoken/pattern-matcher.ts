@@ -9,9 +9,21 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+
+function isRequestControlInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "REQUEST_DETAILS" ||
+    instruction.type === "STANDBY_REQUEST" ||
+    instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    instruction.type === "DECLINE_REQUEST" ||
+    instruction.type === "RADAR_CONTACT" ||
+    instruction.type === "TERMINATE_RADAR_SERVICE"
+  );
+}
 import {
   parseAltitudeFt,
   parseHeadingDeg,
+  parseDistanceNmValue,
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
@@ -21,6 +33,7 @@ import {
   groundApproachToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
+  groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
   type CatalogFixInput,
@@ -54,6 +67,11 @@ const COMMAND_TRIGGERS = new Set([
   "iden",
   "say",
   "cancel",
+  "stand",
+  "standby",
+  "approve",
+  "unable",
+  "radar",
 ]);
 
 function runwaySide(tok: string | undefined): string | null {
@@ -883,6 +901,136 @@ function matchMaintainVfr(
   return { instruction: { type: "MAINTAIN_VFR" }, next: i + 2 };
 }
 
+function matchRequestDetails(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "say" && tokens[i + 1] === "request") {
+    return { instruction: { type: "REQUEST_DETAILS" }, next: i + 2 };
+  }
+  return null;
+}
+
+function matchStandby(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "stand" && tokens[i + 1] === "by") {
+    return { instruction: { type: "STANDBY_REQUEST" }, next: i + 2 };
+  }
+  if (tokens[i] === "standby") {
+    return { instruction: { type: "STANDBY_REQUEST" }, next: i + 1 };
+  }
+  return null;
+}
+
+function matchApproveFlightFollowing(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "approve" && tokens[i + 1] === "flight" && tokens[i + 2] === "following") {
+    return { instruction: { type: "APPROVE_FLIGHT_FOLLOWING" }, next: i + 3 };
+  }
+  return null;
+}
+
+function matchDeclineRequest(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "unable") {
+    if (tokens[i + 1] === "flight" && tokens[i + 2] === "following") {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        next: i + 3,
+      };
+    }
+    if (
+      tokens[i + 1] === "to" &&
+      tokens[i + 2] === "provide" &&
+      tokens[i + 3] === "flight" &&
+      tokens[i + 4] === "following"
+    ) {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        next: i + 5,
+      };
+    }
+  }
+  return null;
+}
+
+function matchRadarServiceTerminated(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "radar" && tokens[i + 1] === "service" && tokens[i + 2] === "terminated") {
+    return { instruction: { type: "TERMINATE_RADAR_SERVICE" }, next: i + 3 };
+  }
+  return null;
+}
+
+function matchRadarContact(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "radar" || tokens[i + 1] !== "contact") {
+    return null;
+  }
+  const dist = parseDistanceNmValue(tokens, i + 2);
+  if (!dist || dist.value <= 0) {
+    return null;
+  }
+  let j = dist.next;
+  if (tokens[j] !== "miles" && tokens[j] !== "mile") {
+    return null;
+  }
+  j += 1;
+  if (tokens[j] !== "from") {
+    return null;
+  }
+  j += 1;
+
+  let end = j;
+  while (end < tokens.length && !COMMAND_TRIGGERS.has(tokens[end] ?? "")) {
+    end += 1;
+  }
+  if (end <= j) {
+    return null;
+  }
+  const refTokens = tokens.slice(j, end);
+  const rawRef = refTokens.join(" ");
+  const grounded = groundReferenceToCatalog(rawRef, catalog);
+  if (grounded) {
+    return {
+      instruction: {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: grounded.referenceId,
+        referenceKind: grounded.referenceKind,
+      },
+      next: end,
+    };
+  }
+  for (let k = end; k > j; k -= 1) {
+    const subRef = tokens.slice(j, k).join(" ");
+    const subGrounded = groundReferenceToCatalog(subRef, catalog);
+    if (subGrounded) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: subGrounded.referenceId,
+          referenceKind: subGrounded.referenceKind,
+        },
+        next: k,
+      };
+    }
+  }
+  return null;
+}
+
 function matchTurnDegrees(
   tokens: readonly string[],
   i: number,
@@ -1411,6 +1559,12 @@ export function matchSpokenPatterns(
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??
+      matchRequestDetails(tokens, i) ??
+      matchStandby(tokens, i) ??
+      matchApproveFlightFollowing(tokens, i) ??
+      matchDeclineRequest(tokens, i) ??
+      matchRadarServiceTerminated(tokens, i) ??
+      matchRadarContact(tokens, i, catalog) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??
@@ -1468,7 +1622,12 @@ export function matchSpokenPatterns(
   // If there are unconsumed command triggers, a command in the utterance failed to parse
   let hasUnparsedCommandTrigger = false;
   for (let i = 0; i < tokens.length; i += 1) {
-    if (!claimed[i] && COMMAND_TRIGGERS.has(tokens[i]!)) {
+    if (
+      !claimed[i] &&
+      (COMMAND_TRIGGERS.has(tokens[i]!) ||
+        /^[hlrcdas]\d+$/i.test(tokens[i]!) ||
+        /^t\d+[lr]?$/i.test(tokens[i]!))
+    ) {
       hasUnparsedCommandTrigger = true;
       break;
     }
@@ -1488,6 +1647,16 @@ export function matchSpokenPatterns(
 
   collectedInstructions.sort((a, b) => a.start - b.start);
   const instructions = collectedInstructions.map((item) => item.instruction);
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
+    return {
+      ok: false,
+      error: formatParseError(
+        PARSE_ERROR.BAD_CLEARANCE,
+        "request instruction must be the only instruction",
+      ),
+      sourceText,
+    };
+  }
   const cancellationError = cancelApproachSequenceError(instructions);
   if (cancellationError !== null) {
     return {

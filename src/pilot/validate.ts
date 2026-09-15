@@ -9,10 +9,12 @@ import type {
   FixRegistry,
   Instruction,
   ProcedureJoinCatalog,
+  RadioRequest,
   VerticalCatalog,
 } from "@core";
 import {
   alongTrackNm,
+  findOpenRadioRequest,
   isOnCourseToFix,
   joinProcedureTransition,
   normalizeHeading,
@@ -42,7 +44,9 @@ export type ValidateReason =
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH"
   | "SQUAWK"
-  | "CLEARANCE";
+  | "CLEARANCE"
+  | "REQUEST"
+  | "RADAR_CONTACT";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -60,14 +64,29 @@ export interface ValidateApproach {
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
   catalog?:
-    | (VerticalCatalog & ProcedureJoinCatalog & { approaches?: ReadonlyArray<ValidateApproach> })
+    | (VerticalCatalog &
+        ProcedureJoinCatalog & {
+          approaches?: ReadonlyArray<ValidateApproach>;
+          fixes?: ReadonlyArray<{ id: string }>;
+          navaids?: ReadonlyArray<{ id: string }>;
+        })
     | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
   performanceProfile?: AircraftPerformanceProfile | null;
+  radioRequests?: readonly RadioRequest[];
 }
+
+const REQUEST_CONTROL_TYPES = new Set([
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+]);
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
 export function validateInstructions(
@@ -77,6 +96,16 @@ export function validateInstructions(
 ): ValidateResult {
   if (instructions.length === 0) {
     return { ok: false, reason: "EMPTY" };
+  }
+  if (
+    instructions.length > 1 &&
+    instructions.some((instruction) => REQUEST_CONTROL_TYPES.has(instruction.type))
+  ) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "request control instruction must be the only instruction",
+    };
   }
   const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
   if (instructions.some((instruction) => instruction.type === "CANCEL_APPROACH")) {
@@ -343,6 +372,81 @@ function validateOne(
     case "SAY_ALTITUDE":
     case "DELETE_SPEED_RESTRICTIONS":
       return { ok: true };
+    case "REQUEST_DETAILS": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
+      }
+      return { ok: true };
+    }
+    case "STANDBY_REQUEST": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
+      }
+      return { ok: true };
+    }
+    case "APPROVE_FLIGHT_FOLLOWING": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id, "FLIGHT_FOLLOWING");
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status !== "IDENTIFIED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: radar identification required" };
+      }
+      return { ok: true };
+    }
+    case "DECLINE_REQUEST": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id, instruction.service);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return {
+          ok: false,
+          reason: "REQUEST",
+          detail: "REQUEST: active service must be terminated",
+        };
+      }
+      return { ok: true };
+    }
+    case "RADAR_CONTACT": {
+      if (!Number.isFinite(instruction.distanceNm) || instruction.distanceNm <= 0) {
+        return {
+          ok: false,
+          reason: "RADAR_CONTACT",
+          detail: "RADAR_CONTACT: distance must be positive",
+        };
+      }
+      const refId = instruction.referenceId.trim().toUpperCase();
+      if (!refId) {
+        return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+      }
+      const catalogHasFix =
+        opts?.fixRegistry?.has(refId) ||
+        opts?.catalog?.fixes?.some((f) => f.id.trim().toUpperCase() === refId) ||
+        opts?.catalog?.navaids?.some((n) => n.id.trim().toUpperCase() === refId);
+      if (!catalogHasFix) {
+        return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+      }
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      return { ok: true };
+    }
+    case "TERMINATE_RADAR_SERVICE": {
+      if (!aircraft.flightFollowing?.active) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: radar service is not active" };
+      }
+      return { ok: true };
+    }
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

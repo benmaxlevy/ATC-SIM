@@ -549,6 +549,65 @@ def test_path_c_validates_delete_speed_restrictions_and_speed_until() -> None:
     assert validate_instruction({"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN", "until": {"type": "UNKNOWN"}}) is None
 
 
+def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() -> None:
+    from parse_engine import guard_catalog_ids, guard_instruction_semantics
+
+    req_details = {"type": "REQUEST_DETAILS"}
+    assert validate_instruction(req_details) == req_details
+    assert validate_instruction({"type": "REQUEST_DETAILS", "extra": 1}) is None
+
+    standby = {"type": "STANDBY_REQUEST"}
+    assert validate_instruction(standby) == standby
+    assert validate_instruction({"type": "STANDBY_REQUEST", "extra": 1}) is None
+
+    approve_ff = {"type": "APPROVE_FLIGHT_FOLLOWING"}
+    assert validate_instruction(approve_ff) == approve_ff
+    assert validate_instruction({"type": "APPROVE_FLIGHT_FOLLOWING", "extra": 1}) is None
+
+    decline_ff = {"type": "DECLINE_REQUEST", "service": "FLIGHT_FOLLOWING"}
+    assert validate_instruction(decline_ff) == decline_ff
+    decline_ifr = {"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}
+    assert validate_instruction(decline_ifr) == decline_ifr
+    assert validate_instruction({"type": "DECLINE_REQUEST", "service": "INVALID"}) is None
+    assert validate_instruction({"type": "DECLINE_REQUEST"}) is None
+
+    radar_contact = {
+        "type": "RADAR_CONTACT",
+        "distanceNm": 5,
+        "referenceId": "DEM",
+        "referenceKind": "NAVAID",
+    }
+    assert validate_instruction(radar_contact) == radar_contact
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": -5, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 0, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "DEM", "referenceKind": "INVALID"}) is None
+
+    term_radar = {"type": "TERMINATE_RADAR_SERVICE"}
+    assert validate_instruction(term_radar) == term_radar
+    assert validate_instruction({"type": "TERMINATE_RADAR_SERVICE", "extra": True}) is None
+
+    # Semantics guards
+    assert guard_instruction_semantics("say request", ParseOutcome(ok=True, instructions=[req_details])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[req_details])).ok
+
+    assert guard_instruction_semantics("stand by", ParseOutcome(ok=True, instructions=[standby])).ok
+    assert guard_instruction_semantics("standby", ParseOutcome(ok=True, instructions=[standby])).ok
+
+    assert guard_instruction_semantics("approve flight following", ParseOutcome(ok=True, instructions=[approve_ff])).ok
+    assert guard_instruction_semantics("unable flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert guard_instruction_semantics("unable to provide flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+
+    assert guard_instruction_semantics("radar contact 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert guard_instruction_semantics("radar service terminated", ParseOutcome(ok=True, instructions=[term_radar])).ok
+
+    # Catalog guards for RADAR_CONTACT
+    rc_outcome = ParseOutcome(ok=True, instructions=[radar_contact])
+    assert guard_catalog_ids("radar contact 5 miles from DEM", {"fixes": ["DEM"]}, rc_outcome).ok
+    assert not guard_catalog_ids("radar contact 5 miles from UNK", {"fixes": ["DEM"]}, ParseOutcome(ok=True, instructions=[{"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "UNK", "referenceKind": "FIX"}])).ok
+
+
+
 def test_path_c_semantic_guard_distinguishes_tactical_direct_from_clearance() -> None:
     from parse_engine import guard_instruction_semantics
 

@@ -170,3 +170,79 @@ test("invalid instruction after CAPP rejects atomically", async () => {
   expect(aal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "RNAV09" });
   expect(aal.intent.assignedAltitudeFt).toBe(8000);
 });
+
+test("VFR flight following and radio contact command lifecycle (T04-73)", async () => {
+  const dal = sample("DAL123", "ac-dal");
+  const req = {
+    id: "req-dal",
+    aircraftId: dal.id,
+    callsign: dal.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [dal],
+    radioRequests: [req],
+    catalog: {
+      airportId: "KDEM",
+      navaids: [{ id: "DEM" }],
+      fixes: [],
+      stars: [],
+      sids: [],
+      approaches: [],
+    },
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  // 1. say request
+  const r1 = await handleRadioText(world, "DAL123 say request", log);
+  expect(r1.accepted).toBe(true);
+  expect(r1.readback).toBe("Delta 123 say request");
+  expect(req.status).toBe("AWAITING_DETAILS");
+
+  // 2. stand by
+  const r2 = await handleRadioText(world, "DAL123 stand by", log);
+  expect(r2.accepted).toBe(true);
+  expect(r2.readback).toBe("Delta 123 standby");
+  expect(req.status).toBe("STANDBY");
+
+  // Premature approve should reject
+  const rPremature = await handleRadioText(world, "DAL123 approve flight following", log);
+  expect(rPremature.accepted).toBe(false);
+  expect(rPremature.detail).toBe("REQUEST: radar identification required");
+
+  // 3. radar contact
+  const r3 = await handleRadioText(world, "DAL123 radar contact 5 miles from DEM", log);
+  expect(r3.accepted).toBe(true);
+  expect(r3.readback).toBe("Delta 123 radar contact, 5 miles from DEM");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(dal.radarContact?.distanceNm).toBe(5);
+  expect(dal.radarContact?.referenceId).toBe("DEM");
+
+  // 4. approve flight following
+  const r4 = await handleRadioText(world, "DAL123 approve flight following", log);
+  expect(r4.accepted).toBe(true);
+  expect(r4.readback).toBe("Delta 123 flight following approved");
+  expect(req.status).toBe("APPROVED");
+  expect(dal.flightFollowing?.active).toBe(true);
+
+  // Decline after approval must fail
+  const rDeclineAfter = await handleRadioText(world, "DAL123 unable flight following", log);
+  expect(rDeclineAfter.accepted).toBe(false);
+  expect(rDeclineAfter.detail).toBe("REQUEST: active service must be terminated");
+
+  // 5. radar service terminated
+  const r5 = await handleRadioText(world, "DAL123 radar service terminated", log);
+  expect(r5.accepted).toBe(true);
+  expect(r5.readback).toBe("Delta 123 radar service terminated");
+  expect(dal.flightFollowing?.active).toBe(false);
+  expect(req.status).toBe("TERMINATED");
+
+  // Terminate again must fail
+  const rTermAgain = await handleRadioText(world, "DAL123 radar service terminated", log);
+  expect(rTermAgain.accepted).toBe(false);
+  expect(rTermAgain.detail).toBe("REQUEST: radar service is not active");
+});

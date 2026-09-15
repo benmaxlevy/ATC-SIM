@@ -655,6 +655,8 @@ airspace awareness.
   all eligible destination airports within 40 NM.
 - T04-71–76 provide VFR navigation, request handling, radar services, satellite arrival
   flow control, and controller UI.
+- T04-73 implements the VFR flight-following and radio-contact lifecycle (request state machine,
+  controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
 
 The regional pack generator command:
 

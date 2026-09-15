@@ -395,6 +395,14 @@ export type SessionEvent =
       reason: string;
     }
   | {
+      type: "vfr.request.details_reported";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      requestId: string;
+      text: string;
+    }
+  | {
       type: "pilot.cancel_ifr.scheduled";
       atSimMs: number;
       atWallMs: number;

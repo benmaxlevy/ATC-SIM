@@ -29,6 +29,7 @@ import {
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "./instruction-order";
+import { groundReferenceToCatalog } from "./spoken/catalog-ground";
 
 export type ParseResult =
   | {
@@ -81,6 +82,13 @@ export function parseRadioText(
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
   }
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
+    return fail(
+      sourceText,
+      PARSE_ERROR.BAD_CLEARANCE,
+      "request instruction must be the only instruction",
+    );
+  }
   const cancellationError = cancelApproachSequenceError(instructions);
   if (cancellationError !== null) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, cancellationError);
@@ -92,6 +100,17 @@ export function parseRadioText(
     instructions: markUntilEstablished(instructions),
     sourceText,
   };
+}
+
+function isRequestControlInstruction(inst: Instruction): boolean {
+  return (
+    inst.type === "REQUEST_DETAILS" ||
+    inst.type === "STANDBY_REQUEST" ||
+    inst.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    inst.type === "DECLINE_REQUEST" ||
+    inst.type === "RADAR_CONTACT" ||
+    inst.type === "TERMINATE_RADAR_SERVICE"
+  );
 }
 
 function fail(sourceText: string, code: ParseErrorCode, detail?: string): ParseResult {
@@ -110,7 +129,13 @@ function isTypedInstructionStart(token: string): boolean {
     token === "X" ||
     token === "SQ" ||
     token === "MVFR" ||
-    token === "CLR"
+    token === "CLR" ||
+    token === "SAY" ||
+    token === "STAND" ||
+    token === "STANDBY" ||
+    token === "APPROVE" ||
+    token === "UNABLE" ||
+    token === "RADAR"
   ) {
     return true;
   }
@@ -284,6 +309,117 @@ function parseOneInstruction(
       instruction: { type: "MAINTAIN_VFR" },
       nextIndex: index + 1,
     };
+  }
+  if (token === "SAY" && tokens[index + 1] === "REQUEST") {
+    return {
+      ok: true,
+      instruction: { type: "REQUEST_DETAILS" },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "STAND" && tokens[index + 1] === "BY") {
+    return {
+      ok: true,
+      instruction: { type: "STANDBY_REQUEST" },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "STANDBY") {
+    return {
+      ok: true,
+      instruction: { type: "STANDBY_REQUEST" },
+      nextIndex: index + 1,
+    };
+  }
+  if (token === "APPROVE") {
+    if (tokens[index + 1] === "FLIGHT" && tokens[index + 2] === "FOLLOWING") {
+      return {
+        ok: true,
+        instruction: { type: "APPROVE_FLIGHT_FOLLOWING" },
+        nextIndex: index + 3,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "UNABLE") {
+    if (tokens[index + 1] === "FLIGHT" && tokens[index + 2] === "FOLLOWING") {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        nextIndex: index + 3,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "FLIGHT" &&
+      tokens[index + 4] === "FOLLOWING"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        nextIndex: index + 5,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "RADAR") {
+    if (tokens[index + 1] === "SERVICE" && tokens[index + 2] === "TERMINATED") {
+      return {
+        ok: true,
+        instruction: { type: "TERMINATE_RADAR_SERVICE" },
+        nextIndex: index + 3,
+      };
+    }
+    if (tokens[index + 1] === "CONTACT") {
+      const distToken = tokens[index + 2];
+      if (distToken === undefined) {
+        return { ok: false, code: PARSE_ERROR.EMPTY, detail: "missing distance" };
+      }
+      const dist = Number(distToken);
+      if (!Number.isFinite(dist) || dist <= 0) {
+        return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: "distance must be positive" };
+      }
+      const milesToken = tokens[index + 3];
+      if (milesToken !== "MILES" && milesToken !== "MILE") {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: milesToken ?? "" };
+      }
+      const fromToken = tokens[index + 4];
+      if (fromToken !== "FROM") {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fromToken ?? "" };
+      }
+      const refTokens = tokens.slice(index + 5);
+      if (refTokens.length === 0) {
+        return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID, detail: "missing reference" };
+      }
+      const rawRef = refTokens.join(" ");
+      let referenceId = rawRef;
+      let referenceKind: "FIX" | "NAVAID" = "FIX";
+      if (routeOptions.fixes && routeOptions.fixes.length > 0) {
+        const grounded = groundReferenceToCatalog(rawRef, routeOptions.fixes);
+        if (!grounded) {
+          return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRef };
+        }
+        referenceId = grounded.referenceId;
+        referenceKind = grounded.referenceKind;
+      } else {
+        const cleanRef = rawRef.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
+        referenceId = cleanRef.toUpperCase();
+        referenceKind =
+          rawRef.toUpperCase().includes("VOR") || referenceId.length <= 3 ? "NAVAID" : "FIX";
+      }
+      return {
+        ok: true,
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist,
+          referenceId,
+          referenceKind,
+        },
+        nextIndex: tokens.length,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
   }
   if (token === "DCT") {
     const fixId = tokens[index + 1];

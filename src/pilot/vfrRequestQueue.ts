@@ -537,12 +537,71 @@ export class VfrRequestQueue {
         request: { ...next },
       });
 
+      if (!world.radioRequests) {
+        world.radioRequests = [];
+      }
+      const existingRadioReq = world.radioRequests.find((r) => r.id === next.id);
+      if (!existingRadioReq) {
+        world.radioRequests.push({
+          id: next.id,
+          aircraftId: next.aircraftId,
+          callsign: next.callsign,
+          kind: next.kind,
+          requestedAtSimMs: world.simTimeMs,
+          status: "PENDING",
+          details: {
+            aircraftType: next.aircraftType,
+            destinationAirportId: next.destinationAirportId,
+            requestedAltitudeFt: next.requestedAltitudeFt,
+            positionNm: next.positionNm,
+            altitudeFt: next.altitudeFt,
+            headingDeg: next.headingDeg,
+          },
+        });
+      }
+
       if (radio?.play) {
         this.playInFlight = true;
         this.beginPlay(radio, requestText, next.callsign, world.simTimeMs);
       }
       return;
     }
+  }
+
+  /**
+   * Emit detailed request information after controller 'say request'.
+   * Does not consume rolling-hour cap.
+   */
+  public emitRequestDetails(
+    world: World,
+    aircraftId: string,
+    log?: SessionLog,
+    setStatus?: (text: string) => void,
+    nowWallMs: () => number = () => Date.now(),
+  ): string | undefined {
+    const radioReq = world.radioRequests?.find(
+      (r) =>
+        r.aircraftId === aircraftId && (r.status === "AWAITING_DETAILS" || r.status === "PENDING"),
+    );
+    if (!radioReq) {
+      return undefined;
+    }
+    const schedReq = this.requests.find((r) => r.id === radioReq.id);
+    const aircraft = world.aircraft.find((ac) => ac.id === aircraftId);
+    const detailText =
+      radioReq.kind === "FLIGHT_FOLLOWING"
+        ? `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, request flight following`
+        : `${radioReq.callsign}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`;
+    setStatus?.(detailText);
+    log?.append({
+      type: "vfr.request.details_reported",
+      atSimMs: world.simTimeMs,
+      atWallMs: nowWallMs(),
+      callsign: radioReq.callsign,
+      requestId: radioReq.id,
+      text: detailText,
+    });
+    return detailText;
   }
 
   private nextDueRequest(simTimeMs: number): VfrPilotRequest | undefined {

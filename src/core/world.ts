@@ -1,5 +1,6 @@
 import type { Aircraft } from "./aircraft";
 import type { TrackHandoff } from "./handoff";
+import type { RadioRequest } from "./radio/requests";
 import {
   atpaPairKey,
   evaluateAtpa,
@@ -175,6 +176,8 @@ export interface World {
   vfrTrafficManager?: { step: (world: World, dtS: number) => void };
   /** Optional regional facility metadata (T04-70). */
   regional?: unknown;
+  /** Authoritative radio requests (flight following, IFR pickup) (T04-73). */
+  radioRequests?: RadioRequest[];
 }
 
 export interface ScheduledDeparture {
@@ -307,6 +310,7 @@ export function createWorld(partial?: Partial<World>): World {
     departureSpawner: partial?.departureSpawner,
     arrivalScheduler: partial?.arrivalScheduler,
     vfrTrafficManager: partial?.vfrTrafficManager,
+    radioRequests: partial?.radioRequests ?? [],
   };
 }
 

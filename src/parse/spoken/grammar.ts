@@ -9,9 +9,21 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+
+function isRequestControlInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "REQUEST_DETAILS" ||
+    instruction.type === "STANDBY_REQUEST" ||
+    instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    instruction.type === "DECLINE_REQUEST" ||
+    instruction.type === "RADAR_CONTACT" ||
+    instruction.type === "TERMINATE_RADAR_SERVICE"
+  );
+}
 import {
   ONES,
   parseAltitudeFt,
+  parseDistanceNmValue,
   parseHeadingDeg,
   parseSpeedKt,
   parseTurnDegreesValue,
@@ -23,6 +35,7 @@ import {
 import {
   groundFixToCatalog,
   groundProcedureToCatalog,
+  groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
   type CatalogFixInput,
@@ -188,6 +201,116 @@ function tryMaintainVfr(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "maintain") && take(c, "vfr")) {
     return { type: "MAINTAIN_VFR" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRequestDetails(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "say") && take(c, "request")) {
+    return { type: "REQUEST_DETAILS" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryStandby(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "stand") && take(c, "by")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  if (take(c, "standby")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryApproveFlightFollowing(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "approve") && take(c, "flight") && take(c, "following")) {
+    return { type: "APPROVE_FLIGHT_FOLLOWING" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryDeclineRequest(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "unable")) {
+    if (take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRadarServiceTerminated(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "radar") && take(c, "service") && take(c, "terminated")) {
+    return { type: "TERMINATE_RADAR_SERVICE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRadarContact(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "radar") || !take(c, "contact")) {
+    c.i = start;
+    return null;
+  }
+  const dist = parseDistanceNmValue(c.tokens, c.i);
+  if (!dist || dist.value <= 0) {
+    c.i = start;
+    return null;
+  }
+  c.i = dist.next;
+  if (!take(c, "miles") && !take(c, "mile")) {
+    c.i = start;
+    return null;
+  }
+  if (!take(c, "from")) {
+    c.i = start;
+    return null;
+  }
+  const refStart = c.i;
+  let refEnd = refStart;
+  while (refEnd < c.tokens.length && !RESERVED_SPOKEN.has(c.tokens[refEnd] ?? "")) {
+    refEnd += 1;
+  }
+  if (refEnd <= refStart) {
+    c.i = start;
+    return null;
+  }
+  const rawRef = c.tokens.slice(refStart, refEnd).join(" ");
+  const grounded = c.catalog ? groundReferenceToCatalog(rawRef, c.catalog) : null;
+  if (grounded) {
+    c.i = refEnd;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: grounded.referenceId,
+      referenceKind: grounded.referenceKind,
+    };
+  }
+  for (let k = refEnd; k > refStart; k -= 1) {
+    const subRef = c.tokens.slice(refStart, k).join(" ");
+    const subGrounded = c.catalog ? groundReferenceToCatalog(subRef, c.catalog) : null;
+    if (subGrounded) {
+      c.i = k;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: subGrounded.referenceId,
+        referenceKind: subGrounded.referenceKind,
+      };
+    }
   }
   c.i = start;
   return null;
@@ -956,6 +1079,12 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
     tryMaintainVfr(c) ??
+    tryRequestDetails(c) ??
+    tryStandby(c) ??
+    tryApproveFlightFollowing(c) ??
+    tryDeclineRequest(c) ??
+    tryRadarServiceTerminated(c) ??
+    tryRadarContact(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??
@@ -1069,6 +1198,9 @@ export function parseSpokenGrammar(
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
   const cancellationError = cancelApproachSequenceError(instructions);

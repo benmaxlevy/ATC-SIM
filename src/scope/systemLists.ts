@@ -7,6 +7,7 @@
 import {
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
+  getOperationalService,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -1321,6 +1322,12 @@ export function isVfrAircraft(
   const track = tracks?.get(ac.id);
   if (track?.flightRules === "VFR") {
     return true;
+  }
+  if (world) {
+    const op = getOperationalService(world, ac);
+    if (op.flightFollowingActive || op.activeRequest?.kind === "FLIGHT_FOLLOWING") {
+      return true;
+    }
   }
   return false;
 }

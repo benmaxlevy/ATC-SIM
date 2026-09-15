@@ -92,7 +92,18 @@ export type Instruction =
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
   | { type: "GO_AROUND" }
-  | { type: "DELETE_SPEED_RESTRICTIONS" };
+  | { type: "DELETE_SPEED_RESTRICTIONS" }
+  | { type: "REQUEST_DETAILS" }
+  | { type: "STANDBY_REQUEST" }
+  | { type: "APPROVE_FLIGHT_FOLLOWING" }
+  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" }
+  | {
+      type: "RADAR_CONTACT";
+      distanceNm: number;
+      referenceId: string;
+      referenceKind: "FIX" | "NAVAID";
+    }
+  | { type: "TERMINATE_RADAR_SERVICE" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -163,6 +174,12 @@ direct fixes.
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 | `GA` | `GO_AROUND` (T04-07; immediate missed if `clearedApproachId` is set) |
+| `say request` | `REQUEST_DETAILS` (T04-73; request flight following or route details from pilot; single instruction per transmission) |
+| `stand by` / `standby` | `STANDBY_REQUEST` (T04-73; instruct pilot to standby on radio request) |
+| `approve flight following` | `APPROVE_FLIGHT_FOLLOWING` (T04-73; activate advisory flight following for radar-identified aircraft) |
+| `unable flight following` / `unable to provide flight following` | `DECLINE_REQUEST { service: "FLIGHT_FOLLOWING" }` (T04-73; decline flight following request) |
+| `radar contact <distance> miles from <fix/navaid>` | `RADAR_CONTACT { distanceNm, referenceId, referenceKind }` (T04-73; radar identification with informational position reference) |
+| `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 

@@ -8,7 +8,18 @@
  */
 
 import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
-import { applyIfrClearance, assertHandoffOwned, handoffFor } from "@core";
+import {
+  applyIfrClearance,
+  assertHandoffOwned,
+  findOpenRadioRequest,
+  handoffFor,
+  transitionRequestToApproved,
+  transitionRequestToAwaitingDetails,
+  transitionRequestToDeclined,
+  transitionRequestToIdentified,
+  transitionRequestToStandby,
+  transitionRequestToTerminated,
+} from "@core";
 import {
   approachesFromCatalog,
   catalogFixEntriesFromCatalog,
@@ -81,6 +92,7 @@ export interface PilotResult {
   readback: string;
   command?: Command;
   reason?: string;
+  detail?: string;
 }
 
 export interface HandleRadioOpts {
@@ -254,6 +266,7 @@ export function handleRadioCommand(
       }),
       command: c,
       reason,
+      detail,
     };
   }
 
@@ -283,6 +296,7 @@ export function handleRadioCommand(
     catalog: world.catalog,
     activeRunwayId: world.activeRunwayId,
     approachIds: world.catalog?.approaches.map((item) => item.id),
+    radioRequests: world.radioRequests,
   });
   if (!validated.ok) {
     return reject(
@@ -317,6 +331,97 @@ export function handleRadioCommand(
     return { accepted: true, readback, command: resolvedCommand };
   }
 
+  const requestControl = resolvedCommand.instructions.find((item) =>
+    [
+      "REQUEST_DETAILS",
+      "STANDBY_REQUEST",
+      "APPROVE_FLIGHT_FOLLOWING",
+      "DECLINE_REQUEST",
+      "RADAR_CONTACT",
+      "TERMINATE_RADAR_SERVICE",
+    ].includes(item.type),
+  );
+  if (requestControl) {
+    if (resolvedCommand.instructions.length !== 1) {
+      return reject(
+        "REQUEST",
+        "request control instruction must be the only instruction",
+        resolvedCommand,
+      );
+    }
+    switch (requestControl.type) {
+      case "REQUEST_DETAILS": {
+        const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
+        if (req) {
+          transitionRequestToAwaitingDetails(req, world.simTimeMs);
+        }
+        break;
+      }
+      case "STANDBY_REQUEST": {
+        const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
+        if (req) {
+          transitionRequestToStandby(req, world.simTimeMs);
+        }
+        break;
+      }
+      case "APPROVE_FLIGHT_FOLLOWING": {
+        const req = findOpenRadioRequest(world.radioRequests, aircraft.id, "FLIGHT_FOLLOWING");
+        if (req) {
+          transitionRequestToApproved(req, world.simTimeMs);
+          aircraft.flightFollowing = {
+            active: true,
+            approvedAtSimMs: world.simTimeMs,
+            requestId: req.id,
+          };
+        }
+        break;
+      }
+      case "DECLINE_REQUEST": {
+        const req = findOpenRadioRequest(world.radioRequests, aircraft.id, requestControl.service);
+        if (req) {
+          transitionRequestToDeclined(req, world.simTimeMs);
+        }
+        break;
+      }
+      case "RADAR_CONTACT": {
+        const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
+        const report = {
+          distanceNm: requestControl.distanceNm,
+          referenceId: requestControl.referenceId,
+          referenceKind: requestControl.referenceKind,
+          reportedAtSimMs: world.simTimeMs,
+        };
+        if (req) {
+          transitionRequestToIdentified(req, report, world.simTimeMs);
+        }
+        aircraft.radarContact = report;
+        break;
+      }
+      case "TERMINATE_RADAR_SERVICE": {
+        const prevRequestId = aircraft.flightFollowing?.requestId;
+        aircraft.flightFollowing = {
+          active: false,
+          approvedAtSimMs: aircraft.flightFollowing?.approvedAtSimMs,
+          requestId: prevRequestId,
+        };
+        const req =
+          (prevRequestId ? world.radioRequests?.find((r) => r.id === prevRequestId) : undefined) ??
+          findOpenRadioRequest(world.radioRequests, aircraft.id);
+        if (req && req.status === "APPROVED") {
+          transitionRequestToTerminated(req, world.simTimeMs);
+        }
+        break;
+      }
+    }
+    const readback = formatReadback({
+      callsign: resolved.callsign,
+      instructions: resolvedCommand.instructions,
+      aircraft,
+    });
+    logAccepted(log, world, atWallMs, resolvedCommand);
+    return { accepted: true, readback, command: resolvedCommand };
+  }
+
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {
     catalog: world.catalog,
     log,
@@ -325,6 +430,7 @@ export function handleRadioCommand(
     flightPlan: world.flightPlans.find(
       (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
     ),
+    radioRequests: world.radioRequests,
   });
   const procedureNames = Object.fromEntries([
     ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),

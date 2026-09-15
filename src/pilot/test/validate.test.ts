@@ -768,3 +768,196 @@ test("AC6: speed until validation rejects gates inside boundary", () => {
 test("DELETE_SPEED_RESTRICTIONS validates successfully", () => {
   expect(validateInstructions(jet(), [{ type: "DELETE_SPEED_RESTRICTIONS" }]).ok).toBe(true);
 });
+
+test("VFR flight following and radio contact instruction validation (T04-73)", () => {
+  const ac = jet();
+  const catalog = {
+    airportId: "KDEM",
+    navaids: [{ id: "DEM" }],
+    fixes: [{ id: "NEMAX" }],
+  };
+
+  // Single instruction check
+  expect(
+    validateInstructions(ac, [
+      { type: "REQUEST_DETAILS" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "request control instruction must be the only instruction",
+  });
+
+  // REQUEST_DETAILS
+  expect(validateInstructions(ac, [{ type: "REQUEST_DETAILS" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  const openReq = {
+    id: "req-1",
+    aircraftId: ac.id,
+    callsign: ac.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  expect(
+    validateInstructions(ac, [{ type: "REQUEST_DETAILS" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  const approvedReq = { ...openReq, status: "APPROVED" as const };
+  expect(
+    validateInstructions(ac, [{ type: "REQUEST_DETAILS" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: request is already resolved",
+  });
+
+  // STANDBY_REQUEST
+  expect(validateInstructions(ac, [{ type: "STANDBY_REQUEST" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "STANDBY_REQUEST" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "STANDBY_REQUEST" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: request is already resolved",
+  });
+
+  // APPROVE_FLIGHT_FOLLOWING
+  expect(validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }], {
+      radioRequests: [openReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: radar identification required",
+  });
+  const identifiedReq = { ...openReq, status: "IDENTIFIED" as const };
+  expect(
+    validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }], {
+      radioRequests: [identifiedReq],
+    }).ok,
+  ).toBe(true);
+
+  // DECLINE_REQUEST
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }]),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: active service must be terminated",
+  });
+
+  // RADAR_CONTACT
+  expect(
+    validateInstructions(ac, [
+      {
+        type: "RADAR_CONTACT",
+        distanceNm: 0,
+        referenceId: "DEM",
+        referenceKind: "NAVAID",
+      },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "RADAR_CONTACT",
+    detail: "RADAR_CONTACT: distance must be positive",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "UNKNOWN",
+          referenceKind: "FIX",
+        },
+      ],
+      { catalog },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "DEM",
+          referenceKind: "NAVAID",
+        },
+      ],
+      { catalog },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "DEM",
+          referenceKind: "NAVAID",
+        },
+      ],
+      { catalog, radioRequests: [openReq] },
+    ).ok,
+  ).toBe(true);
+
+  // TERMINATE_RADAR_SERVICE
+  expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: radar service is not active",
+  });
+  ac.flightFollowing = { active: true, approvedAtSimMs: 1000 };
+  expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }]).ok).toBe(true);
+});

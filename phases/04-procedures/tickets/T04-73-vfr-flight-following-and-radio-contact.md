@@ -170,26 +170,26 @@ tests, and the live eval corpus in the same coherent change.
 
 ## Acceptance criteria
 
-- [ ] **AC1 — Request state:** Scheduler requests are stable, deduplicated,
+- [x] **AC1 — Request state:** Scheduler requests are stable, deduplicated,
   cap-aware, retry-safe, and expose the lifecycle above.
-- [ ] **AC2 — Full command grammar:** All six new full forms parse with exact
+- [x] **AC2 — Full command grammar:** All six new full forms parse with exact
   field order; incomplete, malformed, ambiguous, duplicate, and modifier-conflict
   inputs reject without side effects. Existing `SQ`, `I`, `MVFR`, and `CAPP`
   behavior remains unchanged.
-- [ ] **AC3 — Service transaction:** Squawk/IDENT, identification,
+- [x] **AC3 — Service transaction:** Squawk/IDENT, identification,
   approve/decline, and termination have the exact gates and independent effects.
-- [ ] **AC4 — Radar contact:** Distance/reference is catalog-grounded and
+- [x] **AC4 — Radar contact:** Distance/reference is catalog-grounded and
   logged as information only; no position or navigation mutation occurs.
-- [ ] **AC5 — Consumers:** Datablock/VFR list/request presentation uses the
+- [x] **AC5 — Consumers:** Datablock/VFR list/request presentation uses the
   operational service state; CA/MSAW continue to consume tracks without a new
   separation rule.
-- [ ] **AC6 — Parser parity:** Frontend Command IR, deterministic parser,
+- [x] **AC6 — Parser parity:** Frontend Command IR, deterministic parser,
   `speech-api` instruction set/prompt/GBNF/validator/mock/evals, and Path C guard
   agree; no cloud fallback is introduced.
-- [ ] **AC7 — Help/docs:** Help modal, `docs/USER.md`, phase README, and shared
+- [x] **AC7 — Help/docs:** Help modal, `docs/USER.md`, phase README, and shared
   command/parse contracts document the forms, errors, readbacks, and trainer
   deltas.
-- [ ] **AC8 — Tests:** Focused unit/integration tests plus `npm run ci` and
+- [x] **AC8 — Tests:** Focused unit/integration tests plus `npm run ci` and
   `cd speech-api && SPEECH_API_MOCK=1 pytest` pass.
 
 ## Test plan
