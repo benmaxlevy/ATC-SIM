@@ -1,5 +1,77 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Seventy-second swarm planned — cancel approach clearance breakout (2026-09-15)
+
+Human approved the cancel-approach feature on `feature/better-openap-usage`.
+The command uses generic FAA phraseology, clears active approach guidance, and
+applies subsequent ordered breakout instructions without starting the published
+missed approach.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add generic `CANCEL_APPROACH`, typed/spoken/Path C parity, atomic projected validation, approach breakout, acceptance, and docs. |
+| Phase | `phases/04-procedures/` |
+| Include | T04-66 → T04-67 → T04-68. |
+| Merge target | `feature/better-openap-usage`. |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-68 plus focused tests, `npm run ci`, speech mock pytest, and manual R01 review. |
+| Push | Push `feature/better-openap-usage` after green phase exit. |
+
+**Product law:** `CANCEL_APPROACH` means “Cancel Approach Clearance.” It is
+generic across approach types, carries no approach ID, must be first in a
+combined command, clears active approach guidance, never starts the published
+missed approach, and permits later ordered heading/altitude instructions.
+Rejected commands mutate nothing. Existing `GO_AROUND`, heading, approach,
+scope CA, MSAW, route, and speech behavior remains unchanged outside this
+command.
+
+**Skip:** Cloud inference, new FMS modes, missed-approach redesign,
+landing/tower changes, approach catalog changes, scope CA aliases, facility
+branches, and speech providers.
+
+**Waves:**
+- Wave A: T04-66 — Command IR, typed/spoken parsing, readback, and Path C parity.
+- Wave B: T04-67 — projected validation, cancellation state, and intent apply.
+- Wave C: T04-68 — synthetic acceptance, docs, and manual evidence.
+
+**Ticket ownership:**
+- T04-66 owns IR, parser precedence, exact syntax, readback, and speech-api parity.
+- T04-67 owns atomic validation, approach-state clearing, and intent breakout.
+- T04-68 owns acceptance, docs, and final manual evidence.
+
+**Ticket paths/branches:**
+- `ticket/T04-66-cancel-approach-command-ir-and-parser-parity` → `phases/04-procedures/tickets/T04-66-cancel-approach-command-ir-and-parser-parity.md`
+- `ticket/T04-67-cancel-approach-validation-and-intent-breakout` → `phases/04-procedures/tickets/T04-67-cancel-approach-validation-and-intent-breakout.md`
+- `ticket/T04-68-cancel-approach-acceptance-and-docs` → `phases/04-procedures/tickets/T04-68-cancel-approach-acceptance-and-docs.md`
+
+**Manual:** Review against FAA JO 7110.65 §4-8-1 and FAA AIM §5-4. Confirm
+official phrase “Cancel Approach Clearance,” additional instructions, generic
+approach scope, and distinction from go-around/missed approach. Record trainer
+delta: local intent breakout only; no IFR cancellation or obstacle-clearance claim.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: cancel approach clearance breakout T04-66–68
+Merge target: feature/better-openap-usage
+Merged: T04-66, T04-67, T04-68
+Tests: npm run ci, speech-api mock pytest, Path C evals, manual R01 review
+Notes: generic approach cancellation; no push before user request
+```
+
+## Seventy-second swarm started — cancel approach clearance breakout (2026-09-15)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs
+T04-66 through T04-68 sequentially with one isolated worker at a time. Each
+ticket gets focused tests, `npm run ci`, and speech mock pytest before the next
+ticket. The user explicitly authorized pushing the completed green branch to
+`origin/feature/better-openap-usage`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts
+(`.agents/rules/`, `GEMINI.md`, `audit.diff`) remain untouched.
+
 ## Seventy-first swarm planned — procedure speed/altitude precedence, DSR, and approach rules (2026-09-14)
 
 Human approved procedure command updates on `feature/better-openap-usage`:
