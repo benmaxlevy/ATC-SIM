@@ -1,5 +1,44 @@
 # Swarm status
 
+## SEVENTY-SECOND SWARM COMPLETE — Cancel Approach Clearance Breakout (T04-66–T04-68)
+
+Completed sequentially on `feature/better-openap-usage` with one worker at a
+time and captain review after each slice. The delivered surface adds:
+1. Generic `CANCEL_APPROACH` / `CAPP` Command IR, typed and spoken parser
+   parity, readback, Path C schema/GBNF/prompt/evidence guards, eval coverage,
+   and shared command documentation.
+2. Atomic projected validation and pilot intent breakout: active ILS/RNAV or
+   other approach guidance clears to ordinary heading/assigned modes, later
+   vectors/altitude/speed/direct instructions validate in order, and rejected
+   commands leave intent unchanged.
+3. Synthetic acceptance coverage for GS and pre-capture breakout, generic
+   approaches, cancellation alone, typed/PTT equivalence, malformed/re-arm/
+   lifecycle rejection, no missed or landing transition, and the radio help
+   entry. Phase 4 docs record FAA phraseology and ATC-SIM trainer limits.
+
+Captain commits: `d8139e1` (T04-66), `8b5544e` (T04-67), `97eaf7b` (T04-68).
+Planning commit: `cfe8c63`.
+
+Final `npm run ci`: **214 test files passed, 2,184 tests passed, 3 skipped**.
+Speech-api pytest: **92 passed**.
+
+Manual reviews found no FAIL. The supplied Raytheon STARS manual has no voice
+phraseology for canceling an approach; reviewed sections covered unrelated
+flight-plan cancellation and `CA` Conflict Alert behavior, with no contradiction.
+FAA phraseology evidence remains the ticket's JO 7110.65 §4-8-1 and AIM §5-4
+references. Recursive independent-review delegation was unavailable inside the
+reviewer invocations; primary read-only reviews completed and recorded this
+limitation. No files outside ticket scope were changed; `.agents/rules/`,
+`GEMINI.md`, and `audit.diff` remain untouched/untracked.
+
+## SEVENTY-SECOND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Cancel Approach Clearance Breakout (T04-66–T04-68)
+Merge target: `feature/better-openap-usage`
+Merged: T04-66, T04-67, T04-68
+Tests: final `npm run ci` green (2,184 tests passed, 3 skipped); speech-api mock pytest green (92 passed); manual R01 reviews complete with no FAIL
+Notes: generic approach cancellation; local trainer intent breakout only; no IFR cancellation, obstacle-clearance, certified-monitoring, missed-approach, or scope-CA behavior added; user-authorized push follows
+
 ## SEVENTY-FIRST SWARM COMPLETE — Procedure Speed/Altitude Precedence, DSR, and Approach Rules (T04-63–T04-65)
 
 Completed sequentially on `feature/better-openap-usage` with isolated workers,
