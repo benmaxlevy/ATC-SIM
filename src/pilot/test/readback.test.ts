@@ -132,6 +132,10 @@ test("formatReadback formats DELETE_SPEED_RESTRICTIONS", () => {
   );
 });
 
+test("formatReadback formats CANCEL_APPROACH", () => {
+  expect(readback([{ type: "CANCEL_APPROACH" }])).toBe("Delta 123 cancel approach clearance");
+});
+
 test("formatReadback formats SPEED with until FAF, DME, FIX", () => {
   expect(
     readback([{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } }]),

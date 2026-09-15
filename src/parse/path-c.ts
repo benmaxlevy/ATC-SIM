@@ -11,6 +11,7 @@ import {
   type TurnDir,
 } from "@core";
 import type { CatalogFixMatchMethod } from "./spoken/catalog-ground";
+import { cancelApproachSequenceError } from "./instruction-order";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
@@ -190,6 +191,7 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "SAY_HEADING" ||
     type === "SAY_ALTITUDE" ||
     type === "GO_AROUND" ||
+    type === "CANCEL_APPROACH" ||
     type === "MAINTAIN_VFR"
   ) {
     return keysOk(obj, ["type"]);
@@ -345,6 +347,9 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
       return null;
     }
     instructions.push(item);
+  }
+  if (cancelApproachSequenceError(instructions) !== null) {
+    return null;
   }
   return { callsignToken, instructions };
 }
@@ -600,11 +605,15 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   }
   if (
     has(/\b(?:approach|localizer|ils|cleared\s+(?:the\s+)?runway)\b/) &&
+    !has(/\bcancel\s+approach\s+clearance\b/) &&
     !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER")
   ) {
     return false;
   }
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {
+    return false;
+  }
+  if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
     return false;
   }
   return instructions.length > 0;

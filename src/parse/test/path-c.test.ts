@@ -6,6 +6,7 @@ import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   isLegalInstruction,
+  schemaCheckPathC,
   routePathCOutputIsGrounded,
   pathCResultIsComplete,
   type ParsePathCFn,
@@ -114,6 +115,36 @@ test("Path C keeps airport candidates out of DIRECT and FIX_THEN_DIRECT", async 
       parsePathC: overlap,
     }),
   ).resolves.toMatchObject({ ok: false });
+});
+
+test("Path C accepts ordered cancellation and rejects approach re-arm", () => {
+  expect(isLegalInstruction({ type: "CANCEL_APPROACH" })).toBe(true);
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: null,
+      instructions: [
+        { type: "CANCEL_APPROACH" },
+        { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      ],
+    }),
+  ).toEqual({
+    callsignToken: null,
+    instructions: [
+      { type: "CANCEL_APPROACH" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ],
+  });
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: null,
+      instructions: [
+        { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+        { type: "CANCEL_APPROACH" },
+      ],
+    }),
+  ).toBeNull();
 });
 
 test("Path C rejects a response that drops a supported clause", () => {

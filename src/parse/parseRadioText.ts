@@ -28,6 +28,7 @@ import {
   scanIfrClearanceRouteWindow,
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
+import { cancelApproachSequenceError } from "./instruction-order";
 
 export type ParseResult =
   | {
@@ -80,6 +81,10 @@ export function parseRadioText(
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
   }
+  const cancellationError = cancelApproachSequenceError(instructions);
+  if (cancellationError !== null) {
+    return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, cancellationError);
+  }
 
   return {
     ok: true,
@@ -115,6 +120,7 @@ function isTypedInstructionStart(token: string): boolean {
 const ZERO_ARG_INSTRUCTIONS: Readonly<Record<string, Instruction>> = {
   PH: { type: "PRESENT_HEADING" },
   GA: { type: "GO_AROUND" },
+  CAPP: { type: "CANCEL_APPROACH" },
   I: { type: "IDENT" },
   SH: { type: "SAY_HEADING" },
   SA: { type: "SAY_ALTITUDE" },

@@ -174,6 +174,9 @@ function validateOne(
         return { ok: false, reason: "NOT_ON_APPROACH" };
       }
       return { ok: true };
+    case "CANCEL_APPROACH":
+      // T04-67 owns active-approach validation and projected state.
+      return { ok: true };
     case "PRESENT_HEADING":
     case "IDENT":
     case "SAY_HEADING":

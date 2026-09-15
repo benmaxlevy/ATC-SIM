@@ -30,6 +30,7 @@ import {
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
+import { cancelApproachSequenceError } from "../instruction-order";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -52,6 +53,7 @@ const COMMAND_TRIGGERS = new Set([
   "ident",
   "iden",
   "say",
+  "cancel",
 ]);
 
 function runwaySide(tok: string | undefined): string | null {
@@ -596,6 +598,16 @@ function matchGoAround(
   }
   if (tokens[i] === "go-around" || tokens[i] === "ga") {
     return { instruction: { type: "GO_AROUND" }, next: i + 1 };
+  }
+  return null;
+}
+
+function matchCancelApproach(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "cancel" && tokens[i + 1] === "approach" && tokens[i + 2] === "clearance") {
+    return { instruction: { type: "CANCEL_APPROACH" }, next: i + 3 };
   }
   return null;
 }
@@ -1391,6 +1403,7 @@ export function matchSpokenPatterns(
       matchClearedApproach(tokens, i, approaches) ??
       matchExpectApproach(tokens, i, approaches) ??
       matchInterceptLocalizer(tokens, i, approaches) ??
+      matchCancelApproach(tokens, i) ??
       matchGoAround(tokens, i) ??
       matchVia(tokens, i, procedures) ??
       matchJoinProcedure(tokens, i, procedures) ??
@@ -1475,6 +1488,14 @@ export function matchSpokenPatterns(
 
   collectedInstructions.sort((a, b) => a.start - b.start);
   const instructions = collectedInstructions.map((item) => item.instruction);
+  const cancellationError = cancelApproachSequenceError(instructions);
+  if (cancellationError !== null) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.BAD_CLEARANCE, cancellationError),
+      sourceText,
+    };
+  }
   const callsignToken = foundCallsign ?? selectedCallsign ?? null;
 
   return {

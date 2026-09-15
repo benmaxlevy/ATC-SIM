@@ -186,6 +186,8 @@ function formatInstructionClause(
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
     case "INTERCEPT_LOCALIZER":
       return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
+    case "CANCEL_APPROACH":
+      return "cancel approach clearance";
     case "EXPECT_APPROACH":
       return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":

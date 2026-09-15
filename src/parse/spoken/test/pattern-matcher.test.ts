@@ -113,6 +113,20 @@ describe("pattern-matcher", () => {
     expect(res.instructions).toEqual([{ type: "DELETE_SPEED_RESTRICTIONS" }]);
   });
 
+  test("cancel approach clearance is ordered before later vectors", () => {
+    const res = parse(
+      "DAL123 cancel approach clearance fly heading two seven zero maintain five thousand",
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.instructions).toEqual([
+      { type: "CANCEL_APPROACH" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
+    ]);
+    expect(parse("DAL123 cancel approach").ok).toBe(false);
+  });
+
   test("maintain speed until constraints in island parsing", () => {
     const faf = parse("DAL123 maintain 180 knots until final approach fix");
     expect(faf.ok).toBe(true);

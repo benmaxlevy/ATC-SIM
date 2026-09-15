@@ -6,11 +6,11 @@ ok-true-object ::= "{" ws ok-true "," ws callsign-field "," ws instructions-fiel
 ok-false-object ::= "{" ws ok-false "," ws error-field ws "}"
 ok-true ::= "\"ok\"" ws ":" ws "true"
 ok-false ::= "\"ok\"" ws ":" ws "false"
-error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\"SCHEMA\"")
+error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\"SCHEMA\"" | "\"BAD_CLEARANCE\"")
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -21,6 +21,7 @@ direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":"
 expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 intercept-localizer ::= "{" ws "\"type\"" ws ":" ws "\"INTERCEPT_LOCALIZER\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
+cancel-approach ::= "{" ws "\"type\"" ws ":" ws "\"CANCEL_APPROACH\"" ws "}"
 assign-squawk ::= "{" ws "\"type\"" ws ":" ws "\"ASSIGN_SQUAWK\"" ws "," ws "\"code\"" ws ":" ws octal-code ws "," ws "\"source\"" ws ":" ws squawk-source ws "}"
 maintain-vfr ::= "{" ws "\"type\"" ws ":" ws "\"MAINTAIN_VFR\"" ws "}"
 ifr-clearance ::= "{" ws "\"type\"" ws ":" ws "\"IFR_CLEARANCE\"" ws "," ws "\"limitId\"" ws ":" ws string ws "," ws "\"access\"" ws ":" ws clearance-access (ws "," ws "\"altitudeFt\"" ws ":" ws number)? (ws "," ws "\"climbVia\"" ws ":" ws boolean)? (ws "," ws "\"frequency\"" ws ":" ws string)? (ws "," ws "\"squawk\"" ws ":" ws octal-code)? ws "}"

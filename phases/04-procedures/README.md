@@ -283,10 +283,19 @@ Phase 1 parser table already maps `APP ILS27` → `CLEARED_APPROACH`. Implement 
 | `DCT NEMAX` | `DIRECT { fixId: "NEMAX" }` |
 | `EXP ILS27` | `EXPECT_APPROACH { approachId: "ILS27" }` |
 | `APP ILS27` | `CLEARED_APPROACH { approachId: "ILS27" }` (already specified) |
+| `CAPP` | `CANCEL_APPROACH` — cancel approach clearance; generic across approach types, no approach ID |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` **new** |
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` **new, optional but recommended** |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 | `GA` | `GO_AROUND` **new, optional**; immediate missed if on approach |
+
+Spoken `cancel approach clearance` maps to the same `CANCEL_APPROACH` IR.
+It must be the first instruction in a combined transmission, may occur only once,
+and may be followed by ordinary vectors such as `fly heading 270, maintain
+5000`. It must not be followed by an approach clearance, localizer intercept,
+expected approach, or `GO_AROUND`. This is a trainer command for local approach
+breakout; it does not cancel IFR clearance and does not start the missed
+approach.
 
 `D` remains descend. Do not steal `D` for direct.
 
@@ -301,6 +310,7 @@ Readbacks (deterministic, FAA digits, callsign once):
 - `DESCEND_VIA DEM1` → `{callsign} descend via DEMO ONE`
 - `CROSS NEMAX AT 4000` → `{callsign} cross NEMAX at four thousand`
 - `GO_AROUND` → `{callsign} going around`
+- `CANCEL_APPROACH` → `{callsign} cancel approach clearance`
 
 Reject (no intent change):
 

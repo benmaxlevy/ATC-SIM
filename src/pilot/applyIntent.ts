@@ -396,6 +396,9 @@ function applyOne(
       aircraft.intent.speedUntil = undefined;
       aircraft.intent.speedRestrictionsDeleted = true;
       return;
+    case "CANCEL_APPROACH":
+      // T04-67 owns projected approach-state cancellation and breakout.
+      return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
       return;

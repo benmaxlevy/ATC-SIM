@@ -525,6 +525,10 @@ def test_path_c_validates_delete_speed_restrictions_and_speed_until() -> None:
     assert validate_instruction(dsr) == dsr
     assert validate_instruction({"type": "DELETE_SPEED_RESTRICTIONS", "extra": True}) is None
 
+    cancellation = {"type": "CANCEL_APPROACH"}
+    assert validate_instruction(cancellation) == cancellation
+    assert validate_instruction({"type": "CANCEL_APPROACH", "approachId": "ILS27"}) is None
+
     speed_plain = {"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN"}
     assert validate_instruction(speed_plain) == speed_plain
 
@@ -908,6 +912,32 @@ def test_semantic_guard_accepts_go_around_variants() -> None:
     missed = ParseOutcome(ok=True, instructions=[{"type": "GO_AROUND"}])
     assert guard_instruction_semantics("United 456 go around", missed).ok
     assert guard_instruction_semantics("United 456 goin around", missed).ok
+
+
+def test_semantic_guard_accepts_and_orders_cancel_approach() -> None:
+    from parse_engine import guard_instruction_semantics
+
+    cancellation = ParseOutcome(
+        ok=True,
+        instructions=[
+            {"type": "CANCEL_APPROACH"},
+            {"type": "FLY_HEADING", "headingDeg": 270, "turn": "SHORTEST"},
+            {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "MAINTAIN"},
+        ],
+    )
+    assert guard_instruction_semantics(
+        "cancel approach clearance, fly heading 270, maintain 5000", cancellation
+    ).ok
+    assert not guard_instruction_semantics(
+        "cancel approach, fly heading 270", ParseOutcome(ok=True, instructions=[{"type": "CANCEL_APPROACH"}])
+    ).ok
+    assert not guard_instruction_semantics(
+        "cancel approach clearance, go around",
+        ParseOutcome(
+            ok=True,
+            instructions=[{"type": "CANCEL_APPROACH"}, {"type": "GO_AROUND"}],
+        ),
+    ).ok
 
 
 def test_semantic_guard_lemmatization() -> None:

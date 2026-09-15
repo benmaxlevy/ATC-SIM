@@ -38,6 +38,7 @@ const tokenTable: [string, Instruction][] = [
   ["APP ILS27", { type: "CLEARED_APPROACH", approachId: "ILS27" }],
   ["IL ILS27", { type: "INTERCEPT_LOCALIZER", approachId: "ILS27" }],
   ["GA", { type: "GO_AROUND" }],
+  ["CAPP", { type: "CANCEL_APPROACH" }],
 ];
 
 test.each(tokenTable)("AC3 — %s produces the phase-1 IR", (source, instruction) => {
@@ -133,6 +134,18 @@ test("unknown tokens including DIRECT and EXPECT_APPROACH fail", () => {
   expect(errorCode("EXPECT ILS27")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
   expect(errorCode("H270 XYZ")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
   expect(errorCode("heading two seven zero")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+});
+
+test("CAPP is a zero-argument first-prefix command", () => {
+  expectOkInstructions("CAPP H270 A50", [
+    { type: "CANCEL_APPROACH" },
+    { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
+  ]);
+  expect(errorCode("H270 CAPP")).toBe(PARSE_ERROR.BAD_CLEARANCE);
+  expect(errorCode("CAPP ILS27")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+  expect(errorCode("CAPP APP ILS27")).toBe(PARSE_ERROR.BAD_CLEARANCE);
+  expect(errorCode("CA H270")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
 });
 
 test("I is IDENT never a callsign; H270 is an instruction not a callsign", () => {

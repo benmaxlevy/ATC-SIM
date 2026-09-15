@@ -31,6 +31,7 @@ import {
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
+import { cancelApproachSequenceError } from "../instruction-order";
 
 interface Cursor {
   tokens: readonly string[];
@@ -676,6 +677,15 @@ function tryGoAround(c: Cursor): Instruction | null {
   return null;
 }
 
+function tryCancelApproach(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "cancel") && take(c, "approach") && take(c, "clearance")) {
+    return { type: "CANCEL_APPROACH" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryIdent(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "squawk")) {
@@ -954,6 +964,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryDirect(c) ??
     trySquawk(c) ??
     tryIdent(c) ??
+    tryCancelApproach(c) ??
     tryGoAround(c) ??
     trySay(c) ??
     tryInterceptLocalizer(c) ??
@@ -1059,6 +1070,14 @@ export function parseSpokenGrammar(
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  const cancellationError = cancelApproachSequenceError(instructions);
+  if (cancellationError !== null) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.BAD_CLEARANCE, cancellationError),
+      sourceText,
+    };
   }
 
   return { ok: true, callsignToken, instructions, sourceText };

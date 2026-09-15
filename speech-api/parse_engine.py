@@ -36,6 +36,7 @@ INSTRUCTION_TYPES = frozenset(
         "EXPECT_APPROACH",
         "CLEARED_APPROACH",
         "INTERCEPT_LOCALIZER",
+        "CANCEL_APPROACH",
         "ASSIGN_SQUAWK",
         "MAINTAIN_VFR",
         "IFR_CLEARANCE",
@@ -72,7 +73,7 @@ Repair fused, slurred, and compact ASR when the intended clearance is clear. Nor
 
 Position advisories are not commands, but never stop parsing later sentences. “You are 15 miles from a fix. Maintain 4000 until established on the localizer. Cleared ILS runway 09 approach.” has two instructions after the advisory: ALTITUDE with MAINTAIN, altitudeFt 4000, untilEstablished true; then CLEARED_APPROACH using the matching approaches= id. Preserve every independent instruction in spoken order. “Turn 40 degrees left. Intercept runway 09 localizer. Maintain 5000.” requires three instructions: TURN_DEGREES, INTERCEPT_LOCALIZER using the matching approaches= id, then ALTITUDE. Do not drop one instruction or combine it into another.
 
-Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
+Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
 New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
 
@@ -733,6 +734,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "INTERCEPT_LOCALIZER", "approachId": raw["approachId"]}
+    if instr_type == "CANCEL_APPROACH":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "CANCEL_APPROACH"}
     if instr_type == "ASSIGN_SQUAWK":
         if not _exact_keys(raw, {"type", "code", "source"}):
             return None
@@ -927,7 +932,7 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         return ParseOutcome(ok=False, error="SCHEMA")
     if payload.get("ok") is False:
         err = payload.get("error")
-        if err in {"UNAVAILABLE", "PARSE_MISS", "SCHEMA"}:
+        if err in {"UNAVAILABLE", "PARSE_MISS", "SCHEMA", "BAD_CLEARANCE"}:
             return ParseOutcome(ok=False, error=str(err))
         return ParseOutcome(ok=False, error="PARSE_MISS")
     if "instructions" not in payload:
@@ -946,7 +951,28 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         if checked is None:
             return ParseOutcome(ok=False, error="SCHEMA")
         instructions.append(checked)
+    if cancel_approach_sequence_error(instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     return ParseOutcome(ok=True, callsign_token=token, instructions=instructions)
+
+
+def cancel_approach_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
+    indexes = [
+        index for index, instruction in enumerate(instructions) if instruction.get("type") == "CANCEL_APPROACH"
+    ]
+    if not indexes:
+        return None
+    if indexes[0] != 0:
+        return "CANCEL_APPROACH must be first"
+    if len(indexes) != 1:
+        return "CANCEL_APPROACH may occur only once"
+    if any(
+        instruction.get("type")
+        in {"CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "EXPECT_APPROACH", "GO_AROUND"}
+        for instruction in instructions[1:]
+    ):
+        return "CANCEL_APPROACH cannot be followed by approach or go-around instructions"
+    return None
 
 
 def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str) -> bool:
@@ -1013,6 +1039,8 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         return has(r"\b(?:cleared|clear)\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "INTERCEPT_LOCALIZER":
         return has(r"\bintercept\b") and has(r"\b(localizer|loc)\b")
+    if instruction_type == "CANCEL_APPROACH":
+        return has(r"\bcancel\s+approach\s+clearance\b")
     if instruction_type == "IDENT":
         return has(r"\b(ident|iden)\b")
     if instruction_type == "SAY_HEADING":
@@ -1085,6 +1113,8 @@ def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcom
     """Reject Path C instruction types unsupported by transcript evidence."""
     if not outcome.ok:
         return outcome
+    if cancel_approach_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     normalized = normalize_evidence_text(text)
     kept = [
         instruction

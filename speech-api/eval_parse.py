@@ -466,6 +466,17 @@ CASES: list[dict[str, Any]] = [
         "text": "goin around",
         "expect": {"instructions": [{"type": "GO_AROUND"}]},
     },
+    {
+        "id": "cancel-approach-clearance",
+        "text": "cancel approach clearance, fly heading 270, maintain 5000",
+        "expect": {
+            "instructions": [
+                {"type": "CANCEL_APPROACH"},
+                {"type": "FLY_HEADING", "headingDeg": 270, "turn": "SHORTEST"},
+                {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "MAINTAIN"},
+            ]
+        },
+    },
     # --- PROCEDURE / CROSS ---
     {
         "id": "via-star-clean",
