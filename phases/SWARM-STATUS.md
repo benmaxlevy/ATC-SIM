@@ -1,5 +1,29 @@
 # Swarm status
 
+## SEVENTY-FIRST SWARM COMPLETE — Procedure Speed/Altitude Precedence, DSR, and Approach Rules (T04-63–T04-65)
+
+Completed sequentially on `feature/better-openap-usage` with isolated workers,
+captain squash merges, and no push. The delivered surface implements:
+1. Procedure altitude and speed precedence: altitude commands on a SID/STAR override vertical procedure restrictions (`ASSIGNED` mode) while keeping lateral routing (`PROCEDURE`). Assigned speeds override published fix speed constraints.
+2. Approach altitude rejection: altitude instructions issued to aircraft already cleared for an instrument approach reject with natural telephony (`"unable. cleared for the ILS already."`).
+3. Heading adjustments prior to localizer capture preserve approach clearance and armed `INTERCEPT_LOC`, while headings issued once established on localizer break out to vectors.
+4. `DSR` (`DELETE_SPEED_RESTRICTIONS`) cancels published procedure speed constraints and transitions aircraft to normal arrival profile speed (or climb speed).
+5. Approach speed boundary and `until` gates: speed assignments support `until` gates (`FAF`, `DME`, `FIX`), strictly bounded by FAA JO 7110.65 § 5-7-1 at `Math.min(approach.fafDistanceNm ?? 5, 5)`. Commands inside the boundary reject (`"unable. restriction too close to 5 DME"`). At the gate/boundary, assignments expire and aircraft slow to approach/landing speed.
+
+Captain commits: `9b589b4` (T04-63), `9c15cfd` (T04-64), `6275a13` (T04-65).
+Planning commit: `e70af06`.
+
+Final `npm run ci`: **211 test files passed, 2,141 tests passed, 3 skipped**.
+Speech-api pytest: **91 passed**.
+
+## SEVENTY-FIRST SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Procedure Speed/Altitude Precedence, DSR, and Approach Rules (T04-63–T04-65)
+Merge target: `feature/better-openap-usage`
+Merged: T04-63, T04-64, T04-65
+Tests: npm run ci exit 0 (2,141 tests passed), speech-api pytest exit 0 (91 passed)
+Notes: Full command IR, pilot validation, typed/spoken parsing, readback, Path C parity, and FMS kinematics/transition verified; no push
+
 ## SIXTY-SEVENTH SWARM COMPLETE — Simplified OpenAP Profile Pipeline (T04-60–T04-62)
 
 Completed sequentially on `feature/better-openap-usage` with isolated workers,
