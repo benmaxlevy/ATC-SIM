@@ -6,7 +6,7 @@
  * transmission order.
  */
 
-import type { Instruction, TurnDir } from "@core";
+import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
 import {
@@ -47,6 +47,7 @@ const COMMAND_TRIGGERS = new Set([
   "cross",
   "heading",
   "speed",
+  "delete",
   "squawk",
   "ident",
   "iden",
@@ -1078,9 +1079,79 @@ function matchAltitude(
   return { instruction: inst, next: j };
 }
 
+function matchDeleteSpeedRestrictions(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "delete" && tokens[i + 1] === "speed") {
+    if (tokens[i + 2] === "restrictions" || tokens[i + 2] === "restriction") {
+      return {
+        instruction: { type: "DELETE_SPEED_RESTRICTIONS" },
+        next: i + 3,
+      };
+    }
+  }
+  return null;
+}
+
+function matchSpeedUntil(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+): { until: SpeedUntil; next: number } | null {
+  if (tokens[i] !== "until") {
+    return null;
+  }
+  let j = i + 1;
+  if (tokens[j] === "the") {
+    j += 1;
+  }
+
+  // 1. Final approach fix / FAF
+  if (tokens[j] === "final" && tokens[j + 1] === "approach" && tokens[j + 2] === "fix") {
+    return { until: { type: "FAF" }, next: j + 3 };
+  }
+  if (tokens[j] === "faf") {
+    return { until: { type: "FAF" }, next: j + 1 };
+  }
+
+  // 2. <n> DME / <n> miles
+  const dist = parseTurnDegreesValue(tokens, j);
+  if (dist !== null && dist.value >= 0) {
+    const nextWord = tokens[dist.next];
+    if (nextWord === "dme") {
+      return { until: { type: "DME", distanceNm: dist.value }, next: dist.next + 1 };
+    }
+    if (
+      nextWord === "miles" ||
+      nextWord === "mile" ||
+      nextWord === "nm" ||
+      nextWord === "nautical"
+    ) {
+      let nextIdx = dist.next + 1;
+      if (nextWord === "nautical" && (tokens[nextIdx] === "miles" || tokens[nextIdx] === "mile")) {
+        nextIdx += 1;
+      }
+      if (tokens[nextIdx] === "dme") {
+        nextIdx += 1;
+      }
+      return { until: { type: "DME", distanceNm: dist.value }, next: nextIdx };
+    }
+  }
+
+  // 3. <fix>
+  const fix = parseFixIdFrom(tokens, j, catalog);
+  if (fix !== null) {
+    return { until: { type: "FIX", fixId: fix.fixId }, next: fix.next };
+  }
+
+  return null;
+}
+
 function matchSpeed(
   tokens: readonly string[],
   i: number,
+  catalog: readonly CatalogFixInput[],
 ): { instruction: Instruction; next: number } | null {
   // Case 1: reduce / slow
   if (tokens[i] === "reduce" || tokens[i] === "slow") {
@@ -1101,6 +1172,18 @@ function matchSpeed(
       j = spd.next;
       if (tokens[j] === "knots") {
         j += 1;
+      }
+      const untilMatch = matchSpeedUntil(tokens, j, catalog);
+      if (untilMatch) {
+        return {
+          instruction: {
+            type: "SPEED",
+            speedKt: spd.value,
+            verb: "REDUCE",
+            until: untilMatch.until,
+          },
+          next: untilMatch.next,
+        };
       }
       return {
         instruction: { type: "SPEED", speedKt: spd.value, verb: "REDUCE" },
@@ -1129,6 +1212,18 @@ function matchSpeed(
       if (tokens[j] === "knots") {
         j += 1;
       }
+      const untilMatch = matchSpeedUntil(tokens, j, catalog);
+      if (untilMatch) {
+        return {
+          instruction: {
+            type: "SPEED",
+            speedKt: spd.value,
+            verb: "INCREASE",
+            until: untilMatch.until,
+          },
+          next: untilMatch.next,
+        };
+      }
       return {
         instruction: { type: "SPEED", speedKt: spd.value, verb: "INCREASE" },
         next: j,
@@ -1147,9 +1242,22 @@ function matchSpeed(
     if (spd) {
       const hasKnots = tokens[spd.next] === "knots";
       if (hasKnots || hasSpeedWord) {
+        const nextIdx = hasKnots ? spd.next + 1 : spd.next;
+        const untilMatch = matchSpeedUntil(tokens, nextIdx, catalog);
+        if (untilMatch) {
+          return {
+            instruction: {
+              type: "SPEED",
+              speedKt: spd.value,
+              verb: "MAINTAIN",
+              until: untilMatch.until,
+            },
+            next: untilMatch.next,
+          };
+        }
         return {
           instruction: { type: "SPEED", speedKt: spd.value, verb: "MAINTAIN" },
-          next: hasKnots ? spd.next + 1 : spd.next,
+          next: nextIdx,
         };
       }
     }
@@ -1171,6 +1279,18 @@ function matchSpeed(
       j = spd.next;
       if (tokens[j] === "knots") {
         j += 1;
+      }
+      const untilMatch = matchSpeedUntil(tokens, j, catalog);
+      if (untilMatch) {
+        return {
+          instruction: {
+            type: "SPEED",
+            speedKt: spd.value,
+            verb: "MAINTAIN",
+            until: untilMatch.until,
+          },
+          next: untilMatch.next,
+        };
       }
       return {
         instruction: { type: "SPEED", speedKt: spd.value, verb: "MAINTAIN" },
@@ -1281,7 +1401,8 @@ export function matchSpokenPatterns(
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??
-      matchSpeed(tokens, i) ??
+      matchSpeed(tokens, i, catalog) ??
+      matchDeleteSpeedRestrictions(tokens, i) ??
       matchSquawk(tokens, i) ??
       matchIdent(tokens, i) ??
       matchSay(tokens, i);

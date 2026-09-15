@@ -102,7 +102,17 @@ function speakApproachNav(approachId: string): string {
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
-  return `${instruction.verb.toLowerCase()} ${formatDigitString(instruction.speedKt)} knots`;
+  let clause = `${instruction.verb.toLowerCase()} ${formatDigitString(instruction.speedKt)} knots`;
+  if (instruction.until) {
+    if (instruction.until.type === "FAF") {
+      clause += " until final approach fix";
+    } else if (instruction.until.type === "DME") {
+      clause += ` until ${formatDigitString(instruction.until.distanceNm)} DME`;
+    } else if (instruction.until.type === "FIX") {
+      clause += ` until ${instruction.until.fixId}`;
+    }
+  }
+  return clause;
 }
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
@@ -199,6 +209,8 @@ function formatInstructionClause(
     }
     case "GO_AROUND":
       return "going around";
+    case "DELETE_SPEED_RESTRICTIONS":
+      return "delete speed restrictions";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

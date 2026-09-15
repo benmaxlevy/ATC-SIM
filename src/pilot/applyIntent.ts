@@ -289,6 +289,7 @@ function applyOne(
     case "SPEED":
       aircraft.intent.assignedSpeedKt = instruction.speedKt;
       aircraft.intent.controllerAssignedSpeedKt = instruction.speedKt;
+      aircraft.intent.speedUntil = instruction.until;
       return;
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
@@ -370,6 +371,9 @@ function applyOne(
       );
       return;
     }
+    case "DELETE_SPEED_RESTRICTIONS":
+      aircraft.intent.speedRestrictionsDeleted = true;
+      return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
       return;

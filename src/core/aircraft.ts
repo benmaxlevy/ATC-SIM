@@ -1,4 +1,4 @@
-import type { IfrClearanceAccess, TurnDir } from "./command/types";
+import type { IfrClearanceAccess, SpeedUntil, TurnDir } from "./command/types";
 import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
 
@@ -119,6 +119,10 @@ export interface Intent {
   assignedSpeedKt: number;
   /** Speed explicitly assigned by controller via radio/command (e.g. S210). Omitted when locked to STAR/SID or default speed. */
   controllerAssignedSpeedKt?: number;
+  /** Set by DELETE_SPEED_RESTRICTIONS to cancel published SID/STAR speed constraints. */
+  speedRestrictionsDeleted?: boolean;
+  /** Assigned speed endpoint constraint (FAF, DME, FIX). */
+  speedUntil?: SpeedUntil;
   /** Scratchpad only — EXPECT_APPROACH does not capture. */
   expectedApproachId: string | null;
   /** Armed ILS id after CLEARED_APPROACH; heading instructions clear this. */

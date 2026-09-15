@@ -173,3 +173,36 @@ function expectOkInstructions(source: string, instructions: Instruction[]): void
   }
   expect(result.instructions).toEqual(instructions);
 }
+
+test("T04-63: parseRadioText parses DSR as DELETE_SPEED_RESTRICTIONS", () => {
+  const res = parseRadioText("AAL123 DSR");
+  expect(res.ok).toBe(true);
+  if (res.ok) {
+    expect(res.callsignToken).toBe("AAL123");
+    expect(res.instructions).toEqual([{ type: "DELETE_SPEED_RESTRICTIONS" }]);
+  }
+});
+
+test("T04-63: parseRadioText parses speed with until constraints (FAF, DME, FIX)", () => {
+  expectOkInstructions("AAL123 S180/FAF", [
+    { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } },
+  ]);
+  expectOkInstructions("S180/7DME", [
+    { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+  ]);
+  expectOkInstructions("S180/7", [
+    { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+  ]);
+  expectOkInstructions("S210/MERGE", [
+    { type: "SPEED", speedKt: 210, verb: "MAINTAIN", until: { type: "FIX", fixId: "MERGE" } },
+  ]);
+  expectOkInstructions("S 180 /FAF", [
+    { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } },
+  ]);
+});
+
+test("T04-63: parseRadioText rejects malformed speed until constraints", () => {
+  expect(errorCode("S180/")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+  expect(errorCode("S180/-5")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+  expect(errorCode("H270/FAF")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+});

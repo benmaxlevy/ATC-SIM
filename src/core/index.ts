@@ -178,6 +178,7 @@ export type {
   Instruction,
   LegacyIfrClearanceAccess,
   ParseStage,
+  SpeedUntil,
   TurnDir,
 } from "./command/types";
 export { INSTRUCTION_TYPES } from "./command/types";

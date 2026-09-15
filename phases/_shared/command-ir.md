@@ -28,6 +28,11 @@ export interface Command {
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 
+export type SpeedUntil =
+  | { type: "FAF" }
+  | { type: "FIX"; fixId: string }
+  | { type: "DME"; distanceNm: number };
+
 export type Instruction =
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }
@@ -47,6 +52,7 @@ export type Instruction =
       type: "SPEED";
       speedKt: number;
       verb: "MAINTAIN" | "INCREASE" | "REDUCE";
+      until?: SpeedUntil;
     }
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
@@ -84,7 +90,8 @@ export type Instruction =
       altitudeFt: number;
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
-  | { type: "GO_AROUND" };
+  | { type: "GO_AROUND" }
+  | { type: "DELETE_SPEED_RESTRICTIONS" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -103,6 +110,10 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `T20L` | `TURN_DEGREES LEFT 20` |
 | `C30` / `D30` / `A30` | climb / descend / maintain 3000 ft |
 | `S210` | `SPEED MAINTAIN 210` |
+| `S180/FAF` | `SPEED MAINTAIN 180 until { type: "FAF" }` |
+| `S180/7DME` / `S180/7` | `SPEED MAINTAIN 180 until { type: "DME", distanceNm: 7 }` |
+| `S210/MERGE` | `SPEED MAINTAIN 210 until { type: "FIX", fixId: "MERGE" }` |
+| `DSR` | `DELETE_SPEED_RESTRICTIONS` — cancels published SID/STAR speed constraints |
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |

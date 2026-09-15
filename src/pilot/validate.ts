@@ -165,6 +165,7 @@ function validateOne(
     case "IDENT":
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
+    case "DELETE_SPEED_RESTRICTIONS":
       return { ok: true };
     default: {
       const _exhaustive: never = instruction;

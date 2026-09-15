@@ -125,3 +125,25 @@ test("formatRejectReadback speaks speed and altitude unable details with callsig
     }),
   ).toBe("Unable speed 120, minimum is 140");
 });
+
+test("formatReadback formats DELETE_SPEED_RESTRICTIONS", () => {
+  expect(readback([{ type: "DELETE_SPEED_RESTRICTIONS" }])).toBe(
+    "Delta 123 delete speed restrictions",
+  );
+});
+
+test("formatReadback formats SPEED with until FAF, DME, FIX", () => {
+  expect(
+    readback([{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } }]),
+  ).toBe("Delta 123 maintain 180 knots until final approach fix");
+  expect(
+    readback([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+    ]),
+  ).toBe("Delta 123 maintain 180 knots until 7 DME");
+  expect(
+    readback([
+      { type: "SPEED", speedKt: 210, verb: "MAINTAIN", until: { type: "FIX", fixId: "MERGE" } },
+    ]),
+  ).toBe("Delta 123 maintain 210 knots until MERGE");
+});

@@ -47,6 +47,7 @@ INSTRUCTION_TYPES = frozenset(
         "JOIN_PROCEDURE",
         "CROSS",
         "GO_AROUND",
+        "DELETE_SPEED_RESTRICTIONS",
     }
 )
 
@@ -669,11 +670,41 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
             out["untilEstablished"] = raw["untilEstablished"]
         return out
     if instr_type == "SPEED":
-        if not _exact_keys(raw, {"type", "speedKt", "verb"}):
+        if not _exact_keys(raw, {"type", "speedKt", "verb"}, {"until"}):
             return None
         if not _is_finite_number(raw["speedKt"]) or raw["verb"] not in SPEED_VERBS:
             return None
-        return {"type": "SPEED", "speedKt": _as_number(raw["speedKt"]), "verb": raw["verb"]}
+        out: dict[str, Any] = {"type": "SPEED", "speedKt": _as_number(raw["speedKt"]), "verb": raw["verb"]}
+        if "until" in raw:
+            until = raw["until"]
+            if not isinstance(until, dict) or "type" not in until:
+                return None
+            until_type = until["type"]
+            if until_type == "FAF":
+                if not _exact_keys(until, {"type"}):
+                    return None
+                out["until"] = {"type": "FAF"}
+            elif until_type == "FIX":
+                if (
+                    not _exact_keys(until, {"type", "fixId"})
+                    or not isinstance(until["fixId"], str)
+                    or not until["fixId"]
+                ):
+                    return None
+                out["until"] = {"type": "FIX", "fixId": until["fixId"]}
+            elif until_type == "DME":
+                if (
+                    not _exact_keys(until, {"type", "distanceNm"})
+                    or not _is_finite_number(until["distanceNm"])
+                ):
+                    return None
+                dist = _as_number(until["distanceNm"])
+                if dist < 0:
+                    return None
+                out["until"] = {"type": "DME", "distanceNm": dist}
+            else:
+                return None
+        return out
     if instr_type == "DIRECT":
         if not _exact_keys(raw, {"type", "fixId"}) or not isinstance(raw["fixId"], str) or not raw["fixId"]:
             return None
@@ -810,6 +841,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "GO_AROUND"}
+    if instr_type == "DELETE_SPEED_RESTRICTIONS":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "DELETE_SPEED_RESTRICTIONS"}
     if instr_type == "DESCEND_VIA":
         if (
             not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})

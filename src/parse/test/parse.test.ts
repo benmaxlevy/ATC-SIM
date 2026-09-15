@@ -161,3 +161,64 @@ test("pathC false does not fetch", async () => {
 test("parseRadioText still rejects English", () => {
   expect(parseRadioText("turn left heading two seven zero").ok).toBe(false);
 });
+
+test("T04-63: voice delete speed restrictions and delete speed restriction", async () => {
+  for (const phrase of [
+    "Delta 123 delete speed restrictions",
+    "Delta 123 delete speed restriction",
+  ]) {
+    const res = await parseCommand(phrase, { source: "voice", pathC: false });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.callsignToken).toBe("DAL123");
+      expect(res.instructions).toEqual([{ type: "DELETE_SPEED_RESTRICTIONS" }]);
+    }
+  }
+});
+
+test("T04-63: voice maintain speed until constraints (FAF, DME, miles, fix)", async () => {
+  const fafRes = await parseCommand("Delta 123 maintain 180 knots until final approach fix", {
+    source: "voice",
+    pathC: false,
+  });
+  expect(fafRes.ok).toBe(true);
+  if (fafRes.ok) {
+    expect(fafRes.instructions).toEqual([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } },
+    ]);
+  }
+
+  const dmeRes = await parseCommand("Delta 123 maintain 180 knots until 7 DME", {
+    source: "voice",
+    pathC: false,
+  });
+  expect(dmeRes.ok).toBe(true);
+  if (dmeRes.ok) {
+    expect(dmeRes.instructions).toEqual([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+    ]);
+  }
+
+  const milesRes = await parseCommand("Delta 123 maintain 180 knots until 7 miles", {
+    source: "voice",
+    pathC: false,
+  });
+  expect(milesRes.ok).toBe(true);
+  if (milesRes.ok) {
+    expect(milesRes.instructions).toEqual([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+    ]);
+  }
+
+  const fixRes = await parseCommand("Delta 123 maintain 210 knots until MERGE", {
+    source: "voice",
+    fixes: ["MERGE"],
+    pathC: false,
+  });
+  expect(fixRes.ok).toBe(true);
+  if (fixRes.ok) {
+    expect(fixRes.instructions).toEqual([
+      { type: "SPEED", speedKt: 210, verb: "MAINTAIN", until: { type: "FIX", fixId: "MERGE" } },
+    ]);
+  }
+});

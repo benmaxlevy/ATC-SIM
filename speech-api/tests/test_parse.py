@@ -520,6 +520,31 @@ def test_path_c_validates_squawk_vfr_maintain_vfr_and_clearance_variants() -> No
     ) is None
 
 
+def test_path_c_validates_delete_speed_restrictions_and_speed_until() -> None:
+    dsr = {"type": "DELETE_SPEED_RESTRICTIONS"}
+    assert validate_instruction(dsr) == dsr
+    assert validate_instruction({"type": "DELETE_SPEED_RESTRICTIONS", "extra": True}) is None
+
+    speed_plain = {"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN"}
+    assert validate_instruction(speed_plain) == speed_plain
+
+    speed_faf = {"type": "SPEED", "speedKt": 180, "verb": "MAINTAIN", "until": {"type": "FAF"}}
+    assert validate_instruction(speed_faf) == speed_faf
+
+    speed_dme = {"type": "SPEED", "speedKt": 180, "verb": "MAINTAIN", "until": {"type": "DME", "distanceNm": 7}}
+    assert validate_instruction(speed_dme) == speed_dme
+
+    speed_fix = {"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN", "until": {"type": "FIX", "fixId": "MERGE"}}
+    assert validate_instruction(speed_fix) == speed_fix
+
+    # Rejections
+    assert validate_instruction({"type": "SPEED", "speedKt": 180, "verb": "MAINTAIN", "until": {"type": "FAF", "extra": True}}) is None
+    assert validate_instruction({"type": "SPEED", "speedKt": 180, "verb": "MAINTAIN", "until": {"type": "DME", "distanceNm": -1}}) is None
+    assert validate_instruction({"type": "SPEED", "speedKt": 180, "verb": "MAINTAIN", "until": {"type": "DME"}}) is None
+    assert validate_instruction({"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN", "until": {"type": "FIX", "fixId": ""}}) is None
+    assert validate_instruction({"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN", "until": {"type": "UNKNOWN"}}) is None
+
+
 def test_path_c_semantic_guard_distinguishes_tactical_direct_from_clearance() -> None:
     from parse_engine import guard_instruction_semantics
 
