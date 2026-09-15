@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createAircraft, type Instruction } from "@core";
+import { createAircraft, performanceRegistry, type Instruction } from "@core";
 import { validateInstructions } from "../validate";
 
 function jet(overrides: { altitudeFt?: number; headingDeg?: number; speedKt?: number } = {}) {
@@ -85,10 +85,12 @@ test("speed outside [150, 280] is SPEED; edges pass", () => {
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 149, verb: "MAINTAIN" }])).toEqual({
     ok: false,
     reason: "SPEED",
+    detail: "unable speed 149, minimum is 150",
   });
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 281, verb: "MAINTAIN" }])).toEqual({
     ok: false,
     reason: "SPEED",
+    detail: "unable speed 281, maximum is 280",
   });
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 150, verb: "MAINTAIN" }]).ok).toBe(
     true,
@@ -96,6 +98,117 @@ test("speed outside [150, 280] is SPEED; edges pass", () => {
   expect(validateInstructions(jet(), [{ type: "SPEED", speedKt: 280, verb: "MAINTAIN" }]).ok).toBe(
     true,
   );
+});
+
+test("performance profile overrides min/max controlled speed with unable details", () => {
+  const customProfile = {
+    icaoType: "CUSTOM",
+    representativeVariant: "custom",
+    representativeEngine: "custom",
+    status: "SUPPORTED" as const,
+    limits: {
+      minControlledSpeedKt: 140,
+      maxControlledSpeedKt: 350,
+      serviceCeilingFt: 41000,
+    },
+    regimes: null,
+  };
+  const ac = jet({ speedKt: 250 });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 120, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable speed 120, minimum is 140",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 380, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable speed 380, maximum is 350",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "SPEED", speedKt: 250, verb: "MAINTAIN" }], {
+      performanceProfile: customProfile,
+    }).ok,
+  ).toBe(true);
+});
+
+test("performance profile service ceiling rejects higher altitude with detail", () => {
+  const customProfile = {
+    icaoType: "CUSTOM",
+    representativeVariant: "custom",
+    representativeEngine: "custom",
+    status: "SUPPORTED" as const,
+    limits: {
+      minControlledSpeedKt: 140,
+      maxControlledSpeedKt: 350,
+      serviceCeilingFt: 41000,
+    },
+    regimes: null,
+  };
+  const ac = jet({ altitudeFt: 30000 });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 45000, verb: "CLIMB" }], {
+      performanceProfile: customProfile,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable altitude 45000, ceiling is 41000",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 41000, verb: "CLIMB" }], {
+      performanceProfile: customProfile,
+    }).ok,
+  ).toBe(true);
+});
+
+test("aircraftType in registry validates against registered profile limits", () => {
+  const a320 = createAircraft({
+    id: "ac-a320",
+    callsign: "AAL100",
+    aircraftType: "A320",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 10000,
+    speedKt: 250,
+  });
+  const profile = performanceRegistry.getProfile("A320");
+  const minKt = profile.limits?.minControlledSpeedKt ?? 100;
+  const maxKt = profile.limits?.maxControlledSpeedKt ?? 350;
+  const ceilingFt = profile.limits?.serviceCeilingFt ?? 41010;
+
+  expect(
+    validateInstructions(a320, [{ type: "SPEED", speedKt: minKt - 20, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: `unable speed ${minKt - 20}, minimum is ${minKt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "SPEED", speedKt: maxKt + 10, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: `unable speed ${maxKt + 10}, maximum is ${maxKt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "ALTITUDE", altitudeFt: 45000, verb: "CLIMB" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: `unable altitude 45000, ceiling is ${ceilingFt}`,
+  });
+  expect(
+    validateInstructions(a320, [{ type: "ALTITUDE", altitudeFt: 35000, verb: "CLIMB" }]).ok,
+  ).toBe(true);
 });
 
 test("CLEARED_APPROACH needs a known approachId when catalog is present", () => {
@@ -372,4 +485,286 @@ test("one bad instruction rejects the whole list", () => {
       { type: "ALTITUDE", altitudeFt: 3000, verb: "CLIMB" },
     ]),
   ).toEqual({ ok: false, reason: "CLIMB_NOT_ABOVE" });
+});
+
+test("AC2: altitude rejected when cleared for approach", () => {
+  const ac = jet({ altitudeFt: 3000 });
+  ac.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(ac, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the ILS already.",
+  });
+
+  const rnavAc = jet({ altitudeFt: 3000 });
+  rnavAc.intent.clearedApproachId = "RNAV27";
+  expect(
+    validateInstructions(rnavAc, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the approach already.",
+  });
+
+  // When clearedApproachId is not set, altitude validates normally
+  const unCleared = jet({ altitudeFt: 3000 });
+  expect(
+    validateInstructions(unCleared, [{ type: "ALTITUDE", altitudeFt: 2000, verb: "DESCEND" }]).ok,
+  ).toBe(true);
+});
+
+test("CANCEL_APPROACH validates later altitude against projected post-approach state", () => {
+  const ac = jet({ altitudeFt: 8000, headingDeg: 180 });
+  ac.intent.clearedApproachId = "RNAV09";
+  ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+  ac.intent.vertical = { type: "GS", approachId: "RNAV09" };
+
+  expect(
+    validateInstructions(ac, [
+      { type: "CANCEL_APPROACH" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "ALTITUDE", altitudeFt: 5000, verb: "DESCEND" },
+    ]),
+  ).toEqual({ ok: true });
+  expect(ac.intent.clearedApproachId).toBe("RNAV09");
+  expect(ac.intent.vertical).toEqual({ type: "GS", approachId: "RNAV09" });
+});
+
+test("CANCEL_APPROACH requires active approach and rejects missed/landing", () => {
+  expect(validateInstructions(jet(), [{ type: "CANCEL_APPROACH" }])).toEqual({
+    ok: false,
+    reason: "NOT_ON_APPROACH",
+  });
+
+  for (const lateral of [
+    { type: "MISSED", approachId: "RNAV09" } as const,
+    { type: "LANDING", approachId: "RNAV09" } as const,
+  ]) {
+    const ac = jet();
+    ac.intent.clearedApproachId = "RNAV09";
+    ac.intent.lateral = lateral;
+    expect(validateInstructions(ac, [{ type: "CANCEL_APPROACH" }])).toEqual({
+      ok: false,
+      reason: "NOT_ON_APPROACH",
+    });
+  }
+});
+
+test("CANCEL_APPROACH rejects ordering, duplicate, and lifecycle conflicts", () => {
+  const active = () => {
+    const ac = jet();
+    ac.intent.clearedApproachId = "RNAV09";
+    ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+    return ac;
+  };
+
+  expect(
+    validateInstructions(active(), [
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "CANCEL_APPROACH" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH must be the first instruction",
+  });
+  expect(
+    validateInstructions(active(), [{ type: "CANCEL_APPROACH" }, { type: "CANCEL_APPROACH" }]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH may be issued only once",
+  });
+  expect(
+    validateInstructions(active(), [
+      { type: "CANCEL_APPROACH" },
+      { type: "CLEARED_APPROACH", approachId: "RNAV09" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+  });
+});
+
+test("AC5: speed rejected inside 5 DME / FAF boundary when on approach", () => {
+  const approaches = [
+    {
+      id: "ILS27",
+      type: "ILS",
+      courseDeg: 270,
+      fafDistanceNm: 6, // hardBoundaryNm = min(6, 5) = 5 -> "5 DME"
+      thresholdFixId: "RW27",
+    },
+    {
+      id: "ILS09",
+      type: "ILS",
+      courseDeg: 90,
+      fafDistanceNm: 4, // hardBoundaryNm = min(4, 5) = 4 -> "final approach fix"
+      thresholdFixId: "RW09",
+    },
+  ];
+  const fixRegistry = {
+    has: (id: string) => id === "RW27" || id === "RW09",
+    get: (id: string) => (id === "RW27" ? { xNm: 0, yNm: 0 } : { xNm: 0, yNm: 0 }),
+  } as unknown as import("@core").FixRegistry;
+
+  const catalog = {
+    stars: [],
+    sids: [],
+    approaches,
+  };
+
+  // Inside 5 DME on ILS27: xNm = 4 (alongTrackNm = 4 <= 5)
+  const inside5Dme = jet({ altitudeFt: 3000 });
+  inside5Dme.xNm = 4;
+  inside5Dme.yNm = 0;
+  inside5Dme.headingDeg = 270;
+  inside5Dme.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(inside5Dme, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // Outside 5 DME on ILS27: xNm = 6 (alongTrackNm = 6 > 5) -> passes
+  const outside5Dme = jet({ altitudeFt: 3000 });
+  outside5Dme.xNm = 6;
+  outside5Dme.yNm = 0;
+  outside5Dme.headingDeg = 270;
+  outside5Dme.intent.clearedApproachId = "ILS27";
+
+  expect(
+    validateInstructions(outside5Dme, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }).ok,
+  ).toBe(true);
+
+  // Inside FAF boundary when fafDistanceNm is 4: heading 90, xNm = -3 (alongTrackNm = 3 <= 4)
+  const insideFaf = jet({ altitudeFt: 3000 });
+  insideFaf.xNm = -3;
+  insideFaf.yNm = 0;
+  insideFaf.headingDeg = 90;
+  insideFaf.intent.clearedApproachId = "ILS09";
+
+  expect(
+    validateInstructions(insideFaf, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to final approach fix",
+  });
+
+  // Not on approach: at xNm = 4, heading 270, but clearedApproachId is null and lateral is not LOC/LANDING
+  const notOnApproach = jet({ altitudeFt: 3000 });
+  notOnApproach.xNm = 4;
+  notOnApproach.yNm = 0;
+  expect(
+    validateInstructions(notOnApproach, [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN" }], {
+      catalog,
+      fixRegistry,
+    }).ok,
+  ).toBe(true);
+});
+
+test("AC6: speed until validation rejects gates inside boundary", () => {
+  const approaches = [
+    {
+      id: "ILS27",
+      type: "ILS",
+      courseDeg: 270,
+      fafDistanceNm: 6, // hardBoundaryNm = 5
+      thresholdFixId: "RW27",
+    },
+  ];
+  const fixRegistry = {
+    has: (id: string) => id === "RW27" || id === "CLOSE" || id === "FAR",
+    get: (id: string) => {
+      if (id === "RW27") return { xNm: 0, yNm: 0 };
+      if (id === "CLOSE") return { xNm: 3, yNm: 0 }; // 3 NM along-track (< 5)
+      if (id === "FAR") return { xNm: 10, yNm: 0 }; // 10 NM along-track (>= 5)
+      return undefined;
+    },
+  } as unknown as import("@core").FixRegistry;
+
+  const catalog = {
+    stars: [],
+    sids: [],
+    approaches,
+  };
+
+  const ac = jet({ altitudeFt: 5000 });
+  ac.xNm = 15;
+  ac.yNm = 0;
+  ac.intent.clearedApproachId = "ILS27";
+
+  // until 3 DME (< 5 DME) -> rejects
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 3 } }],
+      { catalog, fixRegistry },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // until 5 DME (>= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 5 } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+
+  // until 7 DME (>= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+
+  // until CLOSE fix (3 NM < 5 DME) -> rejects
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FIX", fixId: "CLOSE" } }],
+      { catalog, fixRegistry },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "SPEED",
+    detail: "unable. restriction too close to 5 DME",
+  });
+
+  // until FAR fix (10 NM >= 5 DME) -> passes
+  expect(
+    validateInstructions(
+      ac,
+      [{ type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FIX", fixId: "FAR" } }],
+      { catalog, fixRegistry },
+    ).ok,
+  ).toBe(true);
+});
+
+test("DELETE_SPEED_RESTRICTIONS validates successfully", () => {
+  expect(validateInstructions(jet(), [{ type: "DELETE_SPEED_RESTRICTIONS" }]).ok).toBe(true);
 });

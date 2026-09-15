@@ -1,5 +1,68 @@
 # Swarm status
 
+## SEVENTY-SECOND SWARM COMPLETE — Cancel Approach Clearance Breakout (T04-66–T04-68)
+
+Completed sequentially on `feature/better-openap-usage` with one worker at a
+time and captain review after each slice. The delivered surface adds:
+1. Generic `CANCEL_APPROACH` / `CAPP` Command IR, typed and spoken parser
+   parity, readback, Path C schema/GBNF/prompt/evidence guards, eval coverage,
+   and shared command documentation.
+2. Atomic projected validation and pilot intent breakout: active ILS/RNAV or
+   other approach guidance clears to ordinary heading/assigned modes, later
+   vectors/altitude/speed/direct instructions validate in order, and rejected
+   commands leave intent unchanged.
+3. Synthetic acceptance coverage for GS and pre-capture breakout, generic
+   approaches, cancellation alone, typed/PTT equivalence, malformed/re-arm/
+   lifecycle rejection, no missed or landing transition, and the radio help
+   entry. Phase 4 docs record FAA phraseology and ATC-SIM trainer limits.
+
+Captain commits: `d8139e1` (T04-66), `8b5544e` (T04-67), `97eaf7b` (T04-68).
+Planning commit: `cfe8c63`.
+
+Final `npm run ci`: **214 test files passed, 2,184 tests passed, 3 skipped**.
+Speech-api pytest: **92 passed**.
+
+Manual reviews found no FAIL. The supplied Raytheon STARS manual has no voice
+phraseology for canceling an approach; reviewed sections covered unrelated
+flight-plan cancellation and `CA` Conflict Alert behavior, with no contradiction.
+FAA phraseology evidence remains the ticket's JO 7110.65 §4-8-1 and AIM §5-4
+references. Recursive independent-review delegation was unavailable inside the
+reviewer invocations; primary read-only reviews completed and recorded this
+limitation. No files outside ticket scope were changed; `.agents/rules/`,
+`GEMINI.md`, and `audit.diff` remain untouched/untracked.
+
+## SEVENTY-SECOND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Cancel Approach Clearance Breakout (T04-66–T04-68)
+Merge target: `feature/better-openap-usage`
+Merged: T04-66, T04-67, T04-68
+Tests: final `npm run ci` green (2,184 tests passed, 3 skipped); speech-api mock pytest green (92 passed); manual R01 reviews complete with no FAIL
+Notes: generic approach cancellation; local trainer intent breakout only; no IFR cancellation, obstacle-clearance, certified-monitoring, missed-approach, or scope-CA behavior added; user-authorized push follows
+
+## SEVENTY-FIRST SWARM COMPLETE — Procedure Speed/Altitude Precedence, DSR, and Approach Rules (T04-63–T04-65)
+
+Completed sequentially on `feature/better-openap-usage` with isolated workers,
+captain squash merges, and no push. The delivered surface implements:
+1. Procedure altitude and speed precedence: altitude commands on a SID/STAR override vertical procedure restrictions (`ASSIGNED` mode) while keeping lateral routing (`PROCEDURE`). Assigned speeds override published fix speed constraints.
+2. Approach altitude rejection: altitude instructions issued to aircraft already cleared for an instrument approach reject with natural telephony (`"unable. cleared for the ILS already."`).
+3. Heading adjustments prior to localizer capture preserve approach clearance and armed `INTERCEPT_LOC`, while headings issued once established on localizer break out to vectors.
+4. `DSR` (`DELETE_SPEED_RESTRICTIONS`) cancels published procedure speed constraints and transitions aircraft to normal arrival profile speed (or climb speed).
+5. Approach speed boundary and `until` gates: speed assignments support `until` gates (`FAF`, `DME`, `FIX`), strictly bounded by FAA JO 7110.65 § 5-7-1 at `Math.min(approach.fafDistanceNm ?? 5, 5)`. Commands inside the boundary reject (`"unable. restriction too close to 5 DME"`). At the gate/boundary, assignments expire and aircraft slow to approach/landing speed.
+
+Captain commits: `9b589b4` (T04-63), `9c15cfd` (T04-64), `6275a13` (T04-65).
+Planning commit: `e70af06`.
+
+Final `npm run ci`: **211 test files passed, 2,141 tests passed, 3 skipped**.
+Speech-api pytest: **91 passed**.
+
+## SEVENTY-FIRST SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Procedure Speed/Altitude Precedence, DSR, and Approach Rules (T04-63–T04-65)
+Merge target: `feature/better-openap-usage`
+Merged: T04-63, T04-64, T04-65
+Tests: npm run ci exit 0 (2,141 tests passed), speech-api pytest exit 0 (91 passed)
+Notes: Full command IR, pilot validation, typed/spoken parsing, readback, Path C parity, and FMS kinematics/transition verified; no push
+
 ## SEVENTY-FIRST SWARM COMPLETE — configurable beacon pools (T02-197–199)
 
 Completed sequentially on `feature/beacon-pools` from the audited
@@ -47,7 +110,34 @@ Tests: final `npm run ci` green; focused integration and parser gates green
 Manual: both supplied STARS manuals reviewed after every ticket; final behavior PASS
 Notes: omitted/default vs `A`; deterministic configured pools; no-code projections blank; no push
 
+## SIXTY-SEVENTH SWARM COMPLETE — Simplified OpenAP Profile Pipeline (T04-60–T04-62)
+
+Completed sequentially on `feature/better-openap-usage` with isolated workers,
+captain squash merges, and no push. The delivered surface replaces the bloated
+multi-file performance configuration (`simulator-policies.json`,
+`type-mappings.json`, `aircraft-profiles.generated.json`) with a single, unified
+`src/core/performance/aircraft-profiles.json` dataset (~200 lines).
+
+Aircraft entries cascade missing or empty `{}` regime fields from top-level
+`defaults` at runtime in `AircraftPerformanceRegistry`. `build_profiles.py` is
+simplified to populate OpenAP properties directly without policy indirection.
+
+Captain commits: `1c5518e` (T04-60), `51e29c1` (T04-61), `64cd66a` (T04-62).
+Planning commit: `5dfd3c9`.
+
+Final `npm run ci`: **211 test files passed, 2,102 tests passed, 3 skipped**.
+Python tests: **7 passed**; `build_profiles.py --check` exit code 0.
+
+## SIXTY-SEVENTH SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Simplified OpenAP Profile Pipeline T04-60–62
+Merge target: `feature/better-openap-usage`
+Merged: T04-60, T04-61, T04-62
+Tests: npm run ci exit 0, python unittests 7 passed, build_profiles --check exit 0
+Notes: Single-file profile dataset with runtime cascade; 7,000 lines of boilerplate removed; no push
+
 ## SIXTY-SIXTH SWARM COMPLETE — voice airport, command parity, and clearance separation (T02-181–T02-184)
+
 
 Completed sequentially on `feature/clearances` with Luna-high workers/reviews
 and no push. The delivered surface grounds every shipped scenario airport as a

@@ -104,4 +104,49 @@ describe("pattern-matcher", () => {
       },
     ]);
   });
+
+  test("delete speed restrictions in island parsing", () => {
+    const res = parse("DAL123 delete speed restrictions");
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.callsignToken).toBe("DAL123");
+    expect(res.instructions).toEqual([{ type: "DELETE_SPEED_RESTRICTIONS" }]);
+  });
+
+  test("cancel approach clearance is ordered before later vectors", () => {
+    const res = parse(
+      "DAL123 cancel approach clearance fly heading two seven zero maintain five thousand",
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.instructions).toEqual([
+      { type: "CANCEL_APPROACH" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "ALTITUDE", altitudeFt: 5000, verb: "MAINTAIN" },
+    ]);
+    expect(parse("DAL123 cancel approach").ok).toBe(false);
+  });
+
+  test("maintain speed until constraints in island parsing", () => {
+    const faf = parse("DAL123 maintain 180 knots until final approach fix");
+    expect(faf.ok).toBe(true);
+    if (!faf.ok) return;
+    expect(faf.instructions).toEqual([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "FAF" } },
+    ]);
+
+    const dme = parse("DAL123 maintain 180 knots until 7 DME");
+    expect(dme.ok).toBe(true);
+    if (!dme.ok) return;
+    expect(dme.instructions).toEqual([
+      { type: "SPEED", speedKt: 180, verb: "MAINTAIN", until: { type: "DME", distanceNm: 7 } },
+    ]);
+
+    const fix = parse("DAL123 maintain 210 knots until MERGE");
+    expect(fix.ok).toBe(true);
+    if (!fix.ok) return;
+    expect(fix.instructions).toEqual([
+      { type: "SPEED", speedKt: 210, verb: "MAINTAIN", until: { type: "FIX", fixId: "MERGE" } },
+    ]);
+  });
 });

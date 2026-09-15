@@ -275,6 +275,26 @@ test("accepted inbound remains a solid white FDB on the local TCP symbol", () =>
   );
 });
 
+test("accepted outbound Tower handoff uses T for position symbol", () => {
+  const ac = makeTestAircraft({ id: "synthetic-tower-handoff", callsign: "SYN131" });
+  const world = createWorld({ aircraft: [ac], simTimeMs: 6000 });
+  world.handoffs.set(ac.id, {
+    kind: "outbound",
+    toSectorId: "TWR",
+    status: "accepted",
+    acceptedAtSimMs: 0,
+  });
+  const view = createScopeView();
+  syncTrackDisplays(view.tracks, world);
+  view.tracks.get(ac.id)!.ownership = "owned";
+
+  const mock = createMockCtx();
+  renderScope(mock.ctx, world, view, 800, 800);
+
+  expect(mock.fillTexts.some((t) => t.text === "T")).toBe(true);
+  expect(mock.fillTexts.some((t) => t.text === "TWR")).toBe(false);
+});
+
 test("AC1, AC2, AC3 — compass rose ticks and heading labels render with BRITE CMP and CHAR SIZE TOOLS", () => {
   const world = createWorld();
   const view = createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });

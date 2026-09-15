@@ -29,7 +29,15 @@ normalizeSpoken
     └─ miss (no throw)
 ```
 
-An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Tactical fix grounding and IFR route-window grounding share one ranked catalog matcher: exact, spoken-alias, folded, then unique Levenshtein-distance-1 candidates are deterministic; distance-2 candidates are retrieval-only Path C evidence. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / ident / say-\* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
+An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Tactical fix grounding and IFR route-window grounding share one ranked catalog matcher: exact, spoken-alias, folded, then unique Levenshtein-distance-1 candidates are deterministic; distance-2 candidates are retrieval-only Path C evidence. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / delete speed restrictions / ident / say-* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
+
+`CAPP` and spoken `cancel approach clearance` emit the zero-argument
+`CANCEL_APPROACH` instruction. It must be the first instruction and may occur
+only once. Later ordinary heading/altitude/speed instructions retain source
+order; a later approach expectation, clearance, localizer intercept, or
+`GO_AROUND` is `BAD_CLEARANCE`. `CAPP` never consumes an approach ID, and
+`cancel approach` without `clearance` remains `PARSE_MISS`. Path C uses the
+same closed-union and transcript-evidence rules.
 
 ## IFR clearance route windows
 

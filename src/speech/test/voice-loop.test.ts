@@ -3,6 +3,7 @@ import { type Command } from "@core";
 import { parseCommand } from "@parse";
 import { NullSpeechPort, type AudioClip, type SpeechPort, type Transcript } from "../index";
 import { createVoiceLoop, type ParseCommandFn, type VoiceLoopStatus } from "../voice-loop";
+import type { ReadbackPlayer } from "../playback/readback-player";
 
 function nonEmptyClip(): AudioClip {
   return {
@@ -105,4 +106,44 @@ test("PTT parser receives structured fix vocabulary while STT keeps its id proje
       routeCandidates: [{ id: "AHN", kind: "NAVAID", aliases: ["Athens"] }],
     }),
   );
+});
+
+test("rejected command with callsign and readback synthesizes and plays unable readback clip", async () => {
+  const port = fakePort("slow to one two zero");
+  const rejectionClip = nonEmptyClip();
+  const synthSpy = vi.spyOn(port, "synthesize").mockResolvedValue(rejectionClip);
+  const playPcmSpy = vi.fn(async () => ({ ok: true as const }));
+  const mockPlayer: ReadbackPlayer = {
+    playing: false,
+    fxEnabled: true,
+    warmUp: vi.fn(async () => {}),
+    playPcm: playPcmSpy,
+    stop: vi.fn(),
+    setConnectSource: vi.fn(),
+    setFxEnabled: vi.fn(),
+  };
+
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    readbackPlayer: mockPlayer,
+    dispatchCommand: () => ({
+      accepted: false,
+      readback: "DAL123 unable speed 120, minimum is 150",
+      command: { callsign: "DAL123" },
+    }),
+    getSelectedCallsign: () => "DAL123",
+  });
+
+  await loop.handlePttEvent({ type: "ptt-down" });
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(synthSpy).toHaveBeenCalledWith(
+    expect.stringContaining("unable speed"),
+    expect.any(String),
+  );
+  expect(playPcmSpy).toHaveBeenCalledWith(rejectionClip, expect.anything());
 });

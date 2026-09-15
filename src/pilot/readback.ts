@@ -102,7 +102,17 @@ function speakApproachNav(approachId: string): string {
 }
 
 function formatSpeedClause(instruction: Extract<Instruction, { type: "SPEED" }>): string {
-  return `${instruction.verb.toLowerCase()} ${formatDigitString(instruction.speedKt)} knots`;
+  let clause = `${instruction.verb.toLowerCase()} ${formatDigitString(instruction.speedKt)} knots`;
+  if (instruction.until) {
+    if (instruction.until.type === "FAF") {
+      clause += " until final approach fix";
+    } else if (instruction.until.type === "DME") {
+      clause += ` until ${formatDigitString(instruction.until.distanceNm)} DME`;
+    } else if (instruction.until.type === "FIX") {
+      clause += ` until ${instruction.until.fixId}`;
+    }
+  }
+  return clause;
 }
 
 function formatAltitudeClause(instruction: Extract<Instruction, { type: "ALTITUDE" }>): string {
@@ -176,6 +186,8 @@ function formatInstructionClause(
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
     case "INTERCEPT_LOCALIZER":
       return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
+    case "CANCEL_APPROACH":
+      return "cancel approach clearance";
     case "EXPECT_APPROACH":
       return `expect ${speakApproachNav(instruction.approachId)}`;
     case "DIRECT":
@@ -199,6 +211,8 @@ function formatInstructionClause(
     }
     case "GO_AROUND":
       return "going around";
+    case "DELETE_SPEED_RESTRICTIONS":
+      return "delete speed restrictions";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
@@ -289,6 +303,8 @@ export function formatRejectReadback(args: {
   let after = REJECT_AFTER_CALLSIGN[reason] ?? "unable, say again";
   if (reason === "NOT_ON_COURSE") {
     after = args.detail ? `unable, not on course to ${args.detail}` : "unable, not on course";
+  } else if ((reason === "SPEED" || reason === "ALTITUDE") && args.detail) {
+    after = args.detail;
   }
   const cs = args.callsign ? formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy }) : "";
   return capitalizeFirst(cs ? `${cs} ${after}` : after);

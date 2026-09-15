@@ -40,3 +40,133 @@ test("ambiguous suffix 123 is rejected", async () => {
   const result = await handleRadioText(world, "123 H270", new SessionLog());
   expect(result.accepted).toBe(false);
 });
+
+test("AAL123 D30 while cleared for approach rejects with unable readback", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.intent.clearedApproachId = "ILS27";
+  const world = createWorld({
+    aircraft: [aal],
+    catalog: {
+      airportId: "KDEM",
+      approaches: [
+        {
+          id: "ILS27",
+          type: "ILS",
+          courseDeg: 270,
+          fafDistanceNm: 6,
+          thresholdFixId: "RW27",
+        },
+      ],
+      fixes: [],
+      navaids: [],
+      stars: [],
+      sids: [],
+    },
+  });
+  const result = await handleRadioText(world, "AAL123 D30", new SessionLog());
+  expect(result.accepted).toBe(false);
+  expect(result.reason).toBe("ALTITUDE");
+  expect(result.readback).toBe("American 123 unable. cleared for the ILS already.");
+});
+
+test("AAL123 S180 inside 5 DME boundary rejects with unable readback", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.xNm = 4;
+  aal.yNm = 0;
+  aal.headingDeg = 270;
+  aal.intent.clearedApproachId = "ILS27";
+  const world = createWorld({
+    aircraft: [aal],
+    catalog: {
+      airportId: "KDEM",
+      approaches: [
+        {
+          id: "ILS27",
+          type: "ILS",
+          courseDeg: 270,
+          fafDistanceNm: 6,
+          thresholdFixId: "RW27",
+        },
+      ],
+      fixes: [],
+      navaids: [],
+      stars: [],
+      sids: [],
+    },
+  });
+  const result = await handleRadioText(world, "AAL123 S180", new SessionLog());
+  expect(result.accepted).toBe(false);
+  expect(result.reason).toBe("SPEED");
+  expect(result.readback).toBe("American 123 unable. restriction too close to 5 DME");
+});
+
+test("AAL123 DSR is accepted and mutates intent", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.intent.controllerAssignedSpeedKt = 210;
+  const world = createWorld({ aircraft: [aal] });
+  const result = await handleRadioText(world, "AAL123 DSR", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(aal.intent.speedRestrictionsDeleted).toBe(true);
+  expect(aal.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(result.readback).toBe("American 123 delete speed restrictions");
+});
+
+test("AAL123 H240 while cleared for approach maintains clearedApproachId and INTERCEPT_LOC", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.intent.clearedApproachId = "ILS27";
+  aal.intent.lateral = { type: "INTERCEPT_LOC", approachId: "ILS27" };
+  const world = createWorld({ aircraft: [aal] });
+  const result = await handleRadioText(world, "AAL123 H240", new SessionLog());
+  expect(result.accepted).toBe(true);
+  expect(aal.intent.assignedHeadingDeg).toBe(240);
+  expect(aal.intent.clearedApproachId).toBe("ILS27");
+  expect(aal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "ILS27" });
+});
+
+test("CAPP H270 A50 applies breakout atomically and clears approach guidance", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.intent.expectedApproachId = "RNAV09";
+  aal.intent.clearedApproachId = "RNAV09";
+  aal.intent.locInterceptApproachId = "RNAV09";
+  aal.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+  aal.intent.vertical = { type: "GS", approachId: "RNAV09" };
+  const world = createWorld({ aircraft: [aal] });
+
+  const result = await handleRadioText(world, "AAL123 CAPP H270 A50", new SessionLog());
+
+  expect(result.accepted).toBe(true);
+  expect(aal.intent.clearedApproachId).toBeNull();
+  expect(aal.intent.locInterceptApproachId).toBeNull();
+  expect(aal.intent.expectedApproachId).toBeNull();
+  expect(aal.intent.lateral).toEqual({ type: "HEADING", headingDeg: 270 });
+  expect(aal.intent.vertical).toEqual({ type: "ASSIGNED" });
+  expect(aal.intent.assignedAltitudeFt).toBe(5000);
+});
+
+test("CAPP rejects without active approach and keeps intent unchanged", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  const world = createWorld({ aircraft: [aal] });
+
+  const result = await handleRadioText(world, "AAL123 CAPP", new SessionLog());
+
+  expect(result.accepted).toBe(false);
+  expect(result.reason).toBe("NOT_ON_APPROACH");
+  expect(result.readback).toBe("American 123 unable, not on approach");
+  expect(aal.intent.lateral).toBeUndefined();
+  expect(aal.intent.assignedHeadingDeg).toBe(100);
+});
+
+test("invalid instruction after CAPP rejects atomically", async () => {
+  const aal = sample("AAL123", "ac-aal");
+  aal.intent.clearedApproachId = "RNAV09";
+  aal.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+  const world = createWorld({ aircraft: [aal] });
+
+  const result = await handleRadioText(world, "AAL123 CAPP H270 C30", new SessionLog());
+
+  expect(result.accepted).toBe(false);
+  expect(result.reason).toBe("CLIMB_NOT_ABOVE");
+  expect(aal.intent.clearedApproachId).toBe("RNAV09");
+  expect(aal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "RNAV09" });
+  expect(aal.intent.assignedAltitudeFt).toBe(8000);
+});

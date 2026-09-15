@@ -47,6 +47,9 @@ export type LegacyIfrClearanceAccess =
   | { type: "FIX_THEN_DIRECT"; fixId: string }
   | { type: "SID"; procedureId: string; transitionId?: string };
 
+export type SpeedUntil =
+  { type: "FAF" } | { type: "FIX"; fixId: string } | { type: "DME"; distanceNm: number };
+
 /** Runtime list of Instruction `type` discriminants. Keep in sync with `Instruction`. */
 export const INSTRUCTION_TYPES = [
   "FLY_HEADING",
@@ -58,6 +61,7 @@ export const INSTRUCTION_TYPES = [
   "EXPECT_APPROACH",
   "CLEARED_APPROACH",
   "INTERCEPT_LOCALIZER",
+  "CANCEL_APPROACH",
   "ASSIGN_SQUAWK",
   "MAINTAIN_VFR",
   "IFR_CLEARANCE",
@@ -69,6 +73,7 @@ export const INSTRUCTION_TYPES = [
   "JOIN_PROCEDURE",
   "CROSS",
   "GO_AROUND",
+  "DELETE_SPEED_RESTRICTIONS",
 ] as const;
 
 export type Instruction =
@@ -91,12 +96,14 @@ export type Instruction =
       type: "SPEED";
       speedKt: number;
       verb: "MAINTAIN" | "INCREASE" | "REDUCE";
+      until?: SpeedUntil;
     }
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
   /** Join the loc and track inbound; do not arm GS. APP later clears the approach. */
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "CANCEL_APPROACH" }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
   | {
@@ -121,4 +128,5 @@ export type Instruction =
       altitudeFt: number;
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
-  | { type: "GO_AROUND" };
+  | { type: "GO_AROUND" }
+  | { type: "DELETE_SPEED_RESTRICTIONS" };

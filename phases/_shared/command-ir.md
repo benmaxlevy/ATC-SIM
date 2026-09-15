@@ -28,6 +28,11 @@ export interface Command {
 
 export type TurnDir = "LEFT" | "RIGHT" | "SHORTEST";
 
+export type SpeedUntil =
+  | { type: "FAF" }
+  | { type: "FIX"; fixId: string }
+  | { type: "DME"; distanceNm: number };
+
 export type Instruction =
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }
@@ -47,11 +52,13 @@ export type Instruction =
       type: "SPEED";
       speedKt: number;
       verb: "MAINTAIN" | "INCREASE" | "REDUCE";
+      until?: SpeedUntil;
     }
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
+  | { type: "CANCEL_APPROACH" }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
   | {
@@ -84,7 +91,8 @@ export type Instruction =
       altitudeFt: number;
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
-  | { type: "GO_AROUND" };
+  | { type: "GO_AROUND" }
+  | { type: "DELETE_SPEED_RESTRICTIONS" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -103,6 +111,11 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `T20L` | `TURN_DEGREES LEFT 20` |
 | `C30` / `D30` / `A30` | climb / descend / maintain 3000 ft |
 | `S210` | `SPEED MAINTAIN 210` |
+| `S180/FAF` | `SPEED MAINTAIN 180 until { type: "FAF" }` |
+| `S180/7DME` / `S180/7` | `SPEED MAINTAIN 180 until { type: "DME", distanceNm: 7 }` |
+| `S210/MERGE` | `SPEED MAINTAIN 210 until { type: "FIX", fixId: "MERGE" }` |
+| `DSR` | `DELETE_SPEED_RESTRICTIONS` — cancels published SID/STAR speed constraints |
+| `CAPP` | `CANCEL_APPROACH` — cancels the active approach clearance; no approach ID; first in a combined command |
 | `PH` | `PRESENT_HEADING` |
 | `I` | `IDENT` |
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
@@ -138,6 +151,7 @@ direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
+| `CAPP H270 A50` | `CANCEL_APPROACH` + `FLY_HEADING 270` + `ALTITUDE MAINTAIN 5000`; cancellation must be first and cannot be followed by approach re-arm or `GO_AROUND` |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` (`D` stays descend; via is `VIA`) — lateral **and** published constraints. No `transitionId`; do not guess one. |
 | `VIA DEM1 WN` | `DESCEND_VIA { procedureId: "DEM1", transitionId: "WN" }` — named STAR transition amend (T04-43) |
 | `CVIA DEM1` | `CLIMB_VIA { procedureId: "DEM1" }` — no `transitionId`; do not guess one. |

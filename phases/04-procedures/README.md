@@ -283,10 +283,47 @@ Phase 1 parser table already maps `APP ILS27` → `CLEARED_APPROACH`. Implement 
 | `DCT NEMAX` | `DIRECT { fixId: "NEMAX" }` |
 | `EXP ILS27` | `EXPECT_APPROACH { approachId: "ILS27" }` |
 | `APP ILS27` | `CLEARED_APPROACH { approachId: "ILS27" }` (already specified) |
+| `CAPP` | `CANCEL_APPROACH` — cancel approach clearance; generic across approach types, no approach ID |
 | `VIA DEM1` | `DESCEND_VIA { procedureId: "DEM1" }` **new** |
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` **new, optional but recommended** |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 | `GA` | `GO_AROUND` **new, optional**; immediate missed if on approach |
+
+Spoken `cancel approach clearance` maps to the same `CANCEL_APPROACH` IR.
+It must be the first instruction in a combined transmission, may occur only once,
+and may be followed by ordinary vectors such as `fly heading 270, maintain
+5000`. It must not be followed by an approach clearance, localizer intercept,
+expected approach, or `GO_AROUND`. This is a trainer command for local approach
+breakout; it does not cancel IFR clearance and does not start the missed
+approach.
+
+### Cancel approach clearance behavior
+
+Typed form: `DAL123 CAPP H270 A50`. Spoken/PTT form: `DAL123 cancel approach
+clearance, fly heading 270, maintain 5000`. The deterministic readback is
+`Delta 123 cancel approach clearance, heading 270, maintain five thousand`
+(airline telephony varies by callsign). `CAPP` may also stand alone; it clears
+the active approach guidance and continues the present heading and assigned
+vertical mode. A later heading, altitude, speed, or direct instruction is
+validated against that projected post-cancellation state before any part of the
+command is applied.
+
+Cancellation clears `clearedApproachId`, `locInterceptApproachId`,
+`expectedApproachId`, localizer/intercept guidance, and GS. It leaves the
+aircraft in ordinary heading/assigned modes, never starts `nav.missed.started`,
+and does not enter `LANDING` or despawn the aircraft. It is generic across ILS,
+RNAV, and other catalog approach types. With no active approach, or when the
+aircraft is already in `MISSED`/`LANDING`, the command is rejected unchanged
+with `Unable, not on approach`. Duplicate/malformed cancellation, cancellation
+after another instruction, and same-transmission approach re-arm reject without
+partial mutation.
+
+Manual evidence: FAA JO 7110.65 §4-8-1 uses “CANCEL APPROACH CLEARANCE
+(additional instructions as necessary)”; FAA AIM §5-4-5 and §5-4-21 distinguish
+approach cancellation from the missed approach. ATC-SIM applies only a local
+trainer intent breakout. It makes no IFR-cancellation, obstacle-clearance, or
+certified-monitoring claim. The existing command-reference help surface lists
+`CAPP`; no new scope command or Preview Area syntax is added.
 
 `D` remains descend. Do not steal `D` for direct.
 
@@ -301,6 +338,7 @@ Readbacks (deterministic, FAA digits, callsign once):
 - `DESCEND_VIA DEM1` → `{callsign} descend via DEMO ONE`
 - `CROSS NEMAX AT 4000` → `{callsign} cross NEMAX at four thousand`
 - `GO_AROUND` → `{callsign} going around`
+- `CANCEL_APPROACH` → `{callsign} cancel approach clearance`
 
 Reject (no intent change):
 

@@ -6,7 +6,7 @@
  * Bare `heading {ddd}` is Path B salvage, not Path A.
  */
 
-import type { Instruction, TurnDir } from "@core";
+import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
 import {
@@ -31,6 +31,7 @@ import {
 import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
+import { cancelApproachSequenceError } from "../instruction-order";
 
 interface Cursor {
   tokens: readonly string[];
@@ -214,6 +215,61 @@ function tryAltitude(c: Cursor): Instruction | null {
   return { type: "ALTITUDE", altitudeFt, verb };
 }
 
+function trySpeedUntil(c: Cursor): SpeedUntil | null {
+  const start = c.i;
+  if (!take(c, "until")) {
+    return null;
+  }
+  take(c, "the");
+
+  // 1. Final approach fix / FAF
+  if (peek(c) === "final" && peek(c, 1) === "approach" && peek(c, 2) === "fix") {
+    c.i += 3;
+    return { type: "FAF" };
+  }
+  if (take(c, "faf")) {
+    return { type: "FAF" };
+  }
+
+  // 2. <n> DME / <n> miles
+  const dist = parseTurnDegreesValue(c.tokens, c.i);
+  if (dist !== null && dist.value >= 0) {
+    const nextWord = c.tokens[dist.next];
+    if (nextWord === "dme") {
+      c.i = dist.next + 1;
+      return { type: "DME", distanceNm: dist.value };
+    }
+    if (
+      nextWord === "miles" ||
+      nextWord === "mile" ||
+      nextWord === "nm" ||
+      nextWord === "nautical"
+    ) {
+      let nextIdx = dist.next + 1;
+      if (
+        nextWord === "nautical" &&
+        (c.tokens[nextIdx] === "miles" || c.tokens[nextIdx] === "mile")
+      ) {
+        nextIdx += 1;
+      }
+      if (c.tokens[nextIdx] === "dme") {
+        nextIdx += 1;
+      }
+      c.i = nextIdx;
+      return { type: "DME", distanceNm: dist.value };
+    }
+  }
+
+  // 3. <fix>
+  const fix = parseFixId(c);
+  if (fix !== null) {
+    return { type: "FIX", fixId: fix };
+  }
+
+  c.i = start;
+  return null;
+}
+
 function trySpeed(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "maintain")) {
@@ -222,7 +278,13 @@ function trySpeed(c: Cursor): Instruction | null {
       c.i = start;
       return null;
     }
-    return { type: "SPEED", speedKt, verb: "MAINTAIN" };
+    const until = trySpeedUntil(c);
+    return {
+      type: "SPEED",
+      speedKt,
+      verb: "MAINTAIN",
+      ...(until ? { until } : {}),
+    };
   }
   if (take(c, "reduce") || take(c, "slow")) {
     take(c, "speed");
@@ -233,7 +295,13 @@ function trySpeed(c: Cursor): Instruction | null {
       return null;
     }
     take(c, "knots");
-    return { type: "SPEED", speedKt, verb: "REDUCE" };
+    const until = trySpeedUntil(c);
+    return {
+      type: "SPEED",
+      speedKt,
+      verb: "REDUCE",
+      ...(until ? { until } : {}),
+    };
   }
   if (take(c, "increase")) {
     take(c, "speed");
@@ -244,7 +312,24 @@ function trySpeed(c: Cursor): Instruction | null {
       return null;
     }
     take(c, "knots");
-    return { type: "SPEED", speedKt, verb: "INCREASE" };
+    const until = trySpeedUntil(c);
+    return {
+      type: "SPEED",
+      speedKt,
+      verb: "INCREASE",
+      ...(until ? { until } : {}),
+    };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryDeleteSpeedRestrictions(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "delete") && take(c, "speed")) {
+    if (take(c, "restrictions") || take(c, "restriction")) {
+      return { type: "DELETE_SPEED_RESTRICTIONS" };
+    }
   }
   c.i = start;
   return null;
@@ -592,6 +677,15 @@ function tryGoAround(c: Cursor): Instruction | null {
   return null;
 }
 
+function tryCancelApproach(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "cancel") && take(c, "approach") && take(c, "clearance")) {
+    return { type: "CANCEL_APPROACH" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryIdent(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "squawk")) {
@@ -870,10 +964,12 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryDirect(c) ??
     trySquawk(c) ??
     tryIdent(c) ??
+    tryCancelApproach(c) ??
     tryGoAround(c) ??
     trySay(c) ??
     tryInterceptLocalizer(c) ??
-    tryCleared(c);
+    tryCleared(c) ??
+    tryDeleteSpeedRestrictions(c);
   if (!inst) {
     c.i = start;
     return null;
@@ -974,6 +1070,14 @@ export function parseSpokenGrammar(
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  const cancellationError = cancelApproachSequenceError(instructions);
+  if (cancellationError !== null) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.BAD_CLEARANCE, cancellationError),
+      sourceText,
+    };
   }
 
   return { ok: true, callsignToken, instructions, sourceText };

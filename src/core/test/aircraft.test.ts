@@ -30,6 +30,8 @@ test("Aircraft and Intent compile under strict and export from @core (AC1)", () 
   expectTypeOf<Intent>().toHaveProperty("assignedHeadingDeg");
   expectTypeOf<Intent>().toHaveProperty("assignedAltitudeFt");
   expectTypeOf<Intent>().toHaveProperty("assignedSpeedKt");
+  expectTypeOf<Intent>().toHaveProperty("speedRestrictionsDeleted");
+  expectTypeOf<Intent>().toHaveProperty("speedUntil");
   expectTypeOf<Intent>().toHaveProperty("expectedApproachId");
   expectTypeOf<Intent>().toHaveProperty("clearedApproachId");
   expectTypeOf<Intent>().toHaveProperty("locInterceptApproachId");

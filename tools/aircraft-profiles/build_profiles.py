@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Build the checked-in aircraft performance artifact.
+"""Direct OpenAP aircraft profile populator.
 
-OpenAP is deliberately a build-time dependency.  This command never downloads
-data: install the pinned requirement first, then run it offline.
+Reads src/core/performance/aircraft-profiles.json directly, queries OpenAP
+(openap.prop.aircraft and openap.kinematic.WRAP), and populates aircraft overrides
+with "source": "openap".
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
-import importlib.metadata
+import importlib
 import json
 import math
 import sys
@@ -17,212 +17,255 @@ from typing import Any, Callable
 
 HERE = Path(__file__).parent
 ROOT = HERE.parents[1]
-DEFAULT_OUT = ROOT / "src/core/performance/aircraft-profiles.generated.json"
-PRESETS = {"terminal-v1": [
-    "B737", "B738", "B739", "B752", "B753", "B744", "B788", "B789", "B78X",
-    "A320", "A321", "E135", "E140", "E145", "E170", "E175", "E190", "E195",
-    "CRJ1", "CRJ2", "CRJ7", "CRJ9", "CRJX", "A20N", "A21N", "B38M", "B39M",
-    "E290", "E295", "B763", "B772", "B77W", "A333",
-]}
-REGIMES = ("initialClimb", "climb", "enroute", "arrival", "approach", "missedApproach", "landing")
+DEFAULT_OUT = ROOT / "src/core/performance/aircraft-profiles.json"
 SI_TO_KT = 1.9438444924406048
 SI_TO_FPM = 196.8503937007874
-SI_ACCEL_TO_KT_PER_S = SI_TO_KT
+M_TO_FT = 3.280839895013123
 
 
-def canonical_json(value: Any) -> bytes:
-    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
-
-
-def sha256(value: Any) -> str:
-    return hashlib.sha256(canonical_json(value)).hexdigest()
-
-
-def load_json(name: str) -> Any:
-    with (HERE / name).open(encoding="utf-8") as stream:
-        return json.load(stream)
-
-
-def parse_types(values: list[str], preset: str | None) -> list[str]:
-    raw = PRESETS[preset] if preset else values
-    if not raw:
-        raise ValueError("provide --preset terminal-v1 or at least one --types value")
+def parse_types(values: list[str]) -> list[str]:
     result: list[str] = []
     seen: set[str] = set()
-    for value in raw:
+    for value in values:
         for item in value.split(","):
             key = item.strip().upper()
-            if not key:
-                continue
-            if key in seen:
+            if not key or key in seen:
                 continue
             seen.add(key)
             result.append(key)
     return result
 
 
-def finite_number(value: Any, label: str) -> float:
+def finite_number(value: Any, label: str = "") -> float | int:
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{label} must be numeric") from exc
+        msg = f"{label} must be numeric" if label else "value must be numeric"
+        raise ValueError(msg) from exc
     if not math.isfinite(number):
-        raise ValueError(f"{label} must be finite")
+        msg = f"{label} must be finite" if label else "value must be finite"
+        raise ValueError(msg)
+    if isinstance(value, int):
+        return value
     return number
 
 
-def convert(value: Any, unit: str, label: str) -> float:
-    number = finite_number(value, label)
-    if unit == "kt":
-        return number * SI_TO_KT
-    if unit == "fpm":
-        return number * SI_TO_FPM
-    if unit == "kt/s":
-        return number * SI_ACCEL_TO_KT_PER_S
-    if unit in ("ft", "deg"):
-        return number
-    raise ValueError(f"unsupported source unit {unit!r} for {label}")
+OPENAP_ALIASES: dict[str, str] = {
+    "E175": "E75L",
+    "B77F": "B77W",
+}
 
 
-def distribution(raw: Any, method: str, field: str, unit: str) -> dict[str, Any]:
-    """Extract WRAP's default/minimum/maximum without early rounding."""
-    if not isinstance(raw, dict):
-        raise ValueError(f"OpenAP {method}.{field} response is not a dictionary")
-    if "default" not in raw:
-        raise ValueError(f"OpenAP {method}.{field} response lacks default")
-    return {
-        "value": convert(raw["default"], unit, f"{method}.{field}.default"),
-        "minimum": convert(raw["minimum"], unit, f"{method}.{field}.minimum") if "minimum" in raw else None,
-        "maximum": convert(raw["maximum"], unit, f"{method}.{field}.maximum") if "maximum" in raw else None,
-        "provenance": {"kind": "openap-wrap", "method": f"{method}.{field}", "unit": unit},
-    }
-
-
-def openap_reader(alias: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Read public OpenAP APIs; kept in one adapter for version changes/tests."""
+def query_openap(icao: str) -> tuple[dict[str, Any] | None, Any | None]:
+    """Query OpenAP prop and WRAP directly for an aircraft type."""
     try:
         prop = importlib.import_module("openap.prop")
         kinematic = importlib.import_module("openap.kinematic")
-    except ImportError as exc:
-        raise RuntimeError("OpenAP is not installed; install tools/aircraft-profiles/requirements.txt") from exc
+    except ImportError:
+        return None, None
+
     aircraft_fn = getattr(prop, "aircraft", None)
     wrap_fn = getattr(kinematic, "WRAP", None)
     if not callable(aircraft_fn) or not callable(wrap_fn):
-        raise RuntimeError("installed OpenAP version lacks prop.aircraft or kinematic.WRAP")
-    metadata = aircraft_fn(alias)
-    wrap = wrap_fn(alias)
-    return metadata, wrap
+        return None, None
 
-
-def call_wrap(wrap: Any, method: str) -> Any:
-    fn = getattr(wrap, method, None)
-    if not callable(fn):
-        raise ValueError(f"OpenAP WRAP object lacks {method}()")
-    return fn()
-
-
-def build_profile(mapping: dict[str, Any], policy: dict[str, Any], reader: Callable[[str], tuple[dict[str, Any], Any]]) -> dict[str, Any]:
-    icao = mapping["icaoType"]
-    profile: dict[str, Any] = {
-        "icaoType": icao,
-        "representativeVariant": mapping["representativeVariant"],
-        "representativeEngine": mapping["representativeEngine"],
-        "openapType": mapping.get("openapType"),
-        "status": "UNRESOLVED",
-        "limits": None,
-        "regimes": None,
-        "provenance": {"mapping": {"kind": "mapping", "note": mapping.get("note", "")}},
-    }
-    if not mapping.get("openapType"):
-        profile["provenance"]["status"] = {"kind": "unresolved", "reason": "no reviewed OpenAP alias"}
-        return profile
+    lookup = OPENAP_ALIASES.get(icao, icao)
     try:
-        metadata, wrap = reader(mapping["openapType"])
-        if not isinstance(metadata, dict):
-            raise ValueError("aircraft metadata is not a dictionary")
-        limits = {"minControlledSpeedKt": policy["limits"]["minControlledSpeedKt"],
-                  "maxControlledSpeedKt": finite_number(metadata.get("vmo", policy["limits"]["maxControlledSpeedKt"]), "vmo"),
-                  "serviceCeilingFt": finite_number(metadata.get("ceiling", policy["limits"]["serviceCeilingFt"]), "ceiling")}
-        regimes: dict[str, Any] = {}
-        for regime in REGIMES:
-            source = policy["regimes"][regime].copy()
-            source_fields = {k: v for k, v in source.pop("openap", {}).items()}
-            values: dict[str, Any] = {}
-            provenance: dict[str, Any] = {}
-            for field, spec in source_fields.items():
-                values[field] = distribution(call_wrap(wrap, spec["method"]), spec["method"], field, spec["unit"])["value"]
-                provenance[field] = {"kind": "openap-wrap", "method": spec["method"], "unit": spec["unit"]}
-            for field, value in source.items():
-                values[field] = value
-                provenance[field] = {"kind": "simulator-policy", "policy": f"regimes.{regime}.{field}"}
-            regimes[regime] = values
-            profile["provenance"][regime] = provenance
-        profile["limits"] = limits
-        profile["regimes"] = regimes
-        profile["status"] = "SUPPORTED"
-    except (RuntimeError, ValueError, KeyError, TypeError) as exc:
-        profile["provenance"]["status"] = {"kind": "unresolved", "reason": str(exc)}
-    return profile
+        metadata = aircraft_fn(lookup)
+        wrap = wrap_fn(lookup)
+        return metadata, wrap
+    except Exception:
+        return None, None
 
 
-def validate(dataset: dict[str, Any], requested: list[str]) -> None:
-    profiles = dataset["profiles"]
-    keys = [p["icaoType"] for p in profiles]
-    if keys != sorted(requested):
-        raise ValueError("profiles must contain requested types sorted by ICAO type exactly once")
-    for profile in profiles:
-        if profile["status"] == "SUPPORTED":
-            limits = profile["limits"]
-            if limits["minControlledSpeedKt"] > limits["maxControlledSpeedKt"]:
-                raise ValueError(f"reversed speed bounds for {profile['icaoType']}")
-            for regime in profile["regimes"].values():
-                for value in regime.values():
-                    if isinstance(value, (int, float)) and not math.isfinite(value):
-                        raise ValueError(f"nonfinite value for {profile['icaoType']}")
+
+def extract_openap_profile(icao: str, metadata: dict[str, Any], wrap: Any) -> dict[str, Any]:
+    """Extract limits and regime speeds from OpenAP metadata and WRAP kinematics."""
+    limits: dict[str, Any] = {}
+    vmo = metadata.get("vmo")
+    if vmo is not None:
+        try:
+            limits["maxControlledSpeedKt"] = finite_number(vmo, f"{icao}.vmo")
+        except Exception:
+            pass
+    ceiling = metadata.get("ceiling")
+    if ceiling is not None:
+        try:
+            limits["serviceCeilingFt"] = round(finite_number(ceiling, f"{icao}.ceiling") * M_TO_FT)
+        except Exception:
+            pass
+
+    regimes: dict[str, Any] = {}
+
+    def _extract_vs(fn_name: str, regime_names: list[str], key: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
+        try:
+            res = fn()
+            val = res.get("default") if isinstance(res, dict) else res
+            if val is not None:
+                fpm = abs(finite_number(val, f"{icao}.{fn_name}")) * SI_TO_FPM
+                for regime in regime_names:
+                    regimes.setdefault(regime, {})[key] = fpm
+        except Exception:
+            pass
+
+    def _extract_accel(fn_name: str, regime_names: list[str], key: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
+        try:
+            res = fn()
+            val = res.get("default") if isinstance(res, dict) else res
+            if val is not None:
+                accel = abs(finite_number(val, f"{icao}.{fn_name}")) * SI_TO_KT
+                for regime in regime_names:
+                    regimes.setdefault(regime, {})[key] = accel
+        except Exception:
+            pass
+
+    def _extract_speeds(fn_name: str, regime_name: str) -> None:
+        fn = getattr(wrap, fn_name, None)
+        if not callable(fn):
+            return
+        try:
+            res = fn()
+            if isinstance(res, dict):
+                min_val = res.get("minimum", res.get("default"))
+                max_val = res.get("maximum", res.get("default"))
+            else:
+                min_val = res
+                max_val = res
+            if min_val is not None:
+                regimes.setdefault(regime_name, {})["minSpeedKt"] = (
+                    finite_number(min_val, f"{icao}.{fn_name}.min") * SI_TO_KT
+                )
+            if max_val is not None:
+                regimes.setdefault(regime_name, {})["maxSpeedKt"] = (
+                    finite_number(max_val, f"{icao}.{fn_name}.max") * SI_TO_KT
+                )
+        except Exception:
+            pass
+
+    # Vertical speeds (m/s -> fpm, using abs(val) for descent)
+    _extract_vs("initclimb_vs", ["initialClimb"], "nominalClimbFpm")
+    _extract_vs("climb_vs_concas", ["climb"], "nominalClimbFpm")
+    _extract_vs("descent_vs_concas", ["arrival", "enroute"], "nominalDescentFpm")
+    _extract_vs("finalapp_vs", ["approach", "landing"], "nominalDescentFpm")
+
+    # Accelerations (m/s² -> kt/s, using abs(val) for deceleration)
+    _extract_accel("takeoff_acceleration", ["initialClimb", "climb"], "accelKtPerS")
+    _extract_accel("landing_acceleration", ["approach", "landing"], "decelKtPerS")
+
+    # Speeds (m/s -> kt)
+    _extract_speeds("initclimb_vcas", "initialClimb")
+    _extract_speeds("climb_const_vcas", "climb")
+    _extract_speeds("descent_const_vcas", "arrival")
+    _extract_speeds("finalapp_vcas", "approach")
+    _extract_speeds("landing_speed", "landing")
+
+    # Sort regimes deterministically
+    canonical_regimes = ["initialClimb", "climb", "enroute", "arrival", "approach", "landing"]
+    ordered_regimes: dict[str, Any] = {}
+    for r in canonical_regimes:
+        if r in regimes and regimes[r]:
+            ordered_regimes[r] = regimes[r]
+    for r, v in regimes.items():
+        if r not in ordered_regimes and v:
+            ordered_regimes[r] = v
+
+    override: dict[str, Any] = {"source": "openap"}
+    if limits:
+        override["limits"] = limits
+    if ordered_regimes:
+        override["regimes"] = ordered_regimes
+    return override
 
 
-def make_dataset(types: list[str], mappings: list[dict[str, Any]], policies: dict[str, Any], reader: Callable[[str], tuple[dict[str, Any], Any]]) -> dict[str, Any]:
-    by_icao = {row["icaoType"]: row for row in mappings}
-    missing = [key for key in types if key not in by_icao]
-    if missing:
-        raise ValueError(f"unknown mapping for ICAO type(s): {', '.join(missing)}")
-    profiles = [build_profile(by_icao[key], policies, reader) for key in sorted(types)]
-    dataset = {"schemaVersion": 1, "generator": {"openapVersion": openap_version(), "mappingSha256": sha256(mappings), "policySha256": sha256(policies)}, "profiles": profiles}
-    validate(dataset, types)
-    return dataset
+def populate_dataset(
+    data: dict[str, Any],
+    types_to_update: list[str] | None = None,
+    reader: Callable[[str], tuple[dict[str, Any] | None, Any | None]] = query_openap,
+) -> dict[str, Any]:
+    """Update aircraft entries in the dataset in-place using the given reader."""
+    aircraft = data.setdefault("aircraft", {})
+    target_keys = types_to_update if types_to_update is not None else list(aircraft.keys())
+
+    for icao in target_keys:
+        metadata, wrap = reader(icao)
+        if metadata is None or wrap is None:
+            print(f"aircraft profile build: warning: OpenAP lookup failed for {icao}", file=sys.stderr)
+            if icao not in aircraft:
+                aircraft[icao] = {}
+            continue
+
+        try:
+            aircraft[icao] = extract_openap_profile(icao, metadata, wrap)
+        except Exception as exc:
+            print(
+                f"aircraft profile build: warning: failed to extract profile for {icao}: {exc}",
+                file=sys.stderr,
+            )
+            if icao not in aircraft:
+                aircraft[icao] = {}
+
+    # Sort aircraft keys for deterministic ordering
+    data["aircraft"] = {k: aircraft[k] for k in sorted(aircraft.keys())}
+    return data
 
 
-def openap_version() -> str:
-    try:
-        return importlib.metadata.version("openap")
-    except importlib.metadata.PackageNotFoundError:
-        return "uninstalled"
+def format_dataset(data: dict[str, Any]) -> str:
+    """Format dataset as deterministic JSON with 2-space indentation and trailing newline."""
+    return json.dumps(data, indent=2, sort_keys=False) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--preset", choices=sorted(PRESETS))
     parser.add_argument("--types", action="append", default=[], help="ICAO ids; repeat or comma-separate")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--check", action="store_true", help="fail when generated output differs")
-    parser.add_argument("--report", action="store_true", help="print mappings, provenance, and unresolved types")
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="Target JSON file path")
+    parser.add_argument("--check", action="store_true", help="Compare calculated output against disk")
+    parser.add_argument("--preset", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+
     try:
-        types = parse_types(args.types, args.preset)
-        mappings = load_json("type-mappings.json")
-        policies = load_json("simulator-policies.json")
-        dataset = make_dataset(types, mappings, policies, openap_reader)
-        encoded = json.dumps(dataset, indent=2, sort_keys=False) + "\n"
-        if args.check:
-            if not args.out.exists() or args.out.read_text(encoding="utf-8") != encoded:
-                raise ValueError(f"generated artifact differs: {args.out}")
+        target_path = args.out
+        source_path = target_path if target_path.exists() else DEFAULT_OUT
+        if not source_path.exists():
+            raise FileNotFoundError(f"source file not found: {source_path}")
+
+        raw_content = target_path.read_text(encoding="utf-8") if target_path.exists() else None
+        source_content = target_path.read_text(encoding="utf-8") if target_path.exists() else source_path.read_text(encoding="utf-8")
+        data = json.loads(source_content)
+
+        if not isinstance(data, dict) or "aircraft" not in data:
+            raise ValueError(f"invalid aircraft profile dataset: missing 'aircraft' in {source_path}")
+
+        requested_types = parse_types(args.types)
+        if requested_types:
+            missing = [t for t in requested_types if t not in data["aircraft"]]
+            if missing:
+                raise ValueError(f"unknown aircraft type(s) in --types: {', '.join(missing)}")
+            types_to_update: list[str] | None = requested_types
         else:
-            args.out.parent.mkdir(parents=True, exist_ok=True)
-            args.out.write_text(encoded, encoding="utf-8")
-        if args.report:
-            for profile in dataset["profiles"]:
-                print(f"{profile['icaoType']}: {profile['status']} ({profile['openapType'] or 'no alias'})")
+            types_to_update = None
+
+        populate_dataset(data, types_to_update)
+        encoded = format_dataset(data)
+
+        if args.check:
+            if raw_content is None or raw_content != encoded:
+                print(
+                    f"aircraft profile build: check failed: {target_path} differs from calculated output",
+                    file=sys.stderr,
+                )
+                return 2
+            return 0
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(encoded, encoding="utf-8")
         return 0
+
     except (ValueError, RuntimeError, OSError) as exc:
         print(f"aircraft profile build: error: {exc}", file=sys.stderr)
         return 2

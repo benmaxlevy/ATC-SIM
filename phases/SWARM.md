@@ -1,5 +1,149 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Seventy-second swarm planned — cancel approach clearance breakout (2026-09-15)
+
+Human approved the cancel-approach feature on `feature/better-openap-usage`.
+The command uses generic FAA phraseology, clears active approach guidance, and
+applies subsequent ordered breakout instructions without starting the published
+missed approach.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add generic `CANCEL_APPROACH`, typed/spoken/Path C parity, atomic projected validation, approach breakout, acceptance, and docs. |
+| Phase | `phases/04-procedures/` |
+| Include | T04-66 → T04-67 → T04-68. |
+| Merge target | `feature/better-openap-usage`. |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-68 plus focused tests, `npm run ci`, speech mock pytest, and manual R01 review. |
+| Push | Push `feature/better-openap-usage` after green phase exit. |
+
+**Product law:** `CANCEL_APPROACH` means “Cancel Approach Clearance.” It is
+generic across approach types, carries no approach ID, must be first in a
+combined command, clears active approach guidance, never starts the published
+missed approach, and permits later ordered heading/altitude instructions.
+Rejected commands mutate nothing. Existing `GO_AROUND`, heading, approach,
+scope CA, MSAW, route, and speech behavior remains unchanged outside this
+command.
+
+**Skip:** Cloud inference, new FMS modes, missed-approach redesign,
+landing/tower changes, approach catalog changes, scope CA aliases, facility
+branches, and speech providers.
+
+**Waves:**
+- Wave A: T04-66 — Command IR, typed/spoken parsing, readback, and Path C parity.
+- Wave B: T04-67 — projected validation, cancellation state, and intent apply.
+- Wave C: T04-68 — synthetic acceptance, docs, and manual evidence.
+
+**Ticket ownership:**
+- T04-66 owns IR, parser precedence, exact syntax, readback, and speech-api parity.
+- T04-67 owns atomic validation, approach-state clearing, and intent breakout.
+- T04-68 owns acceptance, docs, and final manual evidence.
+
+**Ticket paths/branches:**
+- `ticket/T04-66-cancel-approach-command-ir-and-parser-parity` → `phases/04-procedures/tickets/T04-66-cancel-approach-command-ir-and-parser-parity.md`
+- `ticket/T04-67-cancel-approach-validation-and-intent-breakout` → `phases/04-procedures/tickets/T04-67-cancel-approach-validation-and-intent-breakout.md`
+- `ticket/T04-68-cancel-approach-acceptance-and-docs` → `phases/04-procedures/tickets/T04-68-cancel-approach-acceptance-and-docs.md`
+
+**Manual:** Review against FAA JO 7110.65 §4-8-1 and FAA AIM §5-4. Confirm
+official phrase “Cancel Approach Clearance,” additional instructions, generic
+approach scope, and distinction from go-around/missed approach. Record trainer
+delta: local intent breakout only; no IFR cancellation or obstacle-clearance claim.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: cancel approach clearance breakout T04-66–68
+Merge target: feature/better-openap-usage
+Merged: T04-66, T04-67, T04-68
+Tests: npm run ci, speech-api mock pytest, Path C evals, manual R01 review
+Notes: generic approach cancellation; no push before user request
+```
+
+## Seventy-second swarm started — cancel approach clearance breakout (2026-09-15)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs
+T04-66 through T04-68 sequentially with one isolated worker at a time. Each
+ticket gets focused tests, `npm run ci`, and speech mock pytest before the next
+ticket. The user explicitly authorized pushing the completed green branch to
+`origin/feature/better-openap-usage`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts
+(`.agents/rules/`, `GEMINI.md`, `audit.diff`) remain untouched.
+
+## Seventy-first swarm planned — procedure speed/altitude precedence, DSR, and approach rules (2026-09-14)
+
+Human approved procedure command updates on `feature/better-openap-usage`:
+speed and altitude instructions override published SID/STAR constraints; altitude
+instructions on approach reject with unable; headings on approach prior to localizer
+capture preserve approach clearance and arm intercept; DSR deletes published speed
+restrictions; and speed instructions on approach support optional until gates bounded
+by the FAA hard limit (Math.min(FAF, 5 DME)).
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement SID/STAR altitude and speed precedence, DSR command and normal speed execution, approach altitude rejection, intercept heading preservation, and FAA 5 DME/FAF approach speed boundary handling with Path C parity. |
+| Phase | `phases/04-procedures/` |
+| Include | T04-63 → T04-64 → T04-65. |
+| Merge target | `feature/better-openap-usage`. |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-65 plus focused tests, `npm run ci`, and speech mock pytest. |
+| Push | No push. |
+
+**Product law:** An altitude instruction on a SID/STAR cancels climb/descend via
+vertical constraints to ASSIGNED while retaining lateral route navigation. Controller
+speed instructions on a SID/STAR override published fix speed restrictions.
+Issuing DSR deletes procedure speed restrictions, flying normal profile arrival/climb
+speed. Once cleared for an approach, altitude instructions reject deterministically.
+Headings on approach issued before localizer capture update heading and maintain
+intercept mode without dropping the approach clearance. Approach speed instructions
+accept optional until gates (FAF, DME, Fix) but strictly enforce the FAA hard
+boundary `Math.min(fafDistanceNm ?? 5, 5)`; any instruction or gate inside the
+boundary rejects with an official unable message. Crossing the gate or hard boundary
+clears the controller speed and transitions to approach/landing speed.
+
+**Skip:** Cloud inference fallback, unconstrained fuzzy repair, non-kinematic
+autothrottle physics, changing MVA/ATPA/CA separation thresholds.
+
+**Waves:**
+- Wave A: T04-63 (Command IR types, parsers, readback, Speech-API parity).
+- Wave B: T04-64 (Pilot validation, approach rejections, and intent application).
+- Wave C: T04-65 (FMS speed precedence, DSR normal speed, approach transition, acceptance).
+
+**Ticket ownership:**
+- T04-63 owns `Instruction` types, `SpeedUntil`, `DSR` typed/spoken parsing, readback, and `speech-api` parity.
+- T04-64 owns pilot validation (approach altitude rejection, 5 DME / FAF boundary check) and intent application (STAR altitude precedence, DSR flag, intercept heading mode).
+- T04-65 owns vertical FMS `targetSpeedKt` precedence, DSR profile speed, approach speed transition at gates/boundaries, and integration tests.
+
+**Ticket paths/branches:**
+- `ticket/T04-63-procedure-altitude-speed-precedence-and-dsr-command-ir` → `phases/04-procedures/tickets/T04-63-procedure-altitude-speed-precedence-and-dsr-command-ir.md`
+- `ticket/T04-64-pilot-validation-approach-rejections-and-intent-apply` → `phases/04-procedures/tickets/T04-64-pilot-validation-approach-rejections-and-intent-apply.md`
+- `ticket/T04-65-fms-speed-precedence-dsr-and-approach-speed-transition` → `phases/04-procedures/tickets/T04-65-fms-speed-precedence-dsr-and-approach-speed-transition.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: procedure speed/altitude precedence, DSR, and approach rules T04-63–65
+Merge target: feature/better-openap-usage
+Merged: T04-63, T04-64, T04-65
+Tests: CI, speech-api mock pytest, Path C evals
+Notes: No push; on branch feature/better-openap-usage
+```
+
+## Seventy-first swarm started — procedure speed/altitude precedence, DSR, and approach rules (2026-09-14)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs T04-63
+through T04-65 sequentially with one isolated worker at a time. Every squash
+merge requires focused tests, `npm run ci`, and speech mock pytest before the
+next ticket. No push is authorized.
+
+Workers implement exactly one ticket, never merge or spawn, and return exactly
+`READY TO MERGE` or `BLOCKED`. On CI or validation failure, stop the next wave
+and use one narrowly scoped correction worker only. Preserve unrelated untracked
+artifacts (`audit.diff`, `.agents/rules/`, `GEMINI.md`).
+
 ## Seventy-first swarm planned — configurable beacon pools (2026-09-14)
 
 Human approved the beacon-pool audit follow-up on `feature/beacon-pools`.
@@ -4667,3 +4811,75 @@ one Luna/high worker at a time. Captain squash-merges only after focused tests,
 `npm run ci`, and independent supplied-manual PASS. On any failure, stop later
 waves and use one narrow correction worker. The proposed sixty-fourth product
 law and skip list above are binding.
+
+## Sixty-fifth swarm planned — 2026-09-14 (Simplified OpenAP Profile Pipeline)
+
+Consolidate the multi-file performance profile structure (`simulator-policies.json`,
+`type-mappings.json`, `aircraft-profiles.generated.json`) into a single
+`src/core/performance/aircraft-profiles.json` dataset with runtime defaults
+cascading, and simplify the Python builder script to directly populate OpenAP
+values without policy recipe indirection.
+
+| Key | Value |
+| --- | --- |
+| Goal | Consolidate aircraft performance profiles into a single JSON dataset with runtime defaults cascading and direct OpenAP population. |
+| Phase | `phases/04-procedures/` |
+| Tickets | `T04-60` → `T04-61` → `T04-62` |
+| Merge target | `feature/better-openap-usage` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci` after every merge |
+| Stop | Stop after `T04-62`; do not start another phase |
+
+**Product law:**
+
+- Single unified file `src/core/performance/aircraft-profiles.json` contains a top-level `"defaults"` block and a sparse `"aircraft"` dictionary.
+- Runtime registry (`AircraftPerformanceRegistry`) cascades default values when an aircraft entry is empty `{}` or omits specific regime fields.
+- Python builder script operates directly on `aircraft-profiles.json` without policy recipes or mapping tables.
+- Browser runtime never imports Python, OpenAP, or network dependencies.
+- Existing `AircraftPerformanceProfile` interface remains intact; `src/core/world.ts` and `src/core/kinematics.ts` require no changes.
+
+**Skip:**
+
+- Flight dynamics/kinematics model overhauls, wake turbulence separation calculations, live weather integration, display/radar changes, speech changes, and scenario changes.
+
+**Waves:**
+
+- **Wave A:** `T04-60` (Unified schema and runtime default cascade)
+- **Wave B:** `T04-61` (Direct OpenAP profile populator; waits for T04-60)
+- **Wave C:** `T04-62` (Legacy file cleanup, docs, and integration acceptance; waits for T04-61)
+
+**Ticket ownership:**
+
+- **T04-60:** `src/core/performance/aircraft-profiles.json` schema, `registry.ts` cascade merging, `types.ts`, and `registry.test.ts`.
+- **T04-61:** `tools/aircraft-profiles/build_profiles.py` simplification, direct OpenAP calls, SI conversions, and `test_build_profiles.py`.
+- **T04-62:** Deletion of `type-mappings.json`, `simulator-policies.json`, and `aircraft-profiles.generated.json`; `package.json` script alignment; `README.md`; and full integration acceptance.
+
+**Ticket branches:**
+
+- `ticket/T04-60-unified-aircraft-profiles-schema-and-default-cascade` ← `phases/04-procedures/tickets/T04-60-unified-aircraft-profiles-schema-and-default-cascade.md`
+- `ticket/T04-61-direct-openap-aircraft-profile-populator` ← `phases/04-procedures/tickets/T04-61-direct-openap-aircraft-profile-populator.md`
+- `ticket/T04-62-profile-pipeline-cleanup-and-integration-acceptance` ← `phases/04-procedures/tickets/T04-62-profile-pipeline-cleanup-and-integration-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Simplified OpenAP Profile Pipeline T04-60–62
+Merge target: feature/better-openap-usage
+Merged: T04-60, T04-61, T04-62
+Tests: npm run ci exit 0
+Notes: Single-file profile dataset with runtime cascade; legacy indirection removed
+```
+
+## Sixty-fifth swarm started — 2026-09-14 (Simplified OpenAP Profile Pipeline)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs T04-60,
+T04-61, then T04-62 sequentially with one isolated worker at a time. Every
+squash merge onto `feature/better-openap-usage` requires `npm run ci` before the
+next wave.
+
+No push is authorized. Workers implement exactly one ticket, never merge or
+spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-62.
+
+

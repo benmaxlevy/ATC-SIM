@@ -9,7 +9,7 @@
  * limits, or mutate intent. No World, no DOM.
  */
 
-import type { Instruction, ParseStage, TurnDir } from "@core";
+import type { Instruction, ParseStage, SpeedUntil, TurnDir } from "@core";
 import {
   formatParseError,
   isCallsignToken,
@@ -28,6 +28,7 @@ import {
   scanIfrClearanceRouteWindow,
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
+import { cancelApproachSequenceError } from "./instruction-order";
 
 export type ParseResult =
   | {
@@ -42,7 +43,7 @@ export type ParseResult =
     }
   | { ok: false; error: string; sourceText: string };
 
-const LETTER_NUMBER = /^([HLRCDAS])(\d+)$/;
+const LETTER_NUMBER = /^([HLRCDAS])(\d+)(?:\/(\S*))?$/;
 const TURN_COMPACT = /^T(\d+)([LR])$/;
 const TURN_NUMBER_ONLY = /^T(\d+)$/;
 const TURN_NUMBER_AND_DIR = /^(\d+)([LR])$/;
@@ -80,6 +81,10 @@ export function parseRadioText(
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
   }
+  const cancellationError = cancelApproachSequenceError(instructions);
+  if (cancellationError !== null) {
+    return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, cancellationError);
+  }
 
   return {
     ok: true,
@@ -115,9 +120,11 @@ function isTypedInstructionStart(token: string): boolean {
 const ZERO_ARG_INSTRUCTIONS: Readonly<Record<string, Instruction>> = {
   PH: { type: "PRESENT_HEADING" },
   GA: { type: "GO_AROUND" },
+  CAPP: { type: "CANCEL_APPROACH" },
   I: { type: "IDENT" },
   SH: { type: "SAY_HEADING" },
   SA: { type: "SAY_ALTITUDE" },
+  DSR: { type: "DELETE_SPEED_RESTRICTIONS" },
 };
 
 const APPROACH_INSTRUCTIONS: Readonly<
@@ -394,15 +401,41 @@ function parseOneInstruction(
 
   const compact = token.match(LETTER_NUMBER);
   if (compact) {
-    return finishLetterNumber(compact[1]!, compact[2]!, index + 1);
+    let nextIdx = index + 1;
+    let untilStr = compact[3];
+    if (compact[1] === "S" && untilStr === undefined) {
+      if (tokens[nextIdx] === "/" && tokens[nextIdx + 1] !== undefined) {
+        untilStr = tokens[nextIdx + 1];
+        nextIdx += 2;
+      } else if (tokens[nextIdx]?.startsWith("/")) {
+        untilStr = tokens[nextIdx].slice(1);
+        nextIdx += 1;
+      }
+    }
+    return finishLetterNumber(compact[1]!, compact[2]!, nextIdx, untilStr);
   }
 
   if (BARE_LETTER.test(token)) {
-    const rawNumber = tokens[index + 1];
-    if (rawNumber === undefined || parseUnsignedInt(rawNumber) === null) {
+    const rawNumberToken = tokens[index + 1];
+    if (rawNumberToken === undefined) {
       return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: token };
     }
-    return finishLetterNumber(token, rawNumber, index + 2);
+    const numAndUntil = rawNumberToken.match(/^(\d+)(?:\/(\S*))?$/);
+    if (!numAndUntil) {
+      return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: token };
+    }
+    let nextIdx = index + 2;
+    let untilStr = numAndUntil[2];
+    if (token === "S" && untilStr === undefined) {
+      if (tokens[nextIdx] === "/" && tokens[nextIdx + 1] !== undefined) {
+        untilStr = tokens[nextIdx + 1];
+        nextIdx += 2;
+      } else if (tokens[nextIdx]?.startsWith("/")) {
+        untilStr = tokens[nextIdx].slice(1);
+        nextIdx += 1;
+      }
+    }
+    return finishLetterNumber(token, numAndUntil[1]!, nextIdx, untilStr);
   }
 
   return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
@@ -412,10 +445,19 @@ function finishLetterNumber(
   letter: string,
   rawNumber: string,
   nextIndex: number,
+  rawUntil?: string,
 ): InstructionParse {
   const n = parseUnsignedInt(rawNumber);
   if (n === null) {
     return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: letter };
+  }
+
+  if (rawUntil !== undefined && letter !== "S") {
+    return {
+      ok: false,
+      code: PARSE_ERROR.UNKNOWN_TOKEN,
+      detail: `${letter}${rawNumber}/${rawUntil}`,
+    };
   }
 
   if (letter === "H" || letter === "L" || letter === "R") {
@@ -440,9 +482,45 @@ function finishLetterNumber(
     };
   }
 
+  let until: SpeedUntil | undefined;
+  if (rawUntil !== undefined) {
+    const target = rawUntil.startsWith("/") ? rawUntil.slice(1) : rawUntil;
+    if (target === "") {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: "/" };
+    }
+    if (target === "FAF") {
+      until = { type: "FAF" };
+    } else {
+      const dmeMatch = target.match(/^(\d+)DME$/);
+      const numMatch = target.match(/^(\d+)$/);
+      if (dmeMatch) {
+        const dist = parseUnsignedInt(dmeMatch[1]!);
+        if (dist === null) {
+          return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: target };
+        }
+        until = { type: "DME", distanceNm: dist };
+      } else if (numMatch) {
+        const dist = parseUnsignedInt(numMatch[1]!);
+        if (dist === null) {
+          return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: target };
+        }
+        until = { type: "DME", distanceNm: dist };
+      } else if (isFixIdToken(target)) {
+        until = { type: "FIX", fixId: target };
+      } else {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: target };
+      }
+    }
+  }
+
   return {
     ok: true,
-    instruction: { type: "SPEED", speedKt: n, verb: "MAINTAIN" },
+    instruction: {
+      type: "SPEED",
+      speedKt: n,
+      verb: "MAINTAIN",
+      ...(until ? { until } : {}),
+    },
     nextIndex,
   };
 }

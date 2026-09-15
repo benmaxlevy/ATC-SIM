@@ -5,12 +5,19 @@
 
 import type {
   Aircraft,
+  AircraftPerformanceProfile,
   FixRegistry,
   Instruction,
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { isOnCourseToFix, joinProcedureTransition } from "@core";
+import {
+  alongTrackNm,
+  isOnCourseToFix,
+  joinProcedureTransition,
+  normalizeHeading,
+  performanceRegistry,
+} from "@core";
 import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -39,13 +46,27 @@ export type ValidateReason =
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
+export interface ValidateApproach {
+  id: string;
+  type?: string;
+  runway?: string;
+  fafDistanceNm?: number;
+  fafFixId?: string;
+  thresholdFixId?: string;
+  courseDeg?: number;
+  publishedCourseMagneticDeg?: number;
+}
+
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
-  catalog?: (VerticalCatalog & ProcedureJoinCatalog) | null;
+  catalog?:
+    | (VerticalCatalog & ProcedureJoinCatalog & { approaches?: ReadonlyArray<ValidateApproach> })
+    | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
+  performanceProfile?: AircraftPerformanceProfile | null;
 }
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -57,8 +78,12 @@ export function validateInstructions(
   if (instructions.length === 0) {
     return { ok: false, reason: "EMPTY" };
   }
+  const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
+  if (instructions.some((instruction) => instruction.type === "CANCEL_APPROACH")) {
+    return validateProjectedCancellation(aircraft, instructions, opts, profile);
+  }
   for (const instruction of instructions) {
-    const result = validateOne(aircraft, instruction, opts);
+    const result = validateOne(aircraft, instruction, opts, profile);
     if (!result.ok) {
       return result;
     }
@@ -66,10 +91,163 @@ export function validateInstructions(
   return { ok: true };
 }
 
+/**
+ * Cancellation is a lifecycle boundary inside a single transmission. Validate
+ * later instructions against a copy of intent, then let handleRadioCommand
+ * apply the original list only after every instruction passes.
+ */
+function validateProjectedCancellation(
+  aircraft: Aircraft,
+  instructions: Instruction[],
+  opts: ValidateOpts | undefined,
+  profile: AircraftPerformanceProfile | null,
+): ValidateResult {
+  const cancellationIndexes = instructions.reduce<number[]>((indexes, instruction, index) => {
+    if (instruction.type === "CANCEL_APPROACH") indexes.push(index);
+    return indexes;
+  }, []);
+  if (cancellationIndexes[0] !== 0) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH must be the first instruction",
+    };
+  }
+  if (cancellationIndexes.length !== 1) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH may be issued only once",
+    };
+  }
+  if (
+    instructions
+      .slice(1)
+      .some((instruction) =>
+        new Set([
+          "CLEARED_APPROACH",
+          "INTERCEPT_LOCALIZER",
+          "EXPECT_APPROACH",
+          "GO_AROUND",
+          "IFR_CLEARANCE",
+        ]).has(instruction.type),
+      )
+  ) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+    };
+  }
+
+  const projected = cloneAircraftForValidation(aircraft);
+  const cancellation = validateCancellation(projected);
+  if (!cancellation.ok) {
+    return cancellation;
+  }
+  projectCancellation(projected);
+
+  for (const instruction of instructions.slice(1)) {
+    const result = validateOne(projected, instruction, opts, profile);
+    if (!result.ok) {
+      return result;
+    }
+    projectAfterCancellation(projected, instruction);
+  }
+  return { ok: true };
+}
+
+function cloneAircraftForValidation(aircraft: Aircraft): Aircraft {
+  return {
+    ...aircraft,
+    intent: {
+      ...aircraft.intent,
+      lateral: aircraft.intent.lateral ? { ...aircraft.intent.lateral } : undefined,
+      vertical: aircraft.intent.vertical ? { ...aircraft.intent.vertical } : undefined,
+    },
+  };
+}
+
+function validateCancellation(aircraft: Aircraft): ValidateResult {
+  if (
+    !aircraft.intent.clearedApproachId ||
+    aircraft.intent.lateral?.type === "MISSED" ||
+    aircraft.intent.lateral?.type === "LANDING"
+  ) {
+    return { ok: false, reason: "NOT_ON_APPROACH" };
+  }
+  return { ok: true };
+}
+
+function projectCancellation(aircraft: Aircraft): void {
+  aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
+  aircraft.intent.turn = "SHORTEST";
+  aircraft.intent.clearedApproachId = null;
+  aircraft.intent.locInterceptApproachId = null;
+  aircraft.intent.expectedApproachId = null;
+  if (aircraft.intent.vertical?.type === "GS") {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  const lateralType = aircraft.intent.lateral?.type;
+  if (
+    lateralType === undefined ||
+    lateralType === "HEADING" ||
+    lateralType === "INTERCEPT_LOC" ||
+    lateralType === "LOC"
+  ) {
+    aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
+  }
+}
+
+function projectAfterCancellation(aircraft: Aircraft, instruction: Instruction): void {
+  switch (instruction.type) {
+    case "FLY_HEADING":
+      projectHeading(aircraft, instruction.headingDeg, instruction.turn);
+      return;
+    case "TURN_DEGREES":
+      projectHeading(
+        aircraft,
+        normalizeHeading(
+          aircraft.headingDeg +
+            (instruction.direction === "LEFT" ? -instruction.degrees : instruction.degrees),
+        ),
+        instruction.direction,
+      );
+      return;
+    case "PRESENT_HEADING":
+      projectHeading(aircraft, aircraft.headingDeg, "SHORTEST");
+      return;
+    default:
+      return;
+  }
+}
+
+function projectHeading(
+  aircraft: Aircraft,
+  headingDeg: number,
+  turn: Aircraft["intent"]["turn"],
+): void {
+  aircraft.intent.assignedHeadingDeg = headingDeg;
+  aircraft.intent.turn = turn;
+  aircraft.intent.lateral = { type: "HEADING", headingDeg };
+  aircraft.intent.clearedApproachId = null;
+  aircraft.intent.locInterceptApproachId = null;
+  if (
+    aircraft.intent.vertical?.type === "VIA_STAR" ||
+    aircraft.intent.vertical?.type === "VIA_SID" ||
+    aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "MISSED_CLIMB"
+  ) {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  aircraft.intent.cross = undefined;
+}
+
 function validateOne(
   aircraft: Aircraft,
   instruction: Instruction,
   opts?: ValidateOpts,
+  profile?: AircraftPerformanceProfile | null,
 ): ValidateResult {
   switch (instruction.type) {
     case "FLY_HEADING":
@@ -87,16 +265,9 @@ function validateOne(
       }
       return { ok: true };
     case "ALTITUDE":
-      return validateAltitude(aircraft, instruction);
+      return validateAltitude(aircraft, instruction, profile, opts);
     case "SPEED":
-      if (
-        !Number.isFinite(instruction.speedKt) ||
-        instruction.speedKt < SPEED_MIN_KT ||
-        instruction.speedKt > SPEED_MAX_KT
-      ) {
-        return { ok: false, reason: "SPEED" };
-      }
-      return { ok: true };
+      return validateSpeed(aircraft, instruction, profile, opts);
     case "CLEARED_APPROACH":
     case "INTERCEPT_LOCALIZER":
     case "EXPECT_APPROACH":
@@ -158,16 +329,19 @@ function validateOne(
     case "JOIN_PROCEDURE":
       return validateDescendViaOrJoin(aircraft, instruction, opts);
     case "CROSS":
-      return validateCross(aircraft, instruction, opts);
+      return validateCross(aircraft, instruction, opts, profile);
     case "GO_AROUND":
       if (!aircraft.intent.clearedApproachId) {
         return { ok: false, reason: "NOT_ON_APPROACH" };
       }
       return { ok: true };
+    case "CANCEL_APPROACH":
+      return validateCancellation(aircraft);
     case "PRESENT_HEADING":
     case "IDENT":
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
+    case "DELETE_SPEED_RESTRICTIONS":
       return { ok: true };
     default: {
       const _exhaustive: never = instruction;
@@ -180,12 +354,12 @@ function headingInRange(headingDeg: number): boolean {
   return Number.isFinite(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 }
 
-function isAltitudeValid(altitudeFt: number): boolean {
+function isAltitudeValid(altitudeFt: number, maxFt: number = ALTITUDE_MAX_FT): boolean {
   return (
     Number.isFinite(altitudeFt) &&
     altitudeFt % 100 === 0 &&
     altitudeFt >= ALTITUDE_MIN_FT &&
-    altitudeFt <= ALTITUDE_MAX_FT
+    altitudeFt <= maxFt
   );
 }
 
@@ -197,12 +371,55 @@ function approachKnown(approachId: string, opts?: ValidateOpts): boolean {
   return opts.approachIds.some((id) => id.trim().toUpperCase() === want);
 }
 
+function isIlsApproach(approachId: string, opts?: ValidateOpts): boolean {
+  const norm = approachId.trim().toUpperCase();
+  const approach = opts?.catalog?.approaches?.find((a) => a.id.trim().toUpperCase() === norm);
+  if (approach) {
+    if (approach.type) {
+      return approach.type.toUpperCase() === "ILS";
+    }
+  }
+  if (
+    norm.includes("RNAV") ||
+    norm.includes("VOR") ||
+    norm.includes("NDB") ||
+    norm.includes("VISUAL")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function validateAltitude(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "ALTITUDE" }>,
+  profile?: AircraftPerformanceProfile | null,
+  opts?: ValidateOpts,
 ): ValidateResult {
+  if (aircraft.intent.clearedApproachId) {
+    const isIls = isIlsApproach(aircraft.intent.clearedApproachId, opts);
+    return {
+      ok: false,
+      reason: "ALTITUDE",
+      detail: isIls
+        ? "unable. cleared for the ILS already."
+        : "unable. cleared for the approach already.",
+    };
+  }
+
   const ft = instruction.altitudeFt;
-  if (!isAltitudeValid(ft)) {
+  if (!Number.isFinite(ft) || ft % 100 !== 0 || ft < ALTITUDE_MIN_FT) {
+    return { ok: false, reason: "ALTITUDE" };
+  }
+  if (profile?.limits?.serviceCeilingFt !== undefined) {
+    if (ft > profile.limits.serviceCeilingFt) {
+      return {
+        ok: false,
+        reason: "ALTITUDE",
+        detail: `unable altitude ${ft}, ceiling is ${profile.limits.serviceCeilingFt}`,
+      };
+    }
+  } else if (ft > ALTITUDE_MAX_FT) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (instruction.verb === "CLIMB" && ft <= aircraft.altitudeFt) {
@@ -210,6 +427,106 @@ function validateAltitude(
   }
   if (instruction.verb === "DESCEND" && ft >= aircraft.altitudeFt) {
     return { ok: false, reason: "DESCEND_NOT_BELOW" };
+  }
+  return { ok: true };
+}
+
+function validateSpeed(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "SPEED" }>,
+  profile?: AircraftPerformanceProfile | null,
+  opts?: ValidateOpts,
+): ValidateResult {
+  if (!Number.isFinite(instruction.speedKt)) {
+    return { ok: false, reason: "SPEED" };
+  }
+
+  const approachId =
+    aircraft.intent.clearedApproachId ??
+    (aircraft.intent.lateral?.type === "LOC" ||
+    aircraft.intent.lateral?.type === "LANDING" ||
+    aircraft.intent.lateral?.type === "INTERCEPT_LOC"
+      ? aircraft.intent.lateral.approachId
+      : undefined);
+
+  const approach = approachId
+    ? opts?.catalog?.approaches?.find(
+        (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+      )
+    : opts?.catalog?.approaches?.[0];
+
+  const hardBoundaryNm = Math.min(approach?.fafDistanceNm ?? 5, 5);
+  const boundaryName = hardBoundaryNm === 5 ? "5 DME" : "final approach fix";
+
+  const thresholdPoint =
+    approach?.thresholdFixId && opts?.fixRegistry?.has(approach.thresholdFixId)
+      ? opts.fixRegistry.get(approach.thresholdFixId)!
+      : { xNm: 0, yNm: 0 };
+
+  let courseDeg = approach?.publishedCourseMagneticDeg ?? approach?.courseDeg;
+  if (courseDeg === undefined) {
+    const match = approachId ? /(\d{1,2})[LCR]?$/i.exec(approachId) : null;
+    courseDeg = match ? Number.parseInt(match[1], 10) * 10 : 270;
+  }
+
+  const isClearedOrOnApproach = Boolean(approachId);
+  if (isClearedOrOnApproach) {
+    const aircraftDistNm = alongTrackNm(aircraft, thresholdPoint, courseDeg);
+    if (aircraftDistNm <= hardBoundaryNm) {
+      return {
+        ok: false,
+        reason: "SPEED",
+        detail: `unable. restriction too close to ${boundaryName}`,
+      };
+    }
+  }
+
+  if (instruction.until) {
+    if (instruction.until.type === "DME") {
+      if (instruction.until.distanceNm < hardBoundaryNm) {
+        return {
+          ok: false,
+          reason: "SPEED",
+          detail: `unable. restriction too close to ${boundaryName}`,
+        };
+      }
+    } else if (instruction.until.type === "FIX") {
+      const fix = opts?.fixRegistry?.get(instruction.until.fixId);
+      if (fix) {
+        const fixDistNm = alongTrackNm(fix, thresholdPoint, courseDeg);
+        if (fixDistNm < hardBoundaryNm) {
+          return {
+            ok: false,
+            reason: "SPEED",
+            detail: `unable. restriction too close to ${boundaryName}`,
+          };
+        }
+      }
+    }
+  }
+
+  const minKt =
+    profile?.limits?.minControlledSpeedKt && profile.limits.minControlledSpeedKt > 0
+      ? profile.limits.minControlledSpeedKt
+      : SPEED_MIN_KT;
+  const maxKt =
+    profile?.limits?.maxControlledSpeedKt && Number.isFinite(profile.limits.maxControlledSpeedKt)
+      ? profile.limits.maxControlledSpeedKt
+      : SPEED_MAX_KT;
+
+  if (instruction.speedKt < minKt) {
+    return {
+      ok: false,
+      reason: "SPEED",
+      detail: `unable speed ${instruction.speedKt}, minimum is ${minKt}`,
+    };
+  }
+  if (instruction.speedKt > maxKt) {
+    return {
+      ok: false,
+      reason: "SPEED",
+      detail: `unable speed ${instruction.speedKt}, maximum is ${maxKt}`,
+    };
   }
   return { ok: true };
 }
@@ -289,11 +606,13 @@ function validateCross(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "CROSS" }>,
   opts?: ValidateOpts,
+  profile?: AircraftPerformanceProfile | null,
 ): ValidateResult {
   if (instruction.fixId.trim() === "") {
     return { ok: false, reason: "EMPTY" };
   }
-  if (!isAltitudeValid(instruction.altitudeFt)) {
+  const maxFt = profile?.limits?.serviceCeilingFt ?? ALTITUDE_MAX_FT;
+  if (!isAltitudeValid(instruction.altitudeFt, maxFt)) {
     return { ok: false, reason: "ALTITUDE" };
   }
   if (!opts?.fixRegistry?.has(instruction.fixId)) {

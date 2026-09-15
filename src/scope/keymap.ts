@@ -124,6 +124,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Issues a supported approach clearance.",
       },
       {
+        id: "cancel-approach",
+        command: "CAPP / cancel approach clearance",
+        example: "DAL123 CAPP H270 A50",
+        input: "Radio",
+        result:
+          "Cancels active approach guidance, then accepts ordinary vectors. It does not cancel IFR clearance or start the missed approach; no approach re-arm may follow in the same transmission.",
+      },
+      {
         id: "callsign",
         command: "<callsign> <instructions>",
         example: "DAL123 H270",
