@@ -1,5 +1,77 @@
 # ATC-SIM swarm orchestrator — Forty-fourth swarm (Random/Author Spawn Policies)
 
+## Seventy-first swarm planned — procedure speed/altitude precedence, DSR, and approach rules (2026-09-14)
+
+Human approved procedure command updates on `feature/better-openap-usage`:
+speed and altitude instructions override published SID/STAR constraints; altitude
+instructions on approach reject with unable; headings on approach prior to localizer
+capture preserve approach clearance and arm intercept; DSR deletes published speed
+restrictions; and speed instructions on approach support optional until gates bounded
+by the FAA hard limit (Math.min(FAF, 5 DME)).
+
+| Key | Value |
+| --- | --- |
+| Goal | Implement SID/STAR altitude and speed precedence, DSR command and normal speed execution, approach altitude rejection, intercept heading preservation, and FAA 5 DME/FAF approach speed boundary handling with Path C parity. |
+| Phase | `phases/04-procedures/` |
+| Include | T04-63 → T04-64 → T04-65. |
+| Merge target | `feature/better-openap-usage`. |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-65 plus focused tests, `npm run ci`, and speech mock pytest. |
+| Push | No push. |
+
+**Product law:** An altitude instruction on a SID/STAR cancels climb/descend via
+vertical constraints to ASSIGNED while retaining lateral route navigation. Controller
+speed instructions on a SID/STAR override published fix speed restrictions.
+Issuing DSR deletes procedure speed restrictions, flying normal profile arrival/climb
+speed. Once cleared for an approach, altitude instructions reject deterministically.
+Headings on approach issued before localizer capture update heading and maintain
+intercept mode without dropping the approach clearance. Approach speed instructions
+accept optional until gates (FAF, DME, Fix) but strictly enforce the FAA hard
+boundary `Math.min(fafDistanceNm ?? 5, 5)`; any instruction or gate inside the
+boundary rejects with an official unable message. Crossing the gate or hard boundary
+clears the controller speed and transitions to approach/landing speed.
+
+**Skip:** Cloud inference fallback, unconstrained fuzzy repair, non-kinematic
+autothrottle physics, changing MVA/ATPA/CA separation thresholds.
+
+**Waves:**
+- Wave A: T04-63 (Command IR types, parsers, readback, Speech-API parity).
+- Wave B: T04-64 (Pilot validation, approach rejections, and intent application).
+- Wave C: T04-65 (FMS speed precedence, DSR normal speed, approach transition, acceptance).
+
+**Ticket ownership:**
+- T04-63 owns `Instruction` types, `SpeedUntil`, `DSR` typed/spoken parsing, readback, and `speech-api` parity.
+- T04-64 owns pilot validation (approach altitude rejection, 5 DME / FAF boundary check) and intent application (STAR altitude precedence, DSR flag, intercept heading mode).
+- T04-65 owns vertical FMS `targetSpeedKt` precedence, DSR profile speed, approach speed transition at gates/boundaries, and integration tests.
+
+**Ticket paths/branches:**
+- `ticket/T04-63-procedure-altitude-speed-precedence-and-dsr-command-ir` → `phases/04-procedures/tickets/T04-63-procedure-altitude-speed-precedence-and-dsr-command-ir.md`
+- `ticket/T04-64-pilot-validation-approach-rejections-and-intent-apply` → `phases/04-procedures/tickets/T04-64-pilot-validation-approach-rejections-and-intent-apply.md`
+- `ticket/T04-65-fms-speed-precedence-dsr-and-approach-speed-transition` → `phases/04-procedures/tickets/T04-65-fms-speed-precedence-dsr-and-approach-speed-transition.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: procedure speed/altitude precedence, DSR, and approach rules T04-63–65
+Merge target: feature/better-openap-usage
+Merged: T04-63, T04-64, T04-65
+Tests: CI, speech-api mock pytest, Path C evals
+Notes: No push; on branch feature/better-openap-usage
+```
+
+## Seventy-first swarm started — procedure speed/altitude precedence, DSR, and approach rules (2026-09-14)
+
+Execution authorized on `feature/better-openap-usage`. The captain runs T04-63
+through T04-65 sequentially with one isolated worker at a time. Every squash
+merge requires focused tests, `npm run ci`, and speech mock pytest before the
+next ticket. No push is authorized.
+
+Workers implement exactly one ticket, never merge or spawn, and return exactly
+`READY TO MERGE` or `BLOCKED`. On CI or validation failure, stop the next wave
+and use one narrowly scoped correction worker only. Preserve unrelated untracked
+artifacts (`audit.diff`, `.agents/rules/`, `GEMINI.md`).
+
 ## Seventieth swarm planned — shared fix matching and per-span route evidence (2026-09-14)
 
 Human approved the follow-up to the completed arbitrary IFR route-chain work:
