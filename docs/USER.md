@@ -227,6 +227,9 @@ assigned plan beacon. An omitted creation beacon uses the configured default;
 explicit `A` always means no assigned beacon. A released plan beacon can be
 reused when it is not occupied by an assigned aircraft squawk. An aircraft's
 reported squawk remains surveillance data and never rewrites the plan beacon.
+The shipped KATL configurations use IFR `2000`–`2047`, VFR `1201`–`1217`
+(excluding `1200`), and general pools `/1`–`/4` using `3000`–`3017`,
+`4000`–`4017`, `5000`–`5017`, and `6000`–`6017` respectively.
 
 Routes are not executable from these plans yet. Editing `FIXES` stores plan
 data only; it does not update the aircraft FMS, route, heading, or pilot
