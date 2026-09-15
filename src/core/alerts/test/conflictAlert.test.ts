@@ -358,6 +358,42 @@ test("T02-111: detects active violation immediately (tCpa = 0)", () => {
   expect(alert!.areaTier).toBe(4);
 });
 
+test("T02-111: excludes exact vertical separation threshold", () => {
+  const currentA = makeTestAircraft({
+    callsign: "CUR1",
+    xNm: 0,
+    yNm: 0,
+    altitudeFt: 5000,
+    speedKt: 0,
+  });
+  const currentB = makeTestAircraft({
+    callsign: "CUR2",
+    xNm: 1,
+    yNm: 0,
+    altitudeFt: 6000,
+    speedKt: 0,
+  });
+  expect(detectPairConflict(currentA, currentB)).toBeNull();
+
+  const predictiveA = makeTestAircraft({
+    callsign: "PRED1",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 5000,
+    speedKt: 240,
+  });
+  const predictiveB = makeTestAircraft({
+    callsign: "PRED2",
+    xNm: 4,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 6000,
+    speedKt: 240,
+  });
+  expect(detectPairConflict(predictiveA, predictiveB)).toBeNull();
+});
+
 test("T02-111: ignores diverging tracks unless currently violating", () => {
   // Diverging and separated: 2.8 NM apart in Tier 2 (Dsep = 2.5 NM)
   const context: CaContext = {
