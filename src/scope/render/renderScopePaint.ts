@@ -1236,7 +1236,7 @@ export function drawTracks(
       } else if (ho.kind === "departure") {
         sectorId = ho.fromSectorId === "TWR" ? "T" : ho.fromSectorId;
       } else if (ho.kind === "outbound" && ho.status === "accepted" && ownership !== "unowned") {
-        sectorId = ho.toSectorId;
+        sectorId = ho.toSectorId === DEFAULT_TOWER_SECTOR_ID ? "T" : ho.toSectorId;
       } else if (ownership === "tower") {
         sectorId = "T";
       } else if (ownership === "center") {
