@@ -1309,6 +1309,9 @@ export function isVfrAircraft(
   tracks?: Map<string, TrackDisplay>,
   world?: World,
 ): boolean {
+  if (ac.activeClearance || ac.flightRules === "IFR") {
+    return false;
+  }
   if (ac.squawk === "1200" || ac.assignedSquawk === "1200") {
     return true;
   }

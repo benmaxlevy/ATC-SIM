@@ -53,6 +53,13 @@ export function isFixIdToken(token: string): boolean {
   return FIX_ID_TOKEN.test(token);
 }
 
+/** Clearance limit: fix id or airport location identifier (e.g. `KATL`, `00GA`, `1B1`). */
+const CLEARANCE_LIMIT_TOKEN = /^[A-Z0-9]{2,6}$/;
+
+export function isClearanceLimitToken(token: string): boolean {
+  return CLEARANCE_LIMIT_TOKEN.test(token);
+}
+
 export function isProcedureIdToken(token: string): boolean {
   return PROCEDURE_ID_TOKEN.test(token);
 }

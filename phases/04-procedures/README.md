@@ -657,6 +657,7 @@ airspace awareness.
   flow control, and controller UI.
 - T04-73 implements the VFR flight-following and radio-contact lifecycle (request state machine,
   controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
+- T04-74 implements airborne VFR-to-IFR pickup (atomic transition to operational IFR, clearance limit validation against regional controlled destination airports, unchanged manual flight plan, and datablock/strip/list operational status).
 
 The regional pack generator command:
 

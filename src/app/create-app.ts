@@ -178,16 +178,52 @@ export function createApp(deps: AppDeps): AppHandles {
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
       getCatalogApproaches: () => approachesFromCatalog(world.catalog),
-      getCatalogAirports: () =>
-        world.catalog?.name
-          ? [
-              {
-                icao: world.catalog.airportId,
-                name: world.catalog.name,
-                aliases: world.catalog.spokenAliases ?? [],
-              },
-            ]
-          : [],
+      getCatalogAirports: () => {
+        const results: Array<{ icao: string; name: string; aliases: string[] }> = [];
+        const seen = new Set<string>();
+        if (world.catalog?.name && world.catalog.airportId) {
+          seen.add(world.catalog.airportId.toUpperCase());
+          results.push({
+            icao: world.catalog.airportId,
+            name: world.catalog.name,
+            aliases: [...(world.catalog.spokenAliases ?? [])],
+          });
+        }
+        const regional = world.regional as
+          | {
+              airports?:
+                | Array<{ icao: string; name?: string }>
+                | {
+                    centerAirport?: { icao: string; name?: string };
+                    destinations?: Array<{ icao: string; name?: string }>;
+                  };
+              getEligibleDestinations?: () => Array<{ icao: string; name?: string }>;
+            }
+          | undefined;
+        if (regional) {
+          const rawAirports = regional.airports;
+          const list: Array<{ icao: string; name?: string }> = Array.isArray(rawAirports)
+            ? rawAirports
+            : rawAirports && typeof rawAirports === "object" && "destinations" in rawAirports
+              ? [rawAirports.centerAirport, ...(rawAirports.destinations ?? [])].filter(
+                  (a): a is { icao: string; name?: string } => Boolean(a),
+                )
+              : typeof regional.getEligibleDestinations === "function"
+                ? regional.getEligibleDestinations()
+                : [];
+          for (const apt of list) {
+            if (apt?.icao && !seen.has(apt.icao.toUpperCase())) {
+              seen.add(apt.icao.toUpperCase());
+              results.push({
+                icao: apt.icao,
+                name: apt.name ?? apt.icao,
+                aliases: [],
+              });
+            }
+          }
+        }
+        return results;
+      },
       getIssuedAtSimMs: () => world.simTimeMs,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {
@@ -264,6 +300,7 @@ export function createApp(deps: AppDeps): AppHandles {
       seed: deps.vfrRequestSeed ?? 1,
     });
   vfrRequestQueue.scheduleFromWorld(world);
+  world.vfrRequestQueue = vfrRequestQueue;
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
 

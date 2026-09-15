@@ -344,7 +344,12 @@ function datablockSourceFromPlan(
     reportedSquawk,
     aircraftType: plan?.aircraftType ?? aircraft.aircraftType,
     requestedAltitudeFt: plan?.requestedAltitudeFt,
-    flightRules: plan?.flightRules ?? aircraft.flightRules,
+    flightRules:
+      aircraft.activeClearance || aircraft.flightRules === "IFR"
+        ? (aircraft.flightRules ?? "IFR")
+        : (plan?.flightRules ??
+          (plan?.flightType === "VFR" ? "VFR" : undefined) ??
+          aircraft.flightRules),
     intent: {
       ...aircraftIntent,
       ...(plan?.assignedAltitudeFt === undefined

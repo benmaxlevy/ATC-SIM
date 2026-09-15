@@ -178,6 +178,20 @@ export interface World {
   regional?: unknown;
   /** Authoritative radio requests (flight following, IFR pickup) (T04-73). */
   radioRequests?: RadioRequest[];
+  /** Optional pilot VFR request and cancellation scheduler (T04-72). */
+  vfrRequestQueue?: {
+    scheduleIfrCancellationCandidate?: (
+      aircraft: Aircraft,
+      simTimeMs: number,
+      options?: { delayMs?: number; log?: SessionLog },
+    ) => unknown;
+  };
+  /** Optional cancellation scheduler hook (T04-74). */
+  scheduleIfrCancellationCandidate?: (
+    aircraft: Aircraft,
+    simTimeMs: number,
+    options?: { delayMs?: number; log?: SessionLog },
+  ) => unknown;
 }
 
 export interface ScheduledDeparture {
@@ -311,6 +325,11 @@ export function createWorld(partial?: Partial<World>): World {
     arrivalScheduler: partial?.arrivalScheduler,
     vfrTrafficManager: partial?.vfrTrafficManager,
     radioRequests: partial?.radioRequests ?? [],
+    ...(partial?.regional !== undefined ? { regional: partial.regional } : {}),
+    ...(partial?.vfrRequestQueue !== undefined ? { vfrRequestQueue: partial.vfrRequestQueue } : {}),
+    ...(partial?.scheduleIfrCancellationCandidate !== undefined
+      ? { scheduleIfrCancellationCandidate: partial.scheduleIfrCancellationCandidate }
+      : {}),
   };
 }
 

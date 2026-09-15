@@ -132,11 +132,15 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
 | `SQ 2222` / `SQ VFR` | `ASSIGN_SQUAWK` (`2222` / `1200`) — aircraft transponder state only; never edits the flight plan beacon |
 | `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and `EXPLICIT_ROUTE` with an empty `segments` list; clearance limit and access are mandatory, other fields optional |
+| `CLR TO KPDK VIA RADAR VECTORS [ALT <hundreds>] [FREQ <value>] [SQ <octal>]` | `IFR_CLEARANCE` with limit `KPDK` and `RADAR_VECTORS` access; valid for airborne VFR-to-IFR pickup to eligible regional controlled destination airports |
 
 An IFR clearance's `EXPLICIT_ROUTE.segments` is an ordered, catalog-grounded
 list. Each `DIRECT` segment names one fix or navaid; each `PROCEDURE` segment
 names one catalog procedure and optional transition. An empty list means direct
 to the clearance limit. The route has no semantic one- or two-segment limit.
+For airborne VFR-to-IFR pickup, an airborne radar-identified aircraft with an open
+`IFR_PICKUP` request transitions atomically to operational IFR upon receiving an
+`IFR_CLEARANCE` to its requested eligible regional controlled destination.
 The parser may accept legacy access wording at its boundary, but Command IR
 consumers use only the canonical shape above. This tactical route is separate
 from the standalone `DIRECT` instruction.

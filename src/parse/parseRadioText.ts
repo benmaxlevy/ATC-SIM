@@ -13,6 +13,7 @@ import type { Instruction, ParseStage, SpeedUntil, TurnDir } from "@core";
 import {
   formatParseError,
   isCallsignToken,
+  isClearanceLimitToken,
   isFixIdToken,
   isProcedureIdToken,
   isTransitionIdToken,
@@ -175,7 +176,7 @@ function parseIfrClearance(
   }
   i += 1;
   const limitId = tokens[i];
-  if (!limitId || !isFixIdToken(limitId)) {
+  if (!limitId || !isClearanceLimitToken(limitId)) {
     return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
   }
   i += 1;

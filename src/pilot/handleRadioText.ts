@@ -132,15 +132,51 @@ function catalogAirportsFromWorld(world: World): Array<{
   name: string;
   aliases: string[];
 }> {
+  const results: Array<{ icao: string; name: string; aliases: string[] }> = [];
+  const seen = new Set<string>();
   const catalog = world.catalog;
-  if (!catalog?.name) return [];
-  return [
-    {
+  if (catalog?.name && catalog.airportId) {
+    seen.add(catalog.airportId.toUpperCase());
+    results.push({
       icao: catalog.airportId,
       name: catalog.name,
       aliases: [...(catalog.spokenAliases ?? [])],
-    },
-  ];
+    });
+  }
+  const regional = world.regional as
+    | {
+        airports?:
+          | Array<{ icao: string; name?: string }>
+          | {
+              centerAirport?: { icao: string; name?: string };
+              destinations?: Array<{ icao: string; name?: string }>;
+            };
+        getEligibleDestinations?: () => Array<{ icao: string; name?: string }>;
+      }
+    | undefined;
+  if (regional) {
+    const rawAirports = regional.airports;
+    const list: Array<{ icao: string; name?: string }> = Array.isArray(rawAirports)
+      ? rawAirports
+      : rawAirports && typeof rawAirports === "object" && "destinations" in rawAirports
+        ? [rawAirports.centerAirport, ...(rawAirports.destinations ?? [])].filter(
+            (a): a is { icao: string; name?: string } => Boolean(a),
+          )
+        : typeof regional.getEligibleDestinations === "function"
+          ? regional.getEligibleDestinations()
+          : [];
+    for (const apt of list) {
+      if (apt?.icao && !seen.has(apt.icao.toUpperCase())) {
+        seen.add(apt.icao.toUpperCase());
+        results.push({
+          icao: apt.icao,
+          name: apt.name ?? apt.icao,
+          aliases: [],
+        });
+      }
+    }
+  }
+  return results;
 }
 
 function buildCommand(args: {

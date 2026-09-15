@@ -230,6 +230,10 @@ export interface Aircraft {
   };
   /** Confirmed radar identification state from RADAR_CONTACT (T04-73). */
   radarContact?: RadioContactReport;
+  /** True when aircraft is airborne. Omitted/inferred from altitudeFt > 0 if unset. */
+  airborne?: boolean;
+  /** True when aircraft is in radar vectors pending heading state. */
+  radarVectorPending?: boolean;
 }
 
 export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND";
@@ -301,6 +305,10 @@ export interface AircraftInit {
   destinationAirport?: string;
   flightRules?: string;
   ambientVfr?: AmbientVfrState;
+  /** True when aircraft is airborne. Omitted/inferred from altitudeFt > 0 if unset. */
+  airborne?: boolean;
+  /** True when aircraft is in radar vectors pending heading state. */
+  radarVectorPending?: boolean;
 }
 
 /** ICAO heavy transport types used by generated and authored traffic. */
@@ -390,6 +398,10 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
     ...(init.flightRules ? { flightRules: init.flightRules } : {}),
     ...(init.ambientVfr ? { ambientVfr: init.ambientVfr } : {}),
+    ...(init.airborne !== undefined ? { airborne: init.airborne } : {}),
+    ...(init.radarVectorPending !== undefined
+      ? { radarVectorPending: init.radarVectorPending }
+      : {}),
   };
 }
 

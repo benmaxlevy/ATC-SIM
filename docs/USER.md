@@ -318,8 +318,12 @@ the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
 plan. Catalog airport ICAOs and listed spoken names are valid only in the IFR
 clearance-limit slot; they are not fixes, so `DIRECT KATL` remains a tactical
 direct command and is rejected unless KATL is an actual catalog fix/navaid.
-VFR-to-IFR pickup, holds, release/void, and full route amendments are not
-implemented.
+Airborne VFR-to-IFR pickup is supported: an airborne radar-identified ambient
+VFR aircraft with an open IFR pickup request can receive an IFR clearance to any
+eligible generated controlled airport in the loaded region (`CLR TO <AIRPORT> VIA
+RADAR VECTORS [ALT] [FREQ] [SQ]`), atomically transitioning operational flight
+rules to IFR while leaving any manual plan intact. Holds, release/void, and full
+route amendments are not implemented.
 
 ## Controls & keybindings
 
