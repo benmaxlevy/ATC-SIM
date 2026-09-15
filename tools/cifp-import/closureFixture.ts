@@ -209,6 +209,7 @@ export function fixtureSource(): NormalizedCifpSource {
     stars: [starFar1(), otherAirportStar()],
     sids: [sidOut1()],
     approaches: [approachIls27()],
+    airspaces: [],
     diagnostics: [],
     skippedByType: {},
   };

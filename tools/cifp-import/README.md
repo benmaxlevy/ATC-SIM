@@ -417,3 +417,71 @@ not TF legs.
 `lonDeg` is preserved. Video-map ids and authored spawn routes are not copied
 as procedure geometry. ATPA volumes are omitted unless the catalog already
 has rows.
+
+## Regional airport and airspace import (T04-69)
+
+Regional mode integrates local FAA CIFP procedure/airspace data with local FAA
+NASR airport and tower/controlled metadata to produce a validated regional
+source model for training simulation.
+
+### CLI usage
+
+```text
+npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Or directly:
+
+```text
+node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run]
+```
+
+### Official source families
+
+- **CIFP ARINC 424 fixed-width:**
+  - `UC`: Controlled Airspace records defining Class B, Class C, and Class D
+    geometry and vertical limits.
+  - `UR`: Restrictive (Special Use) Airspace records covering Restricted (`R`),
+    Prohibited (`P`), Warning (`W`), Alert (`A`), MOA (`M`), and SATR (`U`)
+    airspaces.
+- **FAA NASR subscription tables:**
+  - `APT`: Airport records providing public-use vs private-use status (`FAC_USE`)
+    and tower presence.
+  - `TWR` / `ATC`: Tower and control facility records verifying tower operation
+    and operating hours.
+
+### Provenance and effective-cycle responsibility
+
+- Source files must reside locally on disk outside git (e.g. `.cifp/`).
+- The developer is responsible for obtaining authorized FAA data and specifying
+  provenance (`--cycle <cycle>`).
+- The importer operates strictly offline: **no network requests**, no API calls,
+  no automatic cycle downloaders, and no telemetry.
+- **Never commit a real FAA CIFP/NASR cycle or national dump to git.** Only
+  synthetic, reviewable fixtures under `testdata/cifp/` belong in git.
+- **Tool-only boundary:** runtime `src/` never imports `tools/cifp-import`, and
+  KDEM fixtures remain independent of FAA input.
+
+### Supported geometry and loss diagnostics
+
+- **Supported boundary vias:**
+  - Great Circle (`G` / blank)
+  - Rhumb Line (`H`)
+  - Circular airspace (`C`) with center origin and radius
+  - Clockwise (`R`) and Counter-Clockwise (`L`) arcs with center origin,
+    arc radius, and bearing bounds
+- **Geometry loss diagnostics:**
+  - Any unsupported boundary via (e.g. `Z`) emits an explicit
+    `UNSUPPORTED_AIRSPACE_GEOMETRY` skip diagnostic. The volume is excluded;
+    it is **never** emitted as a guessed straight line.
+  - Continuation records (`UC-CONT`, `UR-CONT`) are counted as skips; altitude
+    limits are inherited from the primary record per FAA CIFP Readme.
+- **Strict regional validation:**
+  - Selected airports lacking NASR service metadata trigger
+    `MISSING_AIRPORT_SERVICE_METADATA` errors.
+  - Missing, invalid, or inconsistent lower/upper altitude limits trigger
+    `INVALID_AIRSPACE_VERTICAL_LIMITS` errors.
+  - Conflicting NASR airport records trigger `CONFLICTING_NASR_RECORD` errors.
+  - In strict mode (default), any error-level diagnostic causes the importer
+    to exit nonzero **without writing any output files**.
+

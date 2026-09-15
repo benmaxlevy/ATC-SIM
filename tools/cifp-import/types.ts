@@ -36,6 +36,15 @@ export interface CifpDiagnostic {
   identity?: string;
 }
 
+export interface AirportServiceMetadata {
+  publicUse?: boolean;
+  towered?: boolean;
+  sourceFile?: string;
+  sourceRecordId?: string;
+  effectiveDate?: string;
+  cycle?: string;
+}
+
 export interface NormalizedAirport {
   identity: CifpRecordIdentity;
   airportId: string;
@@ -44,6 +53,9 @@ export interface NormalizedAirport {
   fieldElevFt: number;
   arp: SourceLatLon;
   lineNo: number;
+  publicUse?: boolean;
+  towered?: boolean;
+  serviceMetadata?: AirportServiceMetadata;
 }
 
 export interface NormalizedRunway {
@@ -224,6 +236,55 @@ export interface NormalizedApproach {
   legs: NormalizedProcedureLeg[];
 }
 
+export type AirspaceClass = "B" | "C" | "D" | "A" | "E" | "G";
+
+export type SpecialUseAirspaceKind =
+  "RESTRICTED" | "PROHIBITED" | "WARNING" | "ALERT" | "MOA" | "SATR" | "OTHER";
+
+export type AirspaceType = "CONTROLLED" | "SPECIAL_USE";
+
+export type AirspaceAltitudeUnit = "MSL" | "AGL" | "GND" | "NOT_SPECIFIED" | "UNKNOWN";
+export type AirspaceAltitudeReference = "MSL" | "AGL" | "SURFACE" | "UNKNOWN";
+
+export interface NormalizedAirspaceAltitude {
+  rawAltitude: string;
+  rawUnit: string;
+  altitudeFt?: number;
+  unit: AirspaceAltitudeUnit;
+  reference: AirspaceAltitudeReference;
+}
+
+export type BoundaryViaType =
+  "CIRCLE" | "GREAT_CIRCLE" | "RHUMB_LINE" | "COUNTER_CLOCKWISE_ARC" | "CLOCKWISE_ARC" | "END";
+
+export interface NormalizedBoundarySegment {
+  sequence: number;
+  boundaryVia: string;
+  boundaryViaType: BoundaryViaType | "UNSUPPORTED";
+  position: SourceLatLon;
+  arcOrigin?: SourceLatLon;
+  arcDistanceNm?: number;
+  arcBearingDeg?: number;
+  lineNo: number;
+}
+
+export interface NormalizedAirspace {
+  identity: CifpRecordIdentity;
+  type: AirspaceType;
+  class?: AirspaceClass;
+  specialUseKind?: SpecialUseAirspaceKind;
+  designation?: string;
+  name: string;
+  centerAirportId?: string;
+  icaoRegion?: string;
+  multipleCode?: string;
+  lowerLimit: NormalizedAirspaceAltitude;
+  upperLimit: NormalizedAirspaceAltitude;
+  segments: NormalizedBoundarySegment[];
+  cycle?: string;
+  sourceLineNo: number;
+}
+
 export interface NormalizedCifpSource {
   dialect: CifpDialect;
   airports: NormalizedAirport[];
@@ -233,6 +294,7 @@ export interface NormalizedCifpSource {
   stars: NormalizedStar[];
   sids: NormalizedSid[];
   approaches: NormalizedApproach[];
+  airspaces: NormalizedAirspace[];
   diagnostics: CifpDiagnostic[];
   skippedByType: Record<string, number>;
 }
