@@ -4,6 +4,25 @@ export type { CwtWakeCategory } from "@core";
 import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { LoadedVideoMap, VideoMapGroupSet } from "./loadVideoMaps";
+import type {
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
+} from "./regional";
+
+export type {
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
+};
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
 export interface Runway {
@@ -244,4 +263,8 @@ export interface Scenario {
    * “no surveillance”). This ticket does not sample or paint.
    */
   radarSites: RadarSite[];
+  /** Optional validated regional facility containing satellite airports and controlled airspace. */
+  regional?: RegionalFacility;
+  /** Optional regional pack identifier (e.g. "katl") declared in scenario JSON. */
+  regionalPack?: string;
 }

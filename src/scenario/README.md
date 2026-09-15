@@ -56,3 +56,31 @@ through `latLonToNm` and the scenario ARP. Omitted `rangeNm` is 60 NM; omitted
 
 Empty `[]` means implicit FUSED for T02-75: no SITE selection entries, not “no
 surveillance.” This package does not sample reports or paint SITE marks.
+
+## Regional packs (T04-70)
+
+Scenarios can optionally specify a `"regionalPack"` string pointing to a facility
+directory under `src/scenario/data/<pack>/` (e.g. `"katl"` in `katl.json` and `katl-08.json`).
+
+When present, `assertScenario` / `loadRegionalPack` loads:
+- `regional.json`: Manifest with center ICAO, radius in NM, source provenance, and component filenames.
+- `regional-airports.json`: Regional airports with coordinates projected to local ENU (`xNm`/`yNm`) relative to the scenario ARP, elevation, source-proven towered and public-use status, runway threshold/heading/length geometry, and catalog references.
+- `regional-airspace.json`: Controlled airspace volumes (Class B, Class C, Class D) with source boundary vias and vertical limits (MSL/AGL), projected atomically to scenario ARP coordinates.
+
+### Runtime RegionalFacility contract
+
+The loaded `RegionalFacility` provides:
+- Generic airport and destination lookups: `lookupAirport(icao)` returns any regional airport; `getEligibleDestinations()` returns only airports with source-proven towered, public-use status, valid runway geometry, and an emitted catalog.
+- Controlled airspace volumes: `airspace` volumes for lateral/vertical boundary checks.
+- Per-airport procedure catalogs: loaded via `loadRegionalAirportCatalog(facility, icao)` which validates reference closure using the generic catalog parser.
+
+KDEM and scenarios without `"regionalPack"` continue to load with `scenario.regional === undefined`
+and have no dependency on regional files or FAA metadata.
+
+### Trainer limitations
+
+The regional facility provides destination and runway geometry as a training
+approximation for satellite arrivals and navigation. Tower coordination, landing
+clearances, and aircraft removal/despawn are trainer behaviors supplied by
+downstream simulation tickets.
+

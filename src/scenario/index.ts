@@ -33,6 +33,13 @@ export type {
   Fix,
   RadarSite,
   RadarSiteKind,
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
   Runway,
   Scenario,
   ScenarioMaps,
@@ -98,6 +105,8 @@ export {
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";
+export { hasRegionalPack, loadRegionalPack, parseRegionalPack } from "./regional";
+export { loadRegionalAirportCatalog } from "./regionalCatalogs";
 export type { AtpaTrackPose, AtpaVolumeGeometry } from "./atpaVolume";
 export {
   alongCourseDistanceNm,

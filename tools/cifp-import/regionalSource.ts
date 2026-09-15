@@ -15,6 +15,7 @@ import type {
   CifpDiagnostic,
   NormalizedAirspace,
   NormalizedAirport,
+  NormalizedCifpSource,
   SourceLatLon,
 } from "./types.ts";
 
@@ -48,6 +49,7 @@ export interface RegionalSourceResult {
   selectedAirspaces: NormalizedAirspace[];
   diagnostics: CifpDiagnostic[];
   counts: RegionalCounts;
+  cifpSource?: NormalizedCifpSource;
   serialized: {
     airports: string;
     airspaces: string;
@@ -252,6 +254,7 @@ export function buildRegionalSource(
     selectedAirspaces,
     diagnostics,
     counts,
+    cifpSource,
     serialized,
   };
 }

@@ -641,6 +641,41 @@ Use the named `magneticToTrueDeg` and `trueToMagneticDeg` helpers at frame
 boundaries. KDEM's `magVarDeg: 0` is fixture data, not a coordinate-system
 assumption; other catalogs (including KATL's `-5`) use the same plumbing.
 
+### Post-exit addendum (T04-69–76 satellite traffic and regional packs)
+
+This addendum integrates local FAA CIFP and NASR subscription data into regional
+packs, enabling generic satellite arrivals, local VFR traffic, and controlled
+airspace awareness.
+
+- T04-69 imports local FAA CIFP (controlled airspace `UC`, restrictive airspace `UR`)
+  and NASR (`APT`, `TWR`/`ATC`) tables into a validated regional source model.
+- T04-70 generates and loads the regional pack: manifest (`regional.json`), regional
+  airports (`regional-airports.json`), controlled airspace (`regional-airspace.json`),
+  and generic procedure catalogs (`airports/<ICAO>/`) for the center facility and
+  all eligible destination airports within 40 NM.
+- T04-71–76 provide VFR navigation, request handling, radar services, satellite arrival
+  flow control, and controller UI.
+
+The regional pack generator command:
+
+```text
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Coverage is 40 NM from the center airport ARP (e.g. KATL). Source provenance is
+recorded in `regional.json` (cycles, product names, command parameters); raw FAA
+cycles stay local and outside git (`.cifp/`).
+
+Eligibility rule: Only airports with source-proven towered AND public-use status,
+valid runway geometry (thresholds, lengths, headings), and an emitted procedure
+catalog qualify as eligible destinations (`eligibleForDestination: true`).
+CIFP-only and missing-status rows never qualify.
+
+Trainer limitations: The regional pack provides physical and procedural geometry
+as a training approximation. It does not model a certified tower cab or claim
+operational airspace accuracy. Simulated tower handoff, landing clearances, and
+aircraft despawn are trainer behaviors supplied by downstream tickets.
+
 ---
 
 ## Phase exit checklist
@@ -673,5 +708,7 @@ Do not start phase 5 until every box is true.
 2. Paste **`AGENT.md`** from this folder as the implementation prompt, **or** paste a single `tickets/T04-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
 3. Do not implement phase 5 scoring against these events until phase 4 exits — emitting the events is enough.
 
-Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, and T04-36–42
-are post-exit addenda. Historical exit boxes stay unchecked-as-written.
+Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, T04-36–42,
+T04-46–50, and T04-69–76 are post-exit addenda. Historical exit boxes stay
+unchecked-as-written.
+

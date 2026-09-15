@@ -158,33 +158,33 @@ generic tower-managed arrival.
 
 ## Acceptance criteria
 
-- [ ] **AC1 —** A synthetic two-airport source produces a regional pack and
+- [x] **AC1 —** A synthetic two-airport source produces a regional pack and
   runtime load result with no KATL, KFTY, or other facility-specific condition.
-- [ ] **AC2 —** Regional generation uses the existing KATL `40 NM` coverage,
+- [x] **AC2 —** Regional generation uses the existing KATL `40 NM` coverage,
   records source provenance, and writes no generated output when required local
   FAA source files are unavailable or unauthorized.
-- [ ] **AC3 —** Only airports with source-proven towered and public-use status,
+- [x] **AC3 —** Only airports with source-proven towered and public-use status,
   valid runway geometry, and an emitted catalog appear in the eligible
   destination lookup. CIFP-only and missing-status rows never qualify.
-- [ ] **AC4 —** The runtime can load the center and at least one generated
+- [x] **AC4 —** The runtime can load the center and at least one generated
   satellite catalog through one generic registry, with runway/approach
   geometry available by airport ICAO and all catalog references validated.
-- [ ] **AC5 —** Generated Class B/C/D airspace volumes load with source
+- [x] **AC5 —** Generated Class B/C/D airspace volumes load with source
   boundaries, class/kind, and vertical limits; invalid geometry or altitude
   ranges fail atomically and no map-derived fallback exists.
-- [ ] **AC6 —** KATL west/east scenario data references the regional pack and
+- [x] **AC6 —** KATL west/east scenario data references the regional pack and
   boots through generic loading; KDEM remains default and has no regional
   dependency.
-- [ ] **AC7 —** Synthetic tests cover eligible/excluded airports, missing
+- [x] **AC7 —** Synthetic tests cover eligible/excluded airports, missing
   metadata, duplicate IDs, missing catalogs, source coordinate projection,
   airspace validation, deterministic output, and unknown pack/airport errors.
-- [ ] **AC8 —** Existing KATL procedure/video-map behavior and generic catalog
+- [x] **AC8 —** Existing KATL procedure/video-map behavior and generic catalog
   validation remain green; no source cycle or generated national dump is
   tracked.
-- [ ] **AC9 —** Tool/scenario/phase documentation names the regional command,
+- [x] **AC9 —** Tool/scenario/phase documentation names the regional command,
   generated files, source provenance rule, 40 NM coverage, eligibility rule,
   and trainer landing/tower limitation.
-- [ ] **AC10 —** `npm run ci` passes.
+- [x] **AC10 —** `npm run ci` passes.
 
 ## Test plan
 

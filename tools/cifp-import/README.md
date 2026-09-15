@@ -485,3 +485,76 @@ node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> 
   - In strict mode (default), any error-level diagnostic causes the importer
     to exit nonzero **without writing any output files**.
 
+## Regional catalog and satellite-arrival pack (T04-70)
+
+Regional pack mode integrates the T04-69 regional source model with generic
+procedure catalog generation to emit a complete regional pack: manifest,
+regional airport metadata, controlled airspace geometry, and closed procedure
+catalogs for the center facility and all eligible satellite destination airports.
+
+### CLI usage
+
+```text
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Or directly:
+
+```text
+node --experimental-strip-types tools/cifp-import/cli.ts regional-pack --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run]
+```
+
+### Generated file contract
+
+```text
+<out>/
+  regional.json             # Manifest with schemaVersion, centerIcao, radiusNm, sourceProvenance, files
+  regional-airports.json    # Regional airports with elevation, status, runway geometry, and catalog ref
+  regional-airspace.json    # Controlled airspace volumes (Class B/C/D) with boundary vias and altitude limits
+  airports/<ICAO>/          # Procedure catalog files (catalog, vors, ndbs, ils, fixes, procedures, sids)
+```
+
+The center airport catalog is also written to `<out>/` at the root for backwards
+compatibility with existing scenario catalog loaders.
+
+### 40 NM KATL reproduction workflow
+
+To generate the KATL regional pack from an authorized local source:
+
+```text
+npm run cifp:regional-pack -- --cifp .cifp/FAACIFP18 --nasr-apt .cifp/APT.txt --nasr-twr .cifp/TWR.txt --airport KATL --radius 40 --out src/scenario/data/katl --cycle 2401
+```
+
+If local FAA source files are missing or unauthorized, regional generation exits
+immediately with code 1 and writes no output files. CI exercises synthetic
+fixtures only.
+
+### Source provenance rules
+
+- The generated `regional.json` records source product names, effective dates,
+  cycles, and generator command parameters.
+- It never records local absolute paths, host credentials, or source cycle dumps.
+- Raw FAA CIFP and NASR subscription cycles remain local and outside git (`.cifp/`).
+
+### Destination eligibility rules
+
+Only airports meeting all of the following source-proven criteria qualify as
+eligible destinations (`eligibleForDestination: true`):
+1. Public-use operational status (`FAC_USE === "PU"` from NASR).
+2. Towered air traffic control service (`TOWER === true` from NASR).
+3. Valid runway geometry with at least one threshold, length, and heading from CIFP `PG` records.
+4. An emitted procedure catalog with verified reference closure.
+
+Airports lacking NASR operational metadata, private-use fields, untowered fields,
+or airports with missing runway geometry are marked ineligible (`eligibleForDestination: false`)
+and are rejected by downstream satellite destination lookup.
+
+### Trainer limitations
+
+The regional pack provides physical and procedural geometry as a training
+approximation for terminal radar simulation. It does not model an FAA tower
+cab, certify approaches, or claim operational airspace accuracy. Simulated
+tower coordination, landing clearances, and aircraft removal/despawn are
+trainer behaviors supplied by downstream navigation and service tickets (T04-71+).
+
+

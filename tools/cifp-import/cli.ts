@@ -5,6 +5,7 @@
 import { parseCifpSubset, type CifpSkipStats } from "./parse.ts";
 import { runPackCli } from "./pack.ts";
 import { runRegionalCli } from "./regionalSource.ts";
+import { runRegionalPackCli } from "./regionalPack.ts";
 // @ts-expect-error tsconfig has no @types/node
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // @ts-expect-error tsconfig has no @types/node
@@ -70,6 +71,10 @@ export function runCli(args: string[], io: CliIo = defaultIo()): void {
   }
   if (args[0] === "regional") {
     runRegionalCli(args.slice(1), io);
+    return;
+  }
+  if (args[0] === "regional-pack" || args[0] === "pack-regional") {
+    runRegionalPackCli(args.slice(1), io);
     return;
   }
   const parsed = parseCliArgs(args);

@@ -27,6 +27,7 @@ import { loadCatalog, parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedur
 import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
+import { hasRegionalPack, loadRegionalPack } from "./regional";
 import {
   coastlineFromVideoMaps,
   loadVideoMapGroups,
@@ -545,6 +546,8 @@ export interface AssertScenarioOptions {
   /** Default KDEM student pack is 4–8. Phase 4 ILS demo may spawn 1–2. */
   arrivalCountMin?: number;
   arrivalCountMax?: number;
+  /** When true, missing regional pack declared in scenario JSON throws. Default false. */
+  strictRegional?: boolean;
 }
 
 /**
@@ -602,6 +605,23 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
           ),
         };
 
+  const regionalPack =
+    s.regionalPack === undefined
+      ? undefined
+      : assertString(s.regionalPack, "regionalPack", "Scenario", true);
+
+  let regional: import("./regional").RegionalFacility | undefined;
+  if (regionalPack !== undefined) {
+    if (options?.strictRegional && !hasRegionalPack(regionalPack)) {
+      throw new Error(`Scenario regionalPack '${regionalPack}' was not found`);
+    }
+    regional = loadRegionalPack(regionalPack, {
+      centerIcao: icao,
+      centerArp: arp,
+      optional: !options?.strictRegional,
+    });
+  }
+
   return {
     id: assertString(s.id, "id"),
     name: assertString(s.name, "name"),
@@ -637,6 +657,8 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     catalog: scenarioCatalog,
     mva: loadMva(icao),
     radarSites: parseRadarSites(s.radarSites, arp),
+    ...(regionalPack !== undefined ? { regionalPack } : {}),
+    ...(regional !== undefined ? { regional } : {}),
   };
 }
 
