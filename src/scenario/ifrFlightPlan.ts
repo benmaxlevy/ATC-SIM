@@ -9,7 +9,6 @@
 
 import {
   saveFlightPlanDraft,
-  isValidBeaconCode,
   resolveFiledRoute,
   type Aircraft,
   type AircraftInit,
@@ -17,8 +16,7 @@ import {
   type World,
 } from "@core";
 import type { Scenario } from "./types";
-import { allocateSquawkCode as allocateScenarioSquawkCode } from "./callsigns";
-import { defaultSquawkRng, spawnAircraft, usedSquawks } from "./spawnAircraft";
+import { spawnAircraft } from "./spawnAircraft";
 
 export type ScenarioIfrRoute =
   | { kind: "arrival"; starId: string; transitionId?: string }
@@ -77,34 +75,16 @@ export function createScenarioIfrFlightPlan(
         );
       }
     }
-    const beacon = existing.assignedBeacon?.trim().toUpperCase();
-    if (
-      existing.status !== "pending" ||
-      existing.flightType !== "IFR" ||
-      !beacon ||
-      !isValidBeaconCode(beacon) ||
-      beacon === "1200"
-    ) {
+    if (existing.status !== "pending" || existing.flightType !== "IFR") {
       throw new Error(
         `Cannot create IFR scenario plan for ${input.acid}: existing plan ${existing.id} is not a valid pending IFR plan`,
       );
     }
     return existing;
   }
-  const assignedBeacon =
-    input.assignedBeacon ??
-    allocateScenarioSquawkCode(
-      [
-        ...usedSquawks(world),
-        ...world.flightPlans.flatMap((plan) =>
-          plan.status !== "deleted" && plan.assignedBeacon ? [plan.assignedBeacon] : [],
-        ),
-      ],
-      input.rng ?? defaultSquawkRng(input.acid),
-    );
   const result = saveFlightPlanDraft(world, {
     acid: input.acid,
-    assignedBeacon,
+    ...(input.assignedBeacon === undefined ? {} : { assignedBeacon: input.assignedBeacon }),
     flightType: "IFR",
     flightRules: "I",
     equipment: input.equipment ?? "L",
@@ -153,6 +133,7 @@ export function spawnScenarioIfrAircraft(
     assignedSquawk: plan.assignedBeacon,
     squawk: plan.assignedBeacon,
     reportedSquawk: plan.assignedBeacon,
+    beaconPolicy: plan.assignedBeacon === undefined ? "none" : "allocate",
   });
   return { aircraft, plan };
 }

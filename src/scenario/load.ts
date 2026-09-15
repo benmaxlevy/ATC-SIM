@@ -1,4 +1,4 @@
-import { latLonToNm } from "@core";
+import { createBeaconPoolConfig, latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 import kdem09Json from "./kdem-09.json";
 import kdemIls09Json from "./kdem-ils09.json";
@@ -7,6 +7,7 @@ import kdemJson from "./kdem.json";
 import type {
   Approach,
   ArrivalSpawn,
+  BeaconPoolConfig,
   DepartureConfig,
   DepartureSpawn,
   DigitalMapCoastline,
@@ -486,6 +487,15 @@ function parseDepartureConfig(value: unknown): DepartureConfig | undefined {
   return config;
 }
 
+function parseBeaconPools(value: unknown): BeaconPoolConfig | undefined {
+  if (value === undefined) return undefined;
+  const result = createBeaconPoolConfig(value);
+  if (!result.ok) {
+    throw new Error(`Scenario beaconPools.${result.error.field}: ${result.error.message}`);
+  }
+  return result.value;
+}
+
 function validateRandomRoutePools(
   spawnPolicy: SpawnPolicy,
   arrivals: ArrivalSpawn[],
@@ -564,6 +574,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       ? undefined
       : parseAtpaWakeAdaptation(s.atpaWakeAdaptation, "atpaWakeAdaptation", "Scenario");
   const departureConfig = parseDepartureConfig(s.departureConfig);
+  const beaconPools = parseBeaconPools(s.beaconPools);
   const spawnPolicy = parseSpawnPolicy(s.spawnPolicy);
   const arrivals = assertArrivals(s.arrivals, {
     min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
@@ -621,6 +632,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       return ssaWeatherGiSlot !== undefined ? { ssaWeatherGiSlot } : {};
     })(),
     ...(departureConfig ? { departureConfig } : {}),
+    ...(beaconPools ? { beaconPools } : {}),
     ...(atpaWakeAdaptation !== undefined ? { atpaWakeAdaptation } : {}),
     catalog: scenarioCatalog,
     mva: loadMva(icao),

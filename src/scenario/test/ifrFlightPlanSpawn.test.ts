@@ -117,7 +117,7 @@ test.each([
   [12000, 12000],
 ] as const)("scenario plan preserves explicit request %j", (input, expected) => {
   const scenario = loadKdem();
-  const world = createWorld({ catalog: scenario.catalog });
+  const world = createWorld({ catalog: scenario.catalog, beaconPools: scenario.beaconPools });
   const plan = createScenarioIfrFlightPlan(world, {
     acid: "EXP186",
     scenario,
@@ -130,7 +130,7 @@ test.each([
 
 test("explicit scenario request remains available after target correlation", () => {
   const scenario = loadKdem();
-  const world = createWorld({ catalog: scenario.catalog });
+  const world = createWorld({ catalog: scenario.catalog, beaconPools: scenario.beaconPools });
   const { aircraft } = spawnScenarioIfrAircraft(
     world,
     {

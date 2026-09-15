@@ -455,7 +455,8 @@ export function buildSignOnList(state?: SignOnState, _maxLines: number = 10): st
 export interface FlightPlanEntry {
   index: number;
   callsign: string;
-  squawk: string;
+  /** Plan-assigned beacon; empty when the plan explicitly has no code. */
+  squawk?: string;
   aircraftId?: string;
   planId?: string;
   departureRef?: ScheduledDeparture;
@@ -485,18 +486,6 @@ export function ensureFlightPlanListState(view?: ScopeView): FlightPlanListState
   return view.flightPlanList;
 }
 
-export function defaultDiscreteSquawk(callsign: string, salt: number = 0): string {
-  let hash = 0;
-  for (let i = 0; i < callsign.length; i++) {
-    hash = (hash * 31 + callsign.charCodeAt(i)) & 0xffff;
-  }
-  const d1 = (Math.floor(hash / 512) % 7) + 1;
-  const d2 = Math.floor(hash / 64) % 8;
-  const d3 = Math.floor(hash / 8) % 8;
-  const d4 = (hash + salt) % 8;
-  return `${d1}${d2}${d3}${d4}`;
-}
-
 /** Canonical TAB identity: manual line numbers are always two digits below 10. */
 export function formatFlightPlanIndex(index: number): string {
   return String(index).padStart(2, "0");
@@ -506,7 +495,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
   const state = ensureFlightPlanListState(view);
   const rawItems: {
     callsign: string;
-    squawk: string;
+    squawk?: string;
     departureRef?: ScheduledDeparture;
     aircraftId?: string;
     planId?: string;
@@ -528,7 +517,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
     seenCallsigns.add(plan.acid);
     rawItems.push({
       callsign: plan.acid,
-      squawk: plan.assignedBeacon ?? plan.reportedBeacon ?? "1200",
+      squawk: plan.assignedBeacon ?? plan.reportedBeacon,
       planId: plan.id,
     });
   }
@@ -543,11 +532,7 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
       if (seenCallsigns.has(cleanCallsign)) continue;
       seenCallsigns.add(cleanCallsign);
 
-      const squawk = (
-        dep.assignedSquawk ||
-        dep.squawk ||
-        defaultDiscreteSquawk(cleanCallsign, i)
-      ).padStart(4, "0");
+      const squawk = dep.assignedSquawk || dep.squawk;
 
       rawItems.push({
         callsign: cleanCallsign,
@@ -961,7 +946,7 @@ export function buildTabFlightPlanList(
       const entry = entries[idx]!;
       const indexStr = formatFlightPlanIndex(entry.index);
       const acid = entry.callsign.padEnd(7, " ");
-      const bcn = String(entry.squawk).padStart(4, "0");
+      const bcn = entry.squawk ? String(entry.squawk).padStart(4, "0") : "";
       return `${indexStr} ${acid} ${bcn}`;
     },
   };
@@ -1372,7 +1357,7 @@ export function buildVfrList(
           ({
             id: `plan:${plan.id}`,
             callsign: plan.acid,
-            squawk: plan.assignedBeacon ?? "1200",
+            squawk: plan.assignedBeacon ?? "",
             assignedSquawk: plan.assignedBeacon,
             altitudeFt: plan.requestedAltitudeFt ?? 0,
           }) as Aircraft,
@@ -1388,7 +1373,12 @@ export function buildVfrList(
     formatLine: (idx) => {
       const ac = vfrFlights[idx]!;
       const acid = ac.callsign.padEnd(8, " ");
-      const bcn = (ac.assignedSquawk || ac.squawk || "1200").padStart(4, "0");
+      const isPlanProjection = ac.id.startsWith("plan:");
+      const bcn = (
+        isPlanProjection
+          ? ac.assignedSquawk || ac.squawk || ""
+          : ac.assignedSquawk || ac.squawk || "1200"
+      ).padStart(4, "0");
       const alt = formatAltitudeHundreds(ac.altitudeFt);
       return `${acid}${bcn}  ${alt}`;
     },

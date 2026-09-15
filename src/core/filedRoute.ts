@@ -16,6 +16,7 @@ import {
   routeFixIds,
   validateFlightPlan,
 } from "./flightPlan";
+import { beaconPoolFor, occupiedBeaconCodes, type BeaconPoolConfig } from "./beaconPools";
 
 /** The deliberately small catalog surface needed by filed-route entry. */
 export interface FiledRouteCatalog {
@@ -768,14 +769,6 @@ const FIX_PAIR_PATTERN =
 const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
-const DRAFT_BEACON_POOLS: Record<"+" | "/" | "/1" | "/2" | "/3" | "/4", string[]> = {
-  "+": ["0000"],
-  "/": ["1000"],
-  "/1": ["2000"],
-  "/2": ["3000"],
-  "/3": ["4000"],
-  "/4": ["5000"],
-};
 
 function isBeaconSelector(value: string): boolean {
   return BEACON_SELECTOR_PATTERN.test(value.trim().toUpperCase());
@@ -1019,7 +1012,12 @@ function normalizeInput(input: FlightPlanDraftInput): Partial<FlightPlan> {
 
 /** Atomically create or amend a local filed plan. Only FlightPlan is mutated. */
 export function saveFlightPlanDraft(
-  world: { flightPlans: FlightPlan[]; catalog?: FiledRouteCatalog | null },
+  world: {
+    flightPlans: FlightPlan[];
+    aircraft?: ReadonlyArray<{ id?: string; assignedSquawk?: string }>;
+    beaconPools?: BeaconPoolConfig;
+    catalog?: FiledRouteCatalog | null;
+  },
   input: FlightPlanDraftInput,
 ): FlightPlanDraftResult {
   const acid = input.acid.trim().toUpperCase();
@@ -1047,11 +1045,30 @@ export function saveFlightPlanDraft(
     if (selector === "A") {
       candidateInput.assignedBeacon = undefined;
     } else {
-      const pool = DRAFT_BEACON_POOLS[selector as keyof typeof DRAFT_BEACON_POOLS];
-      const occupied = world.flightPlans
-        .filter((item) => item.status !== "deleted" && item.id !== existing?.id)
-        .flatMap((item) => (item.assignedBeacon ? [item.assignedBeacon] : []));
+      const poolKey =
+        selector === "+" ? "ifr" : selector === "/" ? "vfr" : `general${selector.slice(1)}`;
+      const config = world.beaconPools;
+      const pool = config ? beaconPoolFor(config, poolKey as keyof typeof config.pools) : [];
+      const occupied = occupiedBeaconCodes(
+        world.flightPlans.filter((item) => item.id !== existing?.id),
+        world.aircraft,
+      );
       const allocation = allocateBeaconCode(pool, occupied);
+      if (!allocation.ok || !allocation.value) {
+        return {
+          ok: false,
+          error: draftError("NO_BEACON_AVAILABLE", "assignedBeacon", "CAPACITY — BCN"),
+        };
+      }
+      candidateInput.assignedBeacon = allocation.value;
+    }
+  } else if (!existing && input.assignedBeacon === undefined) {
+    const defaultPool = world.beaconPools?.defaultPool ?? "none";
+    if (defaultPool !== "none") {
+      const allocation = allocateBeaconCode(
+        beaconPoolFor(world.beaconPools!, defaultPool),
+        occupiedBeaconCodes(world.flightPlans, world.aircraft),
+      );
       if (!allocation.ok || !allocation.value) {
         return {
           ok: false,
@@ -1090,6 +1107,22 @@ export function saveFlightPlanDraft(
     otherPlans,
   )[0];
   if (identity) return { ok: false, error: identity };
+  if (candidateInput.assignedBeacon && candidateInput.assignedBeacon !== existing?.assignedBeacon) {
+    const aircraftWithBeacon = world.aircraft?.find(
+      (aircraft) => aircraft.assignedSquawk?.trim().toUpperCase() === candidateInput.assignedBeacon,
+    );
+    if (aircraftWithBeacon) {
+      return {
+        ok: false,
+        error: draftError(
+          "DUPLICATE_BEACON",
+          "assignedBeacon",
+          `beacon ${candidateInput.assignedBeacon} is assigned to aircraft ${aircraftWithBeacon.id}`,
+          candidateInput.assignedBeacon,
+        ),
+      };
+    }
+  }
   const id = existing?.id ?? input.id ?? `fp-${acid}`;
   let uniqueId = id;
   let suffix = 2;

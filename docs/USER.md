@@ -178,8 +178,8 @@ unavailable; direct invalid submissions retain the core error
 | Command | Example | Result |
 |---|---|---|
 | `*T` | `*T` then Enter | Toggles the TAB flight-plan list. `*T 15` sets its visible row count. Use the displayed numeric row index for list operations. |
-| `ACID [fields]` | `UAL1234 2341 AT AAL B738` then Enter | Abbreviated creation: creates a pending local plan. Accepts an ACID plus beacon/pool selector, TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
-| `F6 / FLT DATA` | `F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A` then Enter | Full IFR creation: creates one pending local plan. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
+| `ACID [fields]` | `UAL1234` then Enter | Abbreviated creation: creates a pending local plan. An omitted beacon uses the configured default pool, or no code when the default policy is `none`; `+`, `/`, `/1`–`/4` select pools. It accepts TCP, flight type, scratchpads, altitude, rules, and aircraft data. |
+| `F6 / FLT DATA` | `F6 UAL1234` or `F6 UAL1234 A` then Enter | Full IFR creation: creates one pending local plan. An omitted beacon uses the configured default pool, or no code when the default policy is `none`; `A` explicitly means no assigned beacon. `+`, `/`, `/1`–`/4` select pools. `Δ<text>` sets scratchpad 1 and `+<text>` sets scratchpad 2. Optional fields are space-separated and order-independent where allowed; no radio parser, Command IR, readback, pilot intent, or kinematic change. |
 | `F9 / VFR DATA` | `F9 N123AB KDEM*RW27 ΔVFR C172 050` then Enter | Local VFR create/modify. `Δ<text>` sets scratchpad 1; `+<text>` sets scratchpad 2. `F9 <VFR ACID or VL index>` then Enter deletes. `F9 * 050` then click eligible associated VFR track applies active-track data. Resend amended exit/intermediate fix with same ACID (`F9 N123AB *FIX` or `DEP*MID*EXIT`). No ARTCC/network exchange. |
 | `F1 / INIT CNTL` | `F1 UAL1234 2341` then click a target, or `F1` then identity/click | Pending discrete creation remains an INIT CNTL path. Identity association requires a slew/click; Enter-only identity application is invalid. CID is not an identity. |
 | `F3` | `F3` | Track Suspend is reserved and currently a no-op; no suspend lifecycle is simulated yet. |
@@ -192,7 +192,9 @@ Creation and edit examples:
 
 ```text
 UAL1234 2341 AT A B738 Enter
+UAL1234 Enter
 F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A Enter
+F6 UAL1234 A Enter
 F9 N123AB KDEM*RW27 ΔVFR C172 050 Enter
 *M UAL1234 5252
 *M UAL1234 Δ5252
@@ -216,6 +218,18 @@ Flight-plan beacons use octal digits only (`0`–`7`). For example, `2341` is
 valid but `1289` is invalid. A numeric identity such as `14` is a TAB-list
 index only when used in a complete command such as `*M 14 5252`, `*B 14`,
 or `*DEL 14`; `14 5252` alone is not a flight-plan command.
+
+Scenario JSON may provide a generic `beaconPools` adaptation with `ifr`,
+`vfr`, and `general1`–`general4` arrays plus a `defaultPool` key. Codes are
+four octal digits and allocation is deterministic first-free trainer behavior;
+these are not official NAS/STARS bank values. Missing adaptation means no
+assigned plan beacon. An omitted creation beacon uses the configured default;
+explicit `A` always means no assigned beacon. A released plan beacon can be
+reused when it is not occupied by an assigned aircraft squawk. An aircraft's
+reported squawk remains surveillance data and never rewrites the plan beacon.
+The shipped KATL configurations use IFR `2000`–`2047`, VFR `1201`–`1217`
+(excluding `1200`), and general pools `/1`–`/4` using `3000`–`3017`,
+`4000`–`4017`, `5000`–`5017`, and `6000`–`6017` respectively.
 
 Routes are not executable from these plans yet. Editing `FIXES` stores plan
 data only; it does not update the aircraft FMS, route, heading, or pilot
@@ -447,7 +461,7 @@ System lists are operational data windows rendered directly on the radar scope.
 | List Name | Authorized Command Prefix | Frame Title | Purpose & Operational Features |
 |---|---|---|---|
 | System Status Area | `<MULTI FUNC>S` (`*S`) | `SYSTEM STATUS AREA (S)` | System Status Area (sim time, altimeter, filter bounds). Cannot be toggled off; relocatable via `<MULTI FUNC>S<SLEW LOCATION>`. |
-| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans and unassociated tracks with discrete squawks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Use `*DEL [Index#] Enter` to delete an entry. |
+| TAB List | `<MULTI FUNC>T` (`*T`) | `TAB` / `FLIGHT PLAN (TAB)` | Pending plans, including plans with no assigned beacon, and unassociated tracks. Features `MORE: X/Y` pagination. List construction and redraw are read-only: they never correlate or activate a plan. Type `[Index#]` + click target for explicit association; a reported squawk update may correlate one unique pending plan. Use `*DEL [Index#] Enter` to delete an entry. |
 | Tower List 1 | `<MULTI FUNC>P1` (`*P1`) | `TOWER 1 (P1)` / `[AIRPORT] TOWER` | Primary tower inbound arrival list and staged departures. Sorted by distance (departures 0 NM first, nearest arrivals ascending). Clears automatically on landing. |
 | Tower List 2 | `<MULTI FUNC>P2` (`*P2`) | `TOWER 2 (P2)` | Auxiliary Tower List 2. |
 | Tower List 3 | `<MULTI FUNC>P3` (`*P3`) | `TOWER 3 (P3)` | Auxiliary Tower List 3. |

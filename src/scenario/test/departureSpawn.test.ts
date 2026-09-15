@@ -78,9 +78,11 @@ describe("departureSpawnPose (AC1)", () => {
     expect(ac.yNm).toBeCloseTo(0, 4);
     expect(ac.headingDeg).toBe(270);
     expect(ac.altitudeFt).toBe(700);
-    expect(ac.squawk).toMatch(/^[0-7]{4}$/);
-    expect(ac.reportedSquawk).toBe(ac.squawk);
-    expect(ac.assignedSquawk).toBe(ac.squawk);
+    // A world without scenario beacon adaptation keeps planned beacon fields
+    // absent; unplanned aircraft are the only path using random allocation.
+    expect(ac.squawk).toBeUndefined();
+    expect(ac.reportedSquawk).toBeUndefined();
+    expect(ac.assignedSquawk).toBeUndefined();
 
     const spawnedEvents = log.byType("handoff.departure.spawned");
     expect(spawnedEvents).toHaveLength(1);

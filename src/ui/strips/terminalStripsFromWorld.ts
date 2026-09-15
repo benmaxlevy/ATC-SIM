@@ -63,7 +63,9 @@ export function terminalStripsFromWorld(world: World): {
 
     const cwtCategory: CWTCategory | undefined = ac.cwtWakeCategory;
     const isHeavy = ac.wakeCategory?.toUpperCase() === "H";
-    const beaconCode = plan?.assignedBeacon ?? ac.assignedSquawk ?? ac.squawk ?? "";
+    // Box 5 is the plan-assigned beacon. An unplanned target may expose its
+    // aircraft assignment, but a no-code plan must remain visibly blank.
+    const beaconCode = plan ? (plan.assignedBeacon ?? "") : (ac.assignedSquawk ?? ac.squawk ?? "");
     // Reported squawk is surveillance evidence. A plan's reportedBeacon is
     // legacy metadata and must never overwrite the live target report.
     const reportedSquawk = ac.reportedSquawk ?? ac.squawk;
