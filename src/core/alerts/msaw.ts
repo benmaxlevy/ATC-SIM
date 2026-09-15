@@ -179,6 +179,9 @@ export function evaluateMsaw(
 ): MsawAlert[] {
   const out: MsawAlert[] = [];
   for (const ac of aircraft) {
+    if (ac.ambientVfr?.alertEligibility === "AMBIENT_SUPPRESSED") {
+      continue;
+    }
     if (isMsawInhibited(ac, inhibit)) {
       continue;
     }

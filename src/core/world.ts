@@ -171,6 +171,8 @@ export interface World {
   departureSpawner?: (world: World) => Aircraft[];
   /** Optional deterministic scenario arrival scheduler. */
   arrivalScheduler?: { drain: (world: World) => Aircraft[] };
+  /** Optional generic ambient VFR traffic manager (T04-71). */
+  vfrTrafficManager?: { step: (world: World, dtS: number) => void };
 }
 
 export interface ScheduledDeparture {
@@ -302,6 +304,7 @@ export function createWorld(partial?: Partial<World>): World {
     scheduledDepartures: partial?.scheduledDepartures,
     departureSpawner: partial?.departureSpawner,
     arrivalScheduler: partial?.arrivalScheduler,
+    vfrTrafficManager: partial?.vfrTrafficManager,
   };
 }
 
@@ -754,6 +757,7 @@ export function stepWorld(world: World, dtS: number): World {
   applyDueSquawkReports(world);
   world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
+  world.vfrTrafficManager?.step(world, dtS);
   acceptDueOutboundHandoffs(world);
   const locAxisFor = (approachId: string) =>
     locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);

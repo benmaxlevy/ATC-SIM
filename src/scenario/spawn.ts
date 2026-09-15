@@ -34,6 +34,7 @@ import {
 } from "./callsigns";
 import { createScenarioIfrFlightPlan, spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 import { usedSquawks } from "./spawnAircraft";
+import { VfrTrafficManager } from "./vfrTraffic";
 
 export { starRouteFixIds };
 
@@ -392,6 +393,19 @@ function initDepartures(
   }
 }
 
+function initVfrTraffic(world: World, scenario: Scenario, seed: number): void {
+  if (!scenario.vfrTraffic) {
+    return;
+  }
+  const manager = new VfrTrafficManager({
+    config: scenario.vfrTraffic,
+    scenario,
+    seed: scenario.vfrTraffic.seed ?? seed,
+  });
+  world.vfrTrafficManager = manager;
+  manager.spawnInitialPopulation(world);
+}
+
 /**
  * Build a World from the scenario. `random` uses `assignStarRoutes`
  * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
@@ -413,6 +427,7 @@ export function createWorldFromScenario(
     null,
     world.aircraft.map((a) => a.callsign),
   );
+  initVfrTraffic(world, scenario, seed);
   return world;
 }
 
@@ -468,5 +483,6 @@ export function createWorldForSession(
   }
 
   initDepartures(world, scenario, seed, departureOptions, activeCallsigns);
+  initVfrTraffic(world, scenario, seed);
   return world;
 }

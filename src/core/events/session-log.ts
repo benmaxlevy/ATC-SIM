@@ -347,6 +347,35 @@ export type SessionEvent =
       atSimMs: number;
       atWallMs: number;
       callsign: string;
+    }
+  | {
+      type: "vfr.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      mission: string;
+      zoneId: string;
+    }
+  | {
+      type: "vfr.spawn.skipped";
+      atSimMs: number;
+      atWallMs: number;
+      reason: string;
+    }
+  | {
+      type: "vfr.exit";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      mission: string;
+      reason: "DWELL_EXPIRED" | "BOUNDARY_EXIT";
+    }
+  | {
+      type: "vfr.tower.handoff";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      destinationAirportId?: string;
     };
 
 /**

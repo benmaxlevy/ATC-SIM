@@ -231,3 +231,26 @@ export {
   createArrivalScheduler,
   validateArrivalTrafficConfig,
 } from "./arrivalScheduler";
+export type {
+  VfrAircraftMixRow,
+  VfrAltitudeMixRow,
+  VfrMovementMix,
+  VfrTrafficConfig,
+  VfrTrafficZoneConfig,
+  VfrZone,
+} from "./types";
+export {
+  DEFAULT_VFR_AIRCRAFT_MIX,
+  DEFAULT_VFR_ALTITUDE_MIX,
+  DEFAULT_VFR_MOVEMENT_MIX,
+  VFR_FUTURE_ENTRY_XOR,
+  VFR_INITIAL_PLACEMENT_XOR,
+  VFR_MISSION_ZONE_XOR,
+  VFR_PILOT_REQUEST_XOR,
+  VFR_ROUTE_XOR,
+  VfrTrafficManager,
+  allocateVfrCallsign,
+  chooseWeighted,
+  getEligibleVfrDestinations,
+  validateVfrTrafficConfig,
+} from "./vfrTraffic";

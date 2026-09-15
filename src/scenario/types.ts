@@ -267,4 +267,59 @@ export interface Scenario {
   regional?: RegionalFacility;
   /** Optional regional pack identifier (e.g. "katl") declared in scenario JSON. */
   regionalPack?: string;
+  /** Optional generic ambient VFR population and navigation configuration (T04-71). */
+  vfrTraffic?: VfrTrafficConfig;
+  /** Optional authored VFR practice/geographic zones for ambient traffic. */
+  vfrZones?: VfrZone[];
+}
+
+export interface VfrTrafficZoneConfig {
+  id: string;
+  weight: number;
+}
+
+export interface VfrAircraftMixRow {
+  aircraftType: string;
+  weight: number;
+  callsignPrefix: string;
+  performanceSource: "PROFILE_REGISTRY" | "TRAINER_DEFAULT";
+}
+
+export interface VfrAltitudeMixRow {
+  minAltitudeFt: number;
+  maxAltitudeFt: number;
+  weight: number;
+}
+
+export interface VfrMovementMix {
+  localPercent?: number;
+  transitPercent?: number;
+  airportBoundPercent?: number;
+}
+
+export interface VfrTrafficConfig {
+  initialCount?: number;
+  targetCount?: number;
+  entriesPerHour?: number;
+  maxPopulation?: number;
+  seed?: number;
+  zones?: VfrTrafficZoneConfig[];
+  aircraftMix?: VfrAircraftMixRow[];
+  altitudeMix?: VfrAltitudeMixRow[];
+  movementMix?: VfrMovementMix;
+}
+
+export interface VfrZone {
+  id: string;
+  name?: string;
+  bounds?: {
+    minXNm: number;
+    maxXNm: number;
+    minYNm: number;
+    maxYNm: number;
+  };
+  centerNm?: NmEastNorth;
+  radiusNm?: number;
+  polygon?: NmEastNorth[];
+  waypoints?: NmEastNorth[];
 }

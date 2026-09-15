@@ -21,13 +21,15 @@ import type {
   Spawn,
   SpawnPolicy,
   VideoMap,
+  VfrZone,
 } from "./types";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog, parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedures/loadCatalog";
 import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
-import { hasRegionalPack, loadRegionalPack } from "./regional";
+import { hasRegionalPack, loadRegionalPack, type RegionalFacility } from "./regional";
+import { validateVfrTrafficConfig } from "./vfrTraffic";
 import {
   coastlineFromVideoMaps,
   loadVideoMapGroups,
@@ -497,6 +499,70 @@ function parseBeaconPools(value: unknown): BeaconPoolConfig | undefined {
   return result.value;
 }
 
+function parseVfrZones(raw: unknown, centerArp: LatLon): VfrZone[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error("Scenario vfrZones must be an array");
+  }
+  return raw.map((z, i) => {
+    if (!isRecord(z)) throw new Error(`Scenario vfrZones[${i}] must be an object`);
+    const id = assertString(z.id, `vfrZones[${i}].id`);
+    const name = typeof z.name === "string" ? z.name : undefined;
+    let bounds: VfrZone["bounds"] | undefined;
+    if (isRecord(z.bounds)) {
+      bounds = {
+        minXNm: assertNumber(z.bounds.minXNm, `vfrZones[${i}].bounds.minXNm`),
+        maxXNm: assertNumber(z.bounds.maxXNm, `vfrZones[${i}].bounds.maxXNm`),
+        minYNm: assertNumber(z.bounds.minYNm, `vfrZones[${i}].bounds.minYNm`),
+        maxYNm: assertNumber(z.bounds.maxYNm, `vfrZones[${i}].bounds.maxYNm`),
+      };
+    }
+    let centerNm: NmEastNorth | undefined;
+    if (isRecord(z.centerNm)) {
+      centerNm = {
+        xNm: assertNumber(z.centerNm.xNm, `vfrZones[${i}].centerNm.xNm`),
+        yNm: assertNumber(z.centerNm.yNm, `vfrZones[${i}].centerNm.yNm`),
+      };
+    } else if (isRecord(z.center)) {
+      const cLatLon = assertLatLon(z.center, `vfrZones[${i}].center`);
+      centerNm = latLonToNm(cLatLon, centerArp);
+    }
+    const radiusNm =
+      typeof z.radiusNm === "number"
+        ? assertNumber(z.radiusNm, `vfrZones[${i}].radiusNm`)
+        : undefined;
+    let polygon: NmEastNorth[] | undefined;
+    if (Array.isArray(z.polygon)) {
+      polygon = z.polygon.map((p, pIdx) => {
+        if (!isRecord(p)) throw new Error(`vfrZones[${i}].polygon[${pIdx}] must be an object`);
+        return {
+          xNm: assertNumber(p.xNm, `vfrZones[${i}].polygon[${pIdx}].xNm`),
+          yNm: assertNumber(p.yNm, `vfrZones[${i}].polygon[${pIdx}].yNm`),
+        };
+      });
+    }
+    let waypoints: NmEastNorth[] | undefined;
+    if (Array.isArray(z.waypoints)) {
+      waypoints = z.waypoints.map((p, pIdx) => {
+        if (!isRecord(p)) throw new Error(`vfrZones[${i}].waypoints[${pIdx}] must be an object`);
+        return {
+          xNm: assertNumber(p.xNm, `vfrZones[${i}].waypoints[${pIdx}].xNm`),
+          yNm: assertNumber(p.yNm, `vfrZones[${i}].waypoints[${pIdx}].yNm`),
+        };
+      });
+    }
+    return {
+      id,
+      ...(name ? { name } : {}),
+      ...(bounds ? { bounds } : {}),
+      ...(centerNm ? { centerNm } : {}),
+      ...(radiusNm !== undefined ? { radiusNm } : {}),
+      ...(polygon ? { polygon } : {}),
+      ...(waypoints ? { waypoints } : {}),
+    };
+  });
+}
+
 function validateRandomRoutePools(
   spawnPolicy: SpawnPolicy,
   arrivals: ArrivalSpawn[],
@@ -548,6 +614,8 @@ export interface AssertScenarioOptions {
   arrivalCountMax?: number;
   /** When true, missing regional pack declared in scenario JSON throws. Default false. */
   strictRegional?: boolean;
+  /** Optional pre-loaded or synthetic regional facility (e.g. for synthetic test scenarios). */
+  regional?: RegionalFacility;
 }
 
 /**
@@ -610,8 +678,10 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       ? undefined
       : assertString(s.regionalPack, "regionalPack", "Scenario", true);
 
-  let regional: import("./regional").RegionalFacility | undefined;
-  if (regionalPack !== undefined) {
+  let regional: RegionalFacility | undefined =
+    options?.regional ??
+    (isRecord(s.regional) ? (s.regional as unknown as RegionalFacility) : undefined);
+  if (regional === undefined && regionalPack !== undefined) {
     if (options?.strictRegional && !hasRegionalPack(regionalPack)) {
       throw new Error(`Scenario regionalPack '${regionalPack}' was not found`);
     }
@@ -659,6 +729,14 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     radarSites: parseRadarSites(s.radarSites, arp),
     ...(regionalPack !== undefined ? { regionalPack } : {}),
     ...(regional !== undefined ? { regional } : {}),
+    ...(() => {
+      const vfrZones = parseVfrZones(s.vfrZones, arp);
+      const vfrTraffic = validateVfrTrafficConfig(s.vfrTraffic, { vfrZones, regional });
+      return {
+        ...(vfrZones !== undefined ? { vfrZones } : {}),
+        ...(vfrTraffic !== undefined ? { vfrTraffic } : {}),
+      };
+    })(),
   };
 }
 

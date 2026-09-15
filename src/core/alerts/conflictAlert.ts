@@ -444,6 +444,13 @@ export function detectPairConflict(
   context?: CaContext,
   magVarDeg = 0,
 ): CaAlert | null {
+  if (
+    trackA.ambientVfr?.alertEligibility === "AMBIENT_SUPPRESSED" ||
+    trackB.ambientVfr?.alertEligibility === "AMBIENT_SUPPRESSED"
+  ) {
+    return null;
+  }
+
   const tierA = classifyAirspaceTier(trackA, context);
   const tierB = classifyAirspaceTier(trackB, context);
   const tier = pairAirspaceTier(tierA, tierB);

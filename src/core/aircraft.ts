@@ -219,6 +219,30 @@ export interface Aircraft {
   destinationAirport?: string;
   /** Flight rules: e.g. "IFR" or "VFR". */
   flightRules?: string;
+  /** Ambient VFR traffic state marker (T04-71). */
+  ambientVfr?: AmbientVfrState;
+}
+
+export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND";
+
+export interface AmbientVfrWaypoint {
+  xNm: number;
+  yNm: number;
+  altitudeFt?: number;
+  speedKt?: number;
+  targetToleranceNm?: number;
+}
+
+export interface AmbientVfrState {
+  mission: AmbientVfrMission;
+  zoneId: string;
+  destinationAirportId?: string;
+  spawnedAtSimMs: number;
+  alertEligibility: "AMBIENT_SUPPRESSED" | "CONTROLLED";
+  waypoints?: AmbientVfrWaypoint[];
+  waypointIndex?: number;
+  dwellUntilSimMs?: number;
+  phase?: "CRUISE" | "EXITING" | "HANDOFF_COMPLETED";
 }
 
 export interface AircraftInit {
@@ -267,6 +291,7 @@ export interface AircraftInit {
   destination?: string;
   destinationAirport?: string;
   flightRules?: string;
+  ambientVfr?: AmbientVfrState;
 }
 
 /** ICAO heavy transport types used by generated and authored traffic. */
@@ -355,6 +380,7 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.destination ? { destination: init.destination } : {}),
     ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
     ...(init.flightRules ? { flightRules: init.flightRules } : {}),
+    ...(init.ambientVfr ? { ambientVfr: init.ambientVfr } : {}),
   };
 }
 
