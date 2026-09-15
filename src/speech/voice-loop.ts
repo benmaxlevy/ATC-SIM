@@ -190,8 +190,8 @@ function commandFromParse(
   };
 }
 
-function acceptedReadback(result: void | VoiceDispatchResult): string | null {
-  if (result?.accepted !== true) {
+function effectiveReadback(result: void | VoiceDispatchResult): string | null {
+  if (result?.accepted !== true && !(result?.readback && result?.command?.callsign)) {
     return null;
   }
   const text = result.readback?.trim() ?? "";
@@ -507,7 +507,7 @@ class VoiceLoopImpl implements VoiceLoop {
     dispatchResult: void | VoiceDispatchResult,
     metrics: VoiceUtteranceMetrics,
   ): Promise<void> {
-    const readback = acceptedReadback(dispatchResult);
+    const readback = effectiveReadback(dispatchResult);
     if (readback === null) {
       return;
     }

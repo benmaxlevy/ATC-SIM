@@ -436,7 +436,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                   pathC: app.speechSettings.pathCActive,
                 }).then((result) => {
                   setReadback(result.readback);
-                  if (result.accepted) {
+                  if (result.readback && (result.accepted || result.command?.callsign)) {
                     void app.voiceLoop
                       .playReadback(result.readback, result.command?.callsign)
                       .finally(() => setReadback(""));
