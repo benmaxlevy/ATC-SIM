@@ -52,6 +52,23 @@ export type {
   FlightPlanStatus,
   FlightType,
 } from "./flightPlan";
+export type {
+  BeaconPoolAllocationResult,
+  BeaconPoolConfig,
+  BeaconPoolConfigError,
+  BeaconPoolConfigErrorCode,
+  BeaconPoolConfigResult,
+  BeaconPoolDefault,
+  BeaconPoolKey,
+} from "./beaconPools";
+export {
+  BEACON_POOL_KEYS,
+  DEFAULT_BEACON_POOL_CONFIG,
+  allocateBeaconPoolCode,
+  beaconPoolFor,
+  createBeaconPoolConfig,
+  occupiedBeaconCodes,
+} from "./beaconPools";
 export {
   FAA_AIRCRAFT_EQUIPMENT_SUFFIXES,
   createFlightPlanRoute,

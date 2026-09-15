@@ -55,6 +55,7 @@ import {
   updateAircraftSquawk,
   type FlightPlan,
 } from "./flightPlan";
+import { DEFAULT_BEACON_POOL_CONFIG, type BeaconPoolConfig } from "./beaconPools";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -76,6 +77,8 @@ export interface World {
   aircraft: Aircraft[];
   /** Authoritative local operational records; surveillance stays on Aircraft. */
   flightPlans: FlightPlan[];
+  /** Trainer beacon adaptation; empty/default `none` means no automatic code. */
+  beaconPools: BeaconPoolConfig;
   selectedAircraftId: string | null;
   /**
    * Facility catalog when the world was spawned from a scenario.
@@ -285,6 +288,7 @@ export function createWorld(partial?: Partial<World>): World {
     navigation: { magVarDeg },
     aircraft: partial?.aircraft ?? [],
     flightPlans,
+    beaconPools: partial?.beaconPools ?? DEFAULT_BEACON_POOL_CONFIG,
     selectedAircraftId: partial?.selectedAircraftId ?? null,
     catalog: partial?.catalog,
     activeRunwayId: partial?.activeRunwayId,

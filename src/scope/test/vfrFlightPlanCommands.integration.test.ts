@@ -14,6 +14,18 @@ const key = (key: string, ctrlKey = false) => ({
   stopPropagation: vi.fn(),
 });
 
+const vfrPools = {
+  defaultPool: "none" as const,
+  pools: {
+    ifr: [],
+    vfr: ["1000"],
+    general1: [],
+    general2: [],
+    general3: [],
+    general4: [],
+  },
+};
+
 function typeVfr(
   view: ReturnType<typeof createScopeView>,
   world: ReturnType<typeof createWorld>,
@@ -27,7 +39,7 @@ function typeVfr(
 }
 
 test("F9 creates, modifies, lists, then deletes local VFR plan", () => {
-  const world = createWorld();
+  const world = createWorld({ beaconPools: vfrPools });
   const view = createScopeView();
   typeVfr(view, world, "N123AB KDEM*RW27 ΔVFR C172 050");
   expect(world.flightPlans[0]).toMatchObject({
@@ -122,7 +134,7 @@ test("F9 accepts omitted departure and records amended exit-fix retransmit", () 
     kind: "action",
     action: { type: "createFlightPlan", fixes: ["KDEM*MID*RW27"] },
   });
-  const world = createWorld();
+  const world = createWorld({ beaconPools: vfrPools });
   const view = createScopeView();
   typeVfr(view, world, "N123AB *RW27 C172 050");
   typeVfr(view, world, "N123AB KDEM*RW28 C172 060");
@@ -143,6 +155,7 @@ test("F9 accepts delta-prefixed scratchpad 1 and plus-prefixed scratchpad 2", ()
       flightRules: "VFR",
       fixes: ["KDEM*RW27"],
       scratchpads: ["WEST", "S21"],
+      beacon: { kind: "pool", pool: "vfr" },
       aircraftType: "C172",
       requestedAltitudeFt: 5000,
     },

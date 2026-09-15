@@ -72,6 +72,85 @@ Workers implement exactly one ticket, never merge or spawn, and return exactly
 and use one narrowly scoped correction worker only. Preserve unrelated untracked
 artifacts (`audit.diff`, `.agents/rules/`, `GEMINI.md`).
 
+## Seventy-first swarm planned — configurable beacon pools (2026-09-14)
+
+Human approved the beacon-pool audit follow-up on `feature/beacon-pools`.
+The current implementation has separate one-code scope/modal placeholders,
+no adaptation-backed default pool, and a separate scenario random allocator.
+This swarm adds one generic deterministic pool contract, distinguishes omitted
+beacon from explicit no-code `A`, and unifies plan-side allocation while
+preserving aircraft surveillance provenance.
+
+| Key | Value |
+| --- | --- |
+| Goal | Align F6/FLT DATA, abbreviated, modal, and scenario flight-plan beacon behavior with supplied STARS manual pool/default semantics. |
+| Phase | `phases/02-scope/` |
+| Include | T02-197 → T02-198 → T02-199. |
+| Merge target | `feature/beacon-pools` |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` high (proposal matching current swarm convention). |
+| Stop | T02-199 plus focused tests, `npm run ci`, two supplied-manual reviews per ticket, and overall-goal acceptance. |
+| Push | No push. |
+
+**Product law:** The manual's `+`, `/`, `/1`–`/4`, `A`, and omitted-beacon
+semantics remain exact. Omitted beacon resolves through configured default pool
+or configured `none`; explicit `A` always means no assigned code. Allocation is
+deterministic first-free trainer behavior, not a claim about official NAS
+randomization. Assigned plan beacon and reported aircraft squawk remain
+separate. Allocation never associates a track, changes Command IR, readback,
+intent, kinematics, or ACID. Missing pool adaptation means no assigned code;
+no operational pool values are invented.
+
+**Skip:** official NAS/Raytheon pool contents, networked allocation, full bank
+telemetry, emergency-code redesign, radio `SQ` changes, Command IR/speech,
+pilot execution, facility-specific branches, unrelated scope polish, and
+future backlog items not made visible by this change.
+
+**Waves:** A T02-197 core pool contract and allocator; B T02-198 F6 and
+abbreviated default/no-code semantics; C T02-199 scenario/projection
+integration, acceptance, docs, and final manual review. Each ticket starts
+only after the prior squash merge, CI, and manual gate.
+
+**Ticket ownership:**
+
+- T02-197 owns core pool types/config validation, normalized occupancy, and
+  deterministic allocation.
+- T02-198 owns Preview Area parser/action state, F6/abbreviated routing, and
+  exact default-vs-`A` behavior.
+- T02-199 owns scenario wiring, duplicate-consumer removal, FL/TAB/strip
+  projection, acceptance, Help, docs, and final overall-goal evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-197-beacon-pool-contract-and-allocation` → `phases/02-scope/tickets/T02-197-beacon-pool-contract-and-allocation.md`
+- `ticket/T02-198-flight-plan-default-beacon-semantics` → `phases/02-scope/tickets/T02-198-flight-plan-default-beacon-semantics.md`
+- `ticket/T02-199-beacon-pool-integration-acceptance` → `phases/02-scope/tickets/T02-199-beacon-pool-integration-acceptance.md`
+
+**Manual:** Review every merged ticket against `/home/ben/Documents/stars refs/full_manual.pdf` and `/home/ben/Documents/stars refs/quick_reference_manual.pdf`, especially Appendix D Table D-1 p. D-2, §§5.5.1/5.5.5/5.5.7–5.5.9 pp. 5-85–5-129, Table 5-7 p. 5-108, and §§5.6.15/5.6.17 pp. 5-164/5-167–5-179. Record trainer deltas and inspect Help/docs after syntax changes.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: configurable beacon pools T02-197–199
+Merge target: feature/beacon-pools
+Merged: T02-197, T02-198, T02-199
+Tests: focused tests, npm run ci, supplied-manual review after each ticket, overall-goal acceptance
+Notes: deterministic trainer pools; omitted-vs-A semantics; no push
+```
+
+## Seventy-first swarm started — configurable beacon pools (2026-09-14)
+
+Execution begins on `feature/beacon-pools` from the audited
+`feature/clearances` tip. The captain will run one isolated worker at a time
+for T02-197, T02-198, and T02-199, squash-merge each ticket here, run the
+required focused checks and `npm run ci`, then complete an independent review
+against both supplied STARS manuals before launching the next ticket.
+
+Worker limit remains one; configured worker model is `gpt-5.6-luna` at high
+reasoning. Workers implement exactly one ticket, commit progressively, never
+merge or spawn, and return exactly `READY TO MERGE` or `BLOCKED`. The captain
+does not push. Existing unrelated untracked artifacts remain untouched.
+
 ## Seventieth swarm planned — shared fix matching and per-span route evidence (2026-09-14)
 
 Human approved the follow-up to the completed arbitrary IFR route-chain work:

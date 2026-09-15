@@ -20,6 +20,7 @@ export const SCENARIO_PACKAGE = "scenario";
 export type {
   Approach,
   ArrivalSpawn,
+  BeaconPoolConfig,
   CwtWakeCategory,
   DepartureConfig,
   DepartureRoute,

@@ -190,7 +190,7 @@ describe("formatBeaconCode", () => {
     expect(formatBeaconCode("4215")).toBe("4215");
     expect(formatBeaconCode("7")).toBe("0007");
     expect(formatBeaconCode("42")).toBe("0042");
-    expect(formatBeaconCode("")).toBe("0000");
+    expect(formatBeaconCode("")).toBe("");
   });
 
   test("trims whitespace from input code", () => {

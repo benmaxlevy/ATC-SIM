@@ -28,6 +28,18 @@ const catalog: FiledRouteCatalog = {
   ],
 };
 
+const selectorPools = {
+  pools: {
+    ifr: ["0000"],
+    vfr: ["1000"],
+    general1: ["2000"],
+    general2: ["3000"],
+    general3: ["4000"],
+    general4: ["5000"],
+  },
+  defaultPool: "none" as const,
+};
+
 test.each([
   ["sid1 / n   fixa", "SID1/N FIXA"],
   ["vor1", "VOR1"],
@@ -247,7 +259,10 @@ test.each([
   ["/3", "4000"],
   ["/4", "5000"],
 ] as const)("draft resolves assigned beacon selector %s", (selector, assignedBeacon) => {
-  const result = saveFlightPlanDraft(createWorld(), { acid: "AAL123", assignedBeacon: selector });
+  const result = saveFlightPlanDraft(createWorld({ beaconPools: selectorPools }), {
+    acid: "AAL123",
+    assignedBeacon: selector,
+  });
   expect(result).toMatchObject({ ok: true, plan: { assignedBeacon } });
 });
 

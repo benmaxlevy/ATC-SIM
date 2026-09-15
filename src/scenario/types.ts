@@ -1,4 +1,5 @@
-import type { CwtWakeCategory, LatLon, NmEastNorth } from "@core";
+import type { BeaconPoolConfig, CwtWakeCategory, LatLon, NmEastNorth } from "@core";
+export type { BeaconPoolConfig } from "@core";
 export type { CwtWakeCategory } from "@core";
 import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
@@ -208,6 +209,8 @@ export interface Scenario {
   atpaWakeAdaptation?: import("./procedures/types").AtpaWakeAdaptation;
   /** Optional departure traffic configuration. */
   departureConfig?: DepartureConfig;
+  /** Optional trainer beacon adaptation; omitted means default policy `none`. */
+  beaconPools?: BeaconPoolConfig;
   /**
    * Ten GI TEXT slots (CRC analog). Empty string = unused. Authored trainer
    * copy (ATIS letter / runway / approach) — not a live METAR download.

@@ -25,6 +25,7 @@
  */
 
 import {
+  beaconPoolFor,
   createFlightPlan,
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
@@ -89,19 +90,10 @@ import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
 
-// TI 6191.409 Tables 5-3/5-9 pool selectors; deterministic trainer pools,
-// not a NAS beacon-allocation service. T02-144 keeps selectors at Scope.
-const CREATION_BEACON_POOLS: Record<
-  "ifr" | "vfr" | "general1" | "general2" | "general3" | "general4",
-  string[]
-> = {
-  ifr: ["0000"],
-  vfr: ["1000"],
-  general1: ["2000"],
-  general2: ["3000"],
-  general3: ["4000"],
-  general4: ["5000"],
-};
+function vfrCreationPool(world: World): readonly string[] {
+  return beaconPoolFor(world.beaconPools, "vfr");
+}
+
 import {
   applyRrCenter,
   armPlaceCenter,
@@ -373,8 +365,9 @@ function applyPreviewArmedAction(
           if (!existing.assignedBeacon) {
             const allocated = withAllocatedBeacon(
               existing,
-              CREATION_BEACON_POOLS.vfr,
+              vfrCreationPool(world),
               world.flightPlans,
+              world.aircraft,
             );
             if (!allocated.ok || !allocated.value.assignedBeacon) {
               view.preview.rejection = "CAPACITY — BCN";
@@ -464,28 +457,30 @@ function applyPreviewArmedAction(
         return;
       }
       let plan: FlightPlan = result.value;
-      if (action.creationMode === "vfr" && !plan.assignedBeacon) {
-        const allocated = withAllocatedBeacon(plan, CREATION_BEACON_POOLS.vfr, world.flightPlans);
+      const beaconSpec = action.beacon;
+      if (beaconSpec.kind === "pool") {
+        const pool =
+          action.creationMode === "vfr" && beaconSpec.pool === "vfr"
+            ? vfrCreationPool(world)
+            : beaconPoolFor(world.beaconPools, beaconSpec.pool);
+        const allocated = withAllocatedBeacon(plan, pool, world.flightPlans, world.aircraft);
         if (!allocated.ok || !allocated.value.assignedBeacon) {
           view.preview.rejection = "CAPACITY — BCN";
           return;
         }
         plan = allocated.value;
-      } else if (action.beaconAllocation) {
+      } else if (beaconSpec.kind === "default" && world.beaconPools.defaultPool !== "none") {
         const allocated = withAllocatedBeacon(
           plan,
-          CREATION_BEACON_POOLS[action.beaconAllocation],
+          beaconPoolFor(world.beaconPools, world.beaconPools.defaultPool),
           world.flightPlans,
+          world.aircraft,
         );
         if (!allocated.ok || !allocated.value.assignedBeacon) {
           view.preview.rejection = "CAPACITY — BCN";
           return;
         }
         plan = allocated.value;
-      }
-      if (action.pendingDiscrete && !plan.assignedBeacon) {
-        view.preview.rejection = "CAPACITY — BCN";
-        return;
       }
       world.flightPlans.push(plan);
       return;
@@ -575,8 +570,9 @@ function applyPreviewArmedAction(
               : `general${action.value.slice(1)}`;
         const allocated = withAllocatedBeacon(
           uniquePlans[0]!,
-          CREATION_BEACON_POOLS[poolKey as keyof typeof CREATION_BEACON_POOLS],
+          beaconPoolFor(world.beaconPools, poolKey as Parameters<typeof beaconPoolFor>[1]),
           world.flightPlans,
+          world.aircraft,
         );
         if (!allocated.ok || !allocated.value.assignedBeacon) {
           view.preview.rejection = "CAPACITY — BCN";

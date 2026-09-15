@@ -180,10 +180,10 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       {
         id: "flt-data",
         command: "F6 / FLT DATA <ACID> [fields]",
-        example: "F6 UAL1234 2341 KDEM*RW27 ΔHOLD B738 250 .A",
+        example: "F6 UAL1234 ENTER; F6 UAL1234 A ENTER",
         input: "Any focus, then Preview Area",
         result:
-          "Creates a local IFR flight plan; Δ<text> sets scratchpad 1 and +<text> sets scratchpad 2.",
+          "Creates a local IFR flight plan. An omitted beacon uses the configured default pool (or no code); A explicitly means no assigned beacon. Use +, /, /1-/4 for pool selectors; Δ<text> and +<text> set scratchpads.",
       },
       {
         id: "vfr-data",
@@ -198,7 +198,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         command: "<ACID> [fields]",
         example: "UAL1234 2341 AT B738",
         input: "Preview Area",
-        result: "Creates a pending local flight plan.",
+        result:
+          "Creates a pending local flight plan. An omitted beacon uses the configured default pool or no code; A explicitly means no assigned beacon; +, /, and /1-/4 select configured pools.",
       },
       {
         id: "plan-pending-discrete",

@@ -4,6 +4,8 @@
  * changes its ACID.
  */
 
+import { allocateBeaconPoolCode, occupiedBeaconCodes } from "./beaconPools";
+
 export type FlightPlanStatus = "pending" | "active" | "suspended" | "deleted";
 export type FlightPlanSuspensionReason = "beacon-mismatch" | "inactive";
 
@@ -387,7 +389,7 @@ export function validateFlightPlan(
   } else if (
     assignedBeacon !== undefined &&
     plansOf(existing).some(
-      (item) => item.assignedBeacon === assignedBeacon && item.status !== "deleted",
+      (item) => normalized(item.assignedBeacon) === assignedBeacon && item.status !== "deleted",
     )
   ) {
     errors.push(
@@ -432,41 +434,33 @@ export function createFlightPlan(
   return firstError ? { ok: false, error: firstError } : { ok: true, value: synchronized };
 }
 
-/** Allocate the first free code in the supplied deterministic trainer pool. */
+/** Preserve the flight-plan allocator error contract while sharing pool logic. */
 export function allocateBeaconCode(
   pool: readonly string[],
-  occupied: readonly string[] = [],
+  occupied: ReadonlySet<string> | readonly string[] = [],
 ): FlightPlanResult<string | undefined> {
-  const occupiedSet = new Set(occupied.map((code) => code.trim()));
-  for (const rawCode of pool) {
-    const code = rawCode.trim();
-    if (!isValidBeaconCode(code)) {
-      return {
-        ok: false,
-        error: error(
-          "INVALID_BEACON",
-          "assignedBeacon",
-          rawCode,
-          "beacon pool contains a non-octal code",
-        ),
-      };
-    }
-    if (!occupiedSet.has(code)) {
-      return { ok: true, value: code };
-    }
+  const allocation = allocateBeaconPoolCode(pool, occupied);
+  if (!allocation.ok) {
+    return {
+      ok: false,
+      error: error(
+        "INVALID_BEACON",
+        "assignedBeacon",
+        allocation.error.value,
+        allocation.error.message,
+      ),
+    };
   }
-  // An empty/exhausted local pool is a supported no-code outcome.
-  return { ok: true, value: undefined };
+  return allocation;
 }
 
 export function withAllocatedBeacon(
   plan: FlightPlan,
   pool: readonly string[],
   existing: readonly FlightPlan[] = [],
+  aircraft: ReadonlyArray<{ assignedSquawk?: string }> = [],
 ): FlightPlanResult<FlightPlan> {
-  const occupied = existing.flatMap((item) =>
-    item.status !== "deleted" && item.assignedBeacon ? [item.assignedBeacon] : [],
-  );
+  const occupied = occupiedBeaconCodes(existing, aircraft);
   const allocation = allocateBeaconCode(pool, occupied);
   if (!allocation.ok) return allocation;
   return { ok: true, value: { ...plan, assignedBeacon: allocation.value } };
@@ -721,6 +715,22 @@ export function modifyFlightPlan(
           `beacon ${candidate.assignedBeacon} already exists`,
         ),
       };
+    }
+    if (field === "assignedBeacon" && candidate.assignedBeacon !== plan.assignedBeacon) {
+      const aircraftWithBeacon = world.aircraft.find(
+        (aircraft) => aircraft.assignedSquawk?.trim().toUpperCase() === candidate.assignedBeacon,
+      );
+      if (aircraftWithBeacon) {
+        return {
+          ok: false,
+          error: modificationError(
+            "DUPLICATE_BEACON",
+            field,
+            candidate.assignedBeacon,
+            `beacon ${candidate.assignedBeacon} is assigned to aircraft ${aircraftWithBeacon.id}`,
+          ),
+        };
+      }
     }
   }
   Object.assign(plan, candidate);
