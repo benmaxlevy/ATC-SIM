@@ -111,6 +111,7 @@ export {
   despawnDepartedAircraft,
   setSelectedAircraft,
   stepWorld,
+  resolveApproachSpeedKt,
   createAccumulator,
   advanceWorld,
 } from "./world";

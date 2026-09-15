@@ -235,3 +235,140 @@ test("AC5 — approach GS tests are DOM-free", () => {
   expect(typeof document).toBe("undefined");
   expect(typeof window).toBe("undefined");
 });
+
+test("AC3 & AC5 — controller assigned speed maintained outside 5 DME boundary, expires at 5 DME", () => {
+  const dal = onLoc({ xNm: 8, altitudeFt: 2000 });
+  dal.speedKt = 210;
+  dal.intent.assignedSpeedKt = 210;
+  dal.intent.controllerAssignedSpeedKt = 210;
+
+  const catalog = {
+    ...kdemCatalog(),
+    approaches: [{ ...ILS27_APPROACH, fafDistanceNm: 6 }],
+  };
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog,
+    sessionLog: log,
+  });
+  dal.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  dal.intent.clearedApproachId = "ILS27";
+
+  // Step while outside 5 DME (hardBoundaryNm = min(6, 5) = 5)
+  while (alongTrack(dal) > 5.1) {
+    stepWorld(world, SIM_DT_S);
+    // AC3: approach regime limits do not clamp controller speed (stays 210)
+    expect(dal.intent.controllerAssignedSpeedKt).toBe(210);
+    expect(dal.speedKt).toBeCloseTo(210, 1);
+  }
+
+  // Cross 5 DME boundary
+  while (alongTrack(dal) > 4.8) {
+    stepWorld(world, SIM_DT_S);
+  }
+
+  // AC5: at or inside 5 DME, controller speed clears and assignedSpeed transitions to approach speed (~140)
+  expect(dal.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(dal.intent.assignedSpeedKt).toBe(140);
+
+  // Subsequent steps decelerate toward 140 kt
+  stepSeconds(world, 10);
+  expect(dal.speedKt).toBeLessThan(200);
+});
+
+test("AC4 — controller assigned speed expires at DME until gate (e.g. 7 DME)", () => {
+  const dal = onLoc({ xNm: 9, altitudeFt: 2000 });
+  dal.speedKt = 180;
+  dal.intent.assignedSpeedKt = 180;
+  dal.intent.controllerAssignedSpeedKt = 180;
+  dal.intent.speedUntil = { type: "DME", distanceNm: 7 };
+
+  const { world } = worldOnLoc(dal);
+
+  // Fly to just outside 7 DME
+  while (alongTrack(dal) > 7.1) {
+    stepWorld(world, SIM_DT_S);
+    expect(dal.intent.controllerAssignedSpeedKt).toBe(180);
+    expect(dal.intent.speedUntil).toEqual({ type: "DME", distanceNm: 7 });
+  }
+
+  // Cross 7 DME gate
+  while (alongTrack(dal) > 6.8) {
+    stepWorld(world, SIM_DT_S);
+  }
+
+  // Gate reached: assignment and until cleared, slows to approach speed
+  expect(dal.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(dal.intent.speedUntil).toBeUndefined();
+  expect(dal.intent.assignedSpeedKt).toBe(140);
+});
+
+test("AC4 — controller assigned speed expires at FAF until gate", () => {
+  const dal = onLoc({ xNm: 8, altitudeFt: 2000 });
+  dal.speedKt = 190;
+  dal.intent.assignedSpeedKt = 190;
+  dal.intent.controllerAssignedSpeedKt = 190;
+  dal.intent.speedUntil = { type: "FAF" };
+
+  const catalog = {
+    ...kdemCatalog(),
+    approaches: [{ ...ILS27_APPROACH, fafDistanceNm: 6 }],
+  };
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog,
+    sessionLog: log,
+  });
+  dal.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  dal.intent.clearedApproachId = "ILS27";
+
+  // Step until crossing 6 NM (FAF)
+  while (alongTrack(dal) > 6.1) {
+    stepWorld(world, SIM_DT_S);
+    expect(dal.intent.controllerAssignedSpeedKt).toBe(190);
+  }
+
+  while (alongTrack(dal) > 5.8) {
+    stepWorld(world, SIM_DT_S);
+  }
+
+  expect(dal.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(dal.intent.speedUntil).toBeUndefined();
+  expect(dal.intent.assignedSpeedKt).toBe(140);
+});
+
+test("AC4 — controller assigned speed expires at FIX until gate", () => {
+  const dal = onLoc({ xNm: 9, altitudeFt: 2000 });
+  dal.speedKt = 180;
+  dal.intent.assignedSpeedKt = 180;
+  dal.intent.controllerAssignedSpeedKt = 180;
+  dal.intent.speedUntil = { type: "FIX", fixId: "GATE7" };
+
+  const catalog = {
+    ...kdemCatalog(),
+    fixes: [...kdemCatalog().fixes, { id: "GATE7", xNm: 7.0, yNm: 0, kind: "INTERSECTION" }],
+  };
+  const log = new SessionLog();
+  const world = createWorld({
+    aircraft: [dal],
+    catalog,
+    sessionLog: log,
+  });
+  dal.intent.lateral = { type: "LOC", approachId: "ILS27" };
+  dal.intent.clearedApproachId = "ILS27";
+
+  while (alongTrack(dal) > 7.1) {
+    stepWorld(world, SIM_DT_S);
+    expect(dal.intent.controllerAssignedSpeedKt).toBe(180);
+  }
+
+  while (alongTrack(dal) > 6.8) {
+    stepWorld(world, SIM_DT_S);
+  }
+
+  expect(dal.intent.controllerAssignedSpeedKt).toBeUndefined();
+  expect(dal.intent.speedUntil).toBeUndefined();
+  expect(dal.intent.assignedSpeedKt).toBe(140);
+});

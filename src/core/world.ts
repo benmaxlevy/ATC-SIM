@@ -43,10 +43,12 @@ import {
   type CatalogSid,
   type CatalogStar,
 } from "./fms/vertical";
-import { locAxisForApproach } from "./nav/localizer";
+import { locAxisForApproach, locDeviation, type LocAxis } from "./nav/localizer";
+import { alongTrackNm } from "./nav/geometry";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
 import { resolvePerformanceRegime } from "./performance/regime";
+import type { AircraftPerformanceProfile } from "./performance/types";
 import {
   routeFixIds,
   synchronizeFlightPlanRoute,
@@ -610,6 +612,125 @@ function synchronizeRouteCursor(
   }
 }
 
+export function resolveApproachSpeedKt(profile?: AircraftPerformanceProfile | null): number {
+  const nominal = (profile?.regimes?.approach as { nominalSpeedKt?: number } | undefined)
+    ?.nominalSpeedKt;
+  if (nominal !== undefined && Number.isFinite(nominal) && nominal > 0) {
+    return nominal;
+  }
+  const minSpeed = profile?.regimes?.approach?.minSpeedKt;
+  if (minSpeed !== undefined && Number.isFinite(minSpeed) && minSpeed >= 120) {
+    return minSpeed;
+  }
+  return 140;
+}
+
+function findFixPoint(fixId: string, world: World): { xNm: number; yNm: number } | undefined {
+  if (world.fixRegistry?.has(fixId)) {
+    return world.fixRegistry.get(fixId);
+  }
+  const f = world.catalog?.fixes?.find(
+    (item) => item.id.trim().toUpperCase() === fixId.trim().toUpperCase(),
+  );
+  if (typeof f?.xNm === "number" && typeof f?.yNm === "number") {
+    return { xNm: f.xNm, yNm: f.yNm };
+  }
+  return undefined;
+}
+
+function computeApproachAlongTrackNm(
+  point: { xNm: number; yNm: number },
+  approachId: string,
+  world: World,
+  axis?: LocAxis,
+): number | undefined {
+  if (axis) {
+    return locDeviation(point, axis).alongTrackNm;
+  }
+  const approach = world.catalog?.approaches?.find(
+    (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+  );
+  if (!approach) return undefined;
+  const thresholdPoint =
+    approach.thresholdFixId && world.fixRegistry?.has(approach.thresholdFixId)
+      ? world.fixRegistry.get(approach.thresholdFixId)!
+      : { xNm: 0, yNm: 0 };
+  let courseDeg = approach.publishedCourseMagneticDeg ?? approach.courseDeg;
+  if (courseDeg === undefined) {
+    const match = /(\d{1,2})[LCR]?$/i.exec(approachId);
+    courseDeg = match ? Number.parseInt(match[1], 10) * 10 : 270;
+  }
+  return alongTrackNm(point, thresholdPoint, courseDeg);
+}
+
+function updateApproachSpeedAssignments(
+  ac: Aircraft,
+  world: World,
+  locAxisFor: (approachId: string) => LocAxis | undefined,
+  profile: AircraftPerformanceProfile,
+): void {
+  if (ac.intent.controllerAssignedSpeedKt === undefined && ac.intent.speedUntil === undefined) {
+    return;
+  }
+
+  const approachId =
+    ac.intent.clearedApproachId ??
+    (ac.intent.lateral?.type === "LOC" ||
+    ac.intent.lateral?.type === "LANDING" ||
+    ac.intent.lateral?.type === "INTERCEPT_LOC"
+      ? ac.intent.lateral.approachId
+      : ac.intent.vertical?.type === "GS"
+        ? ac.intent.vertical.approachId
+        : undefined);
+
+  if (!approachId) {
+    return;
+  }
+
+  const approach = world.catalog?.approaches?.find(
+    (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+  );
+
+  const axis = locAxisFor(approachId);
+  const alongTrackDistance = computeApproachAlongTrackNm(ac, approachId, world, axis);
+  if (alongTrackDistance === undefined) {
+    return;
+  }
+
+  const fafDistanceNm = approach?.fafDistanceNm ?? 5;
+  const hardBoundaryNm = Math.min(fafDistanceNm, 5);
+
+  let gateReached = false;
+  const until = ac.intent.speedUntil;
+  if (until) {
+    if (until.type === "DME") {
+      gateReached = alongTrackDistance <= until.distanceNm;
+    } else if (until.type === "FAF") {
+      gateReached = alongTrackDistance <= fafDistanceNm;
+    } else if (until.type === "FIX") {
+      let fixSequenced = false;
+      if (ac.intent.lateral?.type === "PROCEDURE") {
+        fixSequenced = ac.intent.lateral.routeFixIds
+          .slice(0, ac.intent.lateral.toFixIndex)
+          .includes(until.fixId);
+      }
+      const fixPoint = findFixPoint(until.fixId, world);
+      const fixDist = fixPoint
+        ? computeApproachAlongTrackNm(fixPoint, approachId, world, axis)
+        : undefined;
+      gateReached = fixSequenced || (fixDist !== undefined && alongTrackDistance <= fixDist);
+    }
+  }
+
+  const boundaryReached = alongTrackDistance <= hardBoundaryNm;
+
+  if (gateReached || boundaryReached) {
+    ac.intent.controllerAssignedSpeedKt = undefined;
+    ac.intent.speedUntil = undefined;
+    ac.intent.assignedSpeedKt = resolveApproachSpeedKt(profile);
+  }
+}
+
 /**
  * Advance sim time by `dtS` seconds, then move each aircraft toward intent.
  *
@@ -642,6 +763,21 @@ export function stepWorld(world: World, dtS: number): World {
     const profile = performanceRegistry.getProfile(ac.aircraftType);
     const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
     const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
+    updateApproachSpeedAssignments(ac, world, locAxisFor, profile);
+    let effectivePerformance = performance;
+    if (performance && ac.intent.controllerAssignedSpeedKt !== undefined) {
+      effectivePerformance = {
+        ...performance,
+        maxSpeedKt: Math.max(
+          performance.maxSpeedKt,
+          profile.limits?.maxControlledSpeedKt ?? ac.intent.controllerAssignedSpeedKt,
+        ),
+        minSpeedKt: Math.min(
+          performance.minSpeedKt,
+          profile.limits?.minControlledSpeedKt ?? ac.intent.controllerAssignedSpeedKt,
+        ),
+      };
+    }
     const commandedHeadingDeg = applyLateralFms(ac, dtS, {
       registry: clearanceRouteRegistry(world),
       log: world.sessionLog,
@@ -649,7 +785,7 @@ export function stepWorld(world: World, dtS: number): World {
       catalog: world.catalog,
       locAxisFor,
       magVarDeg: world.navigation.magVarDeg,
-      performance,
+      performance: effectivePerformance,
     });
     const gsCommandedFt = applyGlidepathFms(ac, dtS, {
       locAxisFor,
@@ -658,7 +794,7 @@ export function stepWorld(world: World, dtS: number): World {
       simTimeMs: world.simTimeMs,
       maxDescentFpm: performance?.nominalDescentFpm,
     });
-    const vertical = applyVerticalFms(ac, world.catalog);
+    const vertical = applyVerticalFms(ac, world.catalog, profile);
     stepAircraft(
       ac,
       dtS,
@@ -666,7 +802,7 @@ export function stepWorld(world: World, dtS: number): World {
       gsCommandedFt ?? vertical.altitudeFt,
       vertical.speedKt,
       world.navigation.magVarDeg,
-      performance,
+      effectivePerformance,
       profile.limits,
     );
     synchronizeRouteCursor(world, ac, previousLateral);

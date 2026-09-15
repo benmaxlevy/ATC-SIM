@@ -18,6 +18,8 @@ import {
   type GsParams,
 } from "../nav/glidepath";
 import { locDeviation, type LocAxis } from "../nav/localizer";
+import { performanceRegistry } from "../performance/registry";
+import type { AircraftPerformanceProfile } from "../performance/types";
 
 export type AltConstraint =
   | { type: "AT"; altitudeFt: number }
@@ -155,21 +157,76 @@ export function targetAltitudeFt(args: {
   return args.nextConstraint.altitudeFt;
 }
 
-export function targetSpeedKt(args: {
+export interface TargetSpeedArgs {
   assignedKt: number;
   vertical: VerticalMode;
   nextConstraint?: SpeedConstraint;
   onStar: boolean;
-}): number {
+  controllerAssignedKt?: number;
+  speedRestrictionsDeleted?: boolean;
+  altitudeFt?: number;
+  normalArrivalSpeedKt?: number;
+  envelope?: {
+    minSpeedKt?: number;
+    maxSpeedKt?: number;
+  };
+}
+
+export function targetSpeedKt(args: TargetSpeedArgs): number {
+  if (args.controllerAssignedKt !== undefined) {
+    let spd = args.controllerAssignedKt;
+    if (args.envelope?.minSpeedKt !== undefined && Number.isFinite(args.envelope.minSpeedKt)) {
+      spd = Math.max(spd, args.envelope.minSpeedKt);
+    }
+    if (args.envelope?.maxSpeedKt !== undefined && Number.isFinite(args.envelope.maxSpeedKt)) {
+      spd = Math.min(spd, args.envelope.maxSpeedKt);
+    }
+    return spd;
+  }
+
+  if (args.speedRestrictionsDeleted === true) {
+    let spd = args.normalArrivalSpeedKt ?? (args.assignedKt > 0 ? args.assignedKt : 250);
+    if (args.altitudeFt !== undefined && args.altitudeFt < 10000) {
+      spd = Math.min(spd, 250);
+    }
+    if (args.envelope?.minSpeedKt !== undefined && Number.isFinite(args.envelope.minSpeedKt)) {
+      spd = Math.max(spd, args.envelope.minSpeedKt);
+    }
+    if (args.envelope?.maxSpeedKt !== undefined && Number.isFinite(args.envelope.maxSpeedKt)) {
+      spd = Math.min(spd, args.envelope.maxSpeedKt);
+    }
+    return spd;
+  }
+
   const via =
     (args.vertical.type === "VIA_STAR" || args.vertical.type === "VIA_SID") && args.onStar;
   if (!via || !args.nextConstraint) {
-    return args.assignedKt;
+    let spd = args.assignedKt;
+    if (args.envelope?.minSpeedKt !== undefined && Number.isFinite(args.envelope.minSpeedKt)) {
+      spd = Math.max(spd, args.envelope.minSpeedKt);
+    }
+    if (args.envelope?.maxSpeedKt !== undefined && Number.isFinite(args.envelope.maxSpeedKt)) {
+      spd = Math.min(spd, args.envelope.maxSpeedKt);
+    }
+    return spd;
   }
-  if (args.nextConstraint.type === "AT_OR_BELOW" || args.nextConstraint.type === "AT") {
-    return Math.min(args.assignedKt, args.nextConstraint.speedKt);
+
+  let spd = args.assignedKt;
+  if (args.nextConstraint.type === "AT_OR_BELOW") {
+    spd = Math.min(args.assignedKt, args.nextConstraint.speedKt);
+  } else if (args.nextConstraint.type === "AT_OR_ABOVE") {
+    spd = Math.max(args.assignedKt, args.nextConstraint.speedKt);
+  } else if (args.nextConstraint.type === "AT") {
+    spd = args.nextConstraint.speedKt;
   }
-  return args.assignedKt;
+
+  if (args.envelope?.minSpeedKt !== undefined && Number.isFinite(args.envelope.minSpeedKt)) {
+    spd = Math.max(spd, args.envelope.minSpeedKt);
+  }
+  if (args.envelope?.maxSpeedKt !== undefined && Number.isFinite(args.envelope.maxSpeedKt)) {
+    spd = Math.min(spd, args.envelope.maxSpeedKt);
+  }
+  return spd;
 }
 
 export function nextUnpassedConstraints(
@@ -222,12 +279,30 @@ export function nextUnpassedConstraints(
 export function applyVerticalFms(
   ac: Aircraft,
   catalog?: VerticalCatalog | null,
+  profile?: AircraftPerformanceProfile | null,
 ): { altitudeFt: number; speedKt: number } {
   const next = nextUnpassedConstraints(ac, catalog);
   const onStar = ac.intent.lateral?.type === "PROCEDURE";
   const crossForFix =
     ac.intent.cross && next?.fixId === ac.intent.cross.fixId ? ac.intent.cross : undefined;
   const vertical = ac.intent.vertical ?? { type: "ASSIGNED" };
+
+  const prof = profile ?? performanceRegistry.getProfile(ac.aircraftType);
+  const normalArrivalSpeedKt =
+    (prof?.regimes?.arrival as { nominalSpeedKt?: number } | undefined)?.nominalSpeedKt ??
+    (prof?.regimes?.arrival?.maxSpeedKt !== undefined &&
+    Number.isFinite(prof.regimes.arrival.maxSpeedKt) &&
+    prof.regimes.arrival.maxSpeedKt < 250
+      ? prof.regimes.arrival.maxSpeedKt
+      : 250);
+
+  const envelope = prof?.limits
+    ? {
+        minSpeedKt: prof.limits.minControlledSpeedKt,
+        maxSpeedKt: prof.limits.maxControlledSpeedKt,
+      }
+    : undefined;
+
   return {
     altitudeFt: targetAltitudeFt({
       assignedFt: ac.intent.assignedAltitudeFt,
@@ -241,6 +316,11 @@ export function applyVerticalFms(
       vertical,
       nextConstraint: next?.speed,
       onStar,
+      controllerAssignedKt: ac.intent.controllerAssignedSpeedKt,
+      speedRestrictionsDeleted: ac.intent.speedRestrictionsDeleted,
+      altitudeFt: ac.altitudeFt,
+      normalArrivalSpeedKt,
+      envelope,
     }),
   };
 }
