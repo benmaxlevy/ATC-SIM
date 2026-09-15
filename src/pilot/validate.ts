@@ -11,7 +11,13 @@ import type {
   ProcedureJoinCatalog,
   VerticalCatalog,
 } from "@core";
-import { alongTrackNm, isOnCourseToFix, joinProcedureTransition, performanceRegistry } from "@core";
+import {
+  alongTrackNm,
+  isOnCourseToFix,
+  joinProcedureTransition,
+  normalizeHeading,
+  performanceRegistry,
+} from "@core";
 import { isValidBeaconCode } from "@core";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -73,6 +79,9 @@ export function validateInstructions(
     return { ok: false, reason: "EMPTY" };
   }
   const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
+  if (instructions.some((instruction) => instruction.type === "CANCEL_APPROACH")) {
+    return validateProjectedCancellation(aircraft, instructions, opts, profile);
+  }
   for (const instruction of instructions) {
     const result = validateOne(aircraft, instruction, opts, profile);
     if (!result.ok) {
@@ -80,6 +89,158 @@ export function validateInstructions(
     }
   }
   return { ok: true };
+}
+
+/**
+ * Cancellation is a lifecycle boundary inside a single transmission. Validate
+ * later instructions against a copy of intent, then let handleRadioCommand
+ * apply the original list only after every instruction passes.
+ */
+function validateProjectedCancellation(
+  aircraft: Aircraft,
+  instructions: Instruction[],
+  opts: ValidateOpts | undefined,
+  profile: AircraftPerformanceProfile | null,
+): ValidateResult {
+  const cancellationIndexes = instructions.reduce<number[]>((indexes, instruction, index) => {
+    if (instruction.type === "CANCEL_APPROACH") indexes.push(index);
+    return indexes;
+  }, []);
+  if (cancellationIndexes[0] !== 0) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH must be the first instruction",
+    };
+  }
+  if (cancellationIndexes.length !== 1) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH may be issued only once",
+    };
+  }
+  if (
+    instructions
+      .slice(1)
+      .some((instruction) =>
+        new Set([
+          "CLEARED_APPROACH",
+          "INTERCEPT_LOCALIZER",
+          "EXPECT_APPROACH",
+          "GO_AROUND",
+          "IFR_CLEARANCE",
+        ]).has(instruction.type),
+      )
+  ) {
+    return {
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+    };
+  }
+
+  const projected = cloneAircraftForValidation(aircraft);
+  const cancellation = validateCancellation(projected);
+  if (!cancellation.ok) {
+    return cancellation;
+  }
+  projectCancellation(projected);
+
+  for (const instruction of instructions.slice(1)) {
+    const result = validateOne(projected, instruction, opts, profile);
+    if (!result.ok) {
+      return result;
+    }
+    projectAfterCancellation(projected, instruction);
+  }
+  return { ok: true };
+}
+
+function cloneAircraftForValidation(aircraft: Aircraft): Aircraft {
+  return {
+    ...aircraft,
+    intent: {
+      ...aircraft.intent,
+      lateral: aircraft.intent.lateral ? { ...aircraft.intent.lateral } : undefined,
+      vertical: aircraft.intent.vertical ? { ...aircraft.intent.vertical } : undefined,
+    },
+  };
+}
+
+function validateCancellation(aircraft: Aircraft): ValidateResult {
+  if (
+    !aircraft.intent.clearedApproachId ||
+    aircraft.intent.lateral?.type === "MISSED" ||
+    aircraft.intent.lateral?.type === "LANDING"
+  ) {
+    return { ok: false, reason: "NOT_ON_APPROACH" };
+  }
+  return { ok: true };
+}
+
+function projectCancellation(aircraft: Aircraft): void {
+  aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
+  aircraft.intent.turn = "SHORTEST";
+  aircraft.intent.clearedApproachId = null;
+  aircraft.intent.locInterceptApproachId = null;
+  aircraft.intent.expectedApproachId = null;
+  if (aircraft.intent.vertical?.type === "GS") {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  const lateralType = aircraft.intent.lateral?.type;
+  if (
+    lateralType === undefined ||
+    lateralType === "HEADING" ||
+    lateralType === "INTERCEPT_LOC" ||
+    lateralType === "LOC"
+  ) {
+    aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
+  }
+}
+
+function projectAfterCancellation(aircraft: Aircraft, instruction: Instruction): void {
+  switch (instruction.type) {
+    case "FLY_HEADING":
+      projectHeading(aircraft, instruction.headingDeg, instruction.turn);
+      return;
+    case "TURN_DEGREES":
+      projectHeading(
+        aircraft,
+        normalizeHeading(
+          aircraft.headingDeg +
+            (instruction.direction === "LEFT" ? -instruction.degrees : instruction.degrees),
+        ),
+        instruction.direction,
+      );
+      return;
+    case "PRESENT_HEADING":
+      projectHeading(aircraft, aircraft.headingDeg, "SHORTEST");
+      return;
+    default:
+      return;
+  }
+}
+
+function projectHeading(
+  aircraft: Aircraft,
+  headingDeg: number,
+  turn: Aircraft["intent"]["turn"],
+): void {
+  aircraft.intent.assignedHeadingDeg = headingDeg;
+  aircraft.intent.turn = turn;
+  aircraft.intent.lateral = { type: "HEADING", headingDeg };
+  aircraft.intent.clearedApproachId = null;
+  aircraft.intent.locInterceptApproachId = null;
+  if (
+    aircraft.intent.vertical?.type === "VIA_STAR" ||
+    aircraft.intent.vertical?.type === "VIA_SID" ||
+    aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "MISSED_CLIMB"
+  ) {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  aircraft.intent.cross = undefined;
 }
 
 function validateOne(
@@ -175,8 +336,7 @@ function validateOne(
       }
       return { ok: true };
     case "CANCEL_APPROACH":
-      // T04-67 owns active-approach validation and projected state.
-      return { ok: true };
+      return validateCancellation(aircraft);
     case "PRESENT_HEADING":
     case "IDENT":
     case "SAY_HEADING":

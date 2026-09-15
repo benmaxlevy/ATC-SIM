@@ -516,6 +516,80 @@ test("AC2: altitude rejected when cleared for approach", () => {
   ).toBe(true);
 });
 
+test("CANCEL_APPROACH validates later altitude against projected post-approach state", () => {
+  const ac = jet({ altitudeFt: 8000, headingDeg: 180 });
+  ac.intent.clearedApproachId = "RNAV09";
+  ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+  ac.intent.vertical = { type: "GS", approachId: "RNAV09" };
+
+  expect(
+    validateInstructions(ac, [
+      { type: "CANCEL_APPROACH" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "ALTITUDE", altitudeFt: 5000, verb: "DESCEND" },
+    ]),
+  ).toEqual({ ok: true });
+  expect(ac.intent.clearedApproachId).toBe("RNAV09");
+  expect(ac.intent.vertical).toEqual({ type: "GS", approachId: "RNAV09" });
+});
+
+test("CANCEL_APPROACH requires active approach and rejects missed/landing", () => {
+  expect(validateInstructions(jet(), [{ type: "CANCEL_APPROACH" }])).toEqual({
+    ok: false,
+    reason: "NOT_ON_APPROACH",
+  });
+
+  for (const lateral of [
+    { type: "MISSED", approachId: "RNAV09" } as const,
+    { type: "LANDING", approachId: "RNAV09" } as const,
+  ]) {
+    const ac = jet();
+    ac.intent.clearedApproachId = "RNAV09";
+    ac.intent.lateral = lateral;
+    expect(validateInstructions(ac, [{ type: "CANCEL_APPROACH" }])).toEqual({
+      ok: false,
+      reason: "NOT_ON_APPROACH",
+    });
+  }
+});
+
+test("CANCEL_APPROACH rejects ordering, duplicate, and lifecycle conflicts", () => {
+  const active = () => {
+    const ac = jet();
+    ac.intent.clearedApproachId = "RNAV09";
+    ac.intent.lateral = { type: "INTERCEPT_LOC", approachId: "RNAV09" };
+    return ac;
+  };
+
+  expect(
+    validateInstructions(active(), [
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+      { type: "CANCEL_APPROACH" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH must be the first instruction",
+  });
+  expect(
+    validateInstructions(active(), [{ type: "CANCEL_APPROACH" }, { type: "CANCEL_APPROACH" }]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH may be issued only once",
+  });
+  expect(
+    validateInstructions(active(), [
+      { type: "CANCEL_APPROACH" },
+      { type: "CLEARED_APPROACH", approachId: "RNAV09" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+  });
+});
+
 test("AC5: speed rejected inside 5 DME / FAF boundary when on approach", () => {
   const approaches = [
     {

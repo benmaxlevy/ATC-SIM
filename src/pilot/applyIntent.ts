@@ -273,6 +273,34 @@ function armLocIntercept(aircraft: Aircraft, approachId: string): void {
   aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId };
 }
 
+function cancelApproach(aircraft: Aircraft): void {
+  if (
+    !aircraft.intent.clearedApproachId ||
+    aircraft.intent.lateral?.type === "MISSED" ||
+    aircraft.intent.lateral?.type === "LANDING"
+  ) {
+    return;
+  }
+
+  aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
+  aircraft.intent.turn = "SHORTEST";
+  aircraft.intent.clearedApproachId = null;
+  aircraft.intent.locInterceptApproachId = null;
+  aircraft.intent.expectedApproachId = null;
+  if (aircraft.intent.vertical?.type === "GS") {
+    aircraft.intent.vertical = { type: "ASSIGNED" };
+  }
+  const lateralType = aircraft.intent.lateral?.type;
+  if (
+    lateralType === undefined ||
+    lateralType === "HEADING" ||
+    lateralType === "INTERCEPT_LOC" ||
+    lateralType === "LOC"
+  ) {
+    aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
+  }
+}
+
 function applyOne(
   aircraft: Aircraft,
   instruction: Instruction,
@@ -397,7 +425,7 @@ function applyOne(
       aircraft.intent.speedRestrictionsDeleted = true;
       return;
     case "CANCEL_APPROACH":
-      // T04-67 owns projected approach-state cancellation and breakout.
+      cancelApproach(aircraft);
       return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":

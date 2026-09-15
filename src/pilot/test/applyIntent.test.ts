@@ -114,6 +114,41 @@ test("AC4: FLY_HEADING when established on LOC breaks out to HEADING and clears 
   expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
 });
 
+test("CANCEL_APPROACH clears generic approach guidance and continues present heading", () => {
+  const ac = jet();
+  ac.headingDeg = 217;
+  ac.intent.expectedApproachId = "RNAV09";
+  ac.intent.clearedApproachId = "RNAV09";
+  ac.intent.locInterceptApproachId = "RNAV09";
+  ac.intent.lateral = { type: "LOC", approachId: "RNAV09" };
+  ac.intent.vertical = { type: "GS", approachId: "RNAV09" };
+
+  applyIntent(ac, [{ type: "CANCEL_APPROACH" }], 0);
+
+  expect(ac.intent.expectedApproachId).toBeNull();
+  expect(ac.intent.clearedApproachId).toBeNull();
+  expect(ac.intent.locInterceptApproachId).toBeNull();
+  expect(ac.intent.assignedHeadingDeg).toBe(217);
+  expect(ac.intent.lateral).toEqual({ type: "HEADING", headingDeg: 217 });
+  expect(ac.intent.vertical).toEqual({ type: "ASSIGNED" });
+});
+
+test("CANCEL_APPROACH does not replace missed or landing lifecycle state", () => {
+  const missed = jet();
+  missed.intent.clearedApproachId = "RNAV09";
+  missed.intent.lateral = { type: "MISSED", approachId: "RNAV09" };
+  applyIntent(missed, [{ type: "CANCEL_APPROACH" }], 0);
+  expect(missed.intent.clearedApproachId).toBe("RNAV09");
+  expect(missed.intent.lateral).toEqual({ type: "MISSED", approachId: "RNAV09" });
+
+  const landing = jet();
+  landing.intent.clearedApproachId = "RNAV09";
+  landing.intent.lateral = { type: "LANDING", approachId: "RNAV09" };
+  applyIntent(landing, [{ type: "CANCEL_APPROACH" }], 0);
+  expect(landing.intent.clearedApproachId).toBe("RNAV09");
+  expect(landing.intent.lateral).toEqual({ type: "LANDING", approachId: "RNAV09" });
+});
+
 test("AC7: DSR and SPEED intent application and via reset", () => {
   const ac = jet();
   ac.intent.controllerAssignedSpeedKt = 210;
