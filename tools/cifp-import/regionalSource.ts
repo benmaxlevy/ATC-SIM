@@ -122,6 +122,7 @@ export function buildRegionalSource(
     centerAirport !== undefined
       ? selectAirspacesByRadius(cifpSource.airspaces, origin, options.radiusNm)
       : [];
+  let filteredAirspaces = selectedAirspaces;
 
   // 6. Strict validation rules
   if (strict) {
@@ -139,8 +140,26 @@ export function buildRegionalSource(
       }
     }
 
-    // 6b. Each selected airspace must have valid vertical limits and units
-    for (const airspace of selectedAirspaces) {
+    // 6b. Each selected airspace must have valid vertical limits and units.
+    // Invalid volumes are excluded with a warning so one bad UC record cannot
+    // fail the whole pack. Runtime parseRegionalPack rejects such volumes
+    // atomically, so they must not appear in serialized output.
+    const invalidAirspaceKeys = new Set<string>();
+    const pushVerticalLimitWarning = (
+      airspace: (typeof filteredAirspaces)[number],
+      message: string,
+    ): void => {
+      diagnostics.push({
+        severity: "warning",
+        code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
+        message: `${message} (volume excluded)`,
+        lineNo: airspace.sourceLineNo,
+        section: airspace.identity.section,
+        airportId: airspace.centerAirportId,
+      });
+      invalidAirspaceKeys.add(airspace.identity.key);
+    };
+    for (const airspace of filteredAirspaces) {
       const lower = airspace.lowerLimit;
       const upper = airspace.upperLimit;
 
@@ -150,36 +169,24 @@ export function buildRegionalSource(
         upper.unit === "UNKNOWN" ||
         upper.unit === "NOT_SPECIFIED"
       ) {
-        diagnostics.push({
-          severity: "error",
-          code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
-          message: `CIFP regional import: airspace ${airspace.identity.key} has invalid or unspecified altitude unit (lower: ${lower.unit}, upper: ${upper.unit})`,
-          lineNo: airspace.sourceLineNo,
-          section: airspace.identity.section,
-          airportId: airspace.centerAirportId,
-        });
+        pushVerticalLimitWarning(
+          airspace,
+          `CIFP regional import: airspace ${airspace.identity.key} has invalid or unspecified altitude unit (lower: ${lower.unit}, upper: ${upper.unit})`,
+        );
       }
 
       if (lower.altitudeFt === undefined && lower.unit !== "GND" && lower.reference !== "SURFACE") {
-        diagnostics.push({
-          severity: "error",
-          code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
-          message: `CIFP regional import: airspace ${airspace.identity.key} has non-surface lower limit with missing altitude value`,
-          lineNo: airspace.sourceLineNo,
-          section: airspace.identity.section,
-          airportId: airspace.centerAirportId,
-        });
+        pushVerticalLimitWarning(
+          airspace,
+          `CIFP regional import: airspace ${airspace.identity.key} has non-surface lower limit with missing altitude value`,
+        );
       }
 
       if (upper.altitudeFt === undefined) {
-        diagnostics.push({
-          severity: "error",
-          code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
-          message: `CIFP regional import: airspace ${airspace.identity.key} has missing upper altitude value`,
-          lineNo: airspace.sourceLineNo,
-          section: airspace.identity.section,
-          airportId: airspace.centerAirportId,
-        });
+        pushVerticalLimitWarning(
+          airspace,
+          `CIFP regional import: airspace ${airspace.identity.key} has missing upper altitude value`,
+        );
       }
 
       if (
@@ -187,21 +194,20 @@ export function buildRegionalSource(
         upper.altitudeFt !== undefined &&
         lower.altitudeFt > upper.altitudeFt
       ) {
-        diagnostics.push({
-          severity: "error",
-          code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
-          message: `CIFP regional import: airspace ${airspace.identity.key} lower limit ${lower.altitudeFt} exceeds upper limit ${upper.altitudeFt}`,
-          lineNo: airspace.sourceLineNo,
-          section: airspace.identity.section,
-          airportId: airspace.centerAirportId,
-        });
+        pushVerticalLimitWarning(
+          airspace,
+          `CIFP regional import: airspace ${airspace.identity.key} lower limit ${lower.altitudeFt} exceeds upper limit ${upper.altitudeFt}`,
+        );
       }
+    }
+    if (invalidAirspaceKeys.size > 0) {
+      filteredAirspaces = filteredAirspaces.filter((a) => !invalidAirspaceKeys.has(a.identity.key));
     }
   }
 
   // Count statistics
   const airspacesByClass: Record<string, number> = {};
-  for (const a of selectedAirspaces) {
+  for (const a of filteredAirspaces) {
     const label = a.class ?? a.specialUseKind ?? "OTHER";
     airspacesByClass[label] = (airspacesByClass[label] ?? 0) + 1;
   }
@@ -210,7 +216,7 @@ export function buildRegionalSource(
     totalAirports: enrichedAirports.length,
     totalAirspaces: cifpSource.airspaces.length,
     selectedAirports: selectedAirports.length,
-    selectedAirspaces: selectedAirspaces.length,
+    selectedAirspaces: filteredAirspaces.length,
     toweredAirports: selectedAirports.filter((a) => a.serviceMetadata?.towered === true).length,
     publicUseAirports: selectedAirports.filter((a) => a.serviceMetadata?.publicUse === true).length,
     airspacesByClass,
@@ -223,13 +229,13 @@ export function buildRegionalSource(
     effectiveCycle: options.effectiveCycle,
     counts,
     airports: selectedAirports,
-    airspaces: selectedAirspaces,
+    airspaces: filteredAirspaces,
     diagnostics,
   };
 
   const serialized = {
     airports: `${JSON.stringify(selectedAirports, null, 2)}\n`,
-    airspaces: `${JSON.stringify(selectedAirspaces, null, 2)}\n`,
+    airspaces: `${JSON.stringify(filteredAirspaces, null, 2)}\n`,
     regionalSource: `${JSON.stringify(regionalSourcePayload, null, 2)}\n`,
   };
 
@@ -251,7 +257,7 @@ export function buildRegionalSource(
       lineNo: 0,
     },
     selectedAirports,
-    selectedAirspaces,
+    selectedAirspaces: filteredAirspaces,
     diagnostics,
     counts,
     cifpSource,

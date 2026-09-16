@@ -183,7 +183,7 @@ test("AC5 — strict regional mode fails when selected airport lacks NASR metada
   expect(missingMeta[0]?.airportId).toBe("KBBB");
 });
 
-test("AC5 — strict regional mode fails when selected airspace has invalid vertical limits", () => {
+test("AC5 — strict regional mode warns and excludes airspace with invalid vertical limits", () => {
   const badAirspaceCifp = [
     pa({ icao: "KAAA", name: "ALPHA", lat: "N00000000", lon: "W000000000" }),
     // Airspace with lowerLimitUnit = ' ' (NOT_SPECIFIED)
@@ -210,10 +210,97 @@ test("AC5 — strict regional mode fails when selected airspace has invalid vert
     strict: true,
   });
 
-  const limitErrors = result.diagnostics.filter(
+  const limitWarnings = result.diagnostics.filter(
     (d) => d.code === "INVALID_AIRSPACE_VERTICAL_LIMITS",
   );
-  expect(limitErrors.length).toBeGreaterThanOrEqual(1);
+  expect(limitWarnings.length).toBeGreaterThanOrEqual(1);
+  for (const w of limitWarnings) {
+    expect(w.severity).toBe("warning");
+    expect(w.message).toContain("excluded");
+  }
+  // No error-severity diagnostics remain from the bad volume.
+  expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  // Bad volume is excluded from selection and serialized output.
+  expect(result.selectedAirspaces).toHaveLength(0);
+  expect(result.counts.selectedAirspaces).toBe(0);
+  expect(result.serialized.airspaces).not.toContain("ALPHA CLASS B");
+  expect(JSON.parse(result.serialized.airspaces)).toHaveLength(0);
+});
+
+test("AC5 — strict regional mode still writes when only invalid airspaces are present", () => {
+  const badAirspaceCifp = [
+    pa({ icao: "KAAA", name: "ALPHA", lat: "N00000000", lon: "W000000000" }),
+    uc({
+      center: "KAAA",
+      airspaceClass: "B",
+      name: "ALPHA CLASS B",
+      seq: 10,
+      lat: "N00050000",
+      lon: "W000050000",
+      boundaryVia: "G",
+      lowerLimit: "02000",
+      lowerLimitUnit: " ",
+      upperLimit: "10000",
+      upperLimitUnit: "M",
+    }),
+  ].join("\n");
+  const files: Record<string, string> = {
+    FAACIFP18: badAirspaceCifp,
+    "APT.txt": SYNTHETIC_NASR_APT,
+  };
+  const { io, written } = createMockIo(files);
+
+  runRegionalCli(
+    [
+      "--cifp",
+      "FAACIFP18",
+      "--nasr-apt",
+      "APT.txt",
+      "--airport",
+      "KAAA",
+      "--radius",
+      "20",
+      "--out",
+      "out/reg",
+    ],
+    io,
+  );
+
+  expect(written["out/reg/airports.json"]).toBeDefined();
+  expect(written["out/reg/airspaces.json"]).toBeDefined();
+  expect(written["out/reg/regional-source.json"]).toBeDefined();
+  expect(JSON.parse(written["out/reg/airspaces.json"]!)).toHaveLength(0);
+});
+
+test("AC5 — missing NASR metadata still fails closed with no files written", () => {
+  // Only KAAA is in NASR; KBBB is in CIFP within radius but missing from NASR
+  const nasrWithoutBbb = "FAA_ID,ICAO_ID,PUBLIC_USE,TOWER_ON_SITE\nAAA,KAAA,Y,Y\n";
+  const files: Record<string, string> = {
+    FAACIFP18: SYNTHETIC_CIFP,
+    "APT.txt": nasrWithoutBbb,
+  };
+  const { io, written, stderrOutput } = createMockIo(files);
+
+  expect(() =>
+    runRegionalCli(
+      [
+        "--cifp",
+        "FAACIFP18",
+        "--nasr-apt",
+        "APT.txt",
+        "--airport",
+        "KAAA",
+        "--radius",
+        "20",
+        "--out",
+        "out/reg",
+      ],
+      io,
+    ),
+  ).toThrow(/failed with .* error\(s\)/);
+
+  expect(Object.keys(written)).toHaveLength(0);
+  expect(stderrOutput.join("")).toContain("MISSING_AIRPORT_SERVICE_METADATA");
 });
 
 test("parseRegionalCliArgs parses all flags and options", () => {
