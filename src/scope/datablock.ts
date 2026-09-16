@@ -787,8 +787,8 @@ export function formatDatablockFields(
           isOverflight: track.isOverflight,
         });
   const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
-  const rules = normalizeFlightRulesDisplay(track.flightRules);
-  const category = formatWakeCategory(track.wakeCategory) || undefined;
+  const rules = gs ? undefined : normalizeFlightRulesDisplay(track.flightRules);
+  const category = gs ? undefined : formatWakeCategory(track.wakeCategory) || undefined;
   const count = formatAircraftCount(opts.aircraftCount);
   const type =
     opts.aircraftTypeVisible === false ? undefined : formatAircraftType(track.aircraftType);

@@ -98,6 +98,28 @@ Constraints later work must keep:
 - World / FMS / CA / MSAW stay 20 Hz truth; display consumers keep last
   report pose. No 30 s coast.
 
+### Limited datablock beacon display commands (`*BE`, `*BI`, `*B [slew]`)
+
+Visible now: Unassociated tracks render a Limited Data Block (LDB) with Mode C
+altitude and reported beacon code. Slew queries ground speed in tens (`045  18`)
+without flight rules or category suffixes.
+
+Deliberately missing:
+- STARS §6.13.9 global LDB beacon display toggle: `*BE <ENTER>` to show beacon
+  codes in all LDBs, `*BI <ENTER>` to inhibit/remove beacon codes in all LDBs.
+- STARS §6.13.7 single-track LDB beacon display toggle: `*B [slew]` to toggle
+  beacon code display on a selected unassociated track.
+- STARS §6.13.2 unassociated track nominal single-line Mode C altitude display
+  with 5-second transient beacon + ground speed readout upon slew click (Fig. 6-9).
+  Currently beacon code is displayed continuously on line 1 unless globally
+  inhibited by view options.
+
+Constraints later work must keep:
+- LDB Field 5 is strictly ground speed digits (tens or knots); no flight rules
+  (`V`) or wake/category suffix.
+- Slew query on unassociated 1200 targets must never promote to FDB or display
+  callsign.
+
 ### MSAW tag is alert-only
 
 Visible now: `evaluateMsaw` raises when MSL is strictly below the MVA

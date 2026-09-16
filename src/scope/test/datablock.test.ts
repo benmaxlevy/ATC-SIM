@@ -276,9 +276,11 @@ test("VFR uses V marker while IFR and unsupported rules stay blank", () => {
   const unsupported = makeTestAircraft({ callsign: "RULE1", speedKt: 110, flightRules: "E" });
 
   expect(formatDatablockFields(vfr, { timeSharePhase: 0 }).field5).toBe("11V");
-  expect(formatDatablockFields(vfr, { timeSharePhase: 1 }).field5).toBe("V");
+  expect(formatDatablockFields(vfr, { timeSharePhase: 1 }).field5).toBe("11V");
+  expect(formatDatablockFields(vfr, { groundSpeedVisible: false }).field5).toBe("V");
   expect(formatDatablockFields(ifr, { timeSharePhase: 0 }).field5).toBe("11");
   expect(formatDatablockFields(ifr, { timeSharePhase: 1 }).field5).toBe("11");
+  expect(formatDatablockFields(ifr, { groundSpeedVisible: false }).field5).toBe("");
   expect(formatDatablockFields(unsupported, { timeSharePhase: 0 }).field5).toBe("11");
 });
 
