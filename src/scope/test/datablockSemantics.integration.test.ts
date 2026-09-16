@@ -128,6 +128,11 @@ describe("T02-187 datablock semantics acceptance", () => {
       line1: "080  21",
     });
     expect(linesForDatablock(state.source, "limited", timeShared)).toEqual({
+      line1: "080",
+    });
+    expect(
+      linesForDatablock(state.source, "limited", { ...timeShared, beaconVisible: true }),
+    ).toEqual({
       line1: "4321",
       line2: "080",
     });
@@ -154,7 +159,10 @@ describe("T02-187 datablock semantics acceptance", () => {
     expect(unassociated.state.source).toMatchObject({ callsign: "RAW187" });
     expect(unassociated.state.source.requestedAltitudeFt).toBeUndefined();
     expect(unassociated.state.source.intent.controllerAssignedAltitudeFt).toBeUndefined();
-    expect(unassociated.lines).toEqual({ line1: "1200", line2: "080" });
+    expect(unassociated.lines).toEqual({ line1: "080" });
+    expect(
+      linesForDatablock(unassociated.state.source, "limited", { beaconVisible: true }),
+    ).toEqual({ line1: "1200", line2: "080" });
 
     expect(updateAircraftSquawk(world, aircraft.id, "4321")?.correlation).toMatchObject({
       ok: true,
@@ -171,7 +179,10 @@ describe("T02-187 datablock semantics acceptance", () => {
     const disassociated = runtimeProjection(world, aircraft, "limited");
     expect(disassociated.state.source.requestedAltitudeFt).toBeUndefined();
     expect(disassociated.state.source.intent.controllerAssignedAltitudeFt).toBeUndefined();
-    expect(disassociated.lines).toEqual({ line1: "4322", line2: "080" });
+    expect(disassociated.lines).toEqual({ line1: "080" });
+    expect(
+      linesForDatablock(disassociated.state.source, "limited", { beaconVisible: true }),
+    ).toEqual({ line1: "4322", line2: "080" });
     expect(world.flightPlans[0]).toMatchObject({
       requestedAltitudeFt: 12000,
       assignedAltitudeFt: 10000,

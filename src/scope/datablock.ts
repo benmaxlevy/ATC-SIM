@@ -132,6 +132,7 @@ export interface DatablockRuntimeBuildOptions {
     Pick<TrackDisplay, "ownership">;
   mode?: DatablockMode;
   modeCVisible?: boolean;
+  beaconVisible?: boolean;
   beaconatorActive?: boolean;
   localTcp?: string;
   /** Existing upstream display decisions for supported Fields 0–8. */
@@ -289,7 +290,7 @@ export function buildDatablockRuntimeState(
     sp2: scratchpads.sp2,
     ...handoffOptions,
     queried,
-    beaconVisible: true,
+    beaconVisible: options.beaconVisible ?? fieldInputs.beaconVisible ?? false,
     field0Indicators,
     simTimeMs,
   };
@@ -452,7 +453,7 @@ export interface PartialDatablockOpts {
 }
 
 export interface LimitedDatablockOpts {
-  /** Show beacon code if present (default true). When false/inhibited, displays Mode C only. */
+  /** Show beacon code if present (default false per STARS Fig. 6-9). When false/inhibited, displays Mode C only. */
   beaconVisible?: boolean;
   /** When true (queried state), displays Mode C altitude + ground speed. */
   queried?: boolean;
@@ -1022,12 +1023,12 @@ export function formatLimitedDatablock(
         ? formatGroundSpeedKt(track.speedKt)
         : formatGroundSpeedTens(track.speedKt);
     const squawk = track.squawk ?? track.beaconCode;
-    return squawk && opts.beaconVisible !== false
-      ? withLine0(squawk, `${modeC} ${gs}`)
-      : withLine0(modeC, gs);
+    return squawk ? withLine0(squawk, `${modeC} ${gs}`) : withLine0(modeC, gs);
   }
   const squawk = track.squawk ?? track.beaconCode;
-  if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
+  const hasCa = (opts.field0Indicators ?? []).includes("CA");
+  const forceBeacon = Boolean(opts.beaconVisible || ldbSpc || hasCa);
+  if (forceBeacon && squawk && squawk.length > 0) {
     return withLine0(squawk, modeC);
   }
   return withLine0(modeC);

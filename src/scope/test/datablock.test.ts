@@ -500,7 +500,11 @@ test("limited Field 0 omits arbitrary explicit SPC while FDB SPC projection rema
   });
 
   expect(getSpecialPurposeCode(ac)).toBe("CUSTOM");
-  expect(formatLimitedDatablock(ac)).toEqual({ line1: "1200", line2: "045" });
+  expect(formatLimitedDatablock(ac)).toEqual({ line1: "045" });
+  expect(formatLimitedDatablock(ac, { beaconVisible: true })).toEqual({
+    line1: "1200",
+    line2: "045",
+  });
   expect(formatDatablockFields(ac).field0).toBe("CUST");
 });
 
@@ -523,12 +527,19 @@ test("limited Field 0 persists across queried and beacon-inhibited output", () =
     squawk: "1200",
   });
 
+  expect(formatLimitedDatablock(ac, { queried: true })).toEqual({
+    line1: "1200",
+    line2: "045 18",
+  });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["CA"], queried: true })).toEqual({
     line0: "CA",
     line1: "1200",
     line2: "045 18",
   });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["LA"], beaconVisible: false })).toEqual({
+    line1: "045",
+  });
+  expect(formatLimitedDatablock(ac, { field0Indicators: ["LA"] })).toEqual({
     line1: "045",
   });
 });
