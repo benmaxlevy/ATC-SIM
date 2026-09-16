@@ -1,5 +1,40 @@
 # Swarm status
 
+## SATELLITE VFR DEPARTURES SWARM COMPLETE — Satellite-Origin Entries and Line Corridors (T04-79–T04-80, 2026-09-16)
+
+Ran on `feature/sattelite-traffic` with one sequential session-default worker
+per ticket. T04-79 split the spawn paths: login-time initial population stays
+disc-spawned airborne, while every `step()`-driven entry lifts off near a
+scenario-derived satellite airport (eligible destinations minus the center
+airport, no hardcoded ICAO) with mission `SATELLITE_DEPARTURE`,
+`originAirportId`/`departureRunwayId` state, runway-aligned climbing liftoff,
+and `NO_DEPARTURE_AIRPORT` structured skip (never mid-air fallback).
+T04-80 added the departure-line corridor (runway-heading climb, 1-2 seeded
+wobble intermediates bounded at 3 NM, exit at exitRadius+2, `BOUNDARY_EXIT`
+terminal with removal), full swept Bravo guard with fail-closed
+`NO_SAFE_ROUTE`, integrated acceptance, and docs notes (`docs/USER.md`,
+`phases/04-procedures/README.md`).
+
+Captain squash commits: `b3f67f6` (T04-79), `936ae97` (T04-80). Planning
+commit: `9ee88ce`.
+
+Post-merge `npm run ci`: **232 files, 2427 passed, 4 skipped**. Speech-api
+pytest skipped: no speech paths changed. Manual gates: no STARS manual
+supplied for check-stars-manual; tickets change no STARS-manual-covered
+surface (spawner/navigation behavior only, no PPI/keys/grammar change).
+Manual KATL seeded live sessions (satellite liftoff watch, FAA edition and
+paragraph record, speech/perf samples) recorded as leftovers, not claimed.
+No push. `.worktrees/` additions are the two ticket worktrees; unrelated
+untracked artifacts and stale worktrees from other phases untouched.
+
+## SATELLITE VFR DEPARTURES SWARM EXIT — PHASE EXIT GREEN
+
+Phase: satellite VFR departures T04-79–80
+Merge target: feature/sattelite-traffic
+Merged: T04-79, T04-80
+Tests: final `npm run ci` green (2427 passed, 4 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; login disc population preserved; continuous entries satellite-origin
+
 ## VFR SIMPLIFICATION SWARM COMPLETE — Training Box and Density Presets (T04-77–T04-78, 2026-09-16)
 
 Ran on `feature/sattelite-traffic` with one sequential `muse-spark-1.3`
