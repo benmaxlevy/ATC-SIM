@@ -575,18 +575,44 @@ export function samplePointInDisc(box: VfrTrainingBox, rng: () => number): Point
   };
 }
 
+/** Liftoff sampling radius around a satellite departure ARP (T04-79, NM). */
+export const SATELLITE_LIFTOFF_RADIUS_NM = 2;
+/** Minimal safe-leg length after liftoff (NM); full corridor geometry is T04-80. */
+export const SATELLITE_MIN_LEG_NM = 5;
+/** Seeded jitter added to the minimal safe leg (NM), drawn from the route stream. */
+export const SATELLITE_LEG_JITTER_NM = 3;
+
 export interface RoutePlanningOptions {
   mission: AmbientVfrMission;
   box: VfrTrainingBox;
   altitudeFt: number;
   speedKt: number;
   destinationAirport?: RegionalAirport;
+  /**
+   * Departure satellite airport for `SATELLITE_DEPARTURE` (T04-79). Liftoff is
+   * sampled within `SATELLITE_LIFTOFF_RADIUS_NM` of its ARP; the corridor
+   * beyond a minimal safe leg belongs to T04-80.
+   */
+  originAirport?: RegionalAirport;
+  /**
+   * Pre-sampled liftoff pose (placement-stream draws). Heading is magnetic.
+   * When omitted, liftoff is sampled near the origin ARP with `rng`.
+   */
+  liftoffPose?: SatelliteLiftoffPose;
+  /** Magnetic variation for heading-frame conversion/projection. Defaults to 0. */
+  magVarDeg?: number;
   avoidanceVolumes: readonly RegionalAirspaceVolume[];
   rng: () => number;
   maxAttempts?: number;
   margins?: AvoidanceMargin;
   /** TRACON exit radius. Defaults to `VFR_TRACON_EXIT_RADIUS_NM` (legacy 28). */
   exitRadiusNm?: number;
+}
+
+/** Pre-sampled liftoff pose for a satellite departure (T04-79). Heading is magnetic. */
+export interface SatelliteLiftoffPose extends Point3D {
+  headingDeg: number;
+  speedKt: number;
 }
 
 export interface PlannedVfrRoute {
@@ -604,13 +630,45 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
     options;
   const maxAttempts = options.maxAttempts ?? MAX_PLANNER_ATTEMPTS;
   const exitRadiusNm = options.exitRadiusNm ?? VFR_TRACON_EXIT_RADIUS_NM;
+  const magVarDeg = options.magVarDeg ?? 0;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const initialPt = samplePointInDisc(box, rng);
-    const spawnPoint: Point3D = { ...initialPt, altitudeFt };
+    let spawnPoint: Point3D;
+    let spawnHeadingDeg: number | undefined;
+    let spawnSpeedKt = speedKt;
 
-    // Check spawn point (including grouped fallback for fragmented shelves)
-    if (isPointInsideAvoidanceVolumes(spawnPoint, avoidanceVolumes, margins)) continue;
+    if (mission === "SATELLITE_DEPARTURE") {
+      const origin = options.originAirport;
+      if (!origin) {
+        return null;
+      }
+      if (options.liftoffPose) {
+        spawnPoint = {
+          xNm: options.liftoffPose.xNm,
+          yNm: options.liftoffPose.yNm,
+          altitudeFt: options.liftoffPose.altitudeFt,
+        };
+        spawnHeadingDeg = options.liftoffPose.headingDeg;
+        spawnSpeedKt = options.liftoffPose.speedKt;
+      } else {
+        // Fallback sampling near the origin ARP (T04-80 replaces with placed liftoff).
+        const radiusNm = SATELLITE_LIFTOFF_RADIUS_NM * Math.sqrt(rng());
+        const theta = rng() * 2 * Math.PI;
+        spawnPoint = {
+          xNm: origin.arpNm.xNm + radiusNm * Math.sin(theta),
+          yNm: origin.arpNm.yNm + radiusNm * Math.cos(theta),
+          altitudeFt,
+        };
+      }
+      // Liftoff inside avoidance is rejected like any other unsafe spawn point.
+      if (isPointInsideAvoidanceVolumes(spawnPoint, avoidanceVolumes, margins)) continue;
+    } else {
+      const initialPt = samplePointInDisc(box, rng);
+      spawnPoint = { ...initialPt, altitudeFt };
+
+      // Check spawn point (including grouped fallback for fragmented shelves)
+      if (isPointInsideAvoidanceVolumes(spawnPoint, avoidanceVolumes, margins)) continue;
+    }
 
     const waypoints: VfrNavWaypoint[] = [];
 
@@ -677,15 +735,39 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
         speedKt: Math.min(speedKt, 120),
         targetToleranceNm: 2.5,
       });
+    } else if (mission === "SATELLITE_DEPARTURE") {
+      // Minimal safe leg on the liftoff heading (T04-79); full corridor geometry is T04-80.
+      let trueHeadingDeg: number;
+      if (spawnHeadingDeg !== undefined) {
+        trueHeadingDeg = magneticToTrueDeg(spawnHeadingDeg, magVarDeg);
+      } else {
+        const origin = options.originAirport!;
+        trueHeadingDeg =
+          (Math.atan2(spawnPoint.xNm - origin.arpNm.xNm, spawnPoint.yNm - origin.arpNm.yNm) * 180) /
+          Math.PI;
+        spawnHeadingDeg = trueToMagneticDeg(trueHeadingDeg, magVarDeg);
+      }
+      const legLenNm = SATELLITE_MIN_LEG_NM + rng() * SATELLITE_LEG_JITTER_NM;
+      const legRad = (trueHeadingDeg * Math.PI) / 180;
+      waypoints.push({
+        xNm: spawnPoint.xNm + legLenNm * Math.sin(legRad),
+        yNm: spawnPoint.yNm + legLenNm * Math.cos(legRad),
+        altitudeFt,
+        speedKt: spawnSpeedKt,
+        targetToleranceNm: 2.0,
+      });
     }
 
     // Verify complete swept route against avoidance volumes
     const fullRoute: Point3D[] = [spawnPoint, ...waypoints];
     if (isRouteSafeFromAvoidance(fullRoute, avoidanceVolumes, margins)) {
       const firstTarget = waypoints[0] ?? { xNm: spawnPoint.xNm + 1, yNm: spawnPoint.yNm };
-      const headingDeg = Math.round(courseDeg(spawnPoint, firstTarget));
+      const headingDeg =
+        spawnHeadingDeg !== undefined
+          ? Math.round(spawnHeadingDeg)
+          : Math.round(courseDeg(spawnPoint, firstTarget));
       return {
-        spawnPose: { ...spawnPoint, headingDeg, speedKt },
+        spawnPose: { ...spawnPoint, headingDeg, speedKt: spawnSpeedKt },
         waypoints,
       };
     }

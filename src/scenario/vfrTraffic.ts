@@ -16,14 +16,18 @@
 import { mulberry32, performanceRegistry, type Aircraft } from "@core";
 import { createAircraft } from "../core/aircraft";
 import {
+  MAX_PLANNER_ATTEMPTS,
+  SATELLITE_LIFTOFF_RADIUS_NM,
   VFR_TRACON_EXIT_RADIUS_NM,
   VFR_TRAINING_BOX_ID,
   VFR_TRAINING_HALF_EXTENT_NM,
+  isPointInsideAvoidanceVolumes,
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
   stepVfrAircraftNavigation,
   type VfrTrainingBox,
 } from "../core/vfrNavigation";
+import { trueToMagneticDeg } from "../core/nav/headingFrames";
 import type { World } from "../core/world";
 import type { RegionalAirport, RegionalAirspaceVolume, RegionalFacility } from "./regional";
 import type {
@@ -98,6 +102,29 @@ export function getEligibleVfrDestinations(regional?: RegionalFacility): Regiona
     (apt) =>
       apt.publicUse && apt.runways.length > 0 && controlledAirportIds.has(apt.icao.toUpperCase()),
   );
+}
+
+/**
+ * Resolve usable satellite departure sources (T04-79): the eligible VFR
+ * destination list minus the center airport (`centerIcao`, falling back to
+ * `regional.centerAirportId`, case-insensitive). Filtering happens before the
+ * seeded draw so the draw stays uniform over usable sources. No hardcoded
+ * ICAO on any live path.
+ */
+export function getDepartureVfrAirports(
+  regional?: RegionalFacility,
+  centerIcao?: string,
+): RegionalAirport[] {
+  const eligible = getEligibleVfrDestinations(regional);
+  const excluded = new Set(
+    [centerIcao, regional?.centerAirportId]
+      .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+      .map((id) => id.toUpperCase()),
+  );
+  if (excluded.size === 0) {
+    return eligible;
+  }
+  return eligible.filter((apt) => !excluded.has(apt.icao.toUpperCase()));
 }
 
 export const DEFAULT_VFR_REQUEST_CONFIG: Required<VfrRequestConfig> = {
@@ -510,6 +537,8 @@ export class VfrTrafficManager {
   public readonly exitRadiusNm: number;
   public readonly avoidanceVolumes: RegionalAirspaceVolume[];
   public readonly eligibleDestinations: RegionalAirport[];
+  /** Satellite departure sources: eligible destinations minus the center airport (T04-79). */
+  public readonly departureSources: RegionalAirport[];
 
   private readonly rngPlacement: () => number;
   private readonly rngMission: () => number;
@@ -538,6 +567,7 @@ export class VfrTrafficManager {
     // Identify Class B avoidance volumes from regional pack
     this.avoidanceVolumes = (init.scenario.regional?.airspaces ?? []).filter(isVfrAvoidanceVolume);
     this.eligibleDestinations = getEligibleVfrDestinations(init.scenario.regional);
+    this.departureSources = getDepartureVfrAirports(init.scenario.regional, init.scenario.icao);
 
     this.usedCallsigns = new Set(
       init.scenario.arrivals.map((a) => (a as { callsign?: string }).callsign ?? ""),
@@ -685,6 +715,168 @@ export class VfrTrafficManager {
   }
 
   /**
+   * Spawn one post-login satellite departure (T04-79): airborne-at-liftoff
+   * near a scenario-derived satellite airport ARP, runway-aligned and
+   * climbing toward the assigned VFR cruise altitude via waypoint intent.
+   *
+   * Seeded-stream discipline: airport index from the mission stream, runway
+   * and liftoff pose from the placement stream, corridor geometry from the
+   * route stream. No usable source emits `vfr.spawn.skipped` with reason
+   * `NO_DEPARTURE_AIRPORT` and never falls back to a mid-air spawn.
+   */
+  public spawnSatelliteDeparture(world: World): Aircraft | null {
+    const liveVfrCount = world.aircraft.filter((a) => a.ambientVfr !== undefined).length;
+    const maxPop = this.config.maxPopulation ?? 100;
+    if (liveVfrCount >= maxPop) {
+      return null;
+    }
+
+    if (this.departureSources.length === 0) {
+      world.sessionLog?.append({
+        type: "vfr.spawn.skipped",
+        reason: "NO_DEPARTURE_AIRPORT",
+        atSimMs: world.simTimeMs,
+        atWallMs: 0,
+      });
+      return null;
+    }
+
+    // 1. Departure airport from the mission stream (uniform over usable sources).
+    const originAirport =
+      this.departureSources[Math.floor(this.rngMission() * this.departureSources.length)]!;
+    if (originAirport.runways.length === 0) {
+      world.sessionLog?.append({
+        type: "vfr.spawn.skipped",
+        reason: "NO_DEPARTURE_AIRPORT",
+        atSimMs: world.simTimeMs,
+        atWallMs: 0,
+      });
+      return null;
+    }
+
+    // 2. Aircraft type, callsign, and cruise altitude from the placement stream.
+    const acMixRow = chooseWeighted(
+      this.config.aircraftMix ?? DEFAULT_VFR_AIRCRAFT_MIX,
+      this.rngPlacement,
+    );
+    const callsign = allocateVfrCallsign(
+      this.rngPlacement,
+      this.usedCallsigns,
+      acMixRow.callsignPrefix,
+    );
+    const altMixRow = chooseWeighted(
+      this.config.altitudeMix ?? DEFAULT_VFR_ALTITUDE_MIX,
+      this.rngPlacement,
+    );
+    const altRange = altMixRow.maxAltitudeFt - altMixRow.minAltitudeFt;
+    const cruiseFt =
+      Math.round((altMixRow.minAltitudeFt + this.rngPlacement() * altRange) / 100) * 100;
+
+    // 3. Seeded runway choice from the placement stream; true heading converted
+    //    to magnetic at the frame boundary.
+    const runway =
+      originAirport.runways[Math.floor(this.rngPlacement() * originAirport.runways.length)]!;
+    const magVarDeg = world.navigation.magVarDeg;
+    const headingDeg = Math.round(trueToMagneticDeg(runway.headingTrueDeg, magVarDeg));
+    const speedKt = 110;
+    const liftoffFloorFt = originAirport.fieldElevFt + 500;
+
+    // 4. Bounded liftoff attempts: pose within 2 NM of the departure ARP and
+    //    outside avoidance volumes, then a minimal safe leg from the route stream.
+    for (let attempt = 0; attempt < MAX_PLANNER_ATTEMPTS; attempt++) {
+      const radiusNm = SATELLITE_LIFTOFF_RADIUS_NM * Math.sqrt(this.rngPlacement());
+      const theta = this.rngPlacement() * 2 * Math.PI;
+      const liftoffAltFt =
+        cruiseFt <= liftoffFloorFt
+          ? cruiseFt
+          : Math.min(
+              cruiseFt,
+              Math.max(
+                liftoffFloorFt,
+                Math.round(
+                  (liftoffFloorFt + this.rngPlacement() * (cruiseFt - liftoffFloorFt)) / 100,
+                ) * 100,
+              ),
+            );
+      const liftoff = {
+        xNm: originAirport.arpNm.xNm + radiusNm * Math.sin(theta),
+        yNm: originAirport.arpNm.yNm + radiusNm * Math.cos(theta),
+        altitudeFt: liftoffAltFt,
+      };
+      if (isPointInsideAvoidanceVolumes(liftoff, this.avoidanceVolumes)) {
+        continue;
+      }
+
+      const plannedRoute = planSafeVfrRoute({
+        mission: "SATELLITE_DEPARTURE",
+        box: this.trainingBox,
+        altitudeFt: cruiseFt,
+        speedKt,
+        originAirport,
+        liftoffPose: { ...liftoff, headingDeg, speedKt },
+        magVarDeg,
+        avoidanceVolumes: this.avoidanceVolumes,
+        rng: this.rngRoute,
+        exitRadiusNm: this.exitRadiusNm,
+        maxAttempts: 1,
+      });
+      if (!plannedRoute) {
+        continue;
+      }
+
+      const { spawnPose, waypoints } = plannedRoute;
+      const dwellDurationMs = 600_000 + Math.floor(this.rngPlacement() * 600_000); // 10-20 min
+
+      const ac = createAircraft({
+        callsign,
+        xNm: spawnPose.xNm,
+        yNm: spawnPose.yNm,
+        headingDeg: spawnPose.headingDeg,
+        altitudeFt: spawnPose.altitudeFt,
+        speedKt: spawnPose.speedKt,
+        aircraftType: acMixRow.aircraftType,
+        squawk: "1200",
+        reportedSquawk: "1200",
+        transponder: "mode_c",
+        flightRules: "VFR",
+        ambientVfr: {
+          mission: "SATELLITE_DEPARTURE",
+          zoneId: VFR_TRAINING_BOX_ID,
+          originAirportId: originAirport.icao,
+          departureRunwayId: runway.id,
+          spawnedAtSimMs: world.simTimeMs,
+          alertEligibility: "AMBIENT_SUPPRESSED",
+          waypoints,
+          waypointIndex: 0,
+          dwellUntilSimMs: world.simTimeMs + dwellDurationMs,
+        },
+      });
+
+      world.aircraft.push(ac);
+
+      world.sessionLog?.append({
+        type: "vfr.spawned",
+        callsign: ac.callsign,
+        mission: "SATELLITE_DEPARTURE",
+        zoneId: VFR_TRAINING_BOX_ID,
+        atSimMs: world.simTimeMs,
+        atWallMs: 0,
+      });
+
+      return ac;
+    }
+
+    // Liftoff inside avoidance after bounded attempts: existing NO_SAFE_ROUTE skip path.
+    world.sessionLog?.append({
+      type: "vfr.spawn.skipped",
+      reason: "NO_SAFE_ROUTE",
+      atSimMs: world.simTimeMs,
+      atWallMs: 0,
+    });
+    return null;
+  }
+
+  /**
    * Step simulation for VFR traffic:
    * - Progresses waypoint navigation
    * - Removes naturally exiting traffic
@@ -721,22 +913,22 @@ export class VfrTrafficManager {
     const maxPop = this.config.maxPopulation ?? 100;
     const entriesPerHour = this.config.entriesPerHour ?? 0;
 
-    // 2. Scheduled continuous entry pacing
+    // 2. Scheduled continuous entry pacing (T04-79: satellite departures only)
     if (entriesPerHour > 0 && world.simTimeMs >= this.nextScheduledEntrySimMs) {
       const interval = 3_600_000 / entriesPerHour;
       const jitter = (this.rngEntries() - 0.5) * 0.2 * interval;
       this.nextScheduledEntrySimMs = world.simTimeMs + interval + jitter;
 
       if (liveVfrCount < maxPop) {
-        this.spawnOneVfrAircraft(world);
+        this.spawnSatelliteDeparture(world);
       }
       // If at or above maxPop, entry is deferred without catch-up burst
     }
 
-    // 3. Target population maintenance
+    // 3. Target population maintenance (T04-79: satellite departures only)
     const targetCount = this.config.targetCount ?? 0;
     if (liveVfrCount < targetCount && liveVfrCount < maxPop && entriesPerHour === 0) {
-      this.spawnOneVfrAircraft(world);
+      this.spawnSatelliteDeparture(world);
     }
   }
 }

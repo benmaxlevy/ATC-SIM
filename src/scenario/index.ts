@@ -264,6 +264,7 @@ export {
   allocateVfrCallsign,
   chooseWeighted,
   fixedVfrMovementMix,
+  getDepartureVfrAirports,
   getEligibleVfrDestinations,
   resolveVfrExitRadiusNm,
   resolveVfrSpawnRadiusNm,

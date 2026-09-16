@@ -238,7 +238,7 @@ export interface Aircraft {
   cancellationPending?: boolean;
 }
 
-export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND";
+export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND" | "SATELLITE_DEPARTURE";
 
 export interface AmbientVfrWaypoint {
   xNm: number;
@@ -252,6 +252,10 @@ export interface AmbientVfrState {
   mission: AmbientVfrMission;
   zoneId: string;
   destinationAirportId?: string;
+  /** Departure satellite airport for step()-driven entries (T04-79). Omitted on disc spawns. */
+  originAirportId?: string;
+  /** Seeded departure runway choice at the origin airport (T04-79). Omitted on disc spawns. */
+  departureRunwayId?: string;
   spawnedAtSimMs: number;
   alertEligibility: "AMBIENT_SUPPRESSED" | "CONTROLLED";
   waypoints?: AmbientVfrWaypoint[];

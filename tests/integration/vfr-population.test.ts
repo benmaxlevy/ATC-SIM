@@ -334,4 +334,109 @@ describe("T04-71 VFR population end-to-end integration", () => {
       }
     }
   });
+
+  test("T04-79: step() entry is a satellite departure with origin fields set", () => {
+    const base = loadKdem().arp;
+    const center = { latDeg: base.latDeg, lonDeg: base.lonDeg };
+    const sat = { latDeg: base.latDeg + 0.18, lonDeg: base.lonDeg };
+    const square = (
+      id: string,
+      airportId: string,
+      at: { latDeg: number; lonDeg: number },
+      halfNm: number,
+    ) => {
+      const dLat = halfNm / 60;
+      const dLon = halfNm / (60 * Math.cos((at.latDeg * Math.PI) / 180));
+      const corners = [
+        { latDeg: at.latDeg + dLat, lonDeg: at.lonDeg - dLon },
+        { latDeg: at.latDeg + dLat, lonDeg: at.lonDeg + dLon },
+        { latDeg: at.latDeg - dLat, lonDeg: at.lonDeg + dLon },
+        { latDeg: at.latDeg - dLat, lonDeg: at.lonDeg - dLon },
+      ];
+      return {
+        id,
+        name: `SYNTHETIC ${airportId} CLASS D`,
+        type: "CONTROLLED",
+        class: "D",
+        centerAirportId: airportId,
+        lowerLimit: { altitudeFt: 0, unit: "GND", reference: "SURFACE", rawAltitude: "SFC" },
+        upperLimit: { altitudeFt: 2500, unit: "MSL", reference: "MSL" },
+        segments: corners.map((position, i) => ({
+          sequence: i + 1,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position,
+        })),
+      };
+    };
+    const airport = (
+      icao: string,
+      at: { latDeg: number; lonDeg: number },
+      fieldElevFt: number,
+      headingTrueDeg: number,
+      runwayId: string,
+    ) => ({
+      icao,
+      name: `SYNTHETIC ${icao}`,
+      arp: at,
+      fieldElevFt,
+      magVarDeg: 0,
+      publicUse: true,
+      towered: true,
+      eligible: true,
+      runways: [
+        {
+          id: runwayId,
+          threshold: at,
+          headingTrueDeg,
+          headingMagDeg: headingTrueDeg,
+          lengthFt: 6000,
+        },
+      ],
+      hasPublishedApproaches: true,
+    });
+    const regional = parseRegionalPack(
+      {
+        schemaVersion: 1,
+        centerAirportId: "KXCT",
+        radiusNm: 40,
+        source: { families: ["CIFP"] },
+        files: { airports: "regional-airports.json", airspace: "regional-airspace.json" },
+      },
+      [airport("KXCT", center, 1000, 270, "27"), airport("KXSA", sat, 900, 90, "09")],
+      [square("UC:KXCT:D_CTR", "KXCT", center, 2), square("UC:KXSA:D_SAT", "KXSA", sat, 2)],
+      center,
+    );
+    const scenario = assertScenario(
+      {
+        ...loadKdem(),
+        vfrTraffic: {
+          initialCount: 0,
+          targetCount: 1,
+          entriesPerHour: 0,
+          maxPopulation: 2,
+          seed: 21,
+        },
+      },
+      { regional },
+    );
+    const world = createWorldFromScenario(scenario, 21);
+    expect(world.aircraft.filter((a) => a.ambientVfr !== undefined)).toHaveLength(0);
+
+    world.vfrTrafficManager!.step(world, 1.0);
+
+    const vfr = world.aircraft.filter((a) => a.ambientVfr !== undefined);
+    expect(vfr).toHaveLength(1);
+    const entry = vfr[0]!;
+    expect(entry.ambientVfr?.mission).toBe("SATELLITE_DEPARTURE");
+    expect(entry.ambientVfr?.originAirportId).toBe("KXSA");
+    expect(entry.ambientVfr?.departureRunwayId).toBe("09");
+    const origin = regional.getAirport("KXSA")!;
+    expect(
+      Math.hypot(entry.xNm - origin.arpNm.xNm, entry.yNm - origin.arpNm.yNm),
+    ).toBeLessThanOrEqual(2);
+    expect(entry.flightRules).toBe("VFR");
+    expect(entry.squawk).toBe("1200");
+    expect(entry.speedKt).toBe(110);
+  });
 });

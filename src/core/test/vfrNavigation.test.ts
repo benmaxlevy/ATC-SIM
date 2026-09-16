@@ -1,9 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { makeTestAircraft } from "../aircraft";
-import type { RegionalAirspaceVolume } from "../../scenario/regional";
+import type { RegionalAirport, RegionalAirspaceVolume } from "../../scenario/regional";
 import {
   buildGroupedAvoidanceVolumes,
   checkSweptSegmentVolumeCollision,
+  CLASS_B_HORIZONTAL_MARGIN_NM,
+  CLASS_B_VERTICAL_MARGIN_FT,
   extractVolumePolygonNm,
   isDegenerateAvoidanceVolume,
   isPointInside3dVolume,
@@ -609,5 +611,87 @@ describe("VFR arc tessellation and fragmented-shelf fallback", () => {
     stepVfrAircraftNavigation(ac, 0, 0, null, FRAGMENTED_VOLUMES);
     // Course from (-40,-40) to (-45,-45) is southwest (225 true, magVar 0).
     expect(ac.intent.assignedHeadingDeg).toBe(225);
+  });
+});
+
+describe("T04-79 Satellite-departure minimal leg", () => {
+  const ORIGIN_AIRPORT: RegionalAirport = {
+    icao: "KXSA",
+    name: "SYNTHETIC SATELLITE",
+    arp: { latDeg: 34.18, lonDeg: -85.0 },
+    arpNm: { xNm: 0, yNm: 10.8 },
+    fieldElevFt: 800,
+    magVarDeg: 0,
+    publicUse: true,
+    towered: true,
+    eligible: true,
+    runways: [
+      {
+        id: "09",
+        threshold: { latDeg: 34.18, lonDeg: -85.0 },
+        thresholdNm: { xNm: 0, yNm: 10.8 },
+        headingTrueDeg: 90,
+        headingMagDeg: 90,
+        lengthFt: 6000,
+      },
+    ],
+    hasPublishedApproaches: true,
+  };
+
+  const BOX: VfrTrainingBox = { centerNm: { xNm: 0, yNm: 0 }, halfExtentNm: 30 };
+
+  test("SATELLITE_DEPARTURE without an origin airport plans nothing", () => {
+    expect(
+      planSafeVfrRoute({
+        mission: "SATELLITE_DEPARTURE",
+        box: BOX,
+        altitudeFt: 4000,
+        speedKt: 110,
+        avoidanceVolumes: [],
+        rng: () => 0.5,
+      }),
+    ).toBeNull();
+  });
+
+  test("Prefed liftoff yields a runway-aligned minimal leg near the origin ARP", () => {
+    let routeDraws = 0;
+    const rng = () => {
+      routeDraws++;
+      return 0.5;
+    };
+    const route = planSafeVfrRoute({
+      mission: "SATELLITE_DEPARTURE",
+      box: BOX,
+      altitudeFt: 4000,
+      speedKt: 110,
+      originAirport: ORIGIN_AIRPORT,
+      liftoffPose: { xNm: 0.5, yNm: 11.3, altitudeFt: 2000, headingDeg: 90, speedKt: 110 },
+      magVarDeg: 0,
+      avoidanceVolumes: [],
+      rng,
+    });
+    expect(route).not.toBeNull();
+    expect(
+      Math.hypot(
+        route!.spawnPose.xNm - ORIGIN_AIRPORT.arpNm.xNm,
+        route!.spawnPose.yNm - ORIGIN_AIRPORT.arpNm.yNm,
+      ),
+    ).toBeLessThanOrEqual(2);
+    expect(route!.spawnPose.headingDeg).toBe(90);
+    expect(route!.waypoints).toHaveLength(1);
+    expect(route!.waypoints[0]!.altitudeFt).toBe(4000);
+    const legLen = Math.hypot(
+      route!.waypoints[0]!.xNm - route!.spawnPose.xNm,
+      route!.waypoints[0]!.yNm - route!.spawnPose.yNm,
+    );
+    expect(legLen).toBeGreaterThanOrEqual(5);
+    expect(legLen).toBeLessThanOrEqual(8);
+    // Corridor geometry consumes the route stream.
+    expect(routeDraws).toBeGreaterThan(0);
+  });
+
+  test("Bravo avoidance margins are unchanged", () => {
+    expect(CLASS_B_HORIZONTAL_MARGIN_NM).toBe(1.0);
+    expect(CLASS_B_VERTICAL_MARGIN_FT).toBe(500);
   });
 });
