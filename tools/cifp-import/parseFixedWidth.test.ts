@@ -673,6 +673,132 @@ test("skips continuation records with UC-CONT and UR-CONT diagnostics", () => {
   expect(source.skippedByType["UR-CONT"]).toBe(1);
 });
 
+test("national UC circle (CE) with blank LAT/LON uses arc-origin coordinate, zero errors", () => {
+  const line = uc({
+    center: "KBOI",
+    airspaceClass: "C",
+    name: "BOISE",
+    seq: 10,
+    lat: "         ",
+    lon: "          ",
+    boundaryVia: "CE",
+    arcOriginLat: "N43335170",
+    arcOriginLon: "W116132230",
+    arcDistance: "0050",
+    lowerLimit: "GND  ",
+    lowerLimitUnit: "A",
+    upperLimit: "06900",
+    upperLimitUnit: "M",
+  });
+
+  const source = parseFixedWidthCifp(line);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(1);
+  const seg = source.airspaces[0]?.segments[0];
+  expect(seg?.boundaryViaType).toBe("CIRCLE");
+  // Arc-origin center N43°33'51.70" W116°13'22.30"
+  expect(seg?.position.latDeg).toBeCloseTo(43.5643611, 4);
+  expect(seg?.position.lonDeg).toBeCloseTo(-116.2228611, 4);
+});
+
+test("two-char boundary-via end flag (GE) maps to base geometry, not unsupported", () => {
+  const lines = [
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA CLASS B",
+      seq: 10,
+      lat: "N33382100",
+      lon: "W084254000",
+      boundaryVia: "GE",
+      multipleCode: "A",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R0001",
+      name: "TEST",
+      seq: 10,
+      lat: "N34000000",
+      lon: "W116000000",
+      boundaryVia: "GE",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.diagnostics.filter((d) => d.code === "UNSUPPORTED_AIRSPACE_GEOMETRY")).toHaveLength(
+    0,
+  );
+  expect(source.airspaces).toHaveLength(2);
+  expect(source.airspaces[0]?.segments[0]?.boundaryViaType).toBe("GREAT_CIRCLE");
+});
+
+test("out-of-scope airspace class and missing coordinates become skip, never error", () => {
+  const lines = [
+    uc({
+      center: "KXYZ",
+      airspaceClass: "E",
+      name: "OUT OF SCOPE",
+      seq: 10,
+      lat: "N33000000",
+      lon: "W084000000",
+      boundaryVia: "G",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R0002",
+      name: "NO COORD",
+      seq: 10,
+      lat: "         ",
+      lon: "          ",
+      boundaryVia: "G",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(0);
+  const skips = source.diagnostics.filter((d) => d.severity === "skip");
+  expect(skips.length).toBeGreaterThanOrEqual(2);
+});
+
+test("VOR approach recNav does not become locNavaidId (national RMG case)", () => {
+  const lines = [
+    pf({
+      icao: "KRYY",
+      appId: "D09",
+      routeType: "V",
+      seq: "010",
+      fixId: "RMG",
+      path: "TF",
+      recNav: "RMG",
+    }),
+  ].join("\n");
+  const source = parseFixedWidthCifp(lines);
+  const app = source.approaches.find((a) => a.id === "D09");
+  expect(app).toBeDefined();
+  expect(app?.locNavaidId).toBeUndefined();
+  expect(app?.gsNavaidId).toBeUndefined();
+});
+
+test("circling approach with no numeric runway is skipped, never emitted (national RNV-A case)", () => {
+  const lines = [
+    pf({
+      icao: "KPDK",
+      appId: "RNV-A",
+      routeType: "R",
+      seq: "010",
+      fixId: "JUDYY",
+      path: "TF",
+    }),
+  ].join("\n");
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.approaches.find((a) => a.id === "RNV-A")).toBeUndefined();
+  const skips = source.diagnostics.filter((d) => d.code === "SKIPPED_APPROACH_ROUTE");
+  expect(skips.length).toBeGreaterThanOrEqual(1);
+});
+
 test("malformed coordinates emit deterministic error diagnostic", () => {
   const line = uc({
     center: "KATL",

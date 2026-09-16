@@ -370,22 +370,28 @@ export function parseAirspaceAltitude(
 
 export function parseBoundaryVia(code: string): BoundaryViaType | "UNSUPPORTED" {
   const trimmed = code.trim().toUpperCase();
-  if (trimmed === "G" || trimmed === "") {
+  // FAA CIFP UC/UR boundary-via is a 2-char field: geometry + optional "E"
+  // end-of-volume flag (e.g. "GE", "CE", "RE", "LE", "HE" observed nationally).
+  let base = trimmed;
+  if (base.length === 2 && base[1] === "E" && base[0] !== "E") {
+    base = base[0]!;
+  }
+  if (base === "G" || base === "") {
     return "GREAT_CIRCLE";
   }
-  if (trimmed === "H") {
+  if (base === "H") {
     return "RHUMB_LINE";
   }
-  if (trimmed === "C") {
+  if (base === "C") {
     return "CIRCLE";
   }
-  if (trimmed === "L") {
+  if (base === "L") {
     return "COUNTER_CLOCKWISE_ARC";
   }
-  if (trimmed === "R") {
+  if (base === "R") {
     return "CLOCKWISE_ARC";
   }
-  if (trimmed === "E") {
+  if (base === "E") {
     return "END";
   }
   return "UNSUPPORTED";

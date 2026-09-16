@@ -38,7 +38,9 @@ export interface NasrSourceManifest {
 /** Normalize FAA/ICAO airport identifier (e.g. "ATL" -> "KATL", "katl" -> "KATL"). */
 export function normalizeAirportId(raw: string): string {
   const trimmed = raw.trim().toUpperCase();
-  if (/^[A-Z0-9]{3}$/.test(trimmed)) {
+  // Only 3-letter alphabetic FAA ids take the contiguous-US "K" prefix.
+  // Alphanumeric fields (6A2, D73, 0GA0) have no K-prefixed ICAO and stay as-is.
+  if (/^[A-Z]{3}$/.test(trimmed)) {
     return `K${trimmed}`;
   }
   return trimmed;
@@ -95,6 +97,43 @@ export function parseTowered(value: unknown): boolean | undefined {
   return undefined;
 }
 
+const NASR_CSV_HEADER_TOKENS: ReadonlySet<string> = new Set([
+  "ICAO_ID",
+  "ICAO",
+  "AIRPORT_ID",
+  "ARPT_ID",
+  "FAA_ID",
+  "ID",
+  "FAC_USE",
+  "FACILITY_USE",
+  "USE",
+  "PUBLIC_USE",
+  "TOWER_ON_SITE",
+  "TOWER",
+  "TOWERED",
+  "TWR_ON_SITE",
+  "TOWER_FLAG",
+  "TOWER_TYPE",
+  "TWR_TYPE",
+  "TYPE",
+  "NAME",
+  "ARPT_NAME",
+  "FACILITY_TYPE",
+  "SITE_NUMBER",
+  "TOWER_HOURS",
+]);
+
+function isNasrCsvHeaderLine(line: string): boolean {
+  // Fixed-width NASR records (APT/ATT/RWY/RMK/ARS, TWR*) never form a CSV
+  // header, even when remark/address fields contain commas and incidental
+  // words like "TYPE" or "ICAO".
+  if (/^(APT|ATT|RWY|RMK|ARS|TWR)/.test(line)) {
+    return false;
+  }
+  const cols = line.split(",").map((c) => c.trim().toUpperCase().replace(/["']/g, ""));
+  return cols.some((col) => NASR_CSV_HEADER_TOKENS.has(col));
+}
+
 export function parseNasrApt(content: string, sourceFile = "APT.txt"): NasrDataset {
   const dataset: NasrDataset = {
     airports: new Map(),
@@ -118,8 +157,9 @@ export function parseNasrApt(content: string, sourceFile = "APT.txt"): NasrDatas
     }
     const lineNo = i + 1;
 
-    // Detect CSV header
-    if (headerMap === undefined && line.includes(",")) {
+    // Detect CSV header only when known header tokens are present.
+    // Real fixed-width APT address fields contain commas (e.g. "KODIAK, AK").
+    if (headerMap === undefined && line.includes(",") && isNasrCsvHeaderLine(line)) {
       const cols = line.split(",").map((c) => c.trim().toUpperCase().replace(/["']/g, ""));
       headerMap = new Map();
       cols.forEach((col, idx) => headerMap!.set(col, idx));
@@ -169,8 +209,9 @@ export function parseNasrTwr(content: string, sourceFile = "TWR.txt"): NasrDatas
     }
     const lineNo = i + 1;
 
-    // Detect CSV header
-    if (headerMap === undefined && line.includes(",")) {
+    // Detect CSV header only when known header tokens are present.
+    // Real fixed-width TWR remark fields contain commas.
+    if (headerMap === undefined && line.includes(",") && isNasrCsvHeaderLine(line)) {
       const cols = line.split(",").map((c) => c.trim().toUpperCase().replace(/["']/g, ""));
       headerMap = new Map();
       cols.forEach((col, idx) => headerMap!.set(col, idx));
@@ -409,9 +450,20 @@ function parseLegacyFixedAptRow(
     return;
   }
   const airportId = normalizeAirportId(rawId);
-  const hasPu = /\bPU\b/.test(line);
-  const hasPr = /\bPR\b/.test(line);
-  const publicUse = hasPu ? true : hasPr ? false : undefined;
+  // Real NASR APT fixed-width carries ownership + FAC_USE as a 4-char pair
+  // (e.g. "PUPU", "PRPR", "PUPR", "PRPU") at 0-based 183-186. FAC_USE is the
+  // second pair. Synthetic short rows fall back to word-boundary search.
+  const fixedUse = line.length >= 187 ? line.slice(185, 187).toUpperCase() : "";
+  let publicUse: boolean | undefined;
+  if (fixedUse === "PU") {
+    publicUse = true;
+  } else if (fixedUse === "PR") {
+    publicUse = false;
+  } else {
+    const hasPu = /\bPU\b/.test(line);
+    const hasPr = /\bPR\b/.test(line);
+    publicUse = hasPu ? true : hasPr ? false : undefined;
+  }
 
   addNasrRecord(
     dataset,

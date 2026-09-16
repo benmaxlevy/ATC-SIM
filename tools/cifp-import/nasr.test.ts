@@ -100,6 +100,51 @@ test("unmatched NASR rows emit diagnostic", () => {
   expect(unmatched[0]?.airportId).toBe("KZZZ");
 });
 
+test("fixed-width APT+TWR lines with comma-bearing addresses parse as fixed-width, not CSV (national)", () => {
+  function fixedApt(id: string, use: "PU" | "PR", addr = "KODIAK, AK 99615"): string {
+    const buf = Array.from({ length: 260 }, () => " ");
+    const put = (pos: number, s: string): void => {
+      for (let i = 0; i < s.length; i++) buf[pos + i] = s[i]!;
+    };
+    put(0, "APT50009.*A   AIRPORT      ");
+    put(27, id.padEnd(4, " "));
+    put(185, use);
+    put(210, addr);
+    return buf.join("");
+  }
+  function fixedTwr(
+    id: string,
+    remark = "WHEN ATCT CLSD WX AVBL ON CTAF, CALL SIGN WEATHER",
+  ): string {
+    const buf = Array.from({ length: 120 }, () => " ");
+    const put = (pos: number, s: string): void => {
+      for (let i = 0; i < s.length; i++) buf[pos + i] = s[i]!;
+    };
+    put(0, `TWR1${id} 08/06/2026`);
+    put(50, remark);
+    return buf.join("");
+  }
+
+  const aptText = [
+    fixedApt("ATL", "PU", "ATLANTA, GA 30303"),
+    fixedApt("FTY", "PU", "KODIAK, AK 99615"),
+  ].join("\n");
+  const apt = parseNasrApt(aptText, "APT.txt");
+  expect(apt.airports.get("KATL")?.publicUse).toBe(true);
+  expect(apt.airports.get("KFTY")?.publicUse).toBe(true);
+  expect(apt.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+  const twrText = [fixedTwr("ATL"), fixedTwr("FTY")].join("\n");
+  const twr = parseNasrTwr(twrText, "TWR.txt");
+  expect(twr.airports.get("KATL")?.towered).toBe(true);
+  expect(twr.airports.get("KFTY")?.towered).toBe(true);
+
+  const merged = mergeNasrData([apt, twr]);
+  const { enriched } = enrichAirportsWithNasr([fakeAirport("KATL"), fakeAirport("KFTY")], merged);
+  expect(enriched.find((a) => a.airportId === "KATL")?.publicUse).toBe(true);
+  expect(enriched.find((a) => a.airportId === "KATL")?.towered).toBe(true);
+});
+
 test("parses pipe-delimited and JSON format NASR files", () => {
   const pipeApt = ["APT|04508.*A|AIRPORT|ATL|KATL|GA|PU|HARTSFIELD"].join("\n");
   const apt = parseNasrApt(pipeApt, "APT.txt");
