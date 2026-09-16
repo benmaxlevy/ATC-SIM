@@ -5054,3 +5054,50 @@ progressive gated commits, never merges/spawns/pushes, returns exactly
 `READY TO MERGE` or `BLOCKED`. Captain owns merge lock, post-merge `npm run ci`,
 STATUS append, phase handoff. Untracked `.agents/rules/`, `.worktrees/`,
 `GEMINI.md`, `audit.diff` stay untouched.
+
+## VFR simplification swarm planned — training box and density presets (2026-09-16)
+
+User approved replacing named VFR zones with uniform box distribution plus
+density presets (Off/Light/Moderate/Busy) and a `<details>` tune dropdown
+mirroring help subsections. Planning only; execution requires explicit
+`run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Delete zone logic from VFR pipeline; uniform box spawn; preset + tune session controls; fixed 60/20/20 movement mix. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-77 → T04-78. |
+| Merge target | `feature/sattelite-traffic`. |
+| Worker limit | 1 sequential worker. |
+| Worker model | `muse-spark-1.3` free, medium reasoning (standing user preference). |
+| Stop | T04-78 squash merge, `npm run ci`, speech mock pytest only if speech changed, KATL manual both configs. |
+| Push | No push. |
+
+**Product law:** one fixed ARP-centered training box replaces all zone
+weighting; seeded streams keep legacy IFR identity; Bravo avoidance stays a
+hard guard with existing skip events; presets are UI mappings over persisted
+numbers; movement mix fixed 60/20/20 (airport-bound folds to local without
+eligible destinations); no speech/Command IR/palette changes.
+
+**Skip:** new missions, Bravo clearance, tower behavior, live mid-session
+editing, session-setup restyle beyond tune disclosure, phase 5.
+
+**Waves:**
+- Wave A: T04-77 — core box spawn, zone deletion, rewritten unit tests.
+- Wave B: T04-78 — presets, tune dropdown, fixed mix, docs, acceptance.
+  Starts only after T04-77 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-77-vfr-training-box-replaces-zones` → `phases/04-procedures/tickets/T04-77-vfr-training-box-replaces-zones.md`
+- `ticket/T04-78-vfr-density-presets-and-tune-dropdown` → `phases/04-procedures/tickets/T04-78-vfr-density-presets-and-tune-dropdown.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: VFR simplification T04-77–78
+Merge target: feature/sattelite-traffic
+Merged: T04-77, T04-78
+Tests: npm run ci; KATL manual both configs
+Notes: no push; uniform box; presets + tune disclosure
+```
