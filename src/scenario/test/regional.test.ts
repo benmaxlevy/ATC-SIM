@@ -199,7 +199,7 @@ const SYNTHETIC_AIRSPACE = {
 };
 
 const SYNTHETIC_KSAT_CATALOG_FILES: Record<string, unknown> = {
-  "../data/ksyn/airports/KSAT/catalog.json": {
+  "./data/ksyn/airports/KSAT/catalog.json": {
     schemaVersion: 1,
     airportId: "KSAT",
     name: "SYNTHETIC SATELLITE",
@@ -216,9 +216,9 @@ const SYNTHETIC_KSAT_CATALOG_FILES: Record<string, unknown> = {
       sids: "sids.json",
     },
   },
-  "../data/ksyn/airports/KSAT/vors.json": { airportId: "KSAT", vors: [] },
-  "../data/ksyn/airports/KSAT/ndbs.json": { airportId: "KSAT", ndbs: [] },
-  "../data/ksyn/airports/KSAT/ils.json": {
+  "./data/ksyn/airports/KSAT/vors.json": { airportId: "KSAT", vors: [] },
+  "./data/ksyn/airports/KSAT/ndbs.json": { airportId: "KSAT", ndbs: [] },
+  "./data/ksyn/airports/KSAT/ils.json": {
     airportId: "KSAT",
     components: [
       {
@@ -241,14 +241,14 @@ const SYNTHETIC_KSAT_CATALOG_FILES: Record<string, unknown> = {
       },
     ],
   },
-  "../data/ksyn/airports/KSAT/fixes.json": {
+  "./data/ksyn/airports/KSAT/fixes.json": {
     airportId: "KSAT",
     fixes: [
       { id: "SFAF1", kind: "FAF", xNm: -5, yNm: 0 },
       { id: "RW09", kind: "THRESHOLD", xNm: 0, yNm: 0 },
     ],
   },
-  "../data/ksyn/airports/KSAT/procedures.json": {
+  "./data/ksyn/airports/KSAT/procedures.json": {
     airportId: "KSAT",
     stars: [],
     approaches: [
@@ -269,7 +269,7 @@ const SYNTHETIC_KSAT_CATALOG_FILES: Record<string, unknown> = {
       },
     ],
   },
-  "../data/ksyn/airports/KSAT/sids.json": { airportId: "KSAT", sids: [] },
+  "./data/ksyn/airports/KSAT/sids.json": { airportId: "KSAT", sids: [] },
 };
 
 describe("T04-70 runtime regional facility and loader", () => {
@@ -366,20 +366,20 @@ describe("T04-70 runtime regional facility and loader", () => {
     // Mismatched airportId in catalog file
     const mismatchedFiles = {
       ...SYNTHETIC_KSAT_CATALOG_FILES,
-      "../data/ksyn/airports/KSAT/catalog.json": {
-        ...(SYNTHETIC_KSAT_CATALOG_FILES["../data/ksyn/airports/KSAT/catalog.json"] as object),
+      "./data/ksyn/airports/KSAT/catalog.json": {
+        ...(SYNTHETIC_KSAT_CATALOG_FILES["./data/ksyn/airports/KSAT/catalog.json"] as object),
         airportId: "KWRG",
       },
-      "../data/ksyn/airports/KSAT/vors.json": { airportId: "KWRG", vors: [] },
-      "../data/ksyn/airports/KSAT/ndbs.json": { airportId: "KWRG", ndbs: [] },
-      "../data/ksyn/airports/KSAT/ils.json": { airportId: "KWRG", components: [] },
-      "../data/ksyn/airports/KSAT/fixes.json": { airportId: "KWRG", fixes: [] },
-      "../data/ksyn/airports/KSAT/procedures.json": {
+      "./data/ksyn/airports/KSAT/vors.json": { airportId: "KWRG", vors: [] },
+      "./data/ksyn/airports/KSAT/ndbs.json": { airportId: "KWRG", ndbs: [] },
+      "./data/ksyn/airports/KSAT/ils.json": { airportId: "KWRG", components: [] },
+      "./data/ksyn/airports/KSAT/fixes.json": { airportId: "KWRG", fixes: [] },
+      "./data/ksyn/airports/KSAT/procedures.json": {
         airportId: "KWRG",
         stars: [],
         approaches: [],
       },
-      "../data/ksyn/airports/KSAT/sids.json": { airportId: "KWRG", sids: [] },
+      "./data/ksyn/airports/KSAT/sids.json": { airportId: "KWRG", sids: [] },
     };
     expect(() =>
       loadRegionalAirportCatalog(facility, "KSAT", { dataJson: mismatchedFiles }),
@@ -388,7 +388,7 @@ describe("T04-70 runtime regional facility and loader", () => {
     // Dangling reference in approach (loc navaid missing)
     const danglingFiles = {
       ...SYNTHETIC_KSAT_CATALOG_FILES,
-      "../data/ksyn/airports/KSAT/ils.json": {
+      "./data/ksyn/airports/KSAT/ils.json": {
         airportId: "KSAT",
         components: [
           // Missing ISAT!

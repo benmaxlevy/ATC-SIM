@@ -12,7 +12,7 @@ import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
 import { assertArray, assertNumber, assertString, isRecord } from "./load";
 
-const DATA_JSON = import.meta.glob<unknown>("../data/**/*.json", {
+const DATA_JSON = import.meta.glob<unknown>("./data/**/*.json", {
   eager: true,
   import: "default",
 });
@@ -511,7 +511,7 @@ export interface LoadRegionalPackOptions {
 
 export function hasRegionalPack(packId: string, dataJson = DATA_JSON): boolean {
   const normalized = packId.toLowerCase();
-  const manifestPath = `../data/${normalized}/regional.json`;
+  const manifestPath = `./data/${normalized}/regional.json`;
   return manifestPath in dataJson;
 }
 
@@ -521,7 +521,7 @@ export function loadRegionalPack(
 ): RegionalFacility | undefined {
   const data = options?.dataJson ?? DATA_JSON;
   const normalized = packId.toLowerCase();
-  const manifestPath = `../data/${normalized}/regional.json`;
+  const manifestPath = `./data/${normalized}/regional.json`;
 
   if (!(manifestPath in data)) {
     if (options?.optional) {
@@ -544,8 +544,8 @@ export function loadRegionalPack(
       ? manifest.files.airspace
       : "regional-airspace.json";
 
-  const airportsPath = `../data/${normalized}/${airportsFileName}`;
-  const airspacePath = `../data/${normalized}/${airspaceFileName}`;
+  const airportsPath = `./data/${normalized}/${airportsFileName}`;
+  const airspacePath = `./data/${normalized}/${airspaceFileName}`;
 
   if (!(airportsPath in data)) {
     throw new Error(`Missing regional airports file: ${airportsPath}`);

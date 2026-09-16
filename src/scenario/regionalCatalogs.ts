@@ -12,7 +12,7 @@ import { parseCatalogFiles, type CatalogFileSet } from "./procedures/loadCatalog
 import type { ProcedureCatalog } from "./procedures/types";
 import type { RegionalFacility } from "./regional";
 
-const DATA_JSON = import.meta.glob<unknown>("../data/**/*.json", {
+const DATA_JSON = import.meta.glob<unknown>("./data/**/*.json", {
   eager: true,
   import: "default",
 });
@@ -63,8 +63,8 @@ export function loadRegionalAirportCatalog(
   const centerKey = facility.centerAirportId.toLowerCase();
   const prefix =
     apt.catalogRef === "."
-      ? `../data/${centerKey}`
-      : `../data/${centerKey}/${apt.catalogRef.replace(/^[\\/]+/, "")}`;
+      ? `./data/${centerKey}`
+      : `./data/${centerKey}/${apt.catalogRef.replace(/^[\\/]+/, "")}`;
 
   const catalogJson = read(`${prefix}/catalog.json`);
   if (!isRecord(catalogJson) || !isRecord(catalogJson.files)) {
