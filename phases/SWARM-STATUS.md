@@ -1,5 +1,34 @@
 # Swarm status
 
+## VFR SIMPLIFICATION SWARM COMPLETE — Training Box and Density Presets (T04-77–T04-78, 2026-09-16)
+
+Ran on `feature/sattelite-traffic` with one sequential `muse-spark-1.3`
+medium worker per ticket. T04-77 replaced named zones with a uniform
+ARP-centered 30 NM training box (seeded streams, Bravo guard, skip events
+unchanged; zone shims kept for compile). T04-78 added Off/Light/Moderate/Busy
+density presets plus derived Custom, a `<details>` tune disclosure mirroring
+help subsections, fixed 60/20/20 movement mix, deleted zone shims/fieldset,
+and docs addenda.
+
+Captain squash commits: `c24493d` (T04-77), `743845b` (T04-78). Planning
+commit: `cafdea6`.
+
+Post-merge `npm run ci`: **232 files, 2390 passed, 3 skipped**. Speech-api
+pytest skipped: no speech paths changed. Manual KATL both-config Moderate
+sessions recorded as leftover per standing authorization. Worker skip-rate
+probe noted for review: LOCAL spawns at 3000–5500 ft skip often under large
+Bravo discs (guard working as designed, no penetration). No push.
+`.agents/rules/`, `.worktrees/`, `GEMINI.md`, `audit.diff` untouched.
+Uncommitted local KATL regional pack files remain the user's call.
+
+## VFR SIMPLIFICATION SWARM EXIT — PHASE EXIT GREEN
+
+Phase: VFR simplification T04-77–78
+Merge target: `feature/sattelite-traffic`
+Merged: T04-77, T04-78
+Tests: final `npm run ci` green (2390 passed, 3 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; uniform box; presets + tune disclosure
+
 ## SATELLITE TRAFFIC SWARM COMPLETE — Session Controls and Acceptance (T04-76, 2026-09-16)
 
 Resumed `feature/sattelite-traffic` for T04-76 only with `muse-spark-1.3` free
