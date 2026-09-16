@@ -5101,3 +5101,66 @@ Merged: T04-77, T04-78
 Tests: npm run ci; KATL manual both configs
 Notes: no push; uniform box; presets + tune disclosure
 ```
+
+## Satellite VFR departures swarm planned — post-login entries take off from satellites (2026-09-16)
+
+User approved routing post-login VFR entries through scenario-derived
+satellite departures: login-time disc population stays airborne as today;
+every `step()`-driven entry lifts off near a satellite airport (never the
+center airport) and flies a near-straight line with slight seeded movement
+to a boundary exit. No command, parser, speech, or UI change. Planning only;
+execution requires explicit `run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Satellite-origin continuous VFR entries with liftoff pose, wobble-bounded line corridor, hard Bravo avoidance, and acceptance/docs. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-79 → T04-80. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-80 squash merge, `npm run ci`, speech mock pytest only if speech changed, KATL conditional acceptance or recorded skip. |
+| Push | No push. |
+
+**Product law:** initial population remains disc-spawned airborne at login;
+every post-login entry departs a programmatically selected satellite airport
+with no hardcoded ICAO and never the center airport; liftoff is
+airborne-at-liftoff with no ground/tower simulation; en-route legs are
+persistent waypoints forming a ≤3 NM-wobble line to boundary exit; Bravo
+avoidance stays a hard guard with structured skip events (`NO_SAFE_ROUTE`,
+`NO_DEPARTURE_AIRPORT`); seeded streams keep legacy IFR identity; no
+IR/parser/speech/UI changes.
+
+**Skip:** ground roll, tower cab, Bravo clearance, satellite landings by
+departures, new commands, new session controls, live FAA fetch, phase 5.
+
+**Waves:**
+- Wave A: T04-79 — origin selection, liftoff pose, spawn-path split, unit tests.
+- Wave B: T04-80 — line corridor, avoidance/exits, integrated acceptance, docs.
+  Starts only after T04-79 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-79-satellite-origin-continuous-vfr-entries` → `phases/04-procedures/tickets/T04-79-satellite-origin-continuous-vfr-entries.md`
+- `ticket/T04-80-departure-line-navigation-and-acceptance` → `phases/04-procedures/tickets/T04-80-departure-line-navigation-and-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: satellite VFR departures T04-79–80
+Merge target: feature/sattelite-traffic
+Merged: T04-79, T04-80
+Tests: npm run ci; KATL conditional acceptance or recorded skip
+Notes: no push; login disc population preserved; continuous entries satellite-origin
+```
+
+## Satellite VFR departures swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-79
+then T04-80 sequentially with one isolated worker at a time. Each ticket gets
+focused tests and `npm run ci` before the next ticket. Worker model resolves
+to `inherit` (session-default general subagent; no named model requested).
+
+Workers implement exactly one ticket, never merge or spawn children, and
+return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked
+artifacts (`.worktrees/`, `speech-api/:memory:.ses`) and stale worktrees from
+other phases remain untouched. No push is authorized. Stop after T04-80.
