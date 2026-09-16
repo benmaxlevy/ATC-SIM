@@ -382,6 +382,31 @@ test("T04-82: formatApproachShorthand and deriveScratchpads support visual appro
   expect(derived.sp1).toBe("V27L");
 });
 
+test("T04-83: ambient VFR on VISUAL_FINAL suppresses V<rwy> shorthand in datablock", () => {
+  const ac = makeTestAircraft({
+    id: "ac-vfr-vis",
+    altitudeFt: 2500,
+    flightRules: "VFR",
+    ambientVfr: {
+      mission: "AIRPORT_BOUND",
+      zoneId: "test",
+      destinationAirportId: "KSAT1",
+      destinationRunwayId: "27L",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+    },
+  });
+  ac.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27L",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  const td = createTrackDisplay("unowned");
+  const derived = deriveScratchpads(ac, td);
+  expect(derived.sp1).toBe("");
+});
+
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {
   const ac = makeTestAircraft({
     id: "ac-alt",

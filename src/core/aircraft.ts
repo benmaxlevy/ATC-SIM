@@ -260,6 +260,8 @@ export interface AmbientVfrState {
   mission: AmbientVfrMission;
   zoneId: string;
   destinationAirportId?: string;
+  /** Seeded destination runway choice for AIRPORT_BOUND missions (T04-83). */
+  destinationRunwayId?: string;
   /** Departure satellite airport for step()-driven entries (T04-79). Omitted on disc spawns. */
   originAirportId?: string;
   /** Seeded departure runway choice at the origin airport (T04-79). Omitted on disc spawns. */

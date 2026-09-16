@@ -90,12 +90,12 @@ unaffected. Airborne IFR pickups never auto-land.
 
 ## Acceptance criteria
 
-- [ ] Destination runway seeded deterministically on `ambientVfr` at spawn for `AIRPORT_BOUND` missions.
-- [ ] Airport-bound VFR transitions onto visual final at ~3–5 NM and touches down at runway threshold.
-- [ ] `vfr.tower.handoff` and `nav.landed` events emitted in proper sequence.
-- [ ] Aircraft safely despawns upon touchdown.
-- [ ] Datablock display remains standard VFR (no clearance shorthand).
-- [ ] Departures, transits, and airborne IFR pickups do not auto-land.
-- [ ] Zero MSAW alert flooding during terminal descent.
-- [ ] End-to-end automated integration suite verifies complete landing lifecycle.
-- [ ] `npm run ci` passes cleanly.
+- [x] Destination runway seeded deterministically on `ambientVfr` at spawn for `AIRPORT_BOUND` missions.
+- [x] Airport-bound VFR transitions onto visual final at ~3–5 NM and touches down at runway threshold.
+- [x] `vfr.tower.handoff` and `nav.landed` events emitted in proper sequence.
+- [x] Aircraft safely despawns upon touchdown.
+- [x] Datablock display remains standard VFR (no clearance shorthand).
+- [x] Departures, transits, and airborne IFR pickups do not auto-land.
+- [x] Zero MSAW alert flooding during terminal descent.
+- [x] End-to-end automated integration suite verifies complete landing lifecycle.
+- [x] `npm run ci` passes cleanly.

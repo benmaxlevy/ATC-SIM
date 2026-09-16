@@ -20,7 +20,9 @@ import type {
   RegionalAirspaceVolume,
   RegionalAirport,
   RegionalFacility,
+  RegionalRunwayGeometry,
 } from "../scenario/regional";
+import { matchesRunway } from "./nav/approachContext";
 
 export const CLASS_B_HORIZONTAL_MARGIN_NM = 1.0;
 export const CLASS_B_VERTICAL_MARGIN_FT = 500;
@@ -595,6 +597,8 @@ export interface RoutePlanningOptions {
   altitudeFt: number;
   speedKt: number;
   destinationAirport?: RegionalAirport;
+  /** Seeded destination runway choice for AIRPORT_BOUND missions (T04-83). */
+  destinationRunwayId?: string;
   /**
    * Departure satellite airport for `SATELLITE_DEPARTURE` (T04-79). Liftoff is
    * sampled within `SATELLITE_LIFTOFF_RADIUS_NM` of its ARP; the line corridor
@@ -720,27 +724,46 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
       // Pattern altitude: ~1000 ft AGL or minimum safe
       const patternAlt = Math.max(destElev + 1000, 1500);
 
+      const runway =
+        (options.destinationRunwayId
+          ? destinationAirport.runways?.find((r) =>
+              matchesRunway(r.id, options.destinationRunwayId!),
+            )
+          : undefined) ?? destinationAirport.runways?.[0];
+
+      let targetPt: Point2D = destArp;
+      let targetAlt = patternAlt;
+      if (runway) {
+        const headingRad = (runway.headingMagDeg * Math.PI) / 180;
+        const entryDistNm = 4.0;
+        targetPt = {
+          xNm: runway.thresholdNm.xNm - entryDistNm * Math.sin(headingRad),
+          yNm: runway.thresholdNm.yNm - entryDistNm * Math.cos(headingRad),
+        };
+        targetAlt = Math.max(destElev + Math.round(entryDistNm * 318), patternAlt);
+      }
+
       // Try direct path on attempt 0, lateral dogleg on subsequent attempts
-      const course = Math.atan2(destArp.xNm - spawnPoint.xNm, destArp.yNm - spawnPoint.yNm);
+      const course = Math.atan2(targetPt.xNm - spawnPoint.xNm, targetPt.yNm - spawnPoint.yNm);
       const perpAngle = course + Math.PI / 2;
       const doglegOffset =
         attempt === 0 ? 0 : (attempt % 2 === 0 ? 1 : -1) * (4 + (attempt / 2) * 3);
 
       const midPt: Point2D = {
-        xNm: (spawnPoint.xNm + destArp.xNm) / 2 + doglegOffset * Math.sin(perpAngle),
-        yNm: (spawnPoint.yNm + destArp.yNm) / 2 + doglegOffset * Math.cos(perpAngle),
+        xNm: (spawnPoint.xNm + targetPt.xNm) / 2 + doglegOffset * Math.sin(perpAngle),
+        yNm: (spawnPoint.yNm + targetPt.yNm) / 2 + doglegOffset * Math.cos(perpAngle),
       };
-      // Descend toward pattern altitude
-      const midAlt = attempt > 2 ? patternAlt : Math.round((altitudeFt + patternAlt) / 2);
+      // Descend toward target altitude
+      const midAlt = attempt > 2 ? targetAlt : Math.round((altitudeFt + targetAlt) / 2);
 
       waypoints.push({ ...midPt, altitudeFt: midAlt, speedKt, targetToleranceNm: 1.5 });
-      // Final tower handoff waypoint at destination
+      // Intercept waypoint for visual final
       waypoints.push({
-        xNm: destArp.xNm,
-        yNm: destArp.yNm,
-        altitudeFt: patternAlt,
-        speedKt: Math.min(speedKt, 120),
-        targetToleranceNm: 2.5,
+        xNm: targetPt.xNm,
+        yNm: targetPt.yNm,
+        altitudeFt: targetAlt,
+        speedKt: Math.min(speedKt, 100),
+        targetToleranceNm: 2.0,
       });
     } else if (mission === "SATELLITE_DEPARTURE") {
       // Departure-line corridor (T04-80): climb on runway heading to the
@@ -848,14 +871,92 @@ export function stepVfrAircraftNavigation(
   log?: SessionLog | null,
   avoidanceVolumes?: readonly RegionalAirspaceVolume[],
   exitRadiusNm: number = VFR_TRACON_EXIT_RADIUS_NM,
+  airports?: readonly RegionalAirport[],
 ): NavStepResult {
   const vfr = ac.ambientVfr;
-  if (!vfr || !vfr.waypoints || vfr.waypoints.length === 0) {
+  if (!vfr || !vfr.waypoints || vfr.waypoints.length === 0 || ac.flightRules === "IFR") {
+    return { exited: false, handoff: false };
+  }
+
+  // Already on visual final approach (T04-83): guided by kinematics, despawned by landing
+  if (vfr.mission === "AIRPORT_BOUND" && ac.intent.lateral?.type === "VISUAL_FINAL") {
+    const distFromArp = Math.hypot(ac.xNm, ac.yNm);
+    if (distFromArp >= exitRadiusNm) {
+      log?.append({
+        type: "vfr.exit",
+        callsign: ac.callsign,
+        mission: "AIRPORT_BOUND",
+        reason: "BOUNDARY_EXIT",
+        atSimMs: simTimeMs,
+        atWallMs: simTimeMs,
+      });
+      return { exited: true, handoff: false };
+    }
     return { exited: false, handoff: false };
   }
 
   const wps = vfr.waypoints;
   const curIdx = vfr.waypointIndex ?? 0;
+
+  const destAirport =
+    vfr.mission === "AIRPORT_BOUND" && Array.isArray(airports)
+      ? airports.find((a) => a.icao.toUpperCase() === vfr.destinationAirportId?.toUpperCase())
+      : undefined;
+  const runway =
+    destAirport?.runways?.find((r: RegionalRunwayGeometry) =>
+      matchesRunway(r.id, vfr.destinationRunwayId ?? ""),
+    ) ?? destAirport?.runways?.[0];
+
+  // Intercept visual final when in terminal approach window (T04-83).
+  // Airborne IFR pickups never auto-land.
+  if (vfr.mission === "AIRPORT_BOUND" && ac.flightRules !== "IFR" && destAirport && runway) {
+    const headingRad = (runway.headingMagDeg * Math.PI) / 180;
+    const uX = Math.sin(headingRad);
+    const uY = Math.cos(headingRad);
+    const dx = ac.xNm - runway.thresholdNm.xNm;
+    const dy = ac.yNm - runway.thresholdNm.yNm;
+    const alongTrackNm = -(dx * uX + dy * uY);
+    const crossTrackNm = dx * uY - dy * uX;
+    const distToThreshNm = Math.hypot(dx, dy);
+
+    // Terminal intercept window (~3-5 NM along extended centerline)
+    const isAlignedForFinal =
+      alongTrackNm >= 0.2 && alongTrackNm <= 5.5 && Math.abs(crossTrackNm) <= 2.5;
+
+    const isTerminalWaypointReached =
+      curIdx >= wps.length &&
+      alongTrackNm >= 0.1 &&
+      distToThreshNm <= 6.0 &&
+      Math.abs(crossTrackNm) <= 3.5;
+
+    if (isAlignedForFinal || isTerminalWaypointReached) {
+      const fieldElevFt = destAirport.fieldElevFt ?? 0;
+      ac.intent.lateral = {
+        type: "VISUAL_FINAL",
+        runwayId: runway.id,
+        threshold: { xNm: runway.thresholdNm.xNm, yNm: runway.thresholdNm.yNm },
+        headingDeg: runway.headingMagDeg,
+        fieldElevFt,
+      };
+      ac.intent.vertical = {
+        type: "GLIDEPATH",
+        approachId: `VISUAL ${runway.id}`,
+      };
+      ac.intent.assignedAltitudeFt = fieldElevFt;
+      ac.intent.assignedHeadingDeg = runway.headingMagDeg;
+      vfr.phase = "HANDOFF_COMPLETED";
+
+      log?.append({
+        type: "vfr.tower.handoff",
+        callsign: ac.callsign,
+        destinationAirportId: vfr.destinationAirportId,
+        atSimMs: simTimeMs,
+        atWallMs: simTimeMs,
+      });
+
+      return { exited: false, handoff: true };
+    }
+  }
 
   // If waypoints are active
   if (curIdx < wps.length) {
@@ -937,7 +1038,19 @@ export function stepVfrAircraftNavigation(
       return { exited: true, handoff: false };
     }
   } else if (vfr.mission === "AIRPORT_BOUND") {
-    if ((vfr.waypointIndex ?? 0) >= wps.length) {
+    if (distFromArp >= exitRadiusNm) {
+      log?.append({
+        type: "vfr.exit",
+        callsign: ac.callsign,
+        mission: "AIRPORT_BOUND",
+        reason: "BOUNDARY_EXIT",
+        atSimMs: simTimeMs,
+        atWallMs: simTimeMs,
+      });
+      return { exited: true, handoff: false };
+    }
+    // Backward-compatibility fallback when no airport/runway is resolved (synthetic test mocks)
+    if ((!destAirport || !runway) && (vfr.waypointIndex ?? 0) >= wps.length) {
       log?.append({
         type: "vfr.tower.handoff",
         callsign: ac.callsign,

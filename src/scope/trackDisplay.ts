@@ -431,7 +431,7 @@ export function deriveScratchpads(
     : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
   const visualRwy =
-    aircraft.intent?.lateral?.type === "VISUAL_FINAL"
+    aircraft.intent?.lateral?.type === "VISUAL_FINAL" && !aircraft.ambientVfr
       ? aircraft.intent.lateral.runwayId
       : undefined;
   const approachId =

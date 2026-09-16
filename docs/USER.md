@@ -399,15 +399,19 @@ PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
    an eligible satellite airport. A later pilot `cancel IFR` report is
    answered with `N123AB IFR cancellation received`, reverting to VFR outside
    Class B with autonomous navigation resumed.
-7. Airport-bound arrivals complete at their satellite destination with a
-   simulated tower transfer; the aircraft is removed only after completion or
-   a valid exit.
+7. Airport-bound arrivals complete at their satellite destination: entering
+   the terminal phase (~3–5 NM along the extended runway centerline), they
+   smoothly transition onto the visual final approach path, emit a simulated
+   tower handoff (`vfr.tower.handoff`), descend at 3° along the visual
+   glidepath to the runway threshold, touch down (`nav.landed`), and safely
+   despawn. Standard VFR datablock presentation (1200 squawk or discrete
+   flight-following beacon) is preserved without clearance shorthand tags.
 8. Satellite departures lift off near a satellite airport and fly a
    near-straight line with slight seeded wobble (at most 3 NM off the direct
    course) to a boundary exit. The login-time population is disc-spawned
    airborne traffic; every post-login entry is a satellite departure. There
-   is no tower or ground simulation: no takeoff clearance, no departure
-   handoff, and no satellite landing.
+   is no surface tower or ground simulation: no takeoff clearance, no departure
+   handoff, and arrivals land straight-in to threshold touchdown.
 
 Service versus flight rules: flight following is a radar advisory *service*
 on a VFR aircraft, not an IFR clearance. Pickup changes operational flight

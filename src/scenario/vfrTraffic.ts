@@ -616,14 +616,19 @@ export class VfrTrafficManager {
       mission = "AIRPORT_BOUND";
     }
 
-    // If AIRPORT_BOUND, select an eligible destination
+    // If AIRPORT_BOUND, select an eligible destination and seeded runway (T04-83)
     let destinationAirport: RegionalAirport | undefined;
+    let destinationRunwayId: string | undefined;
     if (mission === "AIRPORT_BOUND") {
       if (this.eligibleDestinations.length === 0) {
         mission = "LOCAL";
       } else {
         const destIdx = Math.floor(this.rngMission() * this.eligibleDestinations.length);
         destinationAirport = this.eligibleDestinations[destIdx];
+        if (destinationAirport && destinationAirport.runways.length > 0) {
+          const rwyIdx = Math.floor(this.rngPlacement() * destinationAirport.runways.length);
+          destinationRunwayId = destinationAirport.runways[rwyIdx]!.id;
+        }
       }
     }
 
@@ -656,6 +661,7 @@ export class VfrTrafficManager {
       altitudeFt: altFt,
       speedKt,
       destinationAirport,
+      destinationRunwayId,
       avoidanceVolumes: this.avoidanceVolumes,
       rng: this.rngRoute,
       exitRadiusNm: this.exitRadiusNm,
@@ -692,6 +698,7 @@ export class VfrTrafficManager {
         mission,
         zoneId: VFR_TRAINING_BOX_ID,
         ...(destinationAirport ? { destinationAirportId: destinationAirport.icao } : {}),
+        ...(destinationRunwayId ? { destinationRunwayId } : {}),
         spawnedAtSimMs: world.simTimeMs,
         alertEligibility: "AMBIENT_SUPPRESSED",
         waypoints,
@@ -899,6 +906,7 @@ export class VfrTrafficManager {
           world.sessionLog,
           this.avoidanceVolumes,
           this.exitRadiusNm,
+          this.eligibleDestinations,
         );
         if (navResult.exited) {
           // Natural exit / tower handoff completed: remove from world

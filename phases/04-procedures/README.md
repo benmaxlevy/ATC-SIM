@@ -727,6 +727,12 @@ T04-80 flies it as a near-straight line corridor (runway-heading climb, ≤3 NM
 seeded wobble, radial boundary exit with `BOUNDARY_EXIT`) under the hard
 Bravo-avoidance guard, with no tower/ground simulation.
 
+### Post-exit addendum (T04-81–83 satellite traffic, visual clearances, and VFR auto-land)
+
+T04-81 enables arrival-airport approach resolution and satellite ILS parity;
+T04-82 implements visual approach clearance (`CLEARED_VISUAL`, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance);
+T04-83 executes autonomous VFR auto-land on visual final for airport-bound traffic, emitting `vfr.tower.handoff` and `nav.landed` events with MSAW inhibit on final descent and standard VFR datablock presentation.
+
 ---
 
 ## Phase exit checklist
