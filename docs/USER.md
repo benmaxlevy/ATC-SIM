@@ -326,6 +326,90 @@ RADAR VECTORS [ALT] [FREQ] [SQ]`), atomically transitioning operational flight
 rules to IFR while leaving any manual plan intact. Holds, release/void, and full
 route amendments are not implemented.
 
+### Satellite traffic and VFR session controls
+
+On scenarios with regional airport and airspace data (for example the KATL
+configurations), Session setup offers a **VFR Traffic & Regional Operations**
+section. Scenarios without regional data show `VFR traffic unavailable:
+selected scenario has no regional airport or airspace data` and start with VFR
+disabled. Stored sessions saved before these controls existed still load with
+VFR disabled and unchanged IFR settings.
+
+Population controls (counts of aircraft):
+
+- **Initial VFR count** — aircraft present at session start.
+- **Target VFR population** — soft target the trainer replenishes toward as
+  aircraft exit or complete flights.
+- **Maximum VFR population** — hard bound on both sources below.
+
+Rate controls (aircraft per hour):
+
+- **VFR entries/hour** — scheduled new background entries, independent of
+  target replenishment. Target replenishment and scheduled entries are
+  separate sources; both are bounded by the maximum population.
+
+Target replenishment maintains background population via exits, while
+entries/hour injects scheduled arrivals. Labels and helper text in the dialog
+keep this population-vs-rate distinction visible.
+
+- **Named zone weights** — relative positive weights for the scenario's
+  practice/geographic zones (valid weights are normalized; invalid values
+  reject).
+- **Movement mix (%)** — local, transit, and airport-bound shares; they must
+  sum to exactly 100%.
+- **Flight following %** and **IFR pickup %** — exclusive initial categories
+  for new traffic; their sum must be at most 100%. The remainder stays silent
+  ambient traffic that never calls.
+- **Request cap/hour** — combined new service requests per hour, paced at
+  3,600,000 / cap ms. Zero means no new service requests are transmitted
+  (aircraft still fly; replies and cancellation reports still work), with no
+  catch-up burst later.
+- **IFR cancellation %** — share of accepted IFR pickups the pilot later
+  offers to cancel.
+
+Invalid combinations show the exact upstream validation message and block
+Apply; the dialog never silently clamps a percentage, normalizes an invalid
+sum, or starts a partially configured session. Cancel and Escape discard
+draft edits and return focus. The existing seed control is reused, and
+`?traffic=N` keeps its benchmark meaning.
+
+Full phrases for the new workflow (typed on the command line or spoken over
+PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
+
+1. A generated aircraft calls, for example `N123AB, request flight following`.
+2. `N123AB say request` hears the details; `N123AB stand by` defers;
+   `N123AB SQ 4721` and `N123AB I` assign a beacon and ident.
+3. `N123AB radar contact 5 miles from MERGE` establishes identification. The
+   position is informational only: it never moves the aircraft or changes its
+   navigation.
+4. `N123AB approve flight following` starts the advisory service, or
+   `N123AB unable flight following` declines it.
+5. `N123AB radar service terminated` ends the service when the pilot leaves
+   the area or the controller no longer wants the track. The assigned squawk
+   stays as issued; it is not reset to 1200.
+6. An airborne VFR aircraft with an open pickup request can receive
+   `N123AB CLR TO KPDK VIA RADAR VECTORS ALT 50`, becoming operational IFR to
+   an eligible satellite airport. A later pilot `cancel IFR` report is
+   answered with `N123AB IFR cancellation received`, reverting to VFR outside
+   Class B with autonomous navigation resumed.
+7. Airport-bound arrivals complete at their satellite destination with a
+   simulated tower transfer; the aircraft is removed only after completion or
+   a valid exit.
+
+Service versus flight rules: flight following is a radar advisory *service*
+on a VFR aircraft, not an IFR clearance. Pickup changes operational flight
+rules to IFR; cancellation reverts them to VFR. There are no VFR arrivals to
+the primary airport through Class B: airport-bound traffic flies only to
+eligible towered satellite destinations, swept-path Bravo avoidance is
+enforced on every planned route, and the trainer issues no VFR Bravo
+clearance. Other-airspace and tower coordination is assumed, not simulated.
+
+Trainer deltas: deterministic virtual pilots with configurable workload, not
+observed traffic statistics; VMC assumed for generated IFR cancellation; no
+tower cab, ground traffic, emergencies, scoring, or certification. Speech
+runs only through the self-hosted speech API or in-tab fallback; if speech
+is unavailable, every phrase above works typed.
+
 ## Controls & keybindings
 
 The in-app Help reference is organized by the task you are trying to complete:

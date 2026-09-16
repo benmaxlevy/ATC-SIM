@@ -160,12 +160,12 @@ export function defaultIfrCancellationValidator(
 
 export class VfrRequestQueue {
   private rng: () => number;
-  private readonly seed: number;
-  private readonly flightFollowingPercent: number;
-  private readonly ifrPickupPercent: number;
-  private readonly requestCapPerHour: number;
-  private readonly ifrCancellationPercent: number;
-  private readonly regional?: RegionalFacility;
+  private seed: number;
+  private flightFollowingPercent: number;
+  private ifrPickupPercent: number;
+  private requestCapPerHour: number;
+  private ifrCancellationPercent: number;
+  private regional?: RegionalFacility;
   private readonly cancellationValidator?: IfrCancellationValidator;
   private readonly cancellationDelayOption?: number | ((rng: () => number) => number);
   private readonly initialSlotOffsetMs?: number;
@@ -204,8 +204,25 @@ export class VfrRequestQueue {
     return this.cancellationCandidates.slice();
   }
 
-  public reset(): void {
+  public reset(options?: {
+    config?: VfrRequestConfig;
+    seed?: number;
+    regional?: RegionalFacility;
+  }): void {
+    if (options?.seed !== undefined) {
+      this.seed = options.seed;
+    }
     this.rng = mulberry32((this.seed >>> 0) ^ VFR_PILOT_REQUEST_XOR);
+    if (options && "config" in options) {
+      const validated = options.config ? validateVfrRequestConfig(options.config) : undefined;
+      this.flightFollowingPercent = validated?.flightFollowingPercent ?? 0;
+      this.ifrPickupPercent = validated?.ifrPickupPercent ?? 0;
+      this.requestCapPerHour = validated?.requestCapPerHour ?? 0;
+      this.ifrCancellationPercent = validated?.ifrCancellationPercent ?? 0;
+    }
+    if (options && "regional" in options) {
+      this.regional = options.regional;
+    }
     this.requests = [];
     this.cancellationCandidates = [];
     this.evaluatedAircraftIds.clear();

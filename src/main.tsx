@@ -65,6 +65,10 @@ const handles = createApp({
       arrivalsPerHour: sessionResolution.setup.arrivalsPerHour,
       seed: sessionResolution.setup.seed,
     },
+    {
+      traffic: sessionResolution.setup.vfrTraffic,
+      requests: sessionResolution.setup.vfrRequests,
+    },
   ),
 });
 bootSession(handles, scenario, Date.now(), spawnSeed);

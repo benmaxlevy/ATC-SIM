@@ -521,6 +521,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                 arrivalsPerHour: next.arrivalsPerHour,
                 seed: next.seed,
               },
+              {
+                traffic: next.vfrTraffic,
+                requests: next.vfrRequests,
+              },
             ),
           );
           scopeView.tracks.clear();

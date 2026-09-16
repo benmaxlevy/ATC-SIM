@@ -1,5 +1,10 @@
 import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
-import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
+import {
+  DEFAULT_SPAWN_SEED,
+  type RegionalFacility,
+  type Scenario,
+  type VfrRequestConfig,
+} from "@scenario";
 import {
   approachesFromCatalog,
   catalogFixEntriesFromCatalog,
@@ -298,6 +303,8 @@ export function createApp(deps: AppDeps): AppHandles {
     deps.vfrRequestQueue ??
     createVfrRequestQueue({
       seed: deps.vfrRequestSeed ?? 1,
+      config: world.vfrRequestConfig as VfrRequestConfig | undefined,
+      regional: world.regional as RegionalFacility | undefined,
     });
   vfrRequestQueue.scheduleFromWorld(world);
   world.vfrRequestQueue = vfrRequestQueue;
@@ -366,7 +373,10 @@ export function createApp(deps: AppDeps): AppHandles {
       world.sessionLog = log;
       checkInQueue.reset();
       checkInQueue.scheduleFromWorld(world);
-      vfrRequestQueue.reset();
+      vfrRequestQueue.reset({
+        config: next.vfrRequestConfig as VfrRequestConfig | undefined,
+        regional: next.regional as RegionalFacility | undefined,
+      });
       vfrRequestQueue.scheduleFromWorld(world);
     },
   };

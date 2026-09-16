@@ -11,7 +11,13 @@
 
 export type { ParseResult } from "./parseRadioText";
 export { parseRadioText } from "./parseRadioText";
-export { PARSE_ERROR } from "./tokens";
+export {
+  PARSE_ERROR,
+  FULL_CALLSIGN,
+  GA_CALLSIGN,
+  SUFFIX_CALLSIGN,
+  isCallsignToken,
+} from "./tokens";
 export type { ParseErrorCode } from "./tokens";
 export { parseCommand } from "./parse-command";
 export type { ParseCommandOpts } from "./parse-command";

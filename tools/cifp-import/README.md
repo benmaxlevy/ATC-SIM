@@ -557,4 +557,15 @@ cab, certify approaches, or claim operational airspace accuracy. Simulated
 tower coordination, landing clearances, and aircraft removal/despawn are
 trainer behaviors supplied by downstream navigation and service tickets (T04-71+).
 
+## Satellite traffic settings (T04-76)
+
+The controller-facing satellite-traffic feature (session-setup VFR population
+and request controls, full-phrase radio workflow, satellite arrivals) runs on
+the regional pack produced above. To regenerate the KATL data it loads, follow
+the **40 NM KATL reproduction workflow** under `Regional catalog and
+satellite-arrival pack (T04-70)` with an authorized local FAA source; CI and
+review use synthetic fixtures only. No hand-filled FAA airport or airspace
+values: every destination, provenance record, and airspace volume comes from
+that reproducible pipeline.
+
 

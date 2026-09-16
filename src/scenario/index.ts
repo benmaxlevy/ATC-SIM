@@ -203,6 +203,8 @@ export {
   SESSION_INITIAL_COUNT_MIN,
   arrivalTrafficFromSetup,
   defaultSessionSetup,
+  defaultVfrRequestConfigForScenario,
+  defaultVfrTrafficConfigForScenario,
   departuresEnabledForScenario,
   loadSessionSetup,
   parseSessionSetupStorage,
@@ -210,6 +212,9 @@ export {
   saveSessionSetup,
   serializeSessionSetup,
   validateSessionSetup,
+  vfrEnabledForScenario,
+  vfrRequestsFromSetup,
+  vfrTrafficFromSetup,
 } from "./sessionSetup";
 export type {
   SessionSetup,

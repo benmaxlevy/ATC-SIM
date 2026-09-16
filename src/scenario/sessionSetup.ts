@@ -12,6 +12,21 @@ import {
   listPlayableScenarios,
 } from "./playableScenarios";
 import { loadPlayableScenario } from "./playableScenarios";
+import type {
+  Scenario,
+  VfrRequestConfig,
+  VfrTrafficConfig,
+  VfrTrafficZoneConfig,
+  VfrZone,
+} from "./types";
+import {
+  DEFAULT_VFR_AIRCRAFT_MIX,
+  DEFAULT_VFR_ALTITUDE_MIX,
+  getEligibleVfrDestinations,
+  validateVfrRequestConfig,
+  validateVfrTrafficConfig,
+} from "./vfrTraffic";
+import type { RegionalFacility } from "./regional";
 
 export { listPlayableAirports, listConfigurationsForAirport };
 
@@ -28,6 +43,8 @@ export interface SessionSetup {
   arrivalsPerHour: number;
   departuresPerHour: number;
   seed: number;
+  vfrTraffic?: VfrTrafficConfig;
+  vfrRequests?: VfrRequestConfig;
 }
 
 export interface SessionSetupDraft extends SessionSetup {
@@ -40,6 +57,8 @@ export interface SessionSetupDefaults {
   arrivalsPerHour: number;
   departuresPerHour: number;
   seed: number;
+  vfrTraffic?: VfrTrafficConfig;
+  vfrRequests?: VfrRequestConfig;
 }
 
 export interface SessionSetupResolution {
@@ -54,7 +73,10 @@ function integerInRange(value: unknown, min: number, max: number, name: string):
   return value;
 }
 
-export function validateSessionSetup(value: unknown): SessionSetup {
+export function validateSessionSetup(
+  value: unknown,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+): SessionSetup {
   if (!value || typeof value !== "object") {
     throw new Error("Session setup must be an object");
   }
@@ -88,12 +110,34 @@ export function validateSessionSetup(value: unknown): SessionSetup {
   );
   const seed = integerInRange(raw.seed, 0, 0xffffffff, "seed");
   validateArrivalTrafficConfig({ initialArrivalCount: arrivalCount, arrivalsPerHour, seed });
+
+  let vfrTraffic: VfrTrafficConfig | undefined;
+  if (raw.vfrTraffic !== undefined && raw.vfrTraffic !== null) {
+    let resolvedContext = context;
+    if (!resolvedContext) {
+      try {
+        const sc = loadPlayableScenario(scenarioId.trim().toLowerCase());
+        resolvedContext = { vfrZones: sc.vfrZones, regional: sc.regional };
+      } catch {
+        resolvedContext = undefined;
+      }
+    }
+    vfrTraffic = validateVfrTrafficConfig(raw.vfrTraffic, resolvedContext);
+  }
+
+  let vfrRequests: VfrRequestConfig | undefined;
+  if (raw.vfrRequests !== undefined && raw.vfrRequests !== null) {
+    vfrRequests = validateVfrRequestConfig(raw.vfrRequests);
+  }
+
   return {
     scenarioId: scenarioId.trim().toLowerCase(),
     arrivalCount,
     arrivalsPerHour,
     departuresPerHour,
     seed,
+    ...(vfrTraffic !== undefined ? { vfrTraffic } : {}),
+    ...(vfrRequests !== undefined ? { vfrRequests } : {}),
   };
 }
 
@@ -114,15 +158,67 @@ export function defaultSessionSetup(
         ? (scenario?.departureConfig?.ratePerHour ?? 0)
         : 0,
     seed: 1,
+    ...(scenario?.vfrTraffic ? { vfrTraffic: scenario.vfrTraffic } : {}),
+    ...(scenario?.vfrRequests ? { vfrRequests: scenario.vfrRequests } : {}),
   };
 }
 
-export function serializeSessionSetup(setup: SessionSetup): string {
-  const validated = validateSessionSetup(setup);
+export function defaultVfrTrafficConfigForScenario(
+  scenario?: Scenario,
+): VfrTrafficConfig | undefined {
+  if (!scenario || !scenario.regional) {
+    return undefined;
+  }
+  const zones: VfrTrafficZoneConfig[] = (scenario.vfrZones ?? []).map((z) => ({
+    id: z.id,
+    weight: 1,
+  }));
+  const eligibleDests = getEligibleVfrDestinations(scenario.regional);
+  const airportBound = eligibleDests.length > 0 ? 20 : 0;
+  const local = 100 - airportBound - 20;
+  return {
+    initialCount: 4,
+    targetCount: 4,
+    entriesPerHour: 6,
+    maxPopulation: 8,
+    seed: 1,
+    ...(zones.length > 0 ? { zones } : {}),
+    movementMix: {
+      localPercent: local,
+      transitPercent: 20,
+      airportBoundPercent: airportBound,
+    },
+    aircraftMix: DEFAULT_VFR_AIRCRAFT_MIX,
+    altitudeMix: DEFAULT_VFR_ALTITUDE_MIX,
+  };
+}
+
+export function defaultVfrRequestConfigForScenario(
+  scenario?: Scenario,
+): VfrRequestConfig | undefined {
+  if (!scenario || !scenario.regional) {
+    return undefined;
+  }
+  return {
+    flightFollowingPercent: 30,
+    ifrPickupPercent: 20,
+    requestCapPerHour: 6,
+    ifrCancellationPercent: 25,
+  };
+}
+
+export function serializeSessionSetup(
+  setup: SessionSetup,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+): string {
+  const validated = validateSessionSetup(setup, context);
   return JSON.stringify({ version: SESSION_SETUP_VERSION, ...validated });
 }
 
-export function parseSessionSetupStorage(raw: string | null): SessionSetup | null {
+export function parseSessionSetupStorage(
+  raw: string | null,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+): SessionSetup | null {
   if (!raw) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -133,18 +229,29 @@ export function parseSessionSetupStorage(raw: string | null): SessionSetup | nul
     ) {
       return null;
     }
-    return validateSessionSetup(parsed);
+    return validateSessionSetup(parsed, context);
   } catch {
     return null;
   }
 }
 
-export function loadSessionSetup(storage: Storage | null, fallback: SessionSetup): SessionSetup {
-  return parseSessionSetupStorage(storage?.getItem(SESSION_SETUP_STORAGE_KEY) ?? null) ?? fallback;
+export function loadSessionSetup(
+  storage: Storage | null,
+  fallback: SessionSetup,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+): SessionSetup {
+  return (
+    parseSessionSetupStorage(storage?.getItem(SESSION_SETUP_STORAGE_KEY) ?? null, context) ??
+    fallback
+  );
 }
 
-export function saveSessionSetup(storage: Storage | null, setup: SessionSetup): void {
-  storage?.setItem(SESSION_SETUP_STORAGE_KEY, serializeSessionSetup(setup));
+export function saveSessionSetup(
+  storage: Storage | null,
+  setup: SessionSetup,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+): void {
+  storage?.setItem(SESSION_SETUP_STORAGE_KEY, serializeSessionSetup(setup, context));
 }
 
 function queryInteger(
@@ -167,8 +274,14 @@ export function resolveSessionSetup(
   search: string,
   defaults: SessionSetup,
   stored: SessionSetup | null = null,
+  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
 ): SessionSetupResolution {
-  const fallback = validateSessionSetup(stored ?? defaults);
+  let fallback: SessionSetup;
+  try {
+    fallback = validateSessionSetup(stored ?? defaults, context);
+  } catch {
+    fallback = validateSessionSetup(defaults, context);
+  }
   const params = new URLSearchParams(search);
   const requestedScenario = params.get("scenario")?.trim().toLowerCase();
   const inventoryIds = new Set(listPlayableScenarios().map((entry) => entry.id));
@@ -180,12 +293,46 @@ export function resolveSessionSetup(
         : (listPlayableScenarios().find((entry) => entry.default)?.id ?? fallback.scenarioId);
   const seed = queryInteger(params, "seed", 0, 0xffffffff) ?? fallback.seed;
   const trafficBenchmarkCount = queryInteger(params, "traffic", 1, Number.MAX_SAFE_INTEGER);
+
+  const scenarioChanged = scenarioId !== fallback.scenarioId;
+  let targetScenario: Scenario | null = null;
+  if (scenarioChanged) {
+    try {
+      targetScenario = loadPlayableScenario(scenarioId);
+    } catch {
+      targetScenario = null;
+    }
+  }
+  const vfrTraffic = scenarioChanged ? targetScenario?.vfrTraffic : fallback.vfrTraffic;
+  const vfrRequests = scenarioChanged ? targetScenario?.vfrRequests : fallback.vfrRequests;
+
+  let setup: SessionSetup;
+  try {
+    setup = validateSessionSetup(
+      {
+        ...fallback,
+        scenarioId,
+        seed,
+        ...(vfrTraffic ? { vfrTraffic } : {}),
+        ...(vfrRequests ? { vfrRequests } : {}),
+      },
+      context,
+    );
+  } catch {
+    setup = validateSessionSetup(
+      {
+        ...fallback,
+        scenarioId,
+        seed,
+        vfrTraffic: undefined,
+        vfrRequests: undefined,
+      },
+      context,
+    );
+  }
+
   return {
-    setup: validateSessionSetup({
-      ...fallback,
-      scenarioId,
-      seed,
-    }),
+    setup,
     trafficBenchmarkCount,
   };
 }
@@ -198,6 +345,18 @@ export function arrivalTrafficFromSetup(setup: SessionSetup): ArrivalTrafficConf
   };
 }
 
+export function vfrTrafficFromSetup(setup: SessionSetup): VfrTrafficConfig | undefined {
+  return setup.vfrTraffic;
+}
+
+export function vfrRequestsFromSetup(setup: SessionSetup): VfrRequestConfig | undefined {
+  return setup.vfrRequests;
+}
+
 export function departuresEnabledForScenario(departuresPerHour: number): boolean {
   return departuresPerHour > 0;
+}
+
+export function vfrEnabledForScenario(scenario?: Scenario): boolean {
+  return Boolean(scenario?.regional);
 }

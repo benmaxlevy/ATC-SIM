@@ -12,7 +12,7 @@ import {
   type ScheduledDeparture,
   type World,
 } from "@core";
-import type { ArrivalSpawn, Scenario } from "./types";
+import type { ArrivalSpawn, Scenario, VfrRequestConfig, VfrTrafficConfig } from "./types";
 import { assignStarRoutes, authoredStarToFixIndex, starRouteFixIds } from "./starSpawn";
 import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
 import {
@@ -395,14 +395,28 @@ function initDepartures(
   }
 }
 
-function initVfrTraffic(world: World, scenario: Scenario, seed: number): void {
-  if (!scenario.vfrTraffic) {
+function initVfrTraffic(
+  world: World,
+  scenario: Scenario,
+  seed: number,
+  vfrTrafficConfig?: VfrTrafficConfig | null,
+): void {
+  const config =
+    vfrTrafficConfig !== undefined ? (vfrTrafficConfig ?? undefined) : scenario.vfrTraffic;
+  if (!config) {
+    return;
+  }
+  const isEnabled =
+    (config.initialCount ?? 0) > 0 ||
+    (config.targetCount ?? 0) > 0 ||
+    (config.entriesPerHour ?? 0) > 0;
+  if (!isEnabled) {
     return;
   }
   const manager = new VfrTrafficManager({
-    config: scenario.vfrTraffic,
+    config,
     scenario,
-    seed: scenario.vfrTraffic.seed ?? seed,
+    seed: config.seed ?? seed,
   });
   world.vfrTrafficManager = manager;
   manager.spawnInitialPopulation(world);
@@ -444,6 +458,10 @@ export function createWorldForSession(
   seed: number = DEFAULT_SPAWN_SEED,
   departureOptions?: DepartureOptions | null,
   arrivalTraffic?: ArrivalTrafficConfig,
+  vfrOptions?: {
+    traffic?: VfrTrafficConfig | null;
+    requests?: VfrRequestConfig | null;
+  } | null,
 ): World {
   const world = worldFromScenario(scenario);
   let arrivalScheduler: ArrivalScheduler | undefined;
@@ -485,6 +503,8 @@ export function createWorldForSession(
   }
 
   initDepartures(world, scenario, seed, departureOptions, activeCallsigns);
-  initVfrTraffic(world, scenario, seed);
+  initVfrTraffic(world, scenario, seed, vfrOptions?.traffic);
+  world.vfrRequestConfig =
+    vfrOptions?.requests !== undefined ? vfrOptions.requests : scenario.vfrRequests;
   return world;
 }

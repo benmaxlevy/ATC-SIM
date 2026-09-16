@@ -659,6 +659,21 @@ airspace awareness.
   controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
 - T04-74 implements airborne VFR-to-IFR pickup (atomic transition to operational IFR, clearance limit validation against regional controlled destination airports, unchanged manual flight plan, and datablock/strip/list operational status).
 - T04-75 implements pilot-initiated IFR cancellation and autonomous VFR continuation (atomic reversion to VFR, 3D Class B airspace protection, autonomous navigation recovery, intact flight plan and beacon squawk, and multi-channel command parity).
+- T04-76 wires the approved population and request controls into session setup
+  (`src/ui/controls/session-setup.tsx`, `src/scenario/sessionSetup.ts`) against
+  the T04-71/72 schemas and schedulers, with units, labels, and exact upstream
+  validation; legacy sessions load with VFR disabled and `traffic=N` keeps its
+  benchmark meaning. It verifies the whole feature with one synthetic
+  integrated acceptance file (silent traffic, flight following, IFR
+  pickup/cancellation, rejection, termination, destination completion),
+  parameterized swept-path Bravo no-entry geometry, Atlanta data/contract
+  acceptance (source provenance, preserved routes), and long-session bounds
+  (request cap, fair scheduling, cleanup, seed repeatability, zero-cap
+  behavior, legacy IFR repeatability). Manual evidence (both KATL runway
+  configurations with ambient VFR plus following/pickup/cancellation/satellite
+  arrival, joint radio/pilot/scope check, FAA edition and paragraph records,
+  speech/perf samples) is recorded as worker-handoff leftovers, not claimed
+  from automation.
 
 The regional pack generator command:
 

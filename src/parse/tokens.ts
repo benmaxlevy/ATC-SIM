@@ -27,6 +27,9 @@ export type ParseErrorCode = (typeof PARSE_ERROR)[keyof typeof PARSE_ERROR];
 /** Full callsign: three-letter ICAO prefix + 1–4 digits + optional letter. */
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
 
+/** General aviation N-number callsign: N + 1–5 digits + up to 2 suffix letters. */
+export const GA_CALLSIGN = /^N[0-9]{1,5}[A-Z]{0,2}$/;
+
 /** Numeric suffix used when a track is later resolved (T01-06). */
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 
@@ -42,7 +45,7 @@ const TRANSITION_ID_TOKEN = /^[A-Z]{1,8}[0-9]{0,2}$/;
 const CROSS_ALT_TOKEN = /^(\d+)([AB])?$/;
 
 export function isCallsignToken(token: string): boolean {
-  return FULL_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token);
+  return FULL_CALLSIGN.test(token) || GA_CALLSIGN.test(token) || SUFFIX_CALLSIGN.test(token);
 }
 
 export function isTurnDirLetter(token: string): token is "L" | "R" {

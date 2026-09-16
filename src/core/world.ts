@@ -186,6 +186,8 @@ export interface World {
       options?: { delayMs?: number; log?: SessionLog },
     ) => unknown;
   };
+  /** Optional pilot VFR request configuration (T04-76). */
+  vfrRequestConfig?: unknown;
   /** Optional cancellation scheduler hook (T04-74). */
   scheduleIfrCancellationCandidate?: (
     aircraft: Aircraft,

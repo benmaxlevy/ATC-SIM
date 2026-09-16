@@ -30,7 +30,7 @@ import {
   type CatalogFixEntry,
 } from "@parse";
 import type { RegionalFacility } from "../scenario/regional";
-import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
+import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
 import { validateInstructions } from "./validate";
@@ -42,11 +42,11 @@ export type ResolveResult =
   { ok: true; aircraftId: string; callsign: string } | { ok: false; reason: ResolveReason };
 
 export function numericTail(callsign: string): string {
-  return callsign.replace(/^[A-Z]{3}/, "");
+  return callsign.replace(/^(?:[A-Z]{3}|[A-Z])/, "");
 }
 
 function matchAircraft(token: string, aircraft: Aircraft[]): Aircraft[] {
-  if (FULL_CALLSIGN.test(token)) {
+  if (FULL_CALLSIGN.test(token) || GA_CALLSIGN.test(token)) {
     return aircraft.filter((ac) => ac.callsign === token);
   }
   if (SUFFIX_CALLSIGN.test(token)) {
