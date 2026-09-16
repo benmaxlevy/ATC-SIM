@@ -332,7 +332,9 @@ describe("T04-71 VFR population end-to-end integration", () => {
 
     const bravoVolumes = (katl.regional?.airspaces ?? []).filter((v) => v.class === "B");
     const spawnRadius = resolveVfrSpawnRadiusNm(katl);
-    expect(spawnRadius).toBe(60);
+    expect(spawnRadius).toBe(
+      Math.max(katl.maps.rangeRings?.maxNm ?? 0, katl.regional?.radiusNm ?? 0),
+    );
     for (const ac of vfrAircraft) {
       const dist = Math.hypot(ac.xNm - katl.arpNm.xNm, ac.yNm - katl.arpNm.yNm);
       expect(dist).toBeLessThanOrEqual(spawnRadius);
