@@ -1,6 +1,27 @@
 # Swarm status
 
-## SATELLITE VFR DEPARTURES SWARM COMPLETE — Satellite-Origin Entries and Line Corridors (T04-79–T04-80, 2026-09-16)
+## SATELLITE APPROACH & VISUAL AUTO-LAND SWARM COMPLETE — Arrival-Airport Approach Resolution, Satellite ILS, Visual Clearance & Autonomous VFR Auto-Land (T04-81–T04-83, 2026-09-16)
+
+Ran on `feature/sattelite-traffic` across three sequential waves:
+- T04-81 (Wave A): Resolved arrival-airport approach context against aircraft's intended arrival destination (via `destinationAirportId` or `destination`), allowing satellite airports with published approaches (e.g. KSAT1 / KPDK / KRYY) to be cleared for ILS approaches. Added `resolveRunwayGeometry` helper and verified cross-airport ILS isolation.
+- T04-82 (Wave B): Implemented visual approach clearance (`CLEARED_VISUAL`), Command IR instruction, typed parser shorthand (`CV <rwy>`, `CAPP VIS <rwy>`), spoken GBNF/phraseology, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance, MSAW inhibition on final within 3 NM, missed approach breakout, datablock scratchpad `V<rwy>`, and full browser/speech-api Path-C synchronization.
+- T04-83 (Wave C): Replaced terminal despawn vanish of airport-bound ambient VFR traffic with autonomous straight-in visual final descent and touchdown. Seeded destination runway deterministically at spawn on `AmbientVfrState`, transitioned onto `VISUAL_FINAL` at ~3–5 NM along extended centerline, emitted `vfr.tower.handoff` en route and `nav.landed` at threshold, despawned cleanly, preserved standard VFR datablock presentation without clearance tags, and confirmed airborne IFR pickups and departures never auto-land.
+
+Captain squash commits: `6cf17fe` (T04-81), `18ee1e4` (T04-82), `87dba7a` (T04-83). Planning commit: `f19fe14`.
+Backlog documentation: `a3bd19e` (FAA JO 7110.65 "contact tower" phraseology added to `phases/LATER-IMPLEMENTATION-BACKLOG.md`).
+
+Final `npm run ci`: **236 files, 2471 passed, 4 skipped**.
+Speech-api pytest: **94 passed** (Path-C `CLEARED_VISUAL` parity guard, GBNF grammar, semantic validator, live eval corpus).
+Manual gates: no STARS manual supplied; non-interfering with core display.
+No push. Worktrees cleaned up and local branches deleted.
+
+## SATELLITE APPROACH & VISUAL AUTO-LAND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: satellite approach & visual auto-land T04-81–T04-83
+Merge target: `feature/sattelite-traffic`
+Merged: T04-81, T04-82, T04-83
+Tests: final `npm run ci` green (2471 passed, 4 skipped); speech-api pytest green (94 passed)
+Notes: no push; arrival context generic; visual clearances synced with Path C; autonomous VFR auto-land complete
 
 Ran on `feature/sattelite-traffic` with one sequential session-default worker
 per ticket. T04-79 split the spawn paths: login-time initial population stays
