@@ -56,6 +56,7 @@ import {
   dropVfrListEntry,
   formatFlightPlanIndex,
   getFlightPlanEntries,
+  getVfrListEntries,
   isVfrAircraft,
   handleFlightPlanListClick,
   handleVideoMapsListClick,
@@ -124,11 +125,7 @@ function trackingFlidMatches(
       }
       return false;
     }
-    const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
-    const vfrFlights = world.aircraft.filter(
-      (ac) =>
-        isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
-    );
+    const vfrFlights = getVfrListEntries(world, view.vfrListDroppedCallsigns, view.tracks);
     const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
     if (vfrFlights[vfrIdx]) {
       const td = view.tracks?.get(aircraftId);
