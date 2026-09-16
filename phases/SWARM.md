@@ -5031,3 +5031,26 @@ requires `npm run ci` before the next wave.
 
 No push is authorized. Workers implement exactly one ticket, never merge or
 spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-76.
+
+## Satellite traffic swarm resumed — T04-76 completion (2026-09-16)
+
+Captain resumes `feature/sattelite-traffic` for T04-76 only. T04-69 through
+T04-75 remain merged as `0175275`, `df18fe0`, `1b61136`, `f7457a3`, `3ba6a45`,
+`51502d3`, `b758f7b`. Planning commit `9ab2ab8` unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Session controls, persistence, Help/docs, whole-feature acceptance. |
+| Include | T04-76 only. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit | 1 worker, sequential. |
+| Worker model | `muse-spark-1.3` free, medium reasoning (user override; replaces `gpt-5.6-luna` `xhigh` for this resume). |
+| Stop | T04-76 squash merge, `npm run ci`, speech mock pytest if speech changed, provenance review, recorded manual leftovers. |
+| Push | No push. |
+| Manual | KATL both runway configs recorded as leftovers if live run unavailable; cite FAA edition/paragraphs honestly. |
+
+Worker owns `ticket/T04-76-satellite-traffic-settings-and-acceptance` worktree only,
+progressive gated commits, never merges/spawns/pushes, returns exactly
+`READY TO MERGE` or `BLOCKED`. Captain owns merge lock, post-merge `npm run ci`,
+STATUS append, phase handoff. Untracked `.agents/rules/`, `.worktrees/`,
+`GEMINI.md`, `audit.diff` stay untouched.
