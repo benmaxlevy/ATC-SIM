@@ -1,8 +1,8 @@
 /**
  * analog: CRC STARS RANGE / CENTER (docs.virtualnas.net/crc/stars — R07).
- * Trainer delta: presets 5–60 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
+ * Trainer delta: presets 5–512 NM (CRC also has 6/8/12/16/24); PageUp/Down + wheel
  * call `stepRange` (no wrap). DCB RANGE is a spinner that arms on click and
- * steps those same 8 presets (no wrap). `cycleRange` remains for tests.
+ * steps those same 17 presets (no wrap). `cycleRange` remains for tests.
  * Right-drag (or middle-drag) slew is trainer sugar — not CRC.
  * No zoom-to-cursor (R12 browser-ATC anti-pattern). Not NAS STARS.
  *
@@ -11,7 +11,9 @@
  * show extra NM. Changing range does not move the view center.
  */
 
-export const RANGE_PRESETS_NM = [5, 10, 15, 20, 30, 40, 50, 60] as const;
+export const RANGE_PRESETS_NM = [
+  5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 512,
+] as const;
 export type RangeNm = (typeof RANGE_PRESETS_NM)[number];
 
 export const DEFAULT_RANGE_NM: RangeNm = 20;
@@ -105,7 +107,7 @@ function presetIndex(rangeNm: RangeNm): number {
 
 /**
  * Step one discrete range preset. `−1` = smaller NM (PageUp / RNG −);
- * `+1` = larger NM (PageDown / RNG +). No wrap at 5 or 60. Does not change center.
+ * `+1` = larger NM (PageDown / RNG +). No wrap at 5 or 512. Does not change center.
  */
 export function stepRange(cam: ScopeCamera, delta: number): void {
   const i = presetIndex(cam.rangeNm);
@@ -123,13 +125,13 @@ export function applyRangeIn(cam: ScopeCamera): void {
   stepRange(cam, -1);
 }
 
-/** Larger NM (PageDown / wheel down / RNG +). No wrap at 60. Does not change center. */
+/** Larger NM (PageDown / wheel down / RNG +). No wrap at 512. Does not change center. */
 export function applyRangeOut(cam: ScopeCamera): void {
   stepRange(cam, 1);
 }
 
 /**
- * DCB RANGE click: next larger preset, wrapping 60→5. Same 8 presets as
+ * DCB RANGE click: next larger preset, wrapping 512→5. Same 17 presets as
  * PageUp/Down. Does not change center. Not zoom-to-cursor.
  */
 export function cycleRange(cam: ScopeCamera): void {

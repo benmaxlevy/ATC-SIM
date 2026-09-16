@@ -4,7 +4,7 @@
  * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — Help is `?` / the Help button,
- * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
+ * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–512 (no CRC 6/8/12/16/24), `/` when
  * scope-focused buffers into the Preview Area (not leader length; Tab cycles
  * radio ↔ PPI). 1.5 s L/F
  * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu

@@ -298,7 +298,9 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(mainText).toMatch(/BRITE/);
   expect(mainText).toMatch(/SSA/);
   expect(mainText).toMatch(/GI/);
-  expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
+  expect(RANGE_PRESETS_NM).toEqual([
+    5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 512,
+  ]);
   expect(DCB_QUICK_MAP_COUNT).toBe(6);
   for (let slot = 1; slot <= DCB_QUICK_MAP_COUNT; slot += 1) {
     expect(main).toMatch(new RegExp(`data-dcb-map-slot="${slot}"`));

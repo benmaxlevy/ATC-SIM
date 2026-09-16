@@ -2,7 +2,7 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE is a spinner
- * that steps the same 8 presets. Esc closes a DCB submenu / disarms a spinner
+ * that steps the same 17 presets (5–512 NM). Esc closes a DCB submenu / disarms a spinner
  * (`preventDefault` so it does not type into the command line). Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).

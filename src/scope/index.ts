@@ -115,12 +115,13 @@ export {
   activeRingRadiiNm,
   buildLocalizerFeather,
   buildMapCache,
+  computeClippedRingRadiiNm,
   getMapCacheBuildCount,
   parseDigitalMap,
   resetMapCacheBuildCount,
   reuseOrBuildMapCache,
 } from "./mapLayers";
-export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
+export type { DigitalMap, MapCache, MapLayerFlags, NmPoint, RangeRingClipInput } from "./mapLayers";
 export {
   COMPASS_ROSE_TICK_INTERVAL_DEG,
   COMPASS_ROSE_MINOR_TICK_PX,

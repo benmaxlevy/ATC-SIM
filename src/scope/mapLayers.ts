@@ -231,6 +231,50 @@ export function activeRingRadiiNm(
   return radii;
 }
 
+export interface RangeRingClipInput {
+  camera: ScopeCamera;
+  viewSize: ScopeViewSize;
+  ringOriginNm: NmPoint;
+  intervalNm: number;
+}
+
+/**
+ * Computes radii for range rings: concentric circles expand infinitely until crossing
+ * the nearest viewport edge. The circle that crosses the edge is drawn (clipped by
+ * the canvas boundary), and generation stops after that ring.
+ */
+export function computeClippedRingRadiiNm(input: RangeRingClipInput): number[] {
+  const { camera, viewSize, ringOriginNm, intervalNm } = input;
+  if (!(intervalNm > 0)) {
+    return [];
+  }
+  const scale = pxPerNm(camera, viewSize);
+  if (scale <= 0) {
+    return [];
+  }
+  const originScreen = nmToScreen(ringOriginNm.eastNm, ringOriginNm.northNm, camera, viewSize);
+  const W = viewSize.widthPx;
+  const H = viewSize.heightPx;
+
+  let dNearestPx: number;
+  if (originScreen.x >= 0 && originScreen.x <= W && originScreen.y >= 0 && originScreen.y <= H) {
+    dNearestPx = Math.min(originScreen.x, W - originScreen.x, originScreen.y, H - originScreen.y);
+  } else {
+    const dx = Math.max(0, -originScreen.x, originScreen.x - W);
+    const dy = Math.max(0, -originScreen.y, originScreen.y - H);
+    dNearestPx = Math.hypot(dx, dy);
+  }
+
+  const dNearestNm = dNearestPx / scale;
+  const maxRadiusNm = (Math.floor((dNearestNm + 1e-6) / intervalNm) + 1) * intervalNm;
+
+  const radii: number[] = [];
+  for (let r = intervalNm; r <= maxRadiusNm + 1e-9; r += intervalNm) {
+    radii.push(r);
+  }
+  return radii;
+}
+
 export function buildRunwayCorners(runway: DigitalMapRunway): [NmPoint, NmPoint, NmPoint, NmPoint] {
   const half = runway.widthNm / 2;
   const alongFar = headingOffsetNm(
@@ -630,13 +674,16 @@ export function buildMapCache(
 ): MapCache {
   mapCacheBuildCount += 1;
   const { digitalMap, camera, viewSize, layers, airportEastNm, airportNorthNm } = input;
-  const rings = {
-    intervalNm: input.ringIntervalNm,
-    maxNm: digitalMap.rangeRings.maxNm,
-  };
-  const ringRadiiNm = layers.showRings ? activeRingRadiiNm(rings) : [];
   const ringEastNm = input.rangeRingEastNm ?? airportEastNm;
   const ringNorthNm = input.rangeRingNorthNm ?? airportNorthNm;
+  const ringRadiiNm = layers.showRings
+    ? computeClippedRingRadiiNm({
+        camera,
+        viewSize,
+        ringOriginNm: { eastNm: ringEastNm, northNm: ringNorthNm },
+        intervalNm: input.ringIntervalNm,
+      })
+    : [];
   const ringOriginScreen = nmToScreen(ringEastNm, ringNorthNm, camera, viewSize);
   const scale = pxPerNm(camera, viewSize);
   const ringCircles = ringRadiiNm.map((radiusNm) => ({

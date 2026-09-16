@@ -78,7 +78,7 @@ test("AC2 — localizer feather vertices are 10 NM along 090° ± 2.5°", () => 
   expect(right.eastNm).toBeGreaterThan(9);
 });
 
-test("AC3 — range rings draw out to maxNm regardless of zoom level", () => {
+test("AC3 — range rings expand dynamically until crossing viewport edge, stopping after clipped ring", () => {
   expect(activeRingRadiiNm(60)).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
   expect(activeRingRadiiNm({ intervalNm: 5, maxNm: 60 })).toEqual([
     5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
@@ -87,11 +87,16 @@ test("AC3 — range rings draw out to maxNm regardless of zoom level", () => {
   expect(activeRingRadiiNm({ intervalNm: 5, maxNm: 20 })).toEqual([5, 10, 15, 20]);
 
   const at20 = buildMapCache(kdemInput());
-  expect(at20.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  expect(at20.ringRadiiNm).toEqual([5, 10, 15, 20, 25]);
   const at5 = buildMapCache(
     kdemInput({ camera: { ...DEFAULT_SCOPE_CAMERA, rangeNm: 5 } satisfies ScopeCamera }),
   );
-  expect(at5.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  expect(at5.ringRadiiNm).toEqual([5, 10]);
+  const at512 = buildMapCache(
+    kdemInput({ camera: { ...DEFAULT_SCOPE_CAMERA, rangeNm: 512 } satisfies ScopeCamera }),
+  );
+  expect(at512.ringRadiiNm.length).toBe(Math.floor(512 / 5) + 1);
+  expect(at512.ringRadiiNm[at512.ringRadiiNm.length - 1]).toBe(515);
 });
 
 test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points keeps it", () => {
@@ -277,7 +282,7 @@ test("AC7 — buildMapCache is not invoked from stepWorld; rebuilds on camera ch
   view.camera.rangeNm = 10;
   cache = reuseOrBuildMapCache(cache, toMapCacheInput(view, VIEW));
   expect(cache).not.toBe(first);
-  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  expect(cache.ringRadiiNm).toEqual([5, 10, 15]);
 });
 
 test("panned view without PLACE RR keeps rings at airport ref", () => {
@@ -289,7 +294,7 @@ test("panned view without PLACE RR keeps rings at airport ref", () => {
   const airport = panned.ringCircles[0];
   expect(airport).toBeDefined();
   expect(airport!.x).not.toBeCloseTo(400, 0);
-  expect(panned.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  expect(panned.ringRadiiNm).toEqual([5, 10, 15]);
   for (const circle of panned.ringCircles) {
     expect(circle.x).toBeCloseTo(airport!.x, 6);
     expect(circle.y).toBeCloseTo(airport!.y, 6);
@@ -299,7 +304,7 @@ test("panned view without PLACE RR keeps rings at airport ref", () => {
 test("AC4 — range rings draw about PLACE RR origin, not only airport ref", () => {
   const origin = { rangeRingEastNm: 5, rangeRingNorthNm: -3 };
   const cache = buildMapCache(kdemInput(origin));
-  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20]);
   const expected = nmToScreen(5, -3, DEFAULT_SCOPE_CAMERA, VIEW);
   expect(cache.ringCircles.length).toBeGreaterThan(0);
   for (const circle of cache.ringCircles) {
