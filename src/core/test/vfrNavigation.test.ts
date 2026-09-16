@@ -6,6 +6,7 @@ import {
   checkSweptSegmentVolumeCollision,
   CLASS_B_HORIZONTAL_MARGIN_NM,
   CLASS_B_VERTICAL_MARGIN_FT,
+  distPointToSegment,
   extractVolumePolygonNm,
   isDegenerateAvoidanceVolume,
   isPointInside3dVolume,
@@ -13,6 +14,7 @@ import {
   isRouteSafeFromAvoidance,
   planSafeVfrRoute,
   samplePointInBox,
+  SATELLITE_DEPARTURE_WOBBLE_MAX_NM,
   stepVfrAircraftNavigation,
   VFR_TRAINING_HALF_EXTENT_NM,
   type Point3D,
@@ -653,7 +655,7 @@ describe("T04-79 Satellite-departure minimal leg", () => {
     ).toBeNull();
   });
 
-  test("Prefed liftoff yields a runway-aligned minimal leg near the origin ARP", () => {
+  test("Prefed liftoff yields a runway-aligned corridor climb near the origin ARP", () => {
     let routeDraws = 0;
     const rng = () => {
       routeDraws++;
@@ -678,14 +680,20 @@ describe("T04-79 Satellite-departure minimal leg", () => {
       ),
     ).toBeLessThanOrEqual(2);
     expect(route!.spawnPose.headingDeg).toBe(90);
-    expect(route!.waypoints).toHaveLength(1);
-    expect(route!.waypoints[0]!.altitudeFt).toBe(4000);
-    const legLen = Math.hypot(
-      route!.waypoints[0]!.xNm - route!.spawnPose.xNm,
-      route!.waypoints[0]!.yNm - route!.spawnPose.yNm,
-    );
+    // Corridor: runway-heading climb + 1-2 wobble intermediates + exit.
+    expect(route!.waypoints.length).toBeGreaterThanOrEqual(3);
+    expect(route!.waypoints.length).toBeLessThanOrEqual(4);
+    // First waypoint climbs on runway heading 090 (due east, constant y).
+    const climb = route!.waypoints[0]!;
+    expect(climb.altitudeFt).toBe(4000);
+    expect(Math.abs(climb.yNm - route!.spawnPose.yNm)).toBeLessThan(1e-6);
+    const legLen = Math.hypot(climb.xNm - route!.spawnPose.xNm, climb.yNm - route!.spawnPose.yNm);
     expect(legLen).toBeGreaterThanOrEqual(5);
     expect(legLen).toBeLessThanOrEqual(8);
+    // Exit waypoint at exitRadiusNm + 2 (default 28 + 2 = 30) radially outward.
+    const exit = route!.waypoints[route!.waypoints.length - 1]!;
+    expect(Math.hypot(exit.xNm, exit.yNm)).toBeCloseTo(30, 6);
+    expect(exit.altitudeFt).toBe(4000);
     // Corridor geometry consumes the route stream.
     expect(routeDraws).toBeGreaterThan(0);
   });
@@ -693,5 +701,323 @@ describe("T04-79 Satellite-departure minimal leg", () => {
   test("Bravo avoidance margins are unchanged", () => {
     expect(CLASS_B_HORIZONTAL_MARGIN_NM).toBe(1.0);
     expect(CLASS_B_VERTICAL_MARGIN_FT).toBe(500);
+  });
+});
+
+describe("T04-80 Satellite-departure line corridor", () => {
+  const ORIGIN: RegionalAirport = {
+    icao: "KXSB",
+    name: "SYNTHETIC SATELLITE B",
+    arp: { latDeg: 34.0, lonDeg: -85.0 },
+    arpNm: { xNm: 0, yNm: 9 },
+    fieldElevFt: 800,
+    magVarDeg: 0,
+    publicUse: true,
+    towered: true,
+    eligible: true,
+    runways: [
+      {
+        id: "36",
+        threshold: { latDeg: 34.0, lonDeg: -85.0 },
+        thresholdNm: { xNm: 0, yNm: 9 },
+        headingTrueDeg: 0,
+        headingMagDeg: 0,
+        lengthFt: 6000,
+      },
+    ],
+    hasPublishedApproaches: true,
+  };
+
+  const CORRIDOR_BOX: VfrTrainingBox = { centerNm: { xNm: 0, yNm: 0 }, halfExtentNm: 30 };
+
+  function boxShelf(
+    id: string,
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    floorFt: number,
+    ceilingFt: number,
+  ): RegionalAirspaceVolume {
+    return {
+      id,
+      name: "SYNTHETIC DEPARTURE SHELF",
+      type: "CONTROLLED",
+      class: "B",
+      centerAirportId: "KSYN",
+      lowerLimit: { altitudeFt: floorFt, unit: "MSL", reference: "MSL" },
+      upperLimit: { altitudeFt: ceilingFt, unit: "MSL", reference: "MSL" },
+      lowerLimitFt: floorFt,
+      upperLimitFt: ceilingFt,
+      segments: [
+        {
+          sequence: 1,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position: { latDeg: 0, lonDeg: 0 },
+          positionNm: { xNm: x0, yNm: y0 },
+        },
+        {
+          sequence: 2,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position: { latDeg: 0, lonDeg: 0 },
+          positionNm: { xNm: x1, yNm: y0 },
+        },
+        {
+          sequence: 3,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position: { latDeg: 0, lonDeg: 0 },
+          positionNm: { xNm: x1, yNm: y1 },
+        },
+        {
+          sequence: 4,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position: { latDeg: 0, lonDeg: 0 },
+          positionNm: { xNm: x0, yNm: y1 },
+        },
+      ],
+    };
+  }
+
+  /** Deterministic LCG stream in [0, 1). */
+  function seededRng(seed: number): () => number {
+    let s = seed >>> 0;
+    return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  function planDeparture(
+    rng: () => number,
+    avoidanceVolumes: readonly RegionalAirspaceVolume[] = [],
+  ) {
+    return planSafeVfrRoute({
+      mission: "SATELLITE_DEPARTURE",
+      box: CORRIDOR_BOX,
+      altitudeFt: 5000,
+      speedKt: 110,
+      originAirport: ORIGIN,
+      liftoffPose: { xNm: 0, yNm: 10, altitudeFt: 5000, headingDeg: 0, speedKt: 110 },
+      magVarDeg: 0,
+      avoidanceVolumes,
+      rng,
+    });
+  }
+
+  test("wobble stays within 3 NM, exit targets exitRadiusNm + 2, replay is deterministic", () => {
+    expect(SATELLITE_DEPARTURE_WOBBLE_MAX_NM).toBe(3);
+    for (let seed = 1; seed <= 40; seed++) {
+      const route = planDeparture(seededRng(seed));
+      expect(route).not.toBeNull();
+      const liftoff = { xNm: route!.spawnPose.xNm, yNm: route!.spawnPose.yNm };
+      const exit = route!.waypoints[route!.waypoints.length - 1]!;
+      // Exit at 28 + 2 NM radially outward through the liftoff pose (due north here).
+      expect(Math.hypot(exit.xNm, exit.yNm)).toBeCloseTo(30, 6);
+      expect(exit.xNm).toBeCloseTo(0, 6);
+      expect(exit.yNm).toBeCloseTo(30, 6);
+      // Climb waypoint holds cruise; intermediates deviate at most 3 NM.
+      expect(route!.waypoints[0]!.altitudeFt).toBe(5000);
+      for (const mid of route!.waypoints.slice(1, -1)) {
+        expect(mid.altitudeFt).toBe(5000);
+        expect(distPointToSegment(mid, liftoff, exit)).toBeLessThanOrEqual(3 + 1e-9);
+      }
+      // Deterministic replay with the same seed.
+      const replay = planDeparture(seededRng(seed));
+      expect(replay).toEqual(route);
+    }
+  });
+
+  test("shelf on the direct course escalates across attempts or fails closed, never penetrates", () => {
+    // Narrow shelf astride the direct x=0 course: near-direct attempts
+    // penetrate, later attempts dogleg within the 3 NM cap.
+    const shelf = boxShelf("UC:KSYN:B_NARROW", -0.5, 0.5, 22, 24, 3000, 8000);
+    const scripted = [
+      0.5, 0.0, 0.9, 0.05, 0.0, 0.0, 0.9, 0.99, 0.0, 0.0, 0.9, 0.99, 0.0, 0.0, 0.9, 0.99, 0.0, 0.0,
+      0.9, 0.99,
+    ];
+    let cursor = 0;
+    const rng = () => scripted[cursor++] ?? 0.99;
+    // Attempt 0 alone is near-direct and must fail closed.
+    cursor = 0;
+    expect(
+      planSafeVfrRoute({
+        mission: "SATELLITE_DEPARTURE",
+        box: CORRIDOR_BOX,
+        altitudeFt: 5000,
+        speedKt: 110,
+        originAirport: ORIGIN,
+        liftoffPose: { xNm: 0, yNm: 10, altitudeFt: 5000, headingDeg: 0, speedKt: 110 },
+        magVarDeg: 0,
+        avoidanceVolumes: [shelf],
+        rng,
+        maxAttempts: 1,
+      }),
+    ).toBeNull();
+    // With escalation the planner clears the shelf inside the wobble cap.
+    cursor = 0;
+    const route = planSafeVfrRoute({
+      mission: "SATELLITE_DEPARTURE",
+      box: CORRIDOR_BOX,
+      altitudeFt: 5000,
+      speedKt: 110,
+      originAirport: ORIGIN,
+      liftoffPose: { xNm: 0, yNm: 10, altitudeFt: 5000, headingDeg: 0, speedKt: 110 },
+      magVarDeg: 0,
+      avoidanceVolumes: [shelf],
+      rng,
+    });
+    expect(route).not.toBeNull();
+    const liftoff = {
+      xNm: route!.spawnPose.xNm,
+      yNm: route!.spawnPose.yNm,
+      altitudeFt: route!.spawnPose.altitudeFt,
+    };
+    const full = [liftoff, ...route!.waypoints].map((p) => ({
+      xNm: p.xNm,
+      yNm: p.yNm,
+      altitudeFt: p.altitudeFt ?? 5000,
+    }));
+    expect(isRouteSafeFromAvoidance(full, [shelf])).toBe(true);
+    const exit = route!.waypoints[route!.waypoints.length - 1]!;
+    for (const mid of route!.waypoints.slice(1, -1)) {
+      expect(distPointToSegment(mid, liftoff, exit)).toBeLessThanOrEqual(3 + 1e-9);
+    }
+  });
+
+  test("parameterized shelves never admit penetration; full blockage fails closed", () => {
+    const shelves: RegionalAirspaceVolume[] = [
+      boxShelf("UC:KSYN:B_EAST", 4, 8, 10, 24, 3000, 8000),
+      boxShelf("UC:KSYN:B_WEST", -8, -4, 10, 24, 3000, 8000),
+      boxShelf("UC:KSYN:B_HIGH", -6, 6, 8, 28, 6000, 9000),
+      boxShelf("UC:KSYN:B_WIDE", -8, 8, 8, 28, 3000, 8000),
+    ];
+    for (const shelf of shelves) {
+      for (let seed = 1; seed <= 8; seed++) {
+        const route = planDeparture(seededRng(seed * 7919), [shelf]);
+        if (route === null) continue;
+        const liftoff = {
+          xNm: route.spawnPose.xNm,
+          yNm: route.spawnPose.yNm,
+          altitudeFt: route.spawnPose.altitudeFt,
+        };
+        const full = [liftoff, ...route.waypoints].map((p) => ({
+          xNm: p.xNm,
+          yNm: p.yNm,
+          altitudeFt: p.altitudeFt ?? 5000,
+        }));
+        expect(isRouteSafeFromAvoidance(full, [shelf])).toBe(true);
+        const exit = route.waypoints[route.waypoints.length - 1]!;
+        for (const mid of route.waypoints.slice(1, -1)) {
+          expect(distPointToSegment(mid, liftoff, exit)).toBeLessThanOrEqual(3 + 1e-9);
+        }
+      }
+    }
+    // Shelf swallowing the whole corridor plus wobble range fails closed.
+    const blanket = boxShelf("UC:KSYN:B_BLANKET", -8, 8, 4, 34, 2000, 9000);
+    expect(planDeparture(seededRng(3), [blanket])).toBeNull();
+  });
+
+  test("per-tick guard deflects unplanned departure legs into Bravo", () => {
+    const ac = makeTestAircraft({
+      callsign: "NDEPG",
+      xNm: -8,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "SATELLITE_DEPARTURE",
+        zoneId: "test",
+        originAirportId: "KXSB",
+        departureRunwayId: "36",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 10, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 2.0 }],
+        waypointIndex: 0,
+      },
+    });
+    stepVfrAircraftNavigation(ac, 0, 0, null, [SYNTHETIC_CLASS_B_VOLUME]);
+    expect(ac.intent.assignedHeadingDeg).not.toBe(90);
+  });
+
+  test("boundary exit logs vfr.exit BOUNDARY_EXIT with removal and no tower handoff", () => {
+    const events: Array<Record<string, unknown>> = [];
+    const log = { append: (e: Record<string, unknown>) => events.push(e) } as never;
+    const ac = makeTestAircraft({
+      callsign: "NDEPX",
+      xNm: 0,
+      yNm: 29,
+      headingDeg: 0,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "SATELLITE_DEPARTURE",
+        zoneId: "test",
+        originAirportId: "KXSB",
+        departureRunwayId: "36",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [
+          { xNm: 0, yNm: 16, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 2.0 },
+          { xNm: 0, yNm: 30, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 2.0 },
+        ],
+        waypointIndex: 1,
+      },
+    });
+    const res = stepVfrAircraftNavigation(ac, 5000, 0, log);
+    expect(res.exited).toBe(true);
+    expect(res.handoff).toBe(false);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "vfr.exit",
+      callsign: "NDEPX",
+      mission: "SATELLITE_DEPARTURE",
+      reason: "BOUNDARY_EXIT",
+    });
+    expect(events.some((e) => e.type === "vfr.tower.handoff")).toBe(false);
+  });
+
+  test("departure short of the boundary or still on liftoff sequencing does not exit", () => {
+    const events: Array<Record<string, unknown>> = [];
+    const log = { append: (e: Record<string, unknown>) => events.push(e) } as never;
+    const ac = makeTestAircraft({
+      callsign: "NDEPS",
+      xNm: 0,
+      yNm: 20,
+      headingDeg: 0,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "SATELLITE_DEPARTURE",
+        zoneId: "test",
+        originAirportId: "KXSB",
+        departureRunwayId: "36",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [
+          { xNm: 0, yNm: 16, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 2.0 },
+          { xNm: 0, yNm: 30, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 2.0 },
+        ],
+        waypointIndex: 1,
+      },
+    });
+    // Inside the boundary: still flying, no exit event.
+    expect(stepVfrAircraftNavigation(ac, 5000, 0, log).exited).toBe(false);
+    // Beyond the boundary but still sequencing liftoff (index 0): no exit yet.
+    ac.xNm = 0;
+    ac.yNm = 29;
+    ac.ambientVfr!.waypointIndex = 0;
+    expect(stepVfrAircraftNavigation(ac, 6000, 0, log).exited).toBe(false);
+    expect(events).toHaveLength(0);
   });
 });

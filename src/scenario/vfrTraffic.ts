@@ -782,7 +782,8 @@ export class VfrTrafficManager {
     const liftoffFloorFt = originAirport.fieldElevFt + 500;
 
     // 4. Bounded liftoff attempts: pose within 2 NM of the departure ARP and
-    //    outside avoidance volumes, then a minimal safe leg from the route stream.
+    //    outside avoidance volumes, then a departure-line corridor (T04-80)
+    //    from the route stream with full swept Bravo validation.
     for (let attempt = 0; attempt < MAX_PLANNER_ATTEMPTS; attempt++) {
       const radiusNm = SATELLITE_LIFTOFF_RADIUS_NM * Math.sqrt(this.rngPlacement());
       const theta = this.rngPlacement() * 2 * Math.PI;
@@ -818,7 +819,6 @@ export class VfrTrafficManager {
         avoidanceVolumes: this.avoidanceVolumes,
         rng: this.rngRoute,
         exitRadiusNm: this.exitRadiusNm,
-        maxAttempts: 1,
       });
       if (!plannedRoute) {
         continue;

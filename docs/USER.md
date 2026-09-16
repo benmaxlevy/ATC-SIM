@@ -401,6 +401,12 @@ PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
 7. Airport-bound arrivals complete at their satellite destination with a
    simulated tower transfer; the aircraft is removed only after completion or
    a valid exit.
+8. Satellite departures lift off near a satellite airport and fly a
+   near-straight line with slight seeded wobble (at most 3 NM off the direct
+   course) to a boundary exit. The login-time population is disc-spawned
+   airborne traffic; every post-login entry is a satellite departure. There
+   is no tower or ground simulation: no takeoff clearance, no departure
+   handoff, and no satellite landing.
 
 Service versus flight rules: flight following is a radar advisory *service*
 on a VFR aircraft, not an IFR clearance. Pickup changes operational flight

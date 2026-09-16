@@ -14,19 +14,28 @@ import {
   evaluateConflictAlert,
   evaluateMsaw,
   isPointInside3dVolume,
+  isRouteSafeFromAvoidance,
   makeTestAircraft,
+  planSafeVfrRoute,
+  SessionLog,
 } from "@core";
 import {
   assertScenario,
   createWorldFromScenario,
+  getDepartureVfrAirports,
   getEligibleVfrDestinations,
+  hasRegionalPack,
   loadKdem,
+  loadRegionalPack,
   parseRegionalPack,
+  resolveVfrExitRadiusNm,
   resolveVfrSpawnRadiusNm,
   type RegionalFacility,
   type Scenario,
 } from "@scenario";
 import katlJson from "../../src/scenario/katl.json";
+import { createVfrRequestQueue } from "../../src/pilot/vfrRequestQueue";
+import { handleRadioText } from "../../src/pilot/handleRadioText";
 
 // Synthetic regional facility with center KSYN, satellite KSAT, and Class B volume
 const SYNTHETIC_REGIONAL_MANIFEST = {
@@ -438,5 +447,298 @@ describe("T04-71 VFR population end-to-end integration", () => {
     expect(entry.flightRules).toBe("VFR");
     expect(entry.squawk).toBe("1200");
     expect(entry.speedKt).toBe(110);
+  });
+});
+
+describe("T04-80 Satellite-departure line acceptance", () => {
+  const base = loadKdem().arp;
+  const center = { latDeg: base.latDeg, lonDeg: base.lonDeg };
+  const sat = { latDeg: base.latDeg + 0.18, lonDeg: base.lonDeg };
+
+  const square = (
+    id: string,
+    airportId: string,
+    at: { latDeg: number; lonDeg: number },
+    halfNm: number,
+  ) => {
+    const dLat = halfNm / 60;
+    const dLon = halfNm / (60 * Math.cos((at.latDeg * Math.PI) / 180));
+    const corners = [
+      { latDeg: at.latDeg + dLat, lonDeg: at.lonDeg - dLon },
+      { latDeg: at.latDeg + dLat, lonDeg: at.lonDeg + dLon },
+      { latDeg: at.latDeg - dLat, lonDeg: at.lonDeg + dLon },
+      { latDeg: at.latDeg - dLat, lonDeg: at.lonDeg - dLon },
+    ];
+    return {
+      id,
+      name: `SYNTHETIC ${airportId} CLASS D`,
+      type: "CONTROLLED",
+      class: "D",
+      centerAirportId: airportId,
+      lowerLimit: { altitudeFt: 0, unit: "GND", reference: "SURFACE", rawAltitude: "SFC" },
+      upperLimit: { altitudeFt: 2500, unit: "MSL", reference: "MSL" },
+      segments: corners.map((position, i) => ({
+        sequence: i + 1,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position,
+      })),
+    };
+  };
+
+  const airport = (
+    icao: string,
+    at: { latDeg: number; lonDeg: number },
+    fieldElevFt: number,
+    headingTrueDeg: number,
+    runwayId: string,
+  ) => ({
+    icao,
+    name: `SYNTHETIC ${icao}`,
+    arp: at,
+    fieldElevFt,
+    magVarDeg: 0,
+    publicUse: true,
+    towered: true,
+    eligible: true,
+    runways: [
+      {
+        id: runwayId,
+        threshold: at,
+        headingTrueDeg,
+        headingMagDeg: headingTrueDeg,
+        lengthFt: 6000,
+      },
+    ],
+    hasPublishedApproaches: true,
+  });
+
+  function buildDepartureRegional(): RegionalFacility {
+    return parseRegionalPack(
+      {
+        schemaVersion: 1,
+        centerAirportId: "KXCT",
+        radiusNm: 40,
+        source: { families: ["CIFP"] },
+        files: { airports: "regional-airports.json", airspace: "regional-airspace.json" },
+      },
+      [airport("KXCT", center, 1000, 270, "27"), airport("KXSD", sat, 900, 90, "09")],
+      [square("UC:KXCT:D_CTR", "KXCT", center, 2), square("UC:KXSD:D_SAT", "KXSD", sat, 2)],
+      center,
+    );
+  }
+
+  function departureScenario(
+    regional: RegionalFacility,
+    vfrTraffic: Record<string, unknown>,
+  ): Scenario {
+    return assertScenario(
+      {
+        ...loadKdem(),
+        vfrTraffic: {
+          initialCount: 0,
+          targetCount: 1,
+          entriesPerHour: 0,
+          maxPopulation: 2,
+          seed: 31,
+          ...vfrTraffic,
+        },
+      },
+      { regional },
+    );
+  }
+
+  /** Perpendicular distance from p to the liftoff-to-exit segment. */
+  function deviationNm(
+    p: { xNm: number; yNm: number },
+    a: { xNm: number; yNm: number },
+    b: { xNm: number; yNm: number },
+  ): number {
+    const dx = b.xNm - a.xNm;
+    const dy = b.yNm - a.yNm;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(p.xNm - a.xNm, p.yNm - a.yNm);
+    const t = Math.max(0, Math.min(1, ((p.xNm - a.xNm) * dx + (p.yNm - a.yNm) * dy) / lenSq));
+    return Math.hypot(p.xNm - (a.xNm + t * dx), p.yNm - (a.yNm + t * dy));
+  }
+
+  test("departure flies a line corridor and exits at the boundary with removal", () => {
+    const regional = buildDepartureRegional();
+    const scenario = departureScenario(regional, { seed: 31 });
+    const world = createWorldFromScenario(scenario, 31);
+    const manager = world.vfrTrafficManager!;
+    const exitRadiusNm = resolveVfrExitRadiusNm(scenario);
+
+    manager.step(world, 1.0);
+    const vfr = world.aircraft.filter((a) => a.ambientVfr !== undefined);
+    expect(vfr).toHaveLength(1);
+    const entry = vfr[0]!;
+    expect(entry.ambientVfr?.mission).toBe("SATELLITE_DEPARTURE");
+    const origin = regional.getAirport(entry.ambientVfr!.originAirportId!)!;
+    expect(origin.icao).toBe("KXSD");
+
+    // Line shape: runway-heading climb, bounded intermediates, radial exit.
+    const wps = entry.ambientVfr!.waypoints!;
+    expect(wps.length).toBeGreaterThanOrEqual(3);
+    expect(wps.length).toBeLessThanOrEqual(4);
+    const runwayTrue = origin.runways[0]!.headingTrueDeg;
+    const climbCourse =
+      (Math.atan2(wps[0]!.xNm - entry.xNm, wps[0]!.yNm - entry.yNm) * 180) / Math.PI;
+    const norm = (d: number) => ((d % 360) + 360) % 360;
+    expect(Math.abs(norm(climbCourse) - norm(runwayTrue))).toBeLessThan(0.5);
+    const liftoff = { xNm: entry.xNm, yNm: entry.yNm };
+    const exit = wps[wps.length - 1]!;
+    const centerNm = scenario.arpNm;
+    expect(Math.hypot(exit.xNm - centerNm.xNm, exit.yNm - centerNm.yNm)).toBeCloseTo(
+      exitRadiusNm + 2,
+      6,
+    );
+    for (const mid of wps.slice(1, -1)) {
+      expect(deviationNm(mid, liftoff, exit)).toBeLessThanOrEqual(3 + 1e-9);
+    }
+    const cruise = wps[wps.length - 1]!.altitudeFt!;
+    expect(entry.altitudeFt).toBeLessThanOrEqual(cruise);
+
+    // Fly the line to the boundary: removal with BOUNDARY_EXIT, no handoff.
+    // Target replenishment may refill the slot in the same step, so track
+    // the original callsign rather than the total count.
+    entry.ambientVfr!.waypointIndex = 1;
+    entry.xNm = exit.xNm;
+    entry.yNm = exit.yNm;
+    const log = world.sessionLog!;
+    const exitedCallsign = entry.callsign;
+    manager.step(world, 1.0);
+    expect(world.aircraft.some((a) => a.callsign === exitedCallsign)).toBe(false);
+    const exits = log.byType("vfr.exit").filter((e) => e.callsign === exitedCallsign);
+    expect(exits).toHaveLength(1);
+    expect(exits[0]).toMatchObject({ mission: "SATELLITE_DEPARTURE", reason: "BOUNDARY_EXIT" });
+    expect(log.byType("vfr.tower.handoff")).toHaveLength(0);
+  });
+
+  test("long session with exits and entries stays bounded with paced refill", () => {
+    const regional = buildDepartureRegional();
+    const scenario = departureScenario(regional, {
+      seed: 33,
+      targetCount: 0,
+      entriesPerHour: 360,
+      maxPopulation: 3,
+    });
+    const world = createWorldFromScenario(scenario, 33);
+    const manager = world.vfrTrafficManager!;
+    let maxLive = 0;
+    let maxStepDelta = 0;
+    // One simulated hour at 5 s steps; force a boundary exit every 10 minutes.
+    for (let s = 0; s < 720; s++) {
+      world.simTimeMs += 5000;
+      const before = world.aircraft.filter((a) => a.ambientVfr !== undefined).length;
+      if (s > 0 && s % 120 === 0) {
+        const oldest = world.aircraft.find((a) => a.ambientVfr !== undefined);
+        if (oldest?.ambientVfr?.waypoints?.length) {
+          const exit = oldest.ambientVfr.waypoints[oldest.ambientVfr.waypoints.length - 1]!;
+          oldest.ambientVfr.waypointIndex = 1;
+          oldest.xNm = exit.xNm;
+          oldest.yNm = exit.yNm;
+        }
+      }
+      manager.step(world, 1.0);
+      const live = world.aircraft.filter((a) => a.ambientVfr !== undefined).length;
+      maxLive = Math.max(maxLive, live);
+      maxStepDelta = Math.max(maxStepDelta, live - before);
+      expect(live).toBeLessThanOrEqual(3);
+      for (const ac of world.aircraft) {
+        if (ac.ambientVfr) {
+          expect(ac.flightRules).toBe("VFR");
+          expect(ac.squawk).toBe("1200");
+        }
+      }
+    }
+    // Cap-full defers without catch-up burst: at most one entry per step.
+    expect(maxLive).toBeLessThanOrEqual(3);
+    expect(maxStepDelta).toBeLessThanOrEqual(1);
+    expect(world.aircraft.filter((a) => a.ambientVfr !== undefined).length).toBeGreaterThan(0);
+  });
+
+  test("departure stays eligible for the existing flight-following flow", async () => {
+    const regional = buildDepartureRegional();
+    const scenario = departureScenario(regional, { seed: 37 });
+    const world = createWorldFromScenario(scenario, 37);
+    world.vfrTrafficManager!.step(world, 1.0);
+    const vfr = world.aircraft.filter((a) => a.ambientVfr !== undefined);
+    expect(vfr).toHaveLength(1);
+    const entry = vfr[0]!;
+    expect(entry.ambientVfr?.mission).toBe("SATELLITE_DEPARTURE");
+
+    const log = world.sessionLog ?? new SessionLog();
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, ifrPickupPercent: 0, requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, world.simTimeMs);
+    queue.drain({ world, log });
+    const req = (world.radioRequests ?? []).find((r) => r.callsign === entry.callsign);
+    expect(req?.kind).toBe("FLIGHT_FOLLOWING");
+
+    const res = await handleRadioText(world, `${entry.callsign} say request`, log);
+    expect(res.accepted).toBe(true);
+  });
+
+  test("KATL conditional: departures avoid Bravo or skip honestly", () => {
+    // Conditional acceptance only: facility asserts live in this test alone.
+    const pack = hasRegionalPack("katl") ? loadRegionalPack("katl", { optional: true }) : undefined;
+    const sources = getDepartureVfrAirports(pack, "KATL");
+    if (!pack || sources.length === 0) {
+      // Honest skip: no authorized KATL regional source in this checkout.
+      expect(sources).toHaveLength(0);
+      return;
+    }
+    // Provenance preserved: center never selected, satellite origin recorded.
+    expect(sources.some((a) => a.icao.toUpperCase() === "KATL")).toBe(false);
+    const katl = assertScenario(katlJson, { arrivalCountMin: 1, arrivalCountMax: 10 });
+    const origin = sources[0]!;
+    const runway = origin.runways[0]!;
+    const bravo = pack.airspaces.filter((v) => v.type === "CONTROLLED" && v.class === "B");
+    let seed = 5;
+    const rng = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const route = planSafeVfrRoute({
+      mission: "SATELLITE_DEPARTURE",
+      box: { centerNm: katl.arpNm, halfExtentNm: resolveVfrSpawnRadiusNm(katl) },
+      altitudeFt: 4500,
+      speedKt: 110,
+      originAirport: origin,
+      liftoffPose: {
+        xNm: origin.arpNm.xNm + 0.5,
+        yNm: origin.arpNm.yNm + 0.5,
+        altitudeFt: 4500,
+        headingDeg: runway.headingMagDeg,
+        speedKt: 110,
+      },
+      magVarDeg: 0,
+      avoidanceVolumes: bravo,
+      rng,
+      exitRadiusNm: resolveVfrExitRadiusNm(katl),
+    });
+    // Either the corridor clears Bravo on a swept path or planning fails
+    // closed; penetration is never admitted.
+    if (route === null) {
+      return;
+    }
+    const liftoff = {
+      xNm: route.spawnPose.xNm,
+      yNm: route.spawnPose.yNm,
+      altitudeFt: route.spawnPose.altitudeFt,
+    };
+    expect(
+      isRouteSafeFromAvoidance(
+        [liftoff, ...route.waypoints].map((p) => ({
+          xNm: p.xNm,
+          yNm: p.yNm,
+          altitudeFt: p.altitudeFt ?? 4500,
+        })),
+        bravo,
+      ),
+    ).toBe(true);
   });
 });

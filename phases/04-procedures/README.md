@@ -720,6 +720,13 @@ pattern:
   strings, legacy-load VFR-disabled, `traffic=N` precedence, capability
   gating, and `@scope`-only DCB behavior are unchanged.
 
+### Post-exit addendum (T04-79–80 satellite departures)
+
+T04-79 routes every post-login VFR entry through a satellite liftoff pose;
+T04-80 flies it as a near-straight line corridor (runway-heading climb, ≤3 NM
+seeded wobble, radial boundary exit with `BOUNDARY_EXIT`) under the hard
+Bravo-avoidance guard, with no tower/ground simulation.
+
 ---
 
 ## Phase exit checklist

@@ -4,7 +4,8 @@
  * Implements:
  * - Swept 3D volume intersection testing with horizontal and vertical boundary margins
  * - Airspace shelf floor/ceiling compliance and turn/climb/descent safety
- * - Persistent waypoint navigation for LOCAL, TRANSIT, and AIRPORT_BOUND missions
+ * - Persistent waypoint navigation for LOCAL, TRANSIT, AIRPORT_BOUND, and
+ *   SATELLITE_DEPARTURE missions
  * - Natural exits and observable destination tower handoffs
  * - Bounded route planning with deterministic failure reporting (vfr.spawn.skipped / NO_SAFE_ROUTE)
  *
@@ -577,10 +578,16 @@ export function samplePointInDisc(box: VfrTrainingBox, rng: () => number): Point
 
 /** Liftoff sampling radius around a satellite departure ARP (T04-79, NM). */
 export const SATELLITE_LIFTOFF_RADIUS_NM = 2;
-/** Minimal safe-leg length after liftoff (NM); full corridor geometry is T04-80. */
+/** Runway-heading climb leg after liftoff (NM); departure corridor geometry is T04-80. */
 export const SATELLITE_MIN_LEG_NM = 5;
-/** Seeded jitter added to the minimal safe leg (NM), drawn from the route stream. */
+/** Seeded jitter added to the runway-heading climb leg (NM), drawn from the route stream. */
 export const SATELLITE_LEG_JITTER_NM = 3;
+/**
+ * Maximum seeded perpendicular offset of departure intermediates from the
+ * direct liftoff-to-exit course (T04-80, NM). Wobble is waypoint geometry
+ * only, never per-tick heading noise.
+ */
+export const SATELLITE_DEPARTURE_WOBBLE_MAX_NM = 3;
 
 export interface RoutePlanningOptions {
   mission: AmbientVfrMission;
@@ -590,8 +597,8 @@ export interface RoutePlanningOptions {
   destinationAirport?: RegionalAirport;
   /**
    * Departure satellite airport for `SATELLITE_DEPARTURE` (T04-79). Liftoff is
-   * sampled within `SATELLITE_LIFTOFF_RADIUS_NM` of its ARP; the corridor
-   * beyond a minimal safe leg belongs to T04-80.
+   * sampled within `SATELLITE_LIFTOFF_RADIUS_NM` of its ARP; the line corridor
+   * beyond the runway-heading climb leg is T04-80.
    */
   originAirport?: RegionalAirport;
   /**
@@ -736,7 +743,13 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
         targetToleranceNm: 2.5,
       });
     } else if (mission === "SATELLITE_DEPARTURE") {
-      // Minimal safe leg on the liftoff heading (T04-79); full corridor geometry is T04-80.
+      // Departure-line corridor (T04-80): climb on runway heading to the
+      // assigned cruise, then 1-2 seeded wobble intermediates within
+      // SATELLITE_DEPARTURE_WOBBLE_MAX_NM of the direct liftoff-to-exit
+      // course, exiting radially outward past the boundary. Lateral offset
+      // escalates across attempts within the 3 NM cap (TRANSIT-style side
+      // alternation); waypoint altitudes stay at cruise and persistent
+      // penetration fails closed with NO_SAFE_ROUTE via the swept check below.
       let trueHeadingDeg: number;
       if (spawnHeadingDeg !== undefined) {
         trueHeadingDeg = magneticToTrueDeg(spawnHeadingDeg, magVarDeg);
@@ -747,11 +760,49 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
           Math.PI;
         spawnHeadingDeg = trueToMagneticDeg(trueHeadingDeg, magVarDeg);
       }
+      // Exit waypoint at exitRadiusNm + 2 on the far side of liftoff relative
+      // to the scenario center (radially outward through the liftoff pose).
+      const outDx = spawnPoint.xNm - box.centerNm.xNm;
+      const outDy = spawnPoint.yNm - box.centerNm.yNm;
+      const outDist = Math.hypot(outDx, outDy);
+      const exitAngle =
+        outDist > 1e-6 ? Math.atan2(outDx, outDy) : (trueHeadingDeg * Math.PI) / 180;
+      const exitDist = exitRadiusNm + 2;
+      const exitPt: Point2D = {
+        xNm: box.centerNm.xNm + exitDist * Math.sin(exitAngle),
+        yNm: box.centerNm.yNm + exitDist * Math.cos(exitAngle),
+      };
+      // Runway-heading climb leg to cruise (seeded length from the route stream).
       const legLenNm = SATELLITE_MIN_LEG_NM + rng() * SATELLITE_LEG_JITTER_NM;
       const legRad = (trueHeadingDeg * Math.PI) / 180;
       waypoints.push({
         xNm: spawnPoint.xNm + legLenNm * Math.sin(legRad),
         yNm: spawnPoint.yNm + legLenNm * Math.cos(legRad),
+        altitudeFt,
+        speedKt: spawnSpeedKt,
+        targetToleranceNm: 2.0,
+      });
+      // Seeded 1-2 intermediates along the direct liftoff-to-exit course.
+      const course = Math.atan2(exitPt.xNm - spawnPoint.xNm, exitPt.yNm - spawnPoint.yNm);
+      const perpAngle = course + Math.PI / 2;
+      const midCount = rng() < 0.5 ? 1 : 2;
+      const maxOffsetNm = Math.min(SATELLITE_DEPARTURE_WOBBLE_MAX_NM, 1 + attempt * 0.5);
+      for (let m = 0; m < midCount; m++) {
+        const t = (m + 1) / (midCount + 1);
+        const baseX = spawnPoint.xNm + t * (exitPt.xNm - spawnPoint.xNm);
+        const baseY = spawnPoint.yNm + t * (exitPt.yNm - spawnPoint.yNm);
+        const side = (attempt % 2 === 0 ? 1 : -1) * (rng() > 0.5 ? 1 : -1);
+        const offsetNm = side * rng() * maxOffsetNm;
+        waypoints.push({
+          xNm: baseX + offsetNm * Math.sin(perpAngle),
+          yNm: baseY + offsetNm * Math.cos(perpAngle),
+          altitudeFt,
+          speedKt: spawnSpeedKt,
+          targetToleranceNm: 2.0,
+        });
+      }
+      waypoints.push({
+        ...exitPt,
         altitudeFt,
         speedKt: spawnSpeedKt,
         targetToleranceNm: 2.0,
@@ -895,6 +946,21 @@ export function stepVfrAircraftNavigation(
         atWallMs: simTimeMs,
       });
       return { exited: true, handoff: true };
+    }
+  } else if (vfr.mission === "SATELLITE_DEPARTURE") {
+    // Departure terminal (T04-80): boundary exit reusing the TRANSIT
+    // BOUNDARY_EXIT vocabulary, then removal. No satellite landing and no
+    // tower handoff for departures.
+    if ((vfr.waypointIndex ?? 0) > 0 && distFromArp >= exitRadiusNm) {
+      log?.append({
+        type: "vfr.exit",
+        callsign: ac.callsign,
+        mission: "SATELLITE_DEPARTURE",
+        reason: "BOUNDARY_EXIT",
+        atSimMs: simTimeMs,
+        atWallMs: simTimeMs,
+      });
+      return { exited: true, handoff: false };
     }
   }
 
