@@ -15,7 +15,6 @@ import {
   evaluateMsaw,
   isPointInside3dVolume,
   makeTestAircraft,
-  VFR_TRAINING_HALF_EXTENT_NM,
 } from "@core";
 import {
   assertScenario,
@@ -23,6 +22,7 @@ import {
   getEligibleVfrDestinations,
   loadKdem,
   parseRegionalPack,
+  resolveVfrSpawnRadiusNm,
   type RegionalFacility,
   type Scenario,
 } from "@scenario";
@@ -291,7 +291,7 @@ describe("T04-71 VFR population end-to-end integration", () => {
     }
   });
 
-  test("T04-77: KATL spawns initial VFR from the training box with no zone authoring", () => {
+  test("T04-77: KATL spawns initial VFR from scenario coverage with no zone authoring", () => {
     const katl = assertScenario(
       {
         ...katlJson,
@@ -322,9 +322,11 @@ describe("T04-71 VFR population end-to-end integration", () => {
     }
 
     const bravoVolumes = (katl.regional?.airspaces ?? []).filter((v) => v.class === "B");
+    const spawnRadius = resolveVfrSpawnRadiusNm(katl);
+    expect(spawnRadius).toBe(60);
     for (const ac of vfrAircraft) {
-      expect(Math.abs(ac.xNm - katl.arpNm.xNm)).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
-      expect(Math.abs(ac.yNm - katl.arpNm.yNm)).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
+      const dist = Math.hypot(ac.xNm - katl.arpNm.xNm, ac.yNm - katl.arpNm.yNm);
+      expect(dist).toBeLessThanOrEqual(spawnRadius);
       for (const vol of bravoVolumes) {
         expect(
           isPointInside3dVolume({ xNm: ac.xNm, yNm: ac.yNm, altitudeFt: ac.altitudeFt }, vol),

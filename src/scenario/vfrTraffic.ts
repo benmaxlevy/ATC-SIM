@@ -16,6 +16,7 @@
 import { mulberry32, performanceRegistry, type Aircraft } from "@core";
 import { createAircraft } from "../core/aircraft";
 import {
+  VFR_TRACON_EXIT_RADIUS_NM,
   VFR_TRAINING_BOX_ID,
   VFR_TRAINING_HALF_EXTENT_NM,
   isVfrAvoidanceVolume,
@@ -459,6 +460,42 @@ export interface VfrTrafficManagerInit {
 }
 
 /**
+ * Scenario coverage radius for ambient VFR spawns.
+ *
+ * Generic: takes the largest declared coverage so the whole scenario region
+ * is on the table — `maps.rangeRings.maxNm` (display/scope coverage) and
+ * `regional.radiusNm` (imported data coverage). Falls back to the legacy
+ * `VFR_TRAINING_HALF_EXTENT_NM` when a scenario declares neither.
+ */
+export function resolveVfrSpawnRadiusNm(scenario: Scenario): number {
+  const candidates: number[] = [];
+  const rangeMax = scenario.maps?.rangeRings?.maxNm;
+  if (typeof rangeMax === "number" && Number.isFinite(rangeMax) && rangeMax > 0) {
+    candidates.push(rangeMax);
+  }
+  const regionalRadius = scenario.regional?.radiusNm;
+  if (typeof regionalRadius === "number" && Number.isFinite(regionalRadius) && regionalRadius > 0) {
+    candidates.push(regionalRadius);
+  }
+  if (candidates.length === 0) {
+    return VFR_TRAINING_HALF_EXTENT_NM;
+  }
+  return Math.max(...candidates);
+}
+
+/**
+ * TRACON exit radius paired with the spawn radius.
+ * Preserves the legacy 30 -> 28 relationship (spawn minus 2 NM).
+ */
+export function resolveVfrExitRadiusNm(scenario: Scenario): number {
+  const spawnRadius = resolveVfrSpawnRadiusNm(scenario);
+  if (!Number.isFinite(spawnRadius) || spawnRadius <= 0) {
+    return VFR_TRACON_EXIT_RADIUS_NM;
+  }
+  return Math.max(10, spawnRadius - 2);
+}
+
+/**
  * Manages VFR ambient traffic lifecycle:
  * - Spawning initial population
  * - Continuous entries paced at 3,600,000 / entriesPerHour
@@ -467,8 +504,10 @@ export interface VfrTrafficManagerInit {
  */
 export class VfrTrafficManager {
   public readonly config: VfrTrafficConfig;
-  /** Fixed ARP-centered training box (T04-77). Named zones were deleted. */
+  /** ARP-centered spawn disc radius = scenario coverage (range rings / regional). */
   public readonly trainingBox: VfrTrainingBox;
+  /** Scenario-derived TRACON exit radius (spawn radius minus 2 NM). */
+  public readonly exitRadiusNm: number;
   public readonly avoidanceVolumes: RegionalAirspaceVolume[];
   public readonly eligibleDestinations: RegionalAirport[];
 
@@ -489,10 +528,12 @@ export class VfrTrafficManager {
     this.rngRoute = mulberry32((baseSeed >>> 0) ^ VFR_ROUTE_XOR);
     this.rngEntries = mulberry32((baseSeed >>> 0) ^ VFR_FUTURE_ENTRY_XOR);
 
+    const spawnRadiusNm = resolveVfrSpawnRadiusNm(init.scenario);
     this.trainingBox = {
       centerNm: { xNm: init.scenario.arpNm.xNm, yNm: init.scenario.arpNm.yNm },
-      halfExtentNm: VFR_TRAINING_HALF_EXTENT_NM,
+      halfExtentNm: spawnRadiusNm,
     };
+    this.exitRadiusNm = resolveVfrExitRadiusNm(init.scenario);
 
     // Identify Class B avoidance volumes from regional pack
     this.avoidanceVolumes = (init.scenario.regional?.airspaces ?? []).filter(isVfrAvoidanceVolume);
@@ -578,7 +619,7 @@ export class VfrTrafficManager {
 
     const speedKt = 110;
 
-    // 4. Plan safe route avoiding Class B volumes (uniform training-box sampling)
+    // 4. Plan safe route avoiding Class B volumes (uniform scenario-disc sampling)
     const plannedRoute = planSafeVfrRoute({
       mission,
       box: this.trainingBox,
@@ -587,6 +628,7 @@ export class VfrTrafficManager {
       destinationAirport,
       avoidanceVolumes: this.avoidanceVolumes,
       rng: this.rngRoute,
+      exitRadiusNm: this.exitRadiusNm,
     });
 
     if (!plannedRoute) {
@@ -664,6 +706,7 @@ export class VfrTrafficManager {
           world.navigation.magVarDeg,
           world.sessionLog,
           this.avoidanceVolumes,
+          this.exitRadiusNm,
         );
         if (navResult.exited) {
           // Natural exit / tower handoff completed: remove from world

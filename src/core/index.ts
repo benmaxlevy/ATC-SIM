@@ -482,6 +482,7 @@ export {
   planSafeVfrRoute,
   pointInPolygon2D,
   samplePointInBox,
+  samplePointInDisc,
   segmentsIntersect2D,
   stepVfrAircraftNavigation,
 } from "./vfrNavigation";

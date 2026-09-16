@@ -265,6 +265,8 @@ export {
   chooseWeighted,
   fixedVfrMovementMix,
   getEligibleVfrDestinations,
+  resolveVfrExitRadiusNm,
+  resolveVfrSpawnRadiusNm,
   validateVfrRequestConfig,
   validateVfrTrafficConfig,
 } from "./vfrTraffic";

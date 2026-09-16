@@ -36,9 +36,10 @@ export const VFR_AVOIDANCE_PROBE_NM = 2;
 export const VFR_AVOIDANCE_TURN_OFFSETS_DEG = [30, -30, 45, -45, 60, -60, 90, -90];
 
 /**
- * Fixed ARP-centered training box half-extent (T04-77). Ambient VFR spawns
- * uniformly inside [-half, +half] NM around the scenario ARP. Spawns inside
- * Bravo are excluded by the avoidance guard, never by box shaping.
+ * Fallback ARP-centered spawn radius (T04-77 legacy 30 NM). Ambient VFR
+ * spawns uniformly inside the scenario-coverage disc around the scenario
+ * ARP; see `resolveVfrSpawnRadiusNm`. Spawns inside Bravo are excluded by
+ * the avoidance guard, never by area shaping.
  */
 export const VFR_TRAINING_HALF_EXTENT_NM = 30;
 
@@ -544,7 +545,13 @@ function isRouteEndpointSafe(
   return !isPointInsideAvoidanceVolumes(point, avoidanceVolumes, margins);
 }
 
-/** Fixed ARP-centered square training box for ambient VFR spawn/LOCAL sampling. */
+/**
+ * ARP-centered spawn area for ambient VFR spawn/LOCAL sampling.
+ * `halfExtentNm` is the scenario coverage radius (see
+ * `resolveVfrSpawnRadiusNm`): the whole scenario region outside Class B is
+ * on the table, not a fixed 30 NM square. `VFR_TRAINING_HALF_EXTENT_NM`
+ * remains the fallback when a scenario declares no coverage.
+ */
 export interface VfrTrainingBox {
   centerNm: Point2D;
   halfExtentNm: number;
@@ -558,6 +565,16 @@ export function samplePointInBox(box: VfrTrainingBox, rng: () => number): Point2
   };
 }
 
+/** Sample a 2D candidate point uniformly inside the scenario-radius disc. */
+export function samplePointInDisc(box: VfrTrainingBox, rng: () => number): Point2D {
+  const radiusNm = box.halfExtentNm * Math.sqrt(rng());
+  const theta = rng() * 2 * Math.PI;
+  return {
+    xNm: box.centerNm.xNm + radiusNm * Math.sin(theta),
+    yNm: box.centerNm.yNm + radiusNm * Math.cos(theta),
+  };
+}
+
 export interface RoutePlanningOptions {
   mission: AmbientVfrMission;
   box: VfrTrainingBox;
@@ -568,6 +585,8 @@ export interface RoutePlanningOptions {
   rng: () => number;
   maxAttempts?: number;
   margins?: AvoidanceMargin;
+  /** TRACON exit radius. Defaults to `VFR_TRACON_EXIT_RADIUS_NM` (legacy 28). */
+  exitRadiusNm?: number;
 }
 
 export interface PlannedVfrRoute {
@@ -584,9 +603,10 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
   const { mission, box, altitudeFt, speedKt, destinationAirport, avoidanceVolumes, rng, margins } =
     options;
   const maxAttempts = options.maxAttempts ?? MAX_PLANNER_ATTEMPTS;
+  const exitRadiusNm = options.exitRadiusNm ?? VFR_TRACON_EXIT_RADIUS_NM;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const initialPt = samplePointInBox(box, rng);
+    const initialPt = samplePointInDisc(box, rng);
     const spawnPoint: Point3D = { ...initialPt, altitudeFt };
 
     // Check spawn point (including grouped fallback for fragmented shelves)
@@ -595,31 +615,33 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
     const waypoints: VfrNavWaypoint[] = [];
 
     if (mission === "LOCAL") {
-      // 3 persistent waypoints inside the training box
+      // 3 persistent waypoints inside the scenario-radius disc
       const numWps = 3;
       for (let w = 0; w < numWps; w++) {
-        const pt = samplePointInBox(box, rng);
+        const pt = samplePointInDisc(box, rng);
         waypoints.push({ ...pt, altitudeFt, speedKt, targetToleranceNm: 1.2 });
       }
     } else if (mission === "TRANSIT") {
       // Corridor crossing: route from spawn toward opposite boundary
-      const currentDist = Math.hypot(spawnPoint.xNm, spawnPoint.yNm);
-      const angle = Math.atan2(spawnPoint.xNm, spawnPoint.yNm);
+      const dx = spawnPoint.xNm - box.centerNm.xNm;
+      const dy = spawnPoint.yNm - box.centerNm.yNm;
+      const currentDist = Math.hypot(dx, dy);
+      const angle = Math.atan2(dx, dy);
       // Target opposite side (angle + PI + slight angle variance)
       const targetAngle = angle + Math.PI + (rng() - 0.5) * 0.8;
-      const targetDist = VFR_TRACON_EXIT_RADIUS_NM + 2;
+      const targetDist = exitRadiusNm + 2;
       const exitPt: Point2D = {
-        xNm: targetDist * Math.sin(targetAngle),
-        yNm: targetDist * Math.cos(targetAngle),
+        xNm: box.centerNm.xNm + targetDist * Math.sin(targetAngle),
+        yNm: box.centerNm.yNm + targetDist * Math.cos(targetAngle),
       };
 
       // Intermediate waypoint to guide corridor around center
       const side = (attempt % 2 === 0 ? 1 : -1) * (rng() > 0.5 ? 1 : -1);
       const midAngle = angle + (Math.PI / 2) * side + (rng() - 0.5) * 0.4;
-      const midDist = Math.max(18, currentDist * 0.8) + attempt * 1.5;
+      const midDist = Math.max(Math.min(18, exitRadiusNm * 0.6), currentDist * 0.8) + attempt * 1.5;
       const midPt: Point2D = {
-        xNm: midDist * Math.sin(midAngle),
-        yNm: midDist * Math.cos(midAngle),
+        xNm: box.centerNm.xNm + midDist * Math.sin(midAngle),
+        yNm: box.centerNm.yNm + midDist * Math.cos(midAngle),
       };
 
       waypoints.push({ ...midPt, altitudeFt, speedKt, targetToleranceNm: 2.0 });
@@ -692,6 +714,7 @@ export function stepVfrAircraftNavigation(
   magVarDeg = 0,
   log?: SessionLog | null,
   avoidanceVolumes?: readonly RegionalAirspaceVolume[],
+  exitRadiusNm: number = VFR_TRACON_EXIT_RADIUS_NM,
 ): NavStepResult {
   const vfr = ac.ambientVfr;
   if (!vfr || !vfr.waypoints || vfr.waypoints.length === 0) {
@@ -743,7 +766,7 @@ export function stepVfrAircraftNavigation(
           vfr.phase = "EXITING";
           // Add exit vector away from center
           const angle = Math.atan2(ac.xNm, ac.yNm);
-          const exitDist = VFR_TRACON_EXIT_RADIUS_NM + 3;
+          const exitDist = exitRadiusNm + 3;
           vfr.waypoints.push({
             xNm: exitDist * Math.sin(angle),
             yNm: exitDist * Math.cos(angle),
@@ -757,7 +780,7 @@ export function stepVfrAircraftNavigation(
         }
       }
     }
-    if (vfr.phase === "EXITING" && distFromArp >= VFR_TRACON_EXIT_RADIUS_NM) {
+    if (vfr.phase === "EXITING" && distFromArp >= exitRadiusNm) {
       log?.append({
         type: "vfr.exit",
         callsign: ac.callsign,
@@ -769,7 +792,7 @@ export function stepVfrAircraftNavigation(
       return { exited: true, handoff: false };
     }
   } else if (vfr.mission === "TRANSIT") {
-    if ((vfr.waypointIndex ?? 0) > 0 && distFromArp >= VFR_TRACON_EXIT_RADIUS_NM) {
+    if ((vfr.waypointIndex ?? 0) > 0 && distFromArp >= exitRadiusNm) {
       log?.append({
         type: "vfr.exit",
         callsign: ac.callsign,

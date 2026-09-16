@@ -13,6 +13,8 @@ import {
   DEFAULT_VFR_AIRCRAFT_MIX,
   VfrTrafficManager,
   chooseWeighted,
+  resolveVfrExitRadiusNm,
+  resolveVfrSpawnRadiusNm,
   validateVfrTrafficConfig,
 } from "../vfrTraffic";
 import type { Scenario } from "../types";
@@ -298,11 +300,54 @@ describe("T04-77 Training-box spawning, repeatability, and legacy IFR-stream ide
     }));
   }
 
-  test("Training-box half-extent is the fixed 30 NM constant", () => {
+  test("Spawn radius follows scenario coverage with 30 NM fallback", () => {
     expect(VFR_TRAINING_HALF_EXTENT_NM).toBe(30);
+    // KDEM declares rangeRings.maxNm = 60, so the whole 60 NM region is on the table.
+    const scenario = createTestVfrScenario();
+    const manager = new VfrTrafficManager({
+      config: scenario.vfrTraffic!,
+      scenario,
+      seed: 7,
+    });
+    expect(manager.trainingBox.halfExtentNm).toBe(60);
+    expect(manager.exitRadiusNm).toBe(58);
+    expect(resolveVfrSpawnRadiusNm(loadKdem())).toBe(60);
   });
 
-  test("Initial population spawns exactly min(initialCount, maxPopulation) inside the box", () => {
+  test("Scenario without coverage falls back to the 30 NM constant", () => {
+    const bare = {
+      ...loadKdem(),
+      maps: { ...loadKdem().maps, rangeRings: undefined },
+    } as unknown as Scenario;
+    delete (bare as { regional?: unknown }).regional;
+    expect(resolveVfrSpawnRadiusNm(bare)).toBe(VFR_TRAINING_HALF_EXTENT_NM);
+    expect(resolveVfrExitRadiusNm(bare)).toBe(28);
+  });
+
+  test("100 NM scenario coverage puts the whole region on the table", () => {
+    const kdem = loadKdem();
+    const wide = {
+      ...kdem,
+      maps: { ...kdem.maps, rangeRings: { intervalNm: 10, maxNm: 100 } },
+    } as unknown as Scenario;
+    expect(resolveVfrSpawnRadiusNm(wide)).toBe(100);
+    expect(resolveVfrExitRadiusNm(wide)).toBe(98);
+    const manager = new VfrTrafficManager({
+      config: { initialCount: 20, targetCount: 20, entriesPerHour: 0, maxPopulation: 20, seed: 7 },
+      scenario: wide,
+      seed: 7,
+    });
+    const world = createWorldFromScenario(loadKdem());
+    manager.spawnInitialPopulation(world);
+    const vfrAircraft = world.aircraft.filter((a) => a.ambientVfr !== undefined);
+    expect(vfrAircraft.length).toBeGreaterThan(0);
+    for (const ac of vfrAircraft) {
+      const dist = Math.hypot(ac.xNm - wide.arpNm.xNm, ac.yNm - wide.arpNm.yNm);
+      expect(dist).toBeLessThanOrEqual(100);
+    }
+  });
+
+  test("Initial population spawns exactly min(initialCount, maxPopulation) inside the disc", () => {
     const scenario = createTestVfrScenario();
     const manager = new VfrTrafficManager({
       config: scenario.vfrTraffic!,
@@ -318,9 +363,10 @@ describe("T04-77 Training-box spawning, repeatability, and legacy IFR-stream ide
     const vfrAircraft = world.aircraft.filter((a) => a.ambientVfr !== undefined);
     expect(vfrAircraft).toHaveLength(4);
     expect(world.aircraft).toHaveLength(ifrCount + 4);
+    const spawnRadius = manager.trainingBox.halfExtentNm;
 
     // Each ambient aircraft has VFR, 1200, AMBIENT_SUPPRESSED, and the box marker.
-    // KDEM has no avoidance volumes, so all box samples spawn.
+    // KDEM has no avoidance volumes, so all disc samples spawn.
     for (const ac of vfrAircraft) {
       expect(ac.flightRules).toBe("VFR");
       expect(ac.squawk).toBe("1200");
@@ -329,19 +375,14 @@ describe("T04-77 Training-box spawning, repeatability, and legacy IFR-stream ide
       expect(ac.ambientVfr?.zoneId).toBe(VFR_TRAINING_BOX_ID);
       expect(ac.activeClearance).toBeUndefined();
       expect(ac.flightPlan).toBeUndefined();
-      expect(Math.abs(ac.xNm - scenario.arpNm.xNm)).toBeLessThanOrEqual(
-        VFR_TRAINING_HALF_EXTENT_NM,
-      );
-      expect(Math.abs(ac.yNm - scenario.arpNm.yNm)).toBeLessThanOrEqual(
-        VFR_TRAINING_HALF_EXTENT_NM,
-      );
+      const dist = Math.hypot(ac.xNm - scenario.arpNm.xNm, ac.yNm - scenario.arpNm.yNm);
+      expect(dist).toBeLessThanOrEqual(spawnRadius);
       for (const wp of ac.ambientVfr?.waypoints ?? []) {
-        expect(Math.abs(wp.xNm - scenario.arpNm.xNm)).toBeLessThanOrEqual(
-          VFR_TRAINING_HALF_EXTENT_NM,
-        );
-        expect(Math.abs(wp.yNm - scenario.arpNm.yNm)).toBeLessThanOrEqual(
-          VFR_TRAINING_HALF_EXTENT_NM,
-        );
+        const wpDist = Math.hypot(wp.xNm - scenario.arpNm.xNm, wp.yNm - scenario.arpNm.yNm);
+        // LOCAL waypoints stay in the disc; TRANSIT exit legs leave it by design.
+        if (ac.ambientVfr?.mission === "LOCAL") {
+          expect(wpDist).toBeLessThanOrEqual(spawnRadius);
+        }
       }
     }
   });
