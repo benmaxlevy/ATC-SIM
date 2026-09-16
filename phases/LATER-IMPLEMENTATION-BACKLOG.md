@@ -52,6 +52,7 @@ value. Items already shipped or limited to manual validation are excluded.
 30. FAA cycle update workflow; national source/index files remain local.
 31. KATL MAPS/GEO/BRITE visual operator validation.
 32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+33. Radio communications transfer to tower ("contact tower [frequency]") for all controlled airports.
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
@@ -795,7 +796,34 @@ Constraints later work must keep:
 - self-hosted `speech-api` only; no paid STT/TTS/LLM hosts;
 - synthetic catalogs in generic tests; no KATL production counts.
 
+### Radio communications transfer to tower ("contact tower [frequency]")
+
+Visible now: Tower handoffs exist as internal STARS scope tracking/UI handoffs
+(`initiateOutboundHandoff` to `TWR`, `acceptInboundHandoff`) and internal telemetry/lifecycle
+events (`vfr.tower.handoff` at ~3–5 NM from destination). Tower handoff eligibility
+(`isTowerHandoffEligible`) gates handoffs inside 5 NM.
+
+Deliberately missing: Spoken and typed radio phraseology for communications transfer to the
+tower (`"contact [airport] tower [frequency]"`, e.g. `"Delta 123, contact tower 119.1"` /
+`"Skyhawk 172SP, contact Peachtree Tower 120.9"`) across all controlled airports (center airport
+KATL/KDEM and all controlled satellite airports such as KPDK, KFTY, KRYY). There is currently
+no Command IR instruction (e.g. `CONTACT_TOWER`), typed shorthand, speech API GBNF grammar,
+readback generator, or pilot frequency transfer state machine.
+
+Constraints later work must keep:
+- Follow FAA JO 7110.65 §2-1-17, §5-9-4, §7-6-8: for controlled airports, transfer phraseology
+  is `"Contact [Facility] Tower [frequency]"`. Never state `"radar service terminated"` for
+  arrivals at tower-controlled airports (§5-1-13(b)(2)-(3) termination is automatic upon landing).
+- Work across all controlled airports uniformly (center and regional satellites) using
+  catalog/facility tower frequency metadata, without facility-specific branches or hardcoded
+  airport names.
+- Maintain Path C / Command IR synchronization: update `src/core/command/types.ts`,
+  `speech-api/parse_engine.py`, GBNF, prompt, validator, parity guard, and docs together.
+- Inbound pilot check-in on tower frequency remains decoupled from TRACON simulation or scored
+  as appropriate.
+
 ## Explicit boundary
+
 
 This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
