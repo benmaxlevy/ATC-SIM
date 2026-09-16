@@ -663,6 +663,7 @@ export class VfrTrafficManager {
           world.simTimeMs,
           world.navigation.magVarDeg,
           world.sessionLog,
+          this.avoidanceVolumes,
         );
         if (navResult.exited) {
           // Natural exit / tower handoff completed: remove from world

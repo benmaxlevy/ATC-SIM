@@ -14,7 +14,7 @@
 import type { Aircraft, AmbientVfrMission } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import { courseDeg, distanceNm } from "./nav/geometry";
-import { trueToMagneticDeg } from "./nav/headingFrames";
+import { magneticToTrueDeg, trueToMagneticDeg } from "./nav/headingFrames";
 import type {
   RegionalAirspaceVolume,
   RegionalAirport,
@@ -25,6 +25,15 @@ export const CLASS_B_HORIZONTAL_MARGIN_NM = 1.0;
 export const CLASS_B_VERTICAL_MARGIN_FT = 500;
 export const MAX_PLANNER_ATTEMPTS = 10;
 export const VFR_TRACON_EXIT_RADIUS_NM = 28;
+
+/** Arc tessellation step for CLOCKWISE_ARC / COUNTER_CLOCKWISE_ARC segments. */
+export const VFR_ARC_TESSELLATION_STEP_DEG = 5;
+/** Full-circle fallback discretization for CIRCLE and lone-arc segments. */
+export const VFR_CIRCLE_TESSELLATION_POINTS = 36;
+/** Look-ahead distance for the per-tick avoidance guard. */
+export const VFR_AVOIDANCE_PROBE_NM = 2;
+/** Heading offsets tried by the per-tick avoidance guard (deg, true). */
+export const VFR_AVOIDANCE_TURN_OFFSETS_DEG = [30, -30, 45, -45, 60, -60, 90, -90];
 
 /**
  * Fixed ARP-centered training box half-extent (T04-77). Ambient VFR spawns
@@ -60,31 +69,114 @@ export function isVfrAvoidanceVolume(volume: RegionalAirspaceVolume): boolean {
   return volume.type === "CONTROLLED" && volume.class === "B";
 }
 
-/** Extract 2D boundary polygon vertices (in NM) from a regional airspace volume. */
+/** True bearing (deg, clockwise from north) from one NM point to another. */
+export function bearingDegNm(from: Point2D, to: Point2D): number {
+  const raw = (Math.atan2(to.xNm - from.xNm, to.yNm - from.yNm) * 180) / Math.PI;
+  return ((raw % 360) + 360) % 360;
+}
+
+function normalizeBearingDeg(deg: number): number {
+  return ((deg % 360) + 360) % 360;
+}
+
+/**
+ * Tessellate a circular arc (origin + radius, start bearing -> end bearing)
+ * into polyline points. `clockwise=true` sweeps bearings upward (N->E->S->W).
+ * Emits intermediate points plus the end point; the start point is excluded
+ * because the caller already emitted the previous chain vertex.
+ */
+function tessellateArcNm(
+  origin: Point2D,
+  radiusNm: number,
+  startBearingDeg: number,
+  endBearingDeg: number,
+  clockwise: boolean,
+): Point2D[] {
+  const start = normalizeBearingDeg(startBearingDeg);
+  const end = normalizeBearingDeg(endBearingDeg);
+  let span: number;
+  if (clockwise) {
+    span = (end - start + 360) % 360;
+  } else {
+    span = (start - end + 360) % 360;
+  }
+  // Identical bearings mean a full loop, not a zero-length arc.
+  if (span === 0) span = 360;
+  const steps = Math.max(1, Math.ceil(span / VFR_ARC_TESSELLATION_STEP_DEG));
+  const points: Point2D[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const bearing = clockwise ? start + (span * i) / steps : start - (span * i) / steps;
+    const rad = (normalizeBearingDeg(bearing) * Math.PI) / 180;
+    points.push({
+      xNm: origin.xNm + radiusNm * Math.sin(rad),
+      yNm: origin.yNm + radiusNm * Math.cos(rad),
+    });
+  }
+  return points;
+}
+
+/** Discretize a full circle into a closed polyline (every 360/numPoints deg). */
+function tessellateCircleNm(origin: Point2D, radiusNm: number): Point2D[] {
+  const points: Point2D[] = [];
+  for (let i = 0; i < VFR_CIRCLE_TESSELLATION_POINTS; i++) {
+    const rad = (i * 2 * Math.PI) / VFR_CIRCLE_TESSELLATION_POINTS;
+    points.push({
+      xNm: origin.xNm + radiusNm * Math.sin(rad),
+      yNm: origin.yNm + radiusNm * Math.cos(rad),
+    });
+  }
+  return points;
+}
+
+/**
+ * Extract 2D boundary polygon vertices (in NM) from a regional airspace volume.
+ *
+ * Generic: walks the volume's own segments in sequence order. GREAT_CIRCLE /
+ * RHUMB_LINE / END edges contribute their endpoint; CLOCKWISE_ARC /
+ * COUNTER_CLOCKWISE_ARC edges are tessellated from the previous chain vertex
+ * around the arc origin; CIRCLE edges discretize to a full ring. A lone arc
+ * segment with no predecessor falls back to a full circle around its origin,
+ * which conservatively contains the true arc.
+ */
 export function extractVolumePolygonNm(volume: RegionalAirspaceVolume): Point2D[] {
   const vertices: Point2D[] = [];
-  for (const seg of volume.segments) {
+  const ordered = [...volume.segments].sort((a, b) => a.sequence - b.sequence);
+  let prevPos: Point2D | null = null;
+  for (const seg of ordered) {
+    const curr: Point2D = { xNm: seg.positionNm.xNm, yNm: seg.positionNm.yNm };
     if (seg.boundaryViaType === "CIRCLE" && seg.arcOriginNm && seg.arcDistanceNm) {
-      // Discretize circle into 36 vertices (every 10 degrees)
-      const numPoints = 36;
-      for (let i = 0; i < numPoints; i++) {
-        const rad = (i * 2 * Math.PI) / numPoints;
-        vertices.push({
-          xNm: seg.arcOriginNm.xNm + seg.arcDistanceNm * Math.sin(rad),
-          yNm: seg.arcOriginNm.yNm + seg.arcDistanceNm * Math.cos(rad),
-        });
-      }
+      vertices.push(
+        ...tessellateCircleNm(
+          { xNm: seg.arcOriginNm.xNm, yNm: seg.arcOriginNm.yNm },
+          seg.arcDistanceNm,
+        ),
+      );
     } else if (
       (seg.boundaryViaType === "CLOCKWISE_ARC" ||
         seg.boundaryViaType === "COUNTER_CLOCKWISE_ARC") &&
       seg.arcOriginNm &&
       seg.arcDistanceNm
     ) {
-      // Arc endpoint + intermediate samples if bearing available
-      vertices.push({ xNm: seg.positionNm.xNm, yNm: seg.positionNm.yNm });
+      const origin: Point2D = { xNm: seg.arcOriginNm.xNm, yNm: seg.arcOriginNm.yNm };
+      const clockwise = seg.boundaryViaType === "CLOCKWISE_ARC";
+      if (prevPos === null) {
+        // Lone arc with no chain predecessor: conservative full circle.
+        vertices.push(...tessellateCircleNm(origin, seg.arcDistanceNm));
+      } else {
+        vertices.push(
+          ...tessellateArcNm(
+            origin,
+            seg.arcDistanceNm,
+            bearingDegNm(origin, prevPos),
+            bearingDegNm(origin, curr),
+            clockwise,
+          ),
+        );
+      }
     } else {
-      vertices.push({ xNm: seg.positionNm.xNm, yNm: seg.positionNm.yNm });
+      vertices.push(curr);
     }
+    prevPos = curr;
   }
   return vertices;
 }
@@ -166,6 +258,160 @@ export function distSegmentToSegment(a: Point2D, b: Point2D, c: Point2D, d: Poin
   );
 }
 
+/**
+ * A volume is degenerate when its tessellated boundary cannot form a polygon
+ * (fewer than 3 vertices). This happens when an importer fragments a shelf
+ * boundary so each volume holds a single GREAT_CIRCLE point or lone arc
+ * record. Degenerate volumes can never test inside on their own.
+ */
+export function isDegenerateAvoidanceVolume(volume: RegionalAirspaceVolume): boolean {
+  return extractVolumePolygonNm(volume).length < 3;
+}
+
+/** Grouping key for fragmented avoidance volumes: facility + class + center. */
+function avoidanceGroupKey(volume: RegionalAirspaceVolume): string {
+  return `${volume.type}|${volume.class ?? ""}|${volume.centerAirportId ?? ""}`;
+}
+
+/**
+ * Andrew's monotone-chain convex hull. Returns hull vertices CCW without a
+ * duplicated closing vertex. Generic geometry, no facility knowledge.
+ */
+function convexHullNm(points: readonly Point2D[]): Point2D[] {
+  const deduped: Point2D[] = [];
+  const seen = new Set<string>();
+  for (const p of points) {
+    const key = `${p.xNm.toFixed(9)}:${p.yNm.toFixed(9)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push({ xNm: p.xNm, yNm: p.yNm });
+    }
+  }
+  if (deduped.length < 3) return deduped;
+  const sorted = [...deduped].sort((a, b) => a.xNm - b.xNm || a.yNm - b.yNm);
+  const cross = (o: Point2D, a: Point2D, b: Point2D): number =>
+    (a.xNm - o.xNm) * (b.yNm - o.yNm) - (a.yNm - o.yNm) * (b.xNm - o.xNm);
+  const lower: Point2D[] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: Point2D[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return [...lower, ...upper];
+}
+
+const groupedFallbackCache = new WeakMap<
+  readonly RegionalAirspaceVolume[],
+  RegionalAirspaceVolume[]
+>();
+
+/**
+ * Build conservative grouped fallback volumes for fragmented avoidance data.
+ *
+ * Degenerate volumes (see isDegenerateAvoidanceVolume) that share a facility,
+ * class, and center airport are merged: their tessellated vertices form one
+ * convex-hull polygon whose vertical band spans the group's min floor to max
+ * ceiling. Well-formed (non-degenerate) volumes are never merged, so precise
+ * shelf geometry keeps its exact floors and gaps. Results are cached per
+ * input array reference; callers holding a stable avoidance list pay once.
+ */
+export function buildGroupedAvoidanceVolumes(
+  volumes: readonly RegionalAirspaceVolume[],
+): RegionalAirspaceVolume[] {
+  const cached = groupedFallbackCache.get(volumes);
+  if (cached) return cached;
+
+  const byGroup = new Map<string, RegionalAirspaceVolume[]>();
+  for (const vol of volumes) {
+    if (!isVfrAvoidanceVolume(vol) || !isDegenerateAvoidanceVolume(vol)) continue;
+    const key = avoidanceGroupKey(vol);
+    const list = byGroup.get(key) ?? [];
+    list.push(vol);
+    byGroup.set(key, list);
+  }
+
+  const grouped: RegionalAirspaceVolume[] = [];
+  for (const [key, members] of byGroup) {
+    const vertices: Point2D[] = [];
+    for (const member of members) {
+      vertices.push(...extractVolumePolygonNm(member));
+    }
+    const hull = convexHullNm(vertices);
+    if (hull.length < 3) continue;
+    const first = members[0]!;
+    const lowerLimitFt = Math.min(...members.map((m) => m.lowerLimitFt));
+    const upperLimitFt = Math.max(...members.map((m) => m.upperLimitFt));
+    grouped.push({
+      id: `GROUPED:${key}`,
+      name: `GROUPED AVOIDANCE ${key}`,
+      type: "CONTROLLED",
+      ...(first.class !== undefined ? { class: first.class } : {}),
+      ...(first.centerAirportId !== undefined ? { centerAirportId: first.centerAirportId } : {}),
+      lowerLimit: { unit: "MSL", reference: "MSL", altitudeFt: lowerLimitFt },
+      upperLimit: { unit: "MSL", reference: "MSL", altitudeFt: upperLimitFt },
+      lowerLimitFt,
+      upperLimitFt,
+      segments: hull.map((pt, index) => ({
+        sequence: index + 1,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 0, lonDeg: 0 },
+        positionNm: { xNm: pt.xNm, yNm: pt.yNm },
+      })),
+    });
+  }
+
+  groupedFallbackCache.set(volumes, grouped);
+  return grouped;
+}
+
+/**
+ * Test whether a 3D point is inside any avoidance volume, including grouped
+ * fallback volumes that cover fragmented (degenerate) shelf data.
+ */
+export function isPointInsideAvoidanceVolumes(
+  point: Point3D,
+  avoidanceVolumes: readonly RegionalAirspaceVolume[],
+  margins?: AvoidanceMargin,
+): boolean {
+  for (const vol of avoidanceVolumes) {
+    if (isPointInside3dVolume(point, vol, margins)) return true;
+  }
+  for (const vol of buildGroupedAvoidanceVolumes(avoidanceVolumes)) {
+    if (isPointInside3dVolume(point, vol, margins)) return true;
+  }
+  return false;
+}
+
+/**
+ * Test whether a swept 3-D segment intersects any avoidance volume, including
+ * grouped fallback volumes that cover fragmented (degenerate) shelf data.
+ */
+export function isSegmentUnsafeFromAvoidance(
+  p1: Point3D,
+  p2: Point3D,
+  avoidanceVolumes: readonly RegionalAirspaceVolume[],
+  margins?: AvoidanceMargin,
+): boolean {
+  for (const vol of avoidanceVolumes) {
+    if (checkSweptSegmentVolumeCollision(p1, p2, vol, margins)) return true;
+  }
+  for (const vol of buildGroupedAvoidanceVolumes(avoidanceVolumes)) {
+    if (checkSweptSegmentVolumeCollision(p1, p2, vol, margins)) return true;
+  }
+  return false;
+}
 /**
  * Test whether a 3D point is inside an airspace volume (including boundary margins).
  */
@@ -274,24 +520,28 @@ export function isRouteSafeFromAvoidance(
   if (avoidanceVolumes.length === 0) return true;
 
   // Check initial waypoint pose
-  for (const vol of avoidanceVolumes) {
-    if (isPointInside3dVolume(waypoints[0]!, vol, margins)) {
-      return false;
-    }
+  if (!isRouteEndpointSafe(waypoints[0]!, avoidanceVolumes, margins)) {
+    return false;
   }
 
   // Check each leg
   for (let i = 1; i < waypoints.length; i++) {
     const p1 = waypoints[i - 1]!;
     const p2 = waypoints[i]!;
-    for (const vol of avoidanceVolumes) {
-      if (checkSweptSegmentVolumeCollision(p1, p2, vol, margins)) {
-        return false;
-      }
+    if (isSegmentUnsafeFromAvoidance(p1, p2, avoidanceVolumes, margins)) {
+      return false;
     }
   }
 
   return true;
+}
+
+function isRouteEndpointSafe(
+  point: Point3D,
+  avoidanceVolumes: readonly RegionalAirspaceVolume[],
+  margins?: AvoidanceMargin,
+): boolean {
+  return !isPointInsideAvoidanceVolumes(point, avoidanceVolumes, margins);
 }
 
 /** Fixed ARP-centered square training box for ambient VFR spawn/LOCAL sampling. */
@@ -339,15 +589,8 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
     const initialPt = samplePointInBox(box, rng);
     const spawnPoint: Point3D = { ...initialPt, altitudeFt };
 
-    // Check spawn point
-    let spawnSafe = true;
-    for (const vol of avoidanceVolumes) {
-      if (isPointInside3dVolume(spawnPoint, vol, margins)) {
-        spawnSafe = false;
-        break;
-      }
-    }
-    if (!spawnSafe) continue;
+    // Check spawn point (including grouped fallback for fragmented shelves)
+    if (isPointInsideAvoidanceVolumes(spawnPoint, avoidanceVolumes, margins)) continue;
 
     const waypoints: VfrNavWaypoint[] = [];
 
@@ -438,12 +681,17 @@ export interface NavStepResult {
  * Step autonomous navigation for one ambient VFR aircraft.
  * Updates assigned heading and altitude towards the active waypoint.
  * Detects waypoint sequencing, dwell expiration, and natural exits.
+ *
+ * When avoidance volumes are provided, a per-tick guard deflects the assigned
+ * heading if the probe point ahead would enter Class B. This covers LOCAL
+ * loops and EXIT radial legs that route planning never validated.
  */
 export function stepVfrAircraftNavigation(
   ac: Aircraft,
   simTimeMs: number,
   magVarDeg = 0,
   log?: SessionLog | null,
+  avoidanceVolumes?: readonly RegionalAirspaceVolume[],
 ): NavStepResult {
   const vfr = ac.ambientVfr;
   if (!vfr || !vfr.waypoints || vfr.waypoints.length === 0) {
@@ -476,6 +724,15 @@ export function stepVfrAircraftNavigation(
   }
 
   const distFromArp = Math.hypot(ac.xNm, ac.yNm);
+
+  // Per-tick avoidance guard (LOCAL loops and EXIT radials are unplanned legs).
+  if (
+    avoidanceVolumes !== undefined &&
+    avoidanceVolumes.length > 0 &&
+    (vfr.waypointIndex ?? 0) < wps.length
+  ) {
+    applyAvoidanceGuard(ac, magVarDeg, avoidanceVolumes);
+  }
 
   // Terminal conditions
   if (vfr.mission === "LOCAL") {
@@ -540,6 +797,56 @@ export function stepVfrAircraftNavigation(
 }
 
 /**
+ * Deflect the assigned heading when the probe point ahead (or the current
+ * position) would be inside Class B avoidance. Tries ±30–90° offsets in
+ * increasing order and keeps the first heading whose probe stays outside.
+ * Generic: no facility-specific branches.
+ */
+function applyAvoidanceGuard(
+  ac: Aircraft,
+  magVarDeg: number,
+  avoidanceVolumes: readonly RegionalAirspaceVolume[],
+): void {
+  const assigned = ac.intent.assignedHeadingDeg;
+  // Both Aircraft.headingDeg and intent.assignedHeadingDeg are magnetic.
+  const trueHeading =
+    assigned !== undefined
+      ? magneticToTrueDeg(assigned, magVarDeg)
+      : magneticToTrueDeg(ac.headingDeg, magVarDeg);
+
+  const probeFor = (trueDeg: number): Point3D => {
+    const rad = (trueDeg * Math.PI) / 180;
+    return {
+      xNm: ac.xNm + VFR_AVOIDANCE_PROBE_NM * Math.sin(rad),
+      yNm: ac.yNm + VFR_AVOIDANCE_PROBE_NM * Math.cos(rad),
+      altitudeFt: ac.altitudeFt,
+    };
+  };
+
+  const current: Point3D = { xNm: ac.xNm, yNm: ac.yNm, altitudeFt: ac.altitudeFt };
+  if (
+    !isPointInsideAvoidanceVolumes(current, avoidanceVolumes) &&
+    !isPointInsideAvoidanceVolumes(probeFor(trueHeading), avoidanceVolumes)
+  ) {
+    return;
+  }
+
+  for (const offset of VFR_AVOIDANCE_TURN_OFFSETS_DEG) {
+    const candidate = normalizeBearingDeg(trueHeading + offset);
+    if (!isPointInsideAvoidanceVolumes(probeFor(candidate), avoidanceVolumes)) {
+      ac.intent.assignedHeadingDeg = trueToMagneticDeg(candidate, magVarDeg);
+      return;
+    }
+  }
+
+  // No escaping heading within ±90°: hold a 90° turn to limit penetration.
+  ac.intent.assignedHeadingDeg = trueToMagneticDeg(
+    normalizeBearingDeg(trueHeading + 90),
+    magVarDeg,
+  );
+}
+
+/**
  * Test whether an aircraft is currently within any Class B avoidance volume (T04-75).
  */
 export function isAircraftInsideClassB(
@@ -550,17 +857,10 @@ export function isAircraftInsideClassB(
     return false;
   }
   const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
-  for (const vol of classBVolumes) {
-    if (
-      isPointInside3dVolume(
-        { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
-        vol,
-      )
-    ) {
-      return true;
-    }
-  }
-  return false;
+  return isPointInsideAvoidanceVolumes(
+    { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+    classBVolumes,
+  );
 }
 
 /**
@@ -587,10 +887,8 @@ export function isSafeVfrContinuationAvailable(
     altitudeFt: aircraft.altitudeFt,
   };
 
-  for (const vol of classBVolumes) {
-    if (isPointInside3dVolume(currentPos, vol)) {
-      return false;
-    }
+  if (isPointInsideAvoidanceVolumes(currentPos, classBVolumes)) {
+    return false;
   }
 
   // If aircraft has ambientVfr with remaining waypoints, verify route to remaining waypoints

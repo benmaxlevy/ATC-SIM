@@ -28,7 +28,7 @@ import {
 } from "@core";
 import {
   extractVolumePolygonNm,
-  isPointInside3dVolume,
+  isPointInsideAvoidanceVolumes,
   isSafeVfrContinuationAvailable,
   isVfrAvoidanceVolume,
   pointInPolygon2D,
@@ -130,19 +130,18 @@ export function defaultIfrCancellationValidator(
   ) {
     return { ok: false, reason: "ON_APPROACH_FINAL" };
   }
-  // Airspace check: aircraft must be outside all Class B avoidance volumes.
+  // Airspace check: aircraft must be outside all Class B avoidance volumes
+  // (including grouped fallback for fragmented shelf data).
   const regional = world.regional as RegionalFacility | undefined;
   if (regional) {
     const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
-    for (const volume of classBVolumes) {
-      if (
-        isPointInside3dVolume(
-          { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
-          volume,
-        )
-      ) {
-        return { ok: false, reason: "INSIDE_CLASS_B" };
-      }
+    if (
+      isPointInsideAvoidanceVolumes(
+        { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+        classBVolumes,
+      )
+    ) {
+      return { ok: false, reason: "INSIDE_CLASS_B" };
     }
     const surfaceVolumes = classBVolumes.filter((v) => v.lowerLimitFt <= 0);
     for (const volume of surfaceVolumes) {

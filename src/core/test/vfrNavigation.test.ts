@@ -2,8 +2,12 @@ import { describe, expect, test } from "vitest";
 import { makeTestAircraft } from "../aircraft";
 import type { RegionalAirspaceVolume } from "../../scenario/regional";
 import {
+  buildGroupedAvoidanceVolumes,
   checkSweptSegmentVolumeCollision,
+  extractVolumePolygonNm,
+  isDegenerateAvoidanceVolume,
   isPointInside3dVolume,
+  isPointInsideAvoidanceVolumes,
   isRouteSafeFromAvoidance,
   planSafeVfrRoute,
   samplePointInBox,
@@ -328,5 +332,282 @@ describe("T04-71 Autonomous waypoint navigation and natural exits", () => {
     const step2 = stepVfrAircraftNavigation(ac, 3000, 0);
     expect(step2.exited).toBe(true);
     expect(step2.handoff).toBe(true);
+  });
+});
+
+// Synthetic arc shelf: straight edge (-8, 0), then a clockwise arc around
+// (0, 0) with radius 8 ending at (8, 0), forming a northern half-disc.
+const ARC_SHELF_VOLUME: RegionalAirspaceVolume = {
+  id: "UC:KSYN:B_ARC",
+  name: "SYNTHETIC BRAVO ARC SHELF",
+  type: "CONTROLLED",
+  class: "B",
+  centerAirportId: "KSYN",
+  lowerLimit: { altitudeFt: 3000, unit: "MSL", reference: "MSL" },
+  upperLimit: { altitudeFt: 10000, unit: "MSL", reference: "MSL" },
+  lowerLimitFt: 3000,
+  upperLimitFt: 10000,
+  segments: [
+    {
+      sequence: 10,
+      boundaryVia: "G",
+      boundaryViaType: "GREAT_CIRCLE",
+      position: { latDeg: 0, lonDeg: 0 },
+      positionNm: { xNm: -8, yNm: 0 },
+    },
+    {
+      sequence: 20,
+      boundaryVia: "R",
+      boundaryViaType: "CLOCKWISE_ARC",
+      position: { latDeg: 0, lonDeg: 0 },
+      positionNm: { xNm: 8, yNm: 0 },
+      arcOrigin: { latDeg: 0, lonDeg: 0 },
+      arcOriginNm: { xNm: 0, yNm: 0 },
+      arcDistanceNm: 8,
+      arcBearingDeg: 90,
+    },
+  ],
+};
+
+// Synthetic lone arc: single arc record with no chain predecessor.
+const LONE_ARC_VOLUME: RegionalAirspaceVolume = {
+  id: "UC:KSYN:B_LONE",
+  name: "SYNTHETIC BRAVO LONE ARC",
+  type: "CONTROLLED",
+  class: "B",
+  centerAirportId: "KSYN",
+  lowerLimit: { altitudeFt: 3000, unit: "MSL", reference: "MSL" },
+  upperLimit: { altitudeFt: 10000, unit: "MSL", reference: "MSL" },
+  lowerLimitFt: 3000,
+  upperLimitFt: 10000,
+  segments: [
+    {
+      sequence: 10,
+      boundaryVia: "R",
+      boundaryViaType: "CLOCKWISE_ARC",
+      position: { latDeg: 0, lonDeg: 0 },
+      positionNm: { xNm: 4, yNm: 0 },
+      arcOrigin: { latDeg: 0, lonDeg: 0 },
+      arcOriginNm: { xNm: 0, yNm: 0 },
+      arcDistanceNm: 4,
+      arcBearingDeg: 90,
+    },
+  ],
+};
+
+function singlePointFragment(
+  id: string,
+  xNm: number,
+  yNm: number,
+  floorFt: number,
+  center = "KSYN",
+): RegionalAirspaceVolume {
+  return {
+    id,
+    name: "SYNTHETIC FRAGMENTED BRAVO",
+    type: "CONTROLLED",
+    class: "B",
+    centerAirportId: center,
+    lowerLimit: { altitudeFt: floorFt, unit: "MSL", reference: "MSL" },
+    upperLimit: { altitudeFt: 10000, unit: "MSL", reference: "MSL" },
+    lowerLimitFt: floorFt,
+    upperLimitFt: 10000,
+    segments: [
+      {
+        sequence: 10,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 0, lonDeg: 0 },
+        positionNm: { xNm, yNm },
+      },
+    ],
+  };
+}
+
+// Fragmented-shelf fixture: six single-point volumes sharing center + class,
+// mimicking per-record importer fragmentation. Hull spans roughly x/y ±20.
+const FRAGMENTED_VOLUMES: RegionalAirspaceVolume[] = [
+  singlePointFragment("UC:KSYN:B-F1", -20, -15, 2500),
+  singlePointFragment("UC:KSYN:B-F2", 20, -15, 2500),
+  singlePointFragment("UC:KSYN:B-F3", 20, 15, 3000),
+  singlePointFragment("UC:KSYN:B-F4", -20, 15, 3500),
+  singlePointFragment("UC:KSYN:B-F5", 0, 22, 4000),
+  singlePointFragment("UC:KSYN:B-F6", 0, -22, 5000),
+];
+
+describe("VFR arc tessellation and fragmented-shelf fallback", () => {
+  test("Chained arc tessellates the bulge into the polygon", () => {
+    const poly = extractVolumePolygonNm(ARC_SHELF_VOLUME);
+    expect(poly.length).toBeGreaterThan(3);
+    // Northern arc apex near (0, 8) must be sampled (5° tessellation).
+    const nearApex = poly.some((p) => Math.hypot(p.xNm - 0, p.yNm - 8) < 0.6);
+    expect(nearApex).toBe(true);
+    // Point inside the northern half-disc is inside; southern mirror is outside.
+    expect(isPointInside3dVolume({ xNm: 0, yNm: 4, altitudeFt: 5000 }, ARC_SHELF_VOLUME)).toBe(
+      true,
+    );
+    expect(isPointInside3dVolume({ xNm: 0, yNm: -4, altitudeFt: 5000 }, ARC_SHELF_VOLUME)).toBe(
+      false,
+    );
+    // Swept route through the bulge is unsafe; route under the shelf is safe.
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: -12, yNm: 4, altitudeFt: 5000 },
+          { xNm: 12, yNm: 4, altitudeFt: 5000 },
+        ],
+        [ARC_SHELF_VOLUME],
+      ),
+    ).toBe(false);
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: -12, yNm: -4, altitudeFt: 5000 },
+          { xNm: 12, yNm: -4, altitudeFt: 5000 },
+        ],
+        [ARC_SHELF_VOLUME],
+      ),
+    ).toBe(true);
+  });
+
+  test("Lone arc falls back to a full circle around its origin", () => {
+    const poly = extractVolumePolygonNm(LONE_ARC_VOLUME);
+    expect(poly.length).toBeGreaterThanOrEqual(3);
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 0, yNm: 0, altitudeFt: 5000 }, [LONE_ARC_VOLUME]),
+    ).toBe(true);
+    // Outside radius + horizontal margin.
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 6, yNm: 0, altitudeFt: 5000 }, [LONE_ARC_VOLUME]),
+    ).toBe(false);
+    // Altitude outside the shelf band stays outside.
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 0, yNm: 0, altitudeFt: 1500 }, [LONE_ARC_VOLUME]),
+    ).toBe(false);
+  });
+
+  test("Single-point fragments are degenerate alone but merge into one hull", () => {
+    for (const vol of FRAGMENTED_VOLUMES) {
+      expect(isDegenerateAvoidanceVolume(vol)).toBe(true);
+    }
+    expect(isDegenerateAvoidanceVolume(SYNTHETIC_CLASS_B_VOLUME)).toBe(false);
+    const grouped = buildGroupedAvoidanceVolumes(FRAGMENTED_VOLUMES);
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]!.id.startsWith("GROUPED:")).toBe(true);
+    expect(grouped[0]!.segments.length).toBeGreaterThanOrEqual(3);
+    // Vertical band spans the fragment floors to the shared ceiling.
+    expect(grouped[0]!.lowerLimitFt).toBe(2500);
+    expect(grouped[0]!.upperLimitFt).toBe(10000);
+  });
+
+  test("Fragments from another center do not merge into the hull", () => {
+    const mixed = [...FRAGMENTED_VOLUMES, singlePointFragment("UC:KOTH:B-X", 0, 0, 0, "KOTH")];
+    // One hull for KSYN; the lone KOTH point cannot form a polygon.
+    expect(buildGroupedAvoidanceVolumes(mixed)).toHaveLength(1);
+  });
+
+  test("Point and route checks respect the fragmented hull including altitude", () => {
+    // Center at shelf altitude is inside the grouped hull.
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 0, yNm: 0, altitudeFt: 5000 }, FRAGMENTED_VOLUMES),
+    ).toBe(true);
+    // Below the lowest shelf floor (minus margin) and above the ceiling are outside.
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 0, yNm: 0, altitudeFt: 1500 }, FRAGMENTED_VOLUMES),
+    ).toBe(false);
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 0, yNm: 0, altitudeFt: 11000 }, FRAGMENTED_VOLUMES),
+    ).toBe(false);
+    // Far outside the hull is outside.
+    expect(
+      isPointInsideAvoidanceVolumes({ xNm: 40, yNm: 40, altitudeFt: 5000 }, FRAGMENTED_VOLUMES),
+    ).toBe(false);
+    // A route cutting through the hull is unsafe; a route around it is safe.
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: -30, yNm: 0, altitudeFt: 5000 },
+          { xNm: 30, yNm: 0, altitudeFt: 5000 },
+        ],
+        FRAGMENTED_VOLUMES,
+      ),
+    ).toBe(false);
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: -30, yNm: 30, altitudeFt: 5000 },
+          { xNm: 30, yNm: 30, altitudeFt: 5000 },
+        ],
+        FRAGMENTED_VOLUMES,
+      ),
+    ).toBe(true);
+  });
+
+  test("Planner rejects spawns trapped inside fragmented Bravo", () => {
+    const trappedBox: VfrTrainingBox = { centerNm: { xNm: 0, yNm: 0 }, halfExtentNm: 3 };
+    let callCount = 0;
+    const rng = () => {
+      callCount++;
+      return (callCount * 0.17) % 1;
+    };
+    expect(
+      planSafeVfrRoute({
+        mission: "LOCAL",
+        box: trappedBox,
+        altitudeFt: 5000,
+        speedKt: 110,
+        avoidanceVolumes: FRAGMENTED_VOLUMES,
+        rng,
+        maxAttempts: 5,
+      }),
+    ).toBeNull();
+  });
+
+  test("Per-tick guard deflects heading when the probe would enter Bravo", () => {
+    const ac = makeTestAircraft({
+      callsign: "NGUARD",
+      xNm: -15,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "LOCAL",
+        zoneId: "test",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 15, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1.0 }],
+        waypointIndex: 0,
+      },
+    });
+    stepVfrAircraftNavigation(ac, 0, 0, null, FRAGMENTED_VOLUMES);
+    // Direct course is due east (90); the guard must turn away.
+    expect(ac.intent.assignedHeadingDeg).not.toBe(90);
+  });
+
+  test("Per-tick guard leaves clear-air headings untouched", () => {
+    const ac = makeTestAircraft({
+      callsign: "NCLEAR",
+      xNm: -40,
+      yNm: -40,
+      headingDeg: 225,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "LOCAL",
+        zoneId: "test",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: -45, yNm: -45, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1.0 }],
+        waypointIndex: 0,
+      },
+    });
+    stepVfrAircraftNavigation(ac, 0, 0, null, FRAGMENTED_VOLUMES);
+    // Course from (-40,-40) to (-45,-45) is southwest (225 true, magVar 0).
+    expect(ac.intent.assignedHeadingDeg).toBe(225);
   });
 });
