@@ -826,3 +826,52 @@ test("Fields 6–8 omit unsupported and absent values", () => {
     formatDatablockFields(ac, { pointoutAcceptCount: 4, pointoutInhibited: true }).field8,
   ).toBe("");
 });
+
+test("aircraft type is only projected when present in associated flight plan", () => {
+  const ac = makeTestAircraft({
+    id: "ac-plan-notype",
+    callsign: "NOTYPE",
+    aircraftType: "C172",
+    squawk: "4321",
+  });
+  const plan = {
+    id: "fp-notype",
+    status: "active" as const,
+    acid: "NOTYPE",
+    assignedBeacon: "4321",
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan] });
+  const source = datablockSourceFromWorld(world, ac);
+
+  expect(source.aircraftType).toBeUndefined();
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).toBe("22");
+  expect(formatDatablockFields(source, { timeSharePhase: 1 }).field5).toBe("22");
+  expect(formatDatablockFields(source, { timeSharePhase: 1 }).field5).not.toContain("C172");
+});
+
+test("associated IFR flight plan overrides underlying VFR flight rules", () => {
+  const ac = makeTestAircraft({
+    id: "ac-vfr-to-ifr",
+    callsign: "VFR2IFR",
+    speedKt: 120,
+    flightRules: "VFR",
+    squawk: "4322",
+  });
+  const plan = {
+    id: "fp-ifr-plan",
+    status: "active" as const,
+    acid: "VFR2IFR",
+    assignedBeacon: "4322",
+    flightType: "IFR" as const,
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan] });
+  const source = datablockSourceFromWorld(world, ac);
+
+  expect(source.flightRules).toBe("IFR");
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).toBe("12");
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).not.toContain("V");
+});

@@ -286,6 +286,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
             id: "ac-fdb-test-plan",
             status: "active",
             acid: "AAL777",
+            aircraftType: "A321",
             assignedBeacon: "4324",
             assignedAltitudeFt: 4000,
             fixes: [],

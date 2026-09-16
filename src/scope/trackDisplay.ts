@@ -1049,23 +1049,27 @@ export function syncTrackDisplays(
     // reported code changes, remove only the state this derivation created.
     const derivedPlan = flightPlanForAircraft(world, ac.id);
     const datablockPlan = flightPlanForDatablock(world, ac, td);
-    if (derivedPlan) {
-      td.derivedPlanId = derivedPlan.id;
+    const ho = handoffFor(world, ac.id);
+    if (derivedPlan || datablockPlan) {
+      const plan = derivedPlan ?? datablockPlan!;
+      td.derivedPlanId = plan.id;
       td.tracked = true;
       td.unassociated = false;
       td.datablockMode = "full";
-    } else if (datablockPlan) {
-      td.derivedPlanId = datablockPlan.id;
-      td.tracked = true;
-      td.unassociated = false;
-      td.datablockMode = "full";
+      if (
+        ho.kind !== "inbound" &&
+        ho.kind !== "departure" &&
+        td.ownership !== "tower" &&
+        td.ownership !== "center"
+      ) {
+        td.ownership = "owned";
+      }
     } else if (td.derivedPlanId) {
       delete td.derivedPlanId;
-      if (td.ownership !== "owned") {
-        td.tracked = false;
-        td.unassociated = true;
-        td.datablockMode = "partial";
-      }
+      td.ownership = "unowned";
+      td.tracked = false;
+      td.unassociated = true;
+      td.datablockMode = "partial";
     }
     // Squawking 1200 with no correlated plan has no display identity.
     // Mark it unassociated up front so slew/force-FDB paths render the
@@ -1073,10 +1077,9 @@ export function syncTrackDisplays(
     if (!derivedPlan && !datablockPlan && isVfrWithoutAssociation(world, ac, td)) {
       delete td.derivedPlanId;
       td.unassociated = true;
-      if (td.ownership !== "owned") {
-        td.tracked = false;
-        td.datablockMode = "limited";
-      }
+      td.ownership = "unowned";
+      td.tracked = false;
+      td.datablockMode = "limited";
     }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);

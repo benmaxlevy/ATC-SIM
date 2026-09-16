@@ -254,6 +254,51 @@ test("squawking 1200 with no plan never reveals a callsign on slew", () => {
   expect(td.datablockMode).toBe("limited");
 });
 
+test("discrete squawk correlation auto-acquires ownership and reverts to unowned on 1200", () => {
+  const ac = makeTestAircraft({
+    id: "ac-discrete-vfr",
+    callsign: "N9876V",
+    squawk: "1200",
+    reportedSquawk: "1200",
+    flightRules: "VFR",
+  });
+  const plan = {
+    id: "fp-discrete-vfr",
+    status: "active" as const,
+    acid: "N9876V",
+    assignedBeacon: "0342",
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan], simTimeMs: 0 });
+  const tracks = new Map();
+
+  // Initially squawking 1200: unowned limited datablock
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  expect(td.ownership).toBe("unowned");
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+
+  // Aircraft changes squawk to assigned discrete beacon code: auto-owns with full datablock
+  ac.squawk = "0342";
+  ac.reportedSquawk = "0342";
+  syncTrackDisplays(tracks, world);
+  expect(td.ownership).toBe("owned");
+  expect(td.unassociated).toBe(false);
+  expect(td.datablockMode).toBe("full");
+  expect(td.derivedPlanId).toBe("fp-discrete-vfr");
+
+  // Reverting to 1200 drops correlation and reverts ownership to unowned limited datablock
+  ac.squawk = "1200";
+  ac.reportedSquawk = "1200";
+  syncTrackDisplays(tracks, world);
+  expect(td.ownership).toBe("unowned");
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+  expect(td.derivedPlanId).toBeUndefined();
+});
+
 test("post-TERM unassociated track cannot be expanded back to an FDB", () => {
   const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
   const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
