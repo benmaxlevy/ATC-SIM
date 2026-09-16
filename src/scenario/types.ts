@@ -269,22 +269,8 @@ export interface Scenario {
   regionalPack?: string;
   /** Optional generic ambient VFR population and navigation configuration (T04-71). */
   vfrTraffic?: VfrTrafficConfig;
-  /**
-   * @deprecated T04-77 deleted named zones; the VFR pipeline ignores this key.
-   * Kept only so the T04-78-owned session-setup UI still compiles.
-   */
-  vfrZones?: VfrZone[];
   /** Optional unsolicited airborne VFR pilot request scheduling (T04-72). */
   vfrRequests?: VfrRequestConfig;
-}
-
-/**
- * @deprecated T04-77 deleted named zones; the VFR pipeline ignores this shape.
- * Kept only so the T04-78-owned session-setup UI still compiles.
- */
-export interface VfrTrafficZoneConfig {
-  id: string;
-  weight: number;
 }
 
 export interface VfrAircraftMixRow {
@@ -312,33 +298,9 @@ export interface VfrTrafficConfig {
   entriesPerHour?: number;
   maxPopulation?: number;
   seed?: number;
-  /**
-   * @deprecated T04-77 deleted named zones; the VFR pipeline ignores this key.
-   * Kept only so the T04-78-owned session-setup UI still compiles.
-   */
-  zones?: VfrTrafficZoneConfig[];
   aircraftMix?: VfrAircraftMixRow[];
   altitudeMix?: VfrAltitudeMixRow[];
   movementMix?: VfrMovementMix;
-}
-
-/**
- * @deprecated T04-77 deleted named zones; the VFR pipeline ignores this shape.
- * Kept only so the T04-78-owned session-setup UI still compiles.
- */
-export interface VfrZone {
-  id: string;
-  name?: string;
-  bounds?: {
-    minXNm: number;
-    maxXNm: number;
-    minYNm: number;
-    maxYNm: number;
-  };
-  centerNm?: NmEastNorth;
-  radiusNm?: number;
-  polygon?: NmEastNorth[];
-  waypoints?: NmEastNorth[];
 }
 
 export interface VfrRequestConfig {

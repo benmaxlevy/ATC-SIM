@@ -279,28 +279,12 @@ function buildSyntheticScenario(): Scenario {
   return assertScenario({
     ...kdem,
     name: "Synthetic Regional TRACON",
-    vfrZones: [
-      {
-        id: "north",
-        name: "North Practice Area",
-        bounds: { minXNm: -15, maxXNm: -7, minYNm: 12, maxYNm: 22 },
-      },
-      {
-        id: "south",
-        name: "South Practice Area",
-        bounds: { minXNm: 7, maxXNm: 15, minYNm: -22, maxYNm: -12 },
-      },
-    ],
     vfrTraffic: {
       initialCount: 2,
       targetCount: 2,
       entriesPerHour: 4,
       maxPopulation: 4,
       seed: 42,
-      zones: [
-        { id: "north", weight: 1 },
-        { id: "south", weight: 1 },
-      ],
       movementMix: { localPercent: 50, transitPercent: 20, airportBoundPercent: 30 },
     },
     vfrRequests: {
@@ -323,7 +307,6 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
         entriesPerHour: 0,
         maxPopulation: 2,
         seed: 42,
-        zones: [{ id: "north", weight: 1 }],
         movementMix: { localPercent: 100, transitPercent: 0, airportBoundPercent: 0 },
       },
       requests: {

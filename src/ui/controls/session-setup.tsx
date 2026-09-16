@@ -6,6 +6,7 @@ import {
   SESSION_DEPARTURES_PER_HOUR_MIN,
   SESSION_INITIAL_COUNT_MAX,
   SESSION_INITIAL_COUNT_MIN,
+  applyVfrDensityPreset,
   defaultSessionSetup,
   defaultVfrRequestConfigForScenario,
   defaultVfrTrafficConfigForScenario,
@@ -14,11 +15,14 @@ import {
   listPlayableScenarios,
   loadPlayableScenario,
   loadSessionSetup,
+  matchVfrDensityPreset,
   saveSessionSetup,
   validateSessionSetup,
+  vfrDensityNumbersFromSetup,
   type PlayableAirport,
   type PlayableScenario,
   type SessionSetup,
+  type VfrDensityPresetId,
   type VfrRequestConfig,
   type VfrTrafficConfig,
 } from "@scenario";
@@ -106,6 +110,18 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
     }));
   }
 
+  function handleDensityChange(preset: VfrDensityPresetId | "custom"): void {
+    if (preset === "custom") {
+      return;
+    }
+    const next = applyVfrDensityPreset(preset, selectedScenario ?? undefined);
+    setDraft((current) => ({
+      ...current,
+      vfrTraffic: next.vfrTraffic,
+      vfrRequests: next.vfrRequests,
+    }));
+  }
+
   function getBaseVfrTraffic(): VfrTrafficConfig {
     return (
       draft.vfrTraffic ??
@@ -130,50 +146,6 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
         vfrTraffic: {
           ...base,
           [field]: val,
-        },
-      };
-    });
-  }
-
-  function updateZoneWeight(zoneId: string, weight: number): void {
-    setDraft((current) => {
-      const base = getBaseVfrTraffic();
-      const zones = [
-        ...(base.zones ?? (selectedScenario?.vfrZones ?? []).map((z) => ({ id: z.id, weight: 1 }))),
-      ];
-      const idx = zones.findIndex((z) => z.id === zoneId);
-      if (idx >= 0) {
-        zones[idx] = { id: zoneId, weight };
-      } else {
-        zones.push({ id: zoneId, weight });
-      }
-      return {
-        ...current,
-        vfrTraffic: {
-          ...base,
-          zones,
-        },
-      };
-    });
-  }
-
-  function updateMovementMix(
-    field: "localPercent" | "transitPercent" | "airportBoundPercent",
-    val: number,
-  ): void {
-    setDraft((current) => {
-      const base = getBaseVfrTraffic();
-      const movementMix = {
-        localPercent: base.movementMix?.localPercent ?? 100,
-        transitPercent: base.movementMix?.transitPercent ?? 0,
-        airportBoundPercent: base.movementMix?.airportBoundPercent ?? 0,
-        [field]: val,
-      };
-      return {
-        ...current,
-        vfrTraffic: {
-          ...base,
-          movementMix,
         },
       };
     });
@@ -212,9 +184,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
   try {
     validateSessionSetup(
       draft,
-      selectedScenario
-        ? { vfrZones: selectedScenario.vfrZones, regional: selectedScenario.regional }
-        : undefined,
+      selectedScenario ? { regional: selectedScenario.regional } : undefined,
     );
   } catch (err) {
     validationError = err instanceof Error ? err.message : String(err);
@@ -235,14 +205,14 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
           vfrTraffic: vfrAvailable ? draft.vfrTraffic : undefined,
           vfrRequests: vfrAvailable ? draft.vfrRequests : undefined,
         },
-        selectedScenario
-          ? { vfrZones: selectedScenario.vfrZones, regional: selectedScenario.regional }
-          : undefined,
+        selectedScenario ? { regional: selectedScenario.regional } : undefined,
       );
       saveSessionSetup(window.localStorage, next);
       onApply(next);
     }
   }
+
+  const density = matchVfrDensityPreset(vfrDensityNumbersFromSetup(draft));
 
   return (
     <div className="session-setup-backdrop" role="presentation">
@@ -344,136 +314,91 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
           ) : (
             <>
               <p className="session-setup-help">
-                Target replenishment maintains background population via exits, while entries/hour
-                injects scheduled arrivals. Both are bounded by maximum population.
+                One density preset covers trainer workloads; exact numbers stay one click away under
+                Tune. Movement mix is fixed at 60% local / 20% transit / 20% airport-bound
+                (airport-bound folds to local with no eligible destinations). Target replenishment
+                maintains background population via exits, while entries/hour injects scheduled
+                arrivals. Both are bounded by maximum population.
               </p>
               <label>
-                Initial VFR count
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.vfrTraffic?.initialCount ?? 0}
+                VFR density
+                <select
+                  aria-label="VFR density"
+                  value={density}
                   onChange={(event) =>
-                    updateVfrTrafficField("initialCount", Number(event.target.value))
+                    handleDensityChange(event.target.value as VfrDensityPresetId | "custom")
                   }
-                />
-              </label>
-              <label>
-                Target VFR population
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.vfrTraffic?.targetCount ?? 0}
-                  onChange={(event) =>
-                    updateVfrTrafficField("targetCount", Number(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                VFR entries/hour
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.vfrTraffic?.entriesPerHour ?? 0}
-                  onChange={(event) =>
-                    updateVfrTrafficField("entriesPerHour", Number(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                Maximum VFR population
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.vfrTraffic?.maxPopulation ?? 0}
-                  onChange={(event) =>
-                    updateVfrTrafficField("maxPopulation", Number(event.target.value))
-                  }
-                />
+                >
+                  <option value="off">Off</option>
+                  <option value="light">Light</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="busy">Busy</option>
+                  {density === "custom" ? <option value="custom">Custom (tuned)</option> : null}
+                </select>
               </label>
 
-              {selectedScenario?.vfrZones && selectedScenario.vfrZones.length > 0 && (
-                <fieldset className="session-setup-subgroup">
-                  <legend>Named zone weights</legend>
-                  <p className="session-setup-help">
-                    Relative positive weights for scenario practice/geographic zones.
-                  </p>
-                  {selectedScenario.vfrZones.map((zone) => {
-                    const currentWeight =
-                      draft.vfrTraffic?.zones?.find((z) => z.id === zone.id)?.weight ?? 1;
-                    return (
-                      <label key={zone.id}>
-                        {zone.name ?? zone.id} weight
-                        <input
-                          type="number"
-                          min={0}
-                          step="any"
-                          value={currentWeight}
-                          onChange={(event) =>
-                            updateZoneWeight(zone.id, Number(event.target.value))
-                          }
-                        />
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              )}
-
-              <fieldset className="session-setup-subgroup">
-                <legend>Movement mix (%)</legend>
+              <details className="scope-help-section">
+                <summary>Tune VFR numbers</summary>
                 <p className="session-setup-help">
-                  Local, transit, and airport-bound percentages must sum to 100%.
+                  Editing any number below switches density to Custom. Combined new service requests
+                  per hour pace at 3,600,000 / cap ms. Flight following % + IFR pickup % must be
+                  &le; 100%.
                 </p>
                 <label>
-                  Local movement %
+                  Initial VFR count
                   <input
                     type="number"
                     min={0}
-                    max={100}
-                    value={draft.vfrTraffic?.movementMix?.localPercent ?? 100}
+                    disabled={density === "off"}
+                    value={draft.vfrTraffic?.initialCount ?? 0}
                     onChange={(event) =>
-                      updateMovementMix("localPercent", Number(event.target.value))
+                      updateVfrTrafficField("initialCount", Number(event.target.value))
                     }
                   />
                 </label>
                 <label>
-                  Transit movement %
+                  Target VFR population
                   <input
                     type="number"
                     min={0}
-                    max={100}
-                    value={draft.vfrTraffic?.movementMix?.transitPercent ?? 0}
+                    disabled={density === "off"}
+                    value={draft.vfrTraffic?.targetCount ?? 0}
                     onChange={(event) =>
-                      updateMovementMix("transitPercent", Number(event.target.value))
+                      updateVfrTrafficField("targetCount", Number(event.target.value))
                     }
                   />
                 </label>
                 <label>
-                  Airport-bound %
+                  VFR entries/hour
                   <input
                     type="number"
                     min={0}
-                    max={100}
-                    value={draft.vfrTraffic?.movementMix?.airportBoundPercent ?? 0}
+                    disabled={density === "off"}
+                    value={draft.vfrTraffic?.entriesPerHour ?? 0}
                     onChange={(event) =>
-                      updateMovementMix("airportBoundPercent", Number(event.target.value))
+                      updateVfrTrafficField("entriesPerHour", Number(event.target.value))
                     }
                   />
                 </label>
-              </fieldset>
-
-              <fieldset className="session-setup-subgroup">
-                <legend>VFR pilot requests &amp; service</legend>
-                <p className="session-setup-help">
-                  Combined new service requests per hour (pacing 3,600,000 / cap ms). Flight
-                  following % + IFR pickup % must be &le; 100%.
-                </p>
+                <label>
+                  Maximum VFR population
+                  <input
+                    type="number"
+                    min={0}
+                    disabled={density === "off"}
+                    value={draft.vfrTraffic?.maxPopulation ?? 0}
+                    onChange={(event) =>
+                      updateVfrTrafficField("maxPopulation", Number(event.target.value))
+                    }
+                  />
+                </label>
                 <label>
                   Flight following %
                   <input
                     type="number"
                     min={0}
                     max={100}
+                    disabled={density === "off"}
                     value={draft.vfrRequests?.flightFollowingPercent ?? 0}
                     onChange={(event) =>
                       updateVfrRequestsField("flightFollowingPercent", Number(event.target.value))
@@ -486,6 +411,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
                     type="number"
                     min={0}
                     max={100}
+                    disabled={density === "off"}
                     value={draft.vfrRequests?.ifrPickupPercent ?? 0}
                     onChange={(event) =>
                       updateVfrRequestsField("ifrPickupPercent", Number(event.target.value))
@@ -497,6 +423,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
                   <input
                     type="number"
                     min={0}
+                    disabled={density === "off"}
                     value={draft.vfrRequests?.requestCapPerHour ?? 0}
                     onChange={(event) =>
                       updateVfrRequestsField("requestCapPerHour", Number(event.target.value))
@@ -509,13 +436,14 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
                     type="number"
                     min={0}
                     max={100}
+                    disabled={density === "off"}
                     value={draft.vfrRequests?.ifrCancellationPercent ?? 0}
                     onChange={(event) =>
                       updateVfrRequestsField("ifrCancellationPercent", Number(event.target.value))
                     }
                   />
                 </label>
-              </fieldset>
+              </details>
             </>
           )}
         </fieldset>

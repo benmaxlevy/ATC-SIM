@@ -307,7 +307,7 @@ describe("T04-71 VFR population end-to-end integration", () => {
       { arrivalCountMin: 1, arrivalCountMax: 10 },
     );
     // No zones survive on the loaded scenario.
-    expect(katl.vfrZones).toBeUndefined();
+    expect("vfrZones" in katl).toBe(false);
 
     const world = createWorldFromScenario(katl, 7);
     const vfrAircraft = world.aircraft.filter((a) => a.ambientVfr !== undefined);

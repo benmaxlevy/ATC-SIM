@@ -64,6 +64,19 @@ export const DEFAULT_VFR_MOVEMENT_MIX: VfrMovementMix = {
   airportBoundPercent: 0,
 };
 
+/**
+ * Fixed trainer movement mix (T04-78): 60/20/20 local/transit/airport-bound.
+ * Airport-bound folds to local (80/20/0) when the scenario has no eligible
+ * imported controlled-airport destinations (T04-71 no-eligible-destination rule).
+ */
+export function fixedVfrMovementMix(regional?: RegionalFacility): VfrMovementMix {
+  const eligibleDests = getEligibleVfrDestinations(regional);
+  if (eligibleDests.length === 0) {
+    return { localPercent: 80, transitPercent: 20, airportBoundPercent: 0 };
+  }
+  return { localPercent: 60, transitPercent: 20, airportBoundPercent: 20 };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

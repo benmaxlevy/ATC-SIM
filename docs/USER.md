@@ -337,6 +337,14 @@ VFR disabled and unchanged IFR settings.
 
 Population controls (counts of aircraft):
 
+- **VFR density** — one preset: Off, Light (2/2/3/4, cap 3, FF 20/pickup 10/
+  cancel 10), Moderate (4/4/6/8, cap 6, FF 30/pickup 20/cancel 25), or Busy
+  (6/8/12/12, cap 10, FF 40/pickup 30/cancel 25). Off starts with zero VFR
+  state and persists no VFR keys. Editing any tuned number switches the
+  readout to Custom (tuned); stored sessions keep the full numbers.
+- **Tune VFR numbers** — collapsible disclosure with the exact counts and
+  rates: initial count, target population, entries/hour, maximum population,
+  flight following %, IFR pickup %, request cap/hour, IFR cancellation %.
 - **Initial VFR count** — aircraft present at session start.
 - **Target VFR population** — soft target the trainer replenishes toward as
   aircraft exit or complete flights.
@@ -352,11 +360,9 @@ Target replenishment maintains background population via exits, while
 entries/hour injects scheduled arrivals. Labels and helper text in the dialog
 keep this population-vs-rate distinction visible.
 
-- **Named zone weights** — relative positive weights for the scenario's
-  practice/geographic zones (valid weights are normalized; invalid values
-  reject).
-- **Movement mix (%)** — local, transit, and airport-bound shares; they must
-  sum to exactly 100%.
+- **Movement mix** — fixed at 60% local / 20% transit / 20% airport-bound;
+  airport-bound folds to local (80/20/0) when the scenario has no eligible
+  satellite destinations. There is no movement-mix input.
 - **Flight following %** and **IFR pickup %** — exclusive initial categories
   for new traffic; their sum must be at most 100%. The remainder stays silent
   ambient traffic that never calls.

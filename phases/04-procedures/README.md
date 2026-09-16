@@ -701,6 +701,25 @@ as a training approximation. It does not model a certified tower cab or claim
 operational airspace accuracy. Simulated tower handoff, landing clearances, and
 aircraft despawn are trainer behaviors supplied by downstream tickets.
 
+### Post-exit addendum (T04-77–78 VFR setup simplification)
+
+T04-77 replaced named VFR zones with one fixed ARP-centered training box;
+`VfrZone`, `VfrTrafficZoneConfig`, `Scenario.vfrZones`, and
+`VfrTrafficConfig.zones` are deleted (T04-78 removes the last ignored shims).
+T04-78 collapses the 14-input VFR panel to one `VFR density` preset plus a
+`<details>` Tune disclosure mirroring the help-overlay `scope-help-section`
+pattern:
+
+- Presets (UI mapping only; storage keeps full numbers): Off (no VFR keys
+  persisted), Light (2/2/3/4, cap 3, FF 20/pickup 10/cancel 10), Moderate
+  (4/4/6/8, cap 6, FF 30/pickup 20/cancel 25 = T04-76 defaults), Busy
+  (6/8/12/12, cap 10, FF 40/pickup 30/cancel 25). Custom is display-only when
+  tuned numbers differ from all presets and is never persisted.
+- Movement mix is fixed at 60/20/20 with airport-bound folding to local
+  (80/20/0) when the scenario has no eligible destinations. Validation
+  strings, legacy-load VFR-disabled, `traffic=N` precedence, capability
+  gating, and `@scope`-only DCB behavior are unchanged.
+
 ---
 
 ## Phase exit checklist

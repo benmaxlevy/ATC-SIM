@@ -1,17 +1,23 @@
 import { describe, expect, test } from "vitest";
 import {
+  VFR_DENSITY_PRESETS,
+  applyVfrDensityPreset,
   defaultSessionSetup,
   defaultVfrRequestConfigForScenario,
   defaultVfrTrafficConfigForScenario,
   loadSessionSetup,
+  matchVfrDensityPreset,
   parseSessionSetupStorage,
   resolveSessionSetup,
   saveSessionSetup,
   serializeSessionSetup,
   validateSessionSetup,
+  vfrDensityNumbersFromSetup,
   vfrEnabledForScenario,
   type SessionSetup,
+  type VfrDensityNumbers,
 } from "../sessionSetup";
+import { fixedVfrMovementMix } from "../vfrTraffic";
 import { assertScenario, loadKdem } from "../load";
 import { parseRegionalPack, type RegionalFacility } from "../regional";
 import type { Scenario } from "../types";
@@ -309,8 +315,8 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
     expect(defaultTraffic?.targetCount).toBe(4);
     expect(defaultTraffic?.entriesPerHour).toBe(6);
     expect(defaultTraffic?.maxPopulation).toBe(8);
-    // T04-77: defaults carry no zone authoring; spawns use the training box.
-    expect(defaultTraffic?.zones).toBeUndefined();
+    // T04-78: defaults carry no zone authoring; spawns use the training box.
+    expect("zones" in (defaultTraffic ?? {})).toBe(false);
 
     const defaultRequests = defaultVfrRequestConfigForScenario(synthetic);
     expect(defaultRequests).toBeDefined();
@@ -318,5 +324,166 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
     expect(defaultRequests?.ifrPickupPercent).toBe(20);
     expect(defaultRequests?.requestCapPerHour).toBe(6);
     expect(defaultRequests?.ifrCancellationPercent).toBe(25);
+  });
+});
+
+describe("T04-78 VFR density presets", () => {
+  test("Preset map carries the exact trainer numbers", () => {
+    expect(VFR_DENSITY_PRESETS.light).toEqual({
+      initialCount: 2,
+      targetCount: 2,
+      entriesPerHour: 3,
+      maxPopulation: 4,
+      requestCapPerHour: 3,
+      flightFollowingPercent: 20,
+      ifrPickupPercent: 10,
+      ifrCancellationPercent: 10,
+    });
+    expect(VFR_DENSITY_PRESETS.moderate).toEqual({
+      initialCount: 4,
+      targetCount: 4,
+      entriesPerHour: 6,
+      maxPopulation: 8,
+      requestCapPerHour: 6,
+      flightFollowingPercent: 30,
+      ifrPickupPercent: 20,
+      ifrCancellationPercent: 25,
+    });
+    expect(VFR_DENSITY_PRESETS.busy).toEqual({
+      initialCount: 6,
+      targetCount: 8,
+      entriesPerHour: 12,
+      maxPopulation: 12,
+      requestCapPerHour: 10,
+      flightFollowingPercent: 40,
+      ifrPickupPercent: 30,
+      ifrCancellationPercent: 25,
+    });
+  });
+
+  test("Moderate preset equals the T04-76 scenario defaults", () => {
+    const synthetic = buildSyntheticScenario();
+    const traffic = defaultVfrTrafficConfigForScenario(synthetic);
+    const requests = defaultVfrRequestConfigForScenario(synthetic);
+    const moderate = VFR_DENSITY_PRESETS.moderate;
+    expect(traffic?.initialCount).toBe(moderate.initialCount);
+    expect(traffic?.targetCount).toBe(moderate.targetCount);
+    expect(traffic?.entriesPerHour).toBe(moderate.entriesPerHour);
+    expect(traffic?.maxPopulation).toBe(moderate.maxPopulation);
+    expect(requests?.requestCapPerHour).toBe(moderate.requestCapPerHour);
+    expect(requests?.flightFollowingPercent).toBe(moderate.flightFollowingPercent);
+    expect(requests?.ifrPickupPercent).toBe(moderate.ifrPickupPercent);
+    expect(requests?.ifrCancellationPercent).toBe(moderate.ifrCancellationPercent);
+  });
+
+  test("Preset application writes full numbers with the fixed mix; Off strips all VFR keys", () => {
+    const synthetic = buildSyntheticScenario();
+    for (const id of ["light", "moderate", "busy"] as const) {
+      const applied = applyVfrDensityPreset(id, synthetic);
+      const numbers = vfrDensityNumbersFromSetup({
+        scenarioId: "kdem",
+        arrivalCount: 4,
+        arrivalsPerHour: 10,
+        departuresPerHour: 0,
+        seed: 1,
+        ...applied,
+      });
+      expect(numbers).toEqual(VFR_DENSITY_PRESETS[id]);
+      expect(applied.vfrTraffic?.movementMix).toEqual({
+        localPercent: 60,
+        transitPercent: 20,
+        airportBoundPercent: 20,
+      });
+    }
+
+    const off = applyVfrDensityPreset("off", synthetic);
+    expect(off.vfrTraffic).toBeUndefined();
+    expect(off.vfrRequests).toBeUndefined();
+    expect(vfrDensityNumbersFromSetup({ ...defaultSessionSetup() })).toBeNull();
+    expect(matchVfrDensityPreset(null)).toBe("off");
+  });
+
+  test("Custom derives only when numbers differ from every preset; never persisted", () => {
+    expect(matchVfrDensityPreset(VFR_DENSITY_PRESETS.moderate)).toBe("moderate");
+    const tuned: VfrDensityNumbers = { ...VFR_DENSITY_PRESETS.moderate, entriesPerHour: 7 };
+    expect(matchVfrDensityPreset(tuned)).toBe("custom");
+    expect(Object.keys(VFR_DENSITY_PRESETS)).toEqual(["light", "moderate", "busy"]);
+  });
+
+  test("Fixed mix folds airport-bound to local with no eligible destinations", () => {
+    const synthetic = buildSyntheticScenario();
+    expect(fixedVfrMovementMix(synthetic.regional)).toEqual({
+      localPercent: 60,
+      transitPercent: 20,
+      airportBoundPercent: 20,
+    });
+    expect(fixedVfrMovementMix(undefined)).toEqual({
+      localPercent: 80,
+      transitPercent: 20,
+      airportBoundPercent: 0,
+    });
+    const kdem = loadKdem();
+    expect(defaultVfrTrafficConfigForScenario(kdem)).toBeUndefined();
+    const folded = applyVfrDensityPreset("busy", kdem);
+    expect(folded.vfrTraffic?.movementMix).toEqual({
+      localPercent: 80,
+      transitPercent: 20,
+      airportBoundPercent: 0,
+    });
+  });
+
+  test("Off persists no vfrTraffic/vfrRequests keys", () => {
+    const setup: SessionSetup = {
+      scenarioId: "kdem",
+      arrivalCount: 6,
+      arrivalsPerHour: 12,
+      departuresPerHour: 0,
+      seed: 1,
+    };
+    const serialized = serializeSessionSetup(setup);
+    expect(serialized).not.toContain("vfrTraffic");
+    expect(serialized).not.toContain("vfrRequests");
+    const parsed = parseSessionSetupStorage(serialized);
+    expect(parsed?.vfrTraffic).toBeUndefined();
+    expect(parsed?.vfrRequests).toBeUndefined();
+    expect(matchVfrDensityPreset(vfrDensityNumbersFromSetup(parsed!))).toBe("off");
+  });
+
+  test("Preset numbers round-trip and validate through the upstream schema", () => {
+    const synthetic = buildSyntheticScenario();
+    const context = { regional: synthetic.regional };
+    const applied = applyVfrDensityPreset("busy", synthetic);
+    const setup: SessionSetup = {
+      scenarioId: "kdem",
+      arrivalCount: 5,
+      arrivalsPerHour: 15,
+      departuresPerHour: 6,
+      seed: 42,
+      ...applied,
+    };
+    const validated = validateSessionSetup(setup, context);
+    expect(matchVfrDensityPreset(vfrDensityNumbersFromSetup(validated))).toBe("busy");
+    const parsed = parseSessionSetupStorage(serializeSessionSetup(setup, context), context);
+    expect(matchVfrDensityPreset(vfrDensityNumbersFromSetup(parsed!))).toBe("busy");
+    expect(parsed?.vfrTraffic?.movementMix).toEqual({
+      localPercent: 60,
+      transitPercent: 20,
+      airportBoundPercent: 20,
+    });
+  });
+
+  test("Legacy stored session loads VFR-disabled and derives Off", () => {
+    const legacyJson = JSON.stringify({
+      version: 1,
+      scenarioId: "kdem",
+      arrivalCount: 6,
+      arrivalsPerHour: 12,
+      departuresPerHour: 0,
+      seed: 1,
+    });
+    const parsed = parseSessionSetupStorage(legacyJson);
+    expect(parsed?.vfrTraffic).toBeUndefined();
+    expect(parsed?.vfrRequests).toBeUndefined();
+    expect(matchVfrDensityPreset(vfrDensityNumbersFromSetup(parsed!))).toBe("off");
   });
 });

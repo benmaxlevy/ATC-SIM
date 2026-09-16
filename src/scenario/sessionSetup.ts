@@ -12,11 +12,11 @@ import {
   listPlayableScenarios,
 } from "./playableScenarios";
 import { loadPlayableScenario } from "./playableScenarios";
-import type { Scenario, VfrRequestConfig, VfrTrafficConfig, VfrZone } from "./types";
+import type { Scenario, VfrRequestConfig, VfrTrafficConfig } from "./types";
 import {
   DEFAULT_VFR_AIRCRAFT_MIX,
   DEFAULT_VFR_ALTITUDE_MIX,
-  getEligibleVfrDestinations,
+  fixedVfrMovementMix,
   validateVfrRequestConfig,
   validateVfrTrafficConfig,
 } from "./vfrTraffic";
@@ -30,6 +30,135 @@ export const SESSION_INITIAL_COUNT_MIN = 0;
 export const SESSION_INITIAL_COUNT_MAX = 30;
 export const SESSION_DEPARTURES_PER_HOUR_MIN = 0;
 export const SESSION_DEPARTURES_PER_HOUR_MAX = 60;
+
+/** VFR density preset ids. `custom` is display-only, never persisted. */
+export type VfrDensityPresetId = "off" | "light" | "moderate" | "busy";
+export type VfrDensitySelection = VfrDensityPresetId | "custom";
+
+export interface VfrDensityNumbers {
+  initialCount: number;
+  targetCount: number;
+  entriesPerHour: number;
+  maxPopulation: number;
+  requestCapPerHour: number;
+  flightFollowingPercent: number;
+  ifrPickupPercent: number;
+  ifrCancellationPercent: number;
+}
+
+/**
+ * VFR density presets (T04-78). UI mapping only; persisted storage keeps full
+ * numbers. Moderate equals the T04-76 defaults.
+ */
+export const VFR_DENSITY_PRESETS: Record<Exclude<VfrDensityPresetId, "off">, VfrDensityNumbers> = {
+  light: {
+    initialCount: 2,
+    targetCount: 2,
+    entriesPerHour: 3,
+    maxPopulation: 4,
+    requestCapPerHour: 3,
+    flightFollowingPercent: 20,
+    ifrPickupPercent: 10,
+    ifrCancellationPercent: 10,
+  },
+  moderate: {
+    initialCount: 4,
+    targetCount: 4,
+    entriesPerHour: 6,
+    maxPopulation: 8,
+    requestCapPerHour: 6,
+    flightFollowingPercent: 30,
+    ifrPickupPercent: 20,
+    ifrCancellationPercent: 25,
+  },
+  busy: {
+    initialCount: 6,
+    targetCount: 8,
+    entriesPerHour: 12,
+    maxPopulation: 12,
+    requestCapPerHour: 10,
+    flightFollowingPercent: 40,
+    ifrPickupPercent: 30,
+    ifrCancellationPercent: 25,
+  },
+};
+
+function densityNumbersEqual(a: VfrDensityNumbers, b: VfrDensityNumbers): boolean {
+  return (
+    a.initialCount === b.initialCount &&
+    a.targetCount === b.targetCount &&
+    a.entriesPerHour === b.entriesPerHour &&
+    a.maxPopulation === b.maxPopulation &&
+    a.requestCapPerHour === b.requestCapPerHour &&
+    a.flightFollowingPercent === b.flightFollowingPercent &&
+    a.ifrPickupPercent === b.ifrPickupPercent &&
+    a.ifrCancellationPercent === b.ifrCancellationPercent
+  );
+}
+
+/** Extract the 8 tuned numbers; null when VFR is off (no VFR keys). */
+export function vfrDensityNumbersFromSetup(setup: SessionSetup): VfrDensityNumbers | null {
+  if (!setup.vfrTraffic && !setup.vfrRequests) {
+    return null;
+  }
+  return {
+    initialCount: setup.vfrTraffic?.initialCount ?? 0,
+    targetCount: setup.vfrTraffic?.targetCount ?? 0,
+    entriesPerHour: setup.vfrTraffic?.entriesPerHour ?? 0,
+    maxPopulation: setup.vfrTraffic?.maxPopulation ?? 0,
+    requestCapPerHour: setup.vfrRequests?.requestCapPerHour ?? 0,
+    flightFollowingPercent: setup.vfrRequests?.flightFollowingPercent ?? 0,
+    ifrPickupPercent: setup.vfrRequests?.ifrPickupPercent ?? 0,
+    ifrCancellationPercent: setup.vfrRequests?.ifrCancellationPercent ?? 0,
+  };
+}
+
+/** Derive the density selection: `off` when no VFR keys, preset on exact match, else `custom`. */
+export function matchVfrDensityPreset(numbers: VfrDensityNumbers | null): VfrDensitySelection {
+  if (!numbers) {
+    return "off";
+  }
+  for (const id of Object.keys(VFR_DENSITY_PRESETS) as Array<Exclude<VfrDensityPresetId, "off">>) {
+    if (densityNumbersEqual(numbers, VFR_DENSITY_PRESETS[id])) {
+      return id;
+    }
+  }
+  return "custom";
+}
+
+/**
+ * Build VFR configs for a density preset. Off returns no keys (matches
+ * legacy-disabled load). Other presets carry the fixed 60/20/20 movement mix
+ * with airport-bound folded to local when the scenario has no eligible
+ * destinations. Results still pass through upstream validation on apply.
+ */
+export function applyVfrDensityPreset(
+  preset: VfrDensityPresetId,
+  scenario?: Scenario,
+): Pick<SessionSetup, "vfrTraffic" | "vfrRequests"> {
+  if (preset === "off") {
+    return {};
+  }
+  const numbers = VFR_DENSITY_PRESETS[preset];
+  return {
+    vfrTraffic: {
+      initialCount: numbers.initialCount,
+      targetCount: numbers.targetCount,
+      entriesPerHour: numbers.entriesPerHour,
+      maxPopulation: numbers.maxPopulation,
+      seed: 1,
+      movementMix: fixedVfrMovementMix(scenario?.regional),
+      aircraftMix: DEFAULT_VFR_AIRCRAFT_MIX,
+      altitudeMix: DEFAULT_VFR_ALTITUDE_MIX,
+    },
+    vfrRequests: {
+      flightFollowingPercent: numbers.flightFollowingPercent,
+      ifrPickupPercent: numbers.ifrPickupPercent,
+      requestCapPerHour: numbers.requestCapPerHour,
+      ifrCancellationPercent: numbers.ifrCancellationPercent,
+    },
+  };
+}
 
 export interface SessionSetup {
   scenarioId: string;
@@ -69,7 +198,7 @@ function integerInRange(value: unknown, min: number, max: number, name: string):
 
 export function validateSessionSetup(
   value: unknown,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): SessionSetup {
   if (!value || typeof value !== "object") {
     throw new Error("Session setup must be an object");
@@ -111,7 +240,7 @@ export function validateSessionSetup(
     if (!resolvedContext) {
       try {
         const sc = loadPlayableScenario(scenarioId.trim().toLowerCase());
-        resolvedContext = { vfrZones: sc.vfrZones, regional: sc.regional };
+        resolvedContext = { regional: sc.regional };
       } catch {
         resolvedContext = undefined;
       }
@@ -163,21 +292,15 @@ export function defaultVfrTrafficConfigForScenario(
   if (!scenario || !scenario.regional) {
     return undefined;
   }
-  // T04-77: spawns sample the fixed ARP-centered training box; no zone authoring.
-  const eligibleDests = getEligibleVfrDestinations(scenario.regional);
-  const airportBound = eligibleDests.length > 0 ? 20 : 0;
-  const local = 100 - airportBound - 20;
+  // T04-78: fixed trainer mix (60/20/20, airport-bound folds to local with no
+  // eligible destinations); spawns sample the fixed ARP-centered training box.
   return {
     initialCount: 4,
     targetCount: 4,
     entriesPerHour: 6,
     maxPopulation: 8,
     seed: 1,
-    movementMix: {
-      localPercent: local,
-      transitPercent: 20,
-      airportBoundPercent: airportBound,
-    },
+    movementMix: fixedVfrMovementMix(scenario.regional),
     aircraftMix: DEFAULT_VFR_AIRCRAFT_MIX,
     altitudeMix: DEFAULT_VFR_ALTITUDE_MIX,
   };
@@ -199,7 +322,7 @@ export function defaultVfrRequestConfigForScenario(
 
 export function serializeSessionSetup(
   setup: SessionSetup,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): string {
   const validated = validateSessionSetup(setup, context);
   return JSON.stringify({ version: SESSION_SETUP_VERSION, ...validated });
@@ -207,7 +330,7 @@ export function serializeSessionSetup(
 
 export function parseSessionSetupStorage(
   raw: string | null,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): SessionSetup | null {
   if (!raw) return null;
   try {
@@ -228,7 +351,7 @@ export function parseSessionSetupStorage(
 export function loadSessionSetup(
   storage: Storage | null,
   fallback: SessionSetup,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): SessionSetup {
   return (
     parseSessionSetupStorage(storage?.getItem(SESSION_SETUP_STORAGE_KEY) ?? null, context) ??
@@ -239,7 +362,7 @@ export function loadSessionSetup(
 export function saveSessionSetup(
   storage: Storage | null,
   setup: SessionSetup,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): void {
   storage?.setItem(SESSION_SETUP_STORAGE_KEY, serializeSessionSetup(setup, context));
 }
@@ -264,7 +387,7 @@ export function resolveSessionSetup(
   search: string,
   defaults: SessionSetup,
   stored: SessionSetup | null = null,
-  context?: { vfrZones?: VfrZone[]; regional?: RegionalFacility },
+  context?: { regional?: RegionalFacility },
 ): SessionSetupResolution {
   let fallback: SessionSetup;
   try {

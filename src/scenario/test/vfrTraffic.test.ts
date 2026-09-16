@@ -26,28 +26,18 @@ describe("T04-71 VfrTrafficConfig schema validation and stable errors", () => {
     // KDEM has no vfrTraffic and boots with vfrTraffic undefined
     const kdem = loadKdem();
     expect(kdem.vfrTraffic).toBeUndefined();
-    expect(kdem.vfrZones).toBeUndefined();
+    expect("vfrZones" in kdem).toBe(false);
   });
 
-  test("T04-77: enabled traffic no longer requires zones; legacy zones key is ignored", () => {
+  test("T04-78: named zones are deleted; legacy zones keys are ignored at runtime", () => {
     const config = validateVfrTrafficConfig({ initialCount: 4 });
     expect(config?.initialCount).toBe(4);
-    expect(config?.zones).toBeUndefined();
+    expect("zones" in (config ?? {})).toBe(false);
 
-    // Empty or zero-weighted legacy zones are ignored, never validated.
-    expect(validateVfrTrafficConfig({ initialCount: 4, zones: [] })?.zones).toBeUndefined();
-    expect(
-      validateVfrTrafficConfig({
-        initialCount: 4,
-        zones: [{ id: "north", weight: 0 }],
-      })?.zones,
-    ).toBeUndefined();
-    expect(
-      validateVfrTrafficConfig({
-        initialCount: 4,
-        zones: [{ id: "unknown_zone", weight: 1 }],
-      })?.zones,
-    ).toBeUndefined();
+    // Legacy zone authoring passes through validation ignored, never stored.
+    const legacyKeys = { initialCount: 4, zones: [{ id: "north", weight: 1 }] };
+    const validated = validateVfrTrafficConfig(legacyKeys as unknown as Record<string, unknown>);
+    expect("zones" in (validated ?? {})).toBe(false);
   });
 
   test("Stable error 1: initialCount must be a non-negative integer", () => {
