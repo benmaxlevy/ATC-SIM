@@ -26,6 +26,16 @@ export const CLASS_B_VERTICAL_MARGIN_FT = 500;
 export const MAX_PLANNER_ATTEMPTS = 10;
 export const VFR_TRACON_EXIT_RADIUS_NM = 28;
 
+/**
+ * Fixed ARP-centered training box half-extent (T04-77). Ambient VFR spawns
+ * uniformly inside [-half, +half] NM around the scenario ARP. Spawns inside
+ * Bravo are excluded by the avoidance guard, never by box shaping.
+ */
+export const VFR_TRAINING_HALF_EXTENT_NM = 30;
+
+/** Stable zoneId marker for box-spawned ambient VFR (zones were deleted in T04-77). */
+export const VFR_TRAINING_BOX_ID = "training-box";
+
 export interface Point2D {
   xNm: number;
   yNm: number;
@@ -284,53 +294,23 @@ export function isRouteSafeFromAvoidance(
   return true;
 }
 
-export interface ZoneGeometry {
-  id: string;
-  name?: string;
-  bounds?: {
-    minXNm: number;
-    maxXNm: number;
-    minYNm: number;
-    maxYNm: number;
-  };
-  centerNm?: Point2D;
-  radiusNm?: number;
-  polygon?: Point2D[];
-  waypoints?: Point2D[];
+/** Fixed ARP-centered square training box for ambient VFR spawn/LOCAL sampling. */
+export interface VfrTrainingBox {
+  centerNm: Point2D;
+  halfExtentNm: number;
 }
 
-/** Sample a 2D candidate point within a zone. */
-export function samplePointInZone(zone: ZoneGeometry, rng: () => number): Point2D {
-  if (zone.bounds) {
-    const { minXNm, maxXNm, minYNm, maxYNm } = zone.bounds;
-    return {
-      xNm: minXNm + rng() * (maxXNm - minXNm),
-      yNm: minYNm + rng() * (maxYNm - minYNm),
-    };
-  }
-  if (zone.centerNm && zone.radiusNm) {
-    const r = Math.sqrt(rng()) * zone.radiusNm;
-    const theta = rng() * 2 * Math.PI;
-    return {
-      xNm: zone.centerNm.xNm + r * Math.sin(theta),
-      yNm: zone.centerNm.yNm + r * Math.cos(theta),
-    };
-  }
-  if (zone.waypoints && zone.waypoints.length > 0) {
-    const wp = zone.waypoints[Math.floor(rng() * zone.waypoints.length)]!;
-    // Slight jitter around waypoint
-    return {
-      xNm: wp.xNm + (rng() - 0.5) * 2,
-      yNm: wp.yNm + (rng() - 0.5) * 2,
-    };
-  }
-  // Default box if undefined
-  return { xNm: (rng() - 0.5) * 20, yNm: 15 + rng() * 10 };
+/** Sample a 2D candidate point uniformly inside the training box. */
+export function samplePointInBox(box: VfrTrainingBox, rng: () => number): Point2D {
+  return {
+    xNm: box.centerNm.xNm + (rng() * 2 - 1) * box.halfExtentNm,
+    yNm: box.centerNm.yNm + (rng() * 2 - 1) * box.halfExtentNm,
+  };
 }
 
 export interface RoutePlanningOptions {
   mission: AmbientVfrMission;
-  zone: ZoneGeometry;
+  box: VfrTrainingBox;
   altitudeFt: number;
   speedKt: number;
   destinationAirport?: RegionalAirport;
@@ -351,12 +331,12 @@ export interface PlannedVfrRoute {
  * Returns null if no safe candidate route is found within maxAttempts.
  */
 export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute | null {
-  const { mission, zone, altitudeFt, speedKt, destinationAirport, avoidanceVolumes, rng, margins } =
+  const { mission, box, altitudeFt, speedKt, destinationAirport, avoidanceVolumes, rng, margins } =
     options;
   const maxAttempts = options.maxAttempts ?? MAX_PLANNER_ATTEMPTS;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const initialPt = samplePointInZone(zone, rng);
+    const initialPt = samplePointInBox(box, rng);
     const spawnPoint: Point3D = { ...initialPt, altitudeFt };
 
     // Check spawn point
@@ -372,10 +352,10 @@ export function planSafeVfrRoute(options: RoutePlanningOptions): PlannedVfrRoute
     const waypoints: VfrNavWaypoint[] = [];
 
     if (mission === "LOCAL") {
-      // 3 persistent waypoints inside zone
+      // 3 persistent waypoints inside the training box
       const numWps = 3;
       for (let w = 0; w < numWps; w++) {
-        const pt = samplePointInZone(zone, rng);
+        const pt = samplePointInBox(box, rng);
         waypoints.push({ ...pt, altitudeFt, speedKt, targetToleranceNm: 1.2 });
       }
     } else if (mission === "TRANSIT") {

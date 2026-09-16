@@ -127,18 +127,6 @@ function buildSyntheticScenario(): Scenario {
   const regional = buildSyntheticRegional();
   return assertScenario({
     ...kdem,
-    vfrZones: [
-      {
-        id: "north",
-        name: "North Zone",
-        bounds: { minXNm: -15, maxXNm: -5, minYNm: 10, maxYNm: 20 },
-      },
-      {
-        id: "south",
-        name: "South Zone",
-        bounds: { minXNm: 5, maxXNm: 15, minYNm: -20, maxYNm: -10 },
-      },
-    ],
     regional,
   });
 }
@@ -167,7 +155,7 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
 
   test("VFR settings round-trip through serialize and parse without mutating IFR settings", () => {
     const synthetic = buildSyntheticScenario();
-    const context = { vfrZones: synthetic.vfrZones, regional: synthetic.regional };
+    const context = { regional: synthetic.regional };
     const setup: SessionSetup = {
       scenarioId: "kdem",
       arrivalCount: 5,
@@ -180,10 +168,6 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
         entriesPerHour: 5,
         maxPopulation: 6,
         seed: 42,
-        zones: [
-          { id: "north", weight: 2 },
-          { id: "south", weight: 1 },
-        ],
         movementMix: { localPercent: 50, transitPercent: 30, airportBoundPercent: 20 },
       },
       vfrRequests: {
@@ -225,7 +209,7 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
 
   test("Reuses upstream validation and throws exact error strings", () => {
     const synthetic = buildSyntheticScenario();
-    const context = { vfrZones: synthetic.vfrZones, regional: synthetic.regional };
+    const context = { regional: synthetic.regional };
 
     // Request percentage sum > 100
     expect(() =>
@@ -259,7 +243,6 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
             targetCount: 2,
             entriesPerHour: 4,
             maxPopulation: 4,
-            zones: [{ id: "north", weight: 1 }],
             movementMix: { localPercent: 60, transitPercent: 20, airportBoundPercent: 10 },
           },
         },
@@ -281,7 +264,6 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
             targetCount: 5,
             entriesPerHour: 4,
             maxPopulation: 3,
-            zones: [{ id: "north", weight: 1 }],
           },
         },
         context,
@@ -327,7 +309,8 @@ describe("T04-76 SessionSetup VFR schema and persistence contract", () => {
     expect(defaultTraffic?.targetCount).toBe(4);
     expect(defaultTraffic?.entriesPerHour).toBe(6);
     expect(defaultTraffic?.maxPopulation).toBe(8);
-    expect(defaultTraffic?.zones?.length).toBe(2);
+    // T04-77: defaults carry no zone authoring; spawns use the training box.
+    expect(defaultTraffic?.zones).toBeUndefined();
 
     const defaultRequests = defaultVfrRequestConfigForScenario(synthetic);
     expect(defaultRequests).toBeDefined();

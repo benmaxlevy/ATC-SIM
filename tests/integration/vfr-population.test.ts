@@ -10,7 +10,13 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { evaluateConflictAlert, evaluateMsaw, makeTestAircraft } from "@core";
+import {
+  evaluateConflictAlert,
+  evaluateMsaw,
+  isPointInside3dVolume,
+  makeTestAircraft,
+  VFR_TRAINING_HALF_EXTENT_NM,
+} from "@core";
 import {
   assertScenario,
   createWorldFromScenario,
@@ -128,28 +134,12 @@ describe("T04-71 VFR population end-to-end integration", () => {
     return assertScenario(
       {
         ...kdem,
-        vfrZones: [
-          {
-            id: "north",
-            name: "North Practice Area",
-            bounds: { minXNm: -15, maxXNm: -7, minYNm: 10, maxYNm: 20 },
-          },
-          {
-            id: "south",
-            name: "South Practice Area",
-            bounds: { minXNm: 7, maxXNm: 15, minYNm: -20, maxYNm: -10 },
-          },
-        ],
         vfrTraffic: {
           initialCount: 3,
           targetCount: 5,
           entriesPerHour: 4,
           maxPopulation: 6,
           seed: 42,
-          zones: [
-            { id: "north", weight: 2 },
-            { id: "south", weight: 1 },
-          ],
           movementMix: {
             localPercent: 50,
             transitPercent: 25,
@@ -297,6 +287,48 @@ describe("T04-71 VFR population end-to-end integration", () => {
       for (const dest of dests) {
         expect(dest.publicUse).toBe(true);
         expect(dest.runways.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("T04-77: KATL spawns initial VFR from the training box with no zone authoring", () => {
+    const katl = assertScenario(
+      {
+        ...katlJson,
+        vfrTraffic: {
+          initialCount: 4,
+          targetCount: 4,
+          entriesPerHour: 0,
+          maxPopulation: 4,
+          seed: 7,
+          movementMix: { localPercent: 100, transitPercent: 0, airportBoundPercent: 0 },
+        },
+      },
+      { arrivalCountMin: 1, arrivalCountMax: 10 },
+    );
+    // No zones survive on the loaded scenario.
+    expect(katl.vfrZones).toBeUndefined();
+
+    const world = createWorldFromScenario(katl, 7);
+    const vfrAircraft = world.aircraft.filter((a) => a.ambientVfr !== undefined);
+    // Non-zero initial count spawns without any zone authoring; the Bravo
+    // guard may skip individual candidates but never throws. The generated
+    // KATL regional pack is absent here, so no avoidance applies and all 4
+    // spawn deterministically.
+    expect(vfrAircraft.length).toBeGreaterThan(0);
+    expect(vfrAircraft.length).toBeLessThanOrEqual(4);
+    if (!katl.regional) {
+      expect(vfrAircraft).toHaveLength(4);
+    }
+
+    const bravoVolumes = (katl.regional?.airspaces ?? []).filter((v) => v.class === "B");
+    for (const ac of vfrAircraft) {
+      expect(Math.abs(ac.xNm - katl.arpNm.xNm)).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
+      expect(Math.abs(ac.yNm - katl.arpNm.yNm)).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
+      for (const vol of bravoVolumes) {
+        expect(
+          isPointInside3dVolume({ xNm: ac.xNm, yNm: ac.yNm, altitudeFt: ac.altitudeFt }, vol),
+        ).toBe(false);
       }
     }
   });

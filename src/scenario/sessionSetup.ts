@@ -12,13 +12,7 @@ import {
   listPlayableScenarios,
 } from "./playableScenarios";
 import { loadPlayableScenario } from "./playableScenarios";
-import type {
-  Scenario,
-  VfrRequestConfig,
-  VfrTrafficConfig,
-  VfrTrafficZoneConfig,
-  VfrZone,
-} from "./types";
+import type { Scenario, VfrRequestConfig, VfrTrafficConfig, VfrZone } from "./types";
 import {
   DEFAULT_VFR_AIRCRAFT_MIX,
   DEFAULT_VFR_ALTITUDE_MIX,
@@ -169,10 +163,7 @@ export function defaultVfrTrafficConfigForScenario(
   if (!scenario || !scenario.regional) {
     return undefined;
   }
-  const zones: VfrTrafficZoneConfig[] = (scenario.vfrZones ?? []).map((z) => ({
-    id: z.id,
-    weight: 1,
-  }));
+  // T04-77: spawns sample the fixed ARP-centered training box; no zone authoring.
   const eligibleDests = getEligibleVfrDestinations(scenario.regional);
   const airportBound = eligibleDests.length > 0 ? 20 : 0;
   const local = 100 - airportBound - 20;
@@ -182,7 +173,6 @@ export function defaultVfrTrafficConfigForScenario(
     entriesPerHour: 6,
     maxPopulation: 8,
     seed: 1,
-    ...(zones.length > 0 ? { zones } : {}),
     movementMix: {
       localPercent: local,
       transitPercent: 20,

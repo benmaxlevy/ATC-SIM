@@ -6,9 +6,11 @@ import {
   isPointInside3dVolume,
   isRouteSafeFromAvoidance,
   planSafeVfrRoute,
+  samplePointInBox,
   stepVfrAircraftNavigation,
+  VFR_TRAINING_HALF_EXTENT_NM,
   type Point3D,
-  type ZoneGeometry,
+  type VfrTrainingBox,
 } from "../vfrNavigation";
 
 // Synthetic Class B volume: 10x10 NM box at center, floor 3,000 ft, ceiling 10,000 ft
@@ -140,11 +142,11 @@ describe("T04-71 VFR 3D Class B avoidance", () => {
     expect(isRouteSafeFromAvoidance(cuttingRoute, [SYNTHETIC_CLASS_B_VOLUME])).toBe(false);
   });
 
-  test("Bounded route planner skips with NO_SAFE_ROUTE when airspace completely blocks zone", () => {
-    // Zone entirely enclosed by the Class B volume
-    const trappedZone: ZoneGeometry = {
-      id: "trapped",
-      bounds: { minXNm: -3, maxXNm: 3, minYNm: -3, maxYNm: 3 },
+  test("Bounded route planner skips with NO_SAFE_ROUTE when airspace completely blocks the box", () => {
+    // Box entirely enclosed by the Class B volume
+    const trappedBox: VfrTrainingBox = {
+      centerNm: { xNm: 0, yNm: 0 },
+      halfExtentNm: 3,
     };
 
     let callCount = 0;
@@ -155,7 +157,7 @@ describe("T04-71 VFR 3D Class B avoidance", () => {
 
     const planned = planSafeVfrRoute({
       mission: "LOCAL",
-      zone: trappedZone,
+      box: trappedBox,
       altitudeFt: 5000,
       speedKt: 110,
       avoidanceVolumes: [SYNTHETIC_CLASS_B_VOLUME],
@@ -165,10 +167,50 @@ describe("T04-71 VFR 3D Class B avoidance", () => {
 
     expect(planned).toBeNull();
   });
+
+  test("Training-box sampler stays uniform inside [-half, +half] and repeats per seed", () => {
+    expect(VFR_TRAINING_HALF_EXTENT_NM).toBe(30);
+    const box: VfrTrainingBox = {
+      centerNm: { xNm: 0, yNm: 0 },
+      halfExtentNm: VFR_TRAINING_HALF_EXTENT_NM,
+    };
+
+    let seed = 7;
+    const rng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    let sumX = 0;
+    let sumY = 0;
+    const n = 2000;
+    for (let i = 0; i < n; i++) {
+      const pt = samplePointInBox(box, rng);
+      expect(pt.xNm).toBeGreaterThanOrEqual(-VFR_TRAINING_HALF_EXTENT_NM);
+      expect(pt.xNm).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
+      expect(pt.yNm).toBeGreaterThanOrEqual(-VFR_TRAINING_HALF_EXTENT_NM);
+      expect(pt.yNm).toBeLessThanOrEqual(VFR_TRAINING_HALF_EXTENT_NM);
+      sumX += pt.xNm;
+      sumY += pt.yNm;
+    }
+    // Uniform over a symmetric box: means near the center.
+    expect(Math.abs(sumX / n)).toBeLessThan(1.5);
+    expect(Math.abs(sumY / n)).toBeLessThan(1.5);
+
+    const replay = (seedValue: number) => {
+      let s = seedValue;
+      const r = () => {
+        s = (s * 9301 + 49297) % 233280;
+        return s / 233280;
+      };
+      return [samplePointInBox(box, r), samplePointInBox(box, r)];
+    };
+    expect(replay(99)).toEqual(replay(99));
+    expect(replay(99)).not.toEqual(replay(100));
+  });
 });
 
 describe("T04-71 Autonomous waypoint navigation and natural exits", () => {
-  test("Local traffic follows waypoints inside zone, dwells, and exits at boundary", () => {
+  test("Local traffic follows waypoints inside the box, dwells, and exits at boundary", () => {
     const ac = makeTestAircraft({
       callsign: "N12345",
       xNm: 15,

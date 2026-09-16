@@ -3,7 +3,7 @@
  *
  * Implements:
  * - Strict schema validation with stable error strings
- * - Independent seeded PRNG streams for initial placement, mission/zone selection, route choices, and future entries
+ * - Independent seeded PRNG streams for initial placement, mission selection, route choices, and future entries
  * - Separate initial, target, entry-rate, and hard-cap controls
  * - Paced continuous entries at 3,600,000 / entriesPerHour with bounded jitter and no catch-up burst
  * - Soft targetCount maintenance via natural exits/replenishment without mass removal
@@ -16,10 +16,12 @@
 import { mulberry32, performanceRegistry, type Aircraft } from "@core";
 import { createAircraft } from "../core/aircraft";
 import {
+  VFR_TRAINING_BOX_ID,
+  VFR_TRAINING_HALF_EXTENT_NM,
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
   stepVfrAircraftNavigation,
-  type ZoneGeometry,
+  type VfrTrainingBox,
 } from "../core/vfrNavigation";
 import type { World } from "../core/world";
 import type { RegionalAirport, RegionalAirspaceVolume, RegionalFacility } from "./regional";
@@ -30,8 +32,6 @@ import type {
   VfrMovementMix,
   VfrRequestConfig,
   VfrTrafficConfig,
-  VfrTrafficZoneConfig,
-  VfrZone,
 } from "./types";
 
 export const VFR_INITIAL_PLACEMENT_XOR = 0x5a1e_7001;
@@ -178,7 +178,6 @@ export function validateVfrRequestConfig(raw: unknown): VfrRequestConfig | undef
 export function validateVfrTrafficConfig(
   raw: unknown,
   context?: {
-    vfrZones?: VfrZone[];
     regional?: RegionalFacility;
   },
 ): VfrTrafficConfig | undefined {
@@ -247,41 +246,6 @@ export function validateVfrTrafficConfig(
   }
 
   const isEnabled = initialCount > 0 || targetCount > 0 || entriesPerHour > 0;
-
-  // zones validation
-  let validatedZones: VfrTrafficZoneConfig[] | undefined;
-  if (Array.isArray(raw.zones)) {
-    validatedZones = [];
-    for (let i = 0; i < raw.zones.length; i++) {
-      const z = raw.zones[i];
-      if (!isRecord(z) || typeof z.id !== "string" || typeof z.weight !== "number") {
-        throw new Error("vfrTraffic zone weights require a positive zone when traffic is enabled");
-      }
-      if (!Number.isFinite(z.weight) || z.weight < 0) {
-        throw new Error("vfrTraffic zone weights require a positive zone when traffic is enabled");
-      }
-      // Check if zone is defined by scenario
-      if (context?.vfrZones) {
-        const found = context.vfrZones.some((def) => def.id === z.id);
-        if (!found) {
-          throw new Error(`vfrTraffic zone ${z.id} is not defined by the scenario`);
-        }
-      } else {
-        throw new Error(`vfrTraffic zone ${z.id} is not defined by the scenario`);
-      }
-      validatedZones.push({ id: z.id, weight: z.weight });
-    }
-  }
-
-  if (isEnabled) {
-    if (
-      !validatedZones ||
-      validatedZones.length === 0 ||
-      !validatedZones.some((z) => z.weight > 0)
-    ) {
-      throw new Error("vfrTraffic zone weights require a positive zone when traffic is enabled");
-    }
-  }
 
   // movementMix
   let movementMix: VfrMovementMix = DEFAULT_VFR_MOVEMENT_MIX;
@@ -429,7 +393,6 @@ export function validateVfrTrafficConfig(
     entriesPerHour,
     maxPopulation,
     seed,
-    ...(validatedZones ? { zones: validatedZones } : {}),
     movementMix,
     aircraftMix,
     altitudeMix,
@@ -491,7 +454,8 @@ export interface VfrTrafficManagerInit {
  */
 export class VfrTrafficManager {
   public readonly config: VfrTrafficConfig;
-  public readonly zones: Map<string, ZoneGeometry>;
+  /** Fixed ARP-centered training box (T04-77). Named zones were deleted. */
+  public readonly trainingBox: VfrTrainingBox;
   public readonly avoidanceVolumes: RegionalAirspaceVolume[];
   public readonly eligibleDestinations: RegionalAirport[];
 
@@ -512,20 +476,10 @@ export class VfrTrafficManager {
     this.rngRoute = mulberry32((baseSeed >>> 0) ^ VFR_ROUTE_XOR);
     this.rngEntries = mulberry32((baseSeed >>> 0) ^ VFR_FUTURE_ENTRY_XOR);
 
-    this.zones = new Map();
-    if (init.scenario.vfrZones) {
-      for (const z of init.scenario.vfrZones) {
-        this.zones.set(z.id, {
-          id: z.id,
-          name: z.name,
-          bounds: z.bounds,
-          centerNm: z.centerNm,
-          radiusNm: z.radiusNm,
-          polygon: z.polygon,
-          waypoints: z.waypoints,
-        });
-      }
-    }
+    this.trainingBox = {
+      centerNm: { xNm: init.scenario.arpNm.xNm, yNm: init.scenario.arpNm.yNm },
+      halfExtentNm: VFR_TRAINING_HALF_EXTENT_NM,
+    };
 
     // Identify Class B avoidance volumes from regional pack
     this.avoidanceVolumes = (init.scenario.regional?.airspaces ?? []).filter(isVfrAvoidanceVolume);
@@ -564,19 +518,7 @@ export class VfrTrafficManager {
       return null;
     }
 
-    const zonesConfig = this.config.zones;
-    if (!zonesConfig || zonesConfig.length === 0) {
-      return null;
-    }
-
-    // 1. Select zone by weight
-    const selectedZoneConfig = chooseWeighted(zonesConfig, this.rngMission);
-    const zoneGeom = this.zones.get(selectedZoneConfig.id);
-    if (!zoneGeom) {
-      return null;
-    }
-
-    // 2. Select mission from movementMix
+    // 1. Select mission from movementMix (rngMission draw order unchanged after zone deletion)
     const mix = this.config.movementMix ?? DEFAULT_VFR_MOVEMENT_MIX;
     const localP = mix.localPercent ?? 100;
     const transitP = mix.transitPercent ?? 0;
@@ -601,7 +543,7 @@ export class VfrTrafficManager {
       }
     }
 
-    // 3. Select aircraft type & callsign
+    // 2. Select aircraft type & callsign
     const acMixRow = chooseWeighted(
       this.config.aircraftMix ?? DEFAULT_VFR_AIRCRAFT_MIX,
       this.rngPlacement,
@@ -612,7 +554,7 @@ export class VfrTrafficManager {
       acMixRow.callsignPrefix,
     );
 
-    // 4. Select altitude
+    // 3. Select altitude
     const altMixRow = chooseWeighted(
       this.config.altitudeMix ?? DEFAULT_VFR_ALTITUDE_MIX,
       this.rngPlacement,
@@ -623,10 +565,10 @@ export class VfrTrafficManager {
 
     const speedKt = 110;
 
-    // 5. Plan safe route avoiding Class B volumes
+    // 4. Plan safe route avoiding Class B volumes (uniform training-box sampling)
     const plannedRoute = planSafeVfrRoute({
       mission,
-      zone: zoneGeom,
+      box: this.trainingBox,
       altitudeFt: altFt,
       speedKt,
       destinationAirport,
@@ -648,7 +590,7 @@ export class VfrTrafficManager {
     const { spawnPose, waypoints } = plannedRoute;
     const dwellDurationMs = 600_000 + Math.floor(this.rngPlacement() * 600_000); // 10-20 min
 
-    // 6. Build Aircraft with explicit VFR/1200/ambient marker
+    // 5. Build Aircraft with explicit VFR/1200/ambient marker
     const ac = createAircraft({
       callsign,
       xNm: spawnPose.xNm,
@@ -663,7 +605,7 @@ export class VfrTrafficManager {
       flightRules: "VFR",
       ambientVfr: {
         mission,
-        zoneId: zoneGeom.id,
+        zoneId: VFR_TRAINING_BOX_ID,
         ...(destinationAirport ? { destinationAirportId: destinationAirport.icao } : {}),
         spawnedAtSimMs: world.simTimeMs,
         alertEligibility: "AMBIENT_SUPPRESSED",
@@ -679,7 +621,7 @@ export class VfrTrafficManager {
       type: "vfr.spawned",
       callsign: ac.callsign,
       mission,
-      zoneId: zoneGeom.id,
+      zoneId: VFR_TRAINING_BOX_ID,
       atSimMs: world.simTimeMs,
       atWallMs: 0,
     });

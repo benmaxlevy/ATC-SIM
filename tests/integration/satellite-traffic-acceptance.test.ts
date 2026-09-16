@@ -659,14 +659,14 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
     // Plan route starting west of Bravo [-20, 0] aiming east of Bravo [20, 0] at 4500 ft
     // Direct path would pass straight through Bravo Core (x: [-5, 5], y: [-5, 5], alt 0-10000)
     const rng = mulberry32(12345);
-    const zone = {
-      id: "west",
-      name: "West Zone",
-      bounds: { minXNm: -25, maxXNm: -20, minYNm: -5, maxYNm: 5 },
+    // T04-77: training box covering the old west-zone footprint.
+    const box = {
+      centerNm: { xNm: -22.5, yNm: 0 },
+      halfExtentNm: 5,
     };
     const routePlan = planSafeVfrRoute({
       mission: "TRANSIT",
-      zone,
+      box,
       altitudeFt: 4500,
       speedKt: 120,
       avoidanceVolumes: classBVolumes,
@@ -857,21 +857,20 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
       const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
       expect(classBVolumes.length).toBeGreaterThan(0);
 
-      const zone =
+      // T04-77: training boxes covering the old west/north zone footprints.
+      const box =
         mission === "TRANSIT"
           ? {
-              id: "west",
-              name: "West Zone",
-              bounds: { minXNm: -25, maxXNm: -20, minYNm: -5, maxYNm: 5 },
+              centerNm: { xNm: -22.5, yNm: 0 },
+              halfExtentNm: 5,
             }
           : {
-              id: "north",
-              name: "North Practice Area",
-              bounds: { minXNm: -15, maxXNm: -7, minYNm: 12, maxYNm: 22 },
+              centerNm: { xNm: -11, yNm: 17 },
+              halfExtentNm: 8,
             };
       const routePlan = planSafeVfrRoute({
         mission,
-        zone,
+        box,
         altitudeFt,
         speedKt: 120,
         avoidanceVolumes: classBVolumes,

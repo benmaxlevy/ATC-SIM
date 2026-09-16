@@ -452,13 +452,15 @@ export type {
   Point3D,
   RoutePlanningOptions,
   VfrNavWaypoint,
-  ZoneGeometry,
+  VfrTrainingBox,
 } from "./vfrNavigation";
 export {
   CLASS_B_HORIZONTAL_MARGIN_NM,
   CLASS_B_VERTICAL_MARGIN_FT,
   MAX_PLANNER_ATTEMPTS,
   VFR_TRACON_EXIT_RADIUS_NM,
+  VFR_TRAINING_BOX_ID,
+  VFR_TRAINING_HALF_EXTENT_NM,
   checkSweptSegmentVolumeCollision,
   distPointToSegment,
   distSegmentToSegment,
@@ -470,7 +472,7 @@ export {
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
   pointInPolygon2D,
-  samplePointInZone,
+  samplePointInBox,
   segmentsIntersect2D,
   stepVfrAircraftNavigation,
 } from "./vfrNavigation";
