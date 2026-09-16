@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "7A3",
   "name": "LANETT RGNL",
-  "spokenAliases": [
-    "LANETT RGNL"
-  ],
+  "spokenAliases": ["LANETT RGNL"],
   "magVarDeg": -5,
   "fieldElevFt": 631,
   "arp": {

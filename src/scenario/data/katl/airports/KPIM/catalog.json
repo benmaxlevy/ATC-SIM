@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KPIM",
   "name": "HARRIS COUNTY",
-  "spokenAliases": [
-    "HARRIS COUNTY"
-  ],
+  "spokenAliases": ["HARRIS COUNTY"],
   "magVarDeg": -3,
   "fieldElevFt": 902,
   "arp": {

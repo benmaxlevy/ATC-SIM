@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCTJ",
   "name": "WEST GEORGIA RGNL/O V GRAY FLD",
-  "spokenAliases": [
-    "WEST GEORGIA RGNL/O V GRAY FLD"
-  ],
+  "spokenAliases": ["WEST GEORGIA RGNL/O V GRAY FLD"],
   "magVarDeg": -4,
   "fieldElevFt": 1165,
   "arp": {

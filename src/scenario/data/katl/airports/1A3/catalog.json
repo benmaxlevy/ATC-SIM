@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "1A3",
   "name": "MARTIN CAMPBELL FLD",
-  "spokenAliases": [
-    "MARTIN CAMPBELL FLD"
-  ],
+  "spokenAliases": ["MARTIN CAMPBELL FLD"],
   "magVarDeg": -5,
   "fieldElevFt": 1789,
   "arp": {

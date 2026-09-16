@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "49A",
   "name": "GILMER COUNTY",
-  "spokenAliases": [
-    "GILMER COUNTY"
-  ],
+  "spokenAliases": ["GILMER COUNTY"],
   "magVarDeg": -5,
   "fieldElevFt": 1486,
   "arp": {

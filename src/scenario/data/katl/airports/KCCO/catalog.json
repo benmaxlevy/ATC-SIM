@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCCO",
   "name": "NEWNAN COWETA COUNTY",
-  "spokenAliases": [
-    "NEWNAN COWETA COUNTY"
-  ],
+  "spokenAliases": ["NEWNAN COWETA COUNTY"],
   "magVarDeg": -3,
   "fieldElevFt": 970,
   "arp": {

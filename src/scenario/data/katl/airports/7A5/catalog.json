@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "7A5",
   "name": "ROANOKE MUNI ENLOE",
-  "spokenAliases": [
-    "ROANOKE MUNI ENLOE"
-  ],
+  "spokenAliases": ["ROANOKE MUNI ENLOE"],
   "magVarDeg": -1,
   "fieldElevFt": 907,
   "arp": {

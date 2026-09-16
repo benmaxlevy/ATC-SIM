@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KWDR",
   "name": "BARROW COUNTY",
-  "spokenAliases": [
-    "BARROW COUNTY"
-  ],
+  "spokenAliases": ["BARROW COUNTY"],
   "magVarDeg": -5,
   "fieldElevFt": 934,
   "arp": {

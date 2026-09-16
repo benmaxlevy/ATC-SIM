@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KTOC",
   "name": "TOCCOA RG LETOURNEAU FLD",
-  "spokenAliases": [
-    "TOCCOA RG LETOURNEAU FLD"
-  ],
+  "spokenAliases": ["TOCCOA RG LETOURNEAU FLD"],
   "magVarDeg": -6,
   "fieldElevFt": 996,
   "arp": {

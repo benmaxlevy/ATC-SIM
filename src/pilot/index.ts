@@ -17,7 +17,7 @@ import type { Command, World } from "@core";
 import { applyIntent } from "./applyIntent";
 
 export type { HandleRadioOpts, PilotResult } from "./handleRadioText";
-export { handleRadioCommand, handleRadioText } from "./handleRadioText";
+export { approachesFromWorld, handleRadioCommand, handleRadioText } from "./handleRadioText";
 export type { ReadbackAircraft, RejectReason } from "./readback";
 export { formatCallsignSpeech, formatReadback, formatRejectReadback } from "./readback";
 export type {

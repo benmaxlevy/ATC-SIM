@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KFTY",
   "name": "FULTON COUNTY EXEC/CHARLIE BRO",
-  "spokenAliases": [
-    "FULTON COUNTY EXEC/CHARLIE BRO"
-  ],
+  "spokenAliases": ["FULTON COUNTY EXEC/CHARLIE BRO"],
   "magVarDeg": -5,
   "fieldElevFt": 841,
   "arp": {

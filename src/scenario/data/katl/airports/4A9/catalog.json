@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "4A9",
   "name": "ISBELL FLD",
-  "spokenAliases": [
-    "ISBELL FLD"
-  ],
+  "spokenAliases": ["ISBELL FLD"],
   "magVarDeg": -4,
   "fieldElevFt": 877,
   "arp": {

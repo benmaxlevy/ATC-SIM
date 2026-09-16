@@ -323,6 +323,7 @@ export type {
   MsawAlert,
   MsawInhibitGeom,
   MsawSeverity,
+  MsawThresholdOverride,
 } from "./alerts/msaw";
 export {
   DEFAULT_MSAW_INHIBIT,
@@ -361,6 +362,13 @@ export {
   locShouldBreakout,
   locShouldCapture,
 } from "./nav/localizer";
+export type { ApproachContext } from "./nav/approachContext";
+export {
+  clearApproachContextCache,
+  regionalSatelliteIlsApproaches,
+  resolveApproachContext,
+  resolveDestinationAirportIcao,
+} from "./nav/approachContext";
 export type { GsCatalog, GsCatalogApproach, GsDeviation, GsParams } from "./nav/glidepath";
 export {
   FT_PER_NM,

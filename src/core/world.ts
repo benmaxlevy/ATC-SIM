@@ -36,15 +36,22 @@ import {
   handoffFor,
 } from "./handoff";
 import { applyLateralFms } from "./fms/lateral";
-import { applyMissedFms, isLandingInhibited } from "./fms/missed";
+import { applyMissedFms, isLandingInhibited, missedApproachId } from "./fms/missed";
 import { despawnLandedAircraft } from "./fms/landing";
+import { resolveApproachContext, type ApproachContext } from "./nav/approachContext";
 import {
   applyGlidepathFms,
   applyVerticalFms,
   type CatalogSid,
   type CatalogStar,
 } from "./fms/vertical";
-import { locAxisForApproach, locDeviation, type LocAxis } from "./nav/localizer";
+import {
+  locAxisForApproach,
+  locDeviation,
+  type LocAxis,
+  type LocCatalog,
+  type LocCatalogApproach,
+} from "./nav/localizer";
 import { alongTrackNm } from "./nav/geometry";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
@@ -677,17 +684,21 @@ function computeApproachAlongTrackNm(
   approachId: string,
   world: World,
   axis?: LocAxis,
+  catalog?: LocCatalog | null,
+  fixRegistry?: FixRegistry | null,
 ): number | undefined {
   if (axis) {
     return locDeviation(point, axis).alongTrackNm;
   }
-  const approach = world.catalog?.approaches?.find(
-    (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+  const effectiveCatalog = catalog ?? world.catalog;
+  const effectiveRegistry = fixRegistry ?? world.fixRegistry;
+  const approach = effectiveCatalog?.approaches?.find(
+    (a: LocCatalogApproach) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
   );
   if (!approach) return undefined;
   const thresholdPoint =
-    approach.thresholdFixId && world.fixRegistry?.has(approach.thresholdFixId)
-      ? world.fixRegistry.get(approach.thresholdFixId)!
+    approach.thresholdFixId && effectiveRegistry?.has(approach.thresholdFixId)
+      ? effectiveRegistry.get(approach.thresholdFixId)!
       : { xNm: 0, yNm: 0 };
   let courseDeg = approach.publishedCourseMagneticDeg ?? approach.courseDeg;
   if (courseDeg === undefined) {
@@ -702,6 +713,7 @@ function updateApproachSpeedAssignments(
   world: World,
   locAxisFor: (approachId: string) => LocAxis | undefined,
   profile: AircraftPerformanceProfile,
+  approachCtx?: ApproachContext,
 ): void {
   if (ac.intent.controllerAssignedSpeedKt === undefined && ac.intent.speedUntil === undefined) {
     return;
@@ -721,12 +733,23 @@ function updateApproachSpeedAssignments(
     return;
   }
 
-  const approach = world.catalog?.approaches?.find(
+  const ctx = approachCtx ?? resolveApproachContext(ac, world);
+  const catalog = ctx.catalog ?? world.catalog;
+  const fixRegistry = ctx.fixRegistry ?? world.fixRegistry;
+
+  const approach = catalog?.approaches?.find(
     (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
   );
 
   const axis = locAxisFor(approachId);
-  const alongTrackDistance = computeApproachAlongTrackNm(ac, approachId, world, axis);
+  const alongTrackDistance = computeApproachAlongTrackNm(
+    ac,
+    approachId,
+    world,
+    axis,
+    catalog,
+    fixRegistry,
+  );
   if (alongTrackDistance === undefined) {
     return;
   }
@@ -750,7 +773,7 @@ function updateApproachSpeedAssignments(
       }
       const fixPoint = findFixPoint(until.fixId, world);
       const fixDist = fixPoint
-        ? computeApproachAlongTrackNm(fixPoint, approachId, world, axis)
+        ? computeApproachAlongTrackNm(fixPoint, approachId, world, axis, catalog, fixRegistry)
         : undefined;
       gateReached = fixSequenced || (fixDist !== undefined && alongTrackDistance <= fixDist);
     }
@@ -786,19 +809,28 @@ export function stepWorld(world: World, dtS: number): World {
   world.departureSpawner?.(world);
   world.vfrTrafficManager?.step(world, dtS);
   acceptDueOutboundHandoffs(world);
-  const locAxisFor = (approachId: string) =>
-    locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);
   for (const ac of world.aircraft) {
     const previousLateral = ac.intent.lateral;
+    const approachCtx = resolveApproachContext(ac, world);
+    const effectiveCatalog = approachCtx.catalog ?? world.catalog;
+    const effectiveRegistry = approachCtx.fixRegistry ?? world.fixRegistry;
+    const locAxisFor = (approachId: string) =>
+      locAxisForApproach(
+        approachId,
+        effectiveCatalog,
+        effectiveRegistry,
+        world.navigation.magVarDeg,
+      );
+
     applyMissedFms(ac, {
-      catalog: world.catalog,
+      catalog: effectiveCatalog,
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
     });
     const profile = performanceRegistry.getProfile(ac.aircraftType);
     const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
     const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
-    updateApproachSpeedAssignments(ac, world, locAxisFor, profile);
+    updateApproachSpeedAssignments(ac, world, locAxisFor, profile, approachCtx);
     let effectivePerformance = performance;
     if (performance && ac.intent.controllerAssignedSpeedKt !== undefined) {
       effectivePerformance = {
@@ -817,14 +849,14 @@ export function stepWorld(world: World, dtS: number): World {
       registry: clearanceRouteRegistry(world),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
-      catalog: world.catalog,
+      catalog: effectiveCatalog,
       locAxisFor,
       magVarDeg: world.navigation.magVarDeg,
       performance: effectivePerformance,
     });
     const gsCommandedFt = applyGlidepathFms(ac, dtS, {
       locAxisFor,
-      gsParamsFor: (approachId) => gsParamsForApproach(approachId, world.catalog),
+      gsParamsFor: (approachId) => gsParamsForApproach(approachId, effectiveCatalog),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       maxDescentFpm: performance?.nominalDescentFpm,
@@ -855,7 +887,34 @@ export function stepWorld(world: World, dtS: number): World {
   if (world.mvaChart) {
     syncMsawAlerts(
       world,
-      evaluateMsaw(world.aircraft, world.mvaChart, world.msawInhibit ?? DEFAULT_MSAW_INHIBIT),
+      evaluateMsaw(
+        world.aircraft,
+        world.mvaChart,
+        world.msawInhibit ?? DEFAULT_MSAW_INHIBIT,
+        (ac) => {
+          const approachId =
+            missedApproachId(ac) ?? ac.intent.clearedApproachId ?? ac.intent.locInterceptApproachId;
+          if (!approachId) return undefined;
+          const approachCtx = resolveApproachContext(ac, world);
+          const effectiveCatalog = approachCtx.catalog ?? world.catalog;
+          const effectiveRegistry = approachCtx.fixRegistry ?? world.fixRegistry;
+          const axis = locAxisForApproach(
+            approachId,
+            effectiveCatalog,
+            effectiveRegistry,
+            world.navigation.magVarDeg,
+          );
+          if (!axis) return undefined;
+          const app = effectiveCatalog?.approaches?.find(
+            (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+          );
+          return {
+            xNm: axis.thresholdXNm,
+            yNm: axis.thresholdYNm,
+            fafDistanceNm: app?.fafDistanceNm,
+          };
+        },
+      ),
     );
   } else {
     syncMsawAlerts(world, []);

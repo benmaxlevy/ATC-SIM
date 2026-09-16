@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KPDK",
   "name": "DEKALB-PEACHTREE",
-  "spokenAliases": [
-    "DEKALB-PEACHTREE"
-  ],
+  "spokenAliases": ["DEKALB-PEACHTREE"],
   "magVarDeg": -5,
   "fieldElevFt": 998,
   "arp": {

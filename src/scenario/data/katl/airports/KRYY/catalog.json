@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KRYY",
   "name": "COBB COUNTY INTL/MCCOLLUM FLD",
-  "spokenAliases": [
-    "COBB COUNTY INTL/MCCOLLUM FLD"
-  ],
+  "spokenAliases": ["COBB COUNTY INTL/MCCOLLUM FLD"],
   "magVarDeg": -4,
   "fieldElevFt": 1040,
   "arp": {

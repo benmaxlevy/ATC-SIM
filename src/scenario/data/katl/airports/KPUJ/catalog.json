@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KPUJ",
   "name": "PAULDING NORTHWEST ATLANTA",
-  "spokenAliases": [
-    "PAULDING NORTHWEST ATLANTA"
-  ],
+  "spokenAliases": ["PAULDING NORTHWEST ATLANTA"],
   "magVarDeg": -4,
   "fieldElevFt": 1289,
   "arp": {

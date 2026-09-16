@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KHMP",
   "name": "ATLANTA SPEEDWAY",
-  "spokenAliases": [
-    "ATLANTA SPEEDWAY"
-  ],
+  "spokenAliases": ["ATLANTA SPEEDWAY"],
   "magVarDeg": -6,
   "fieldElevFt": 882,
   "arp": {

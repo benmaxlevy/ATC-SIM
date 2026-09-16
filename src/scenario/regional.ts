@@ -10,7 +10,7 @@
 
 import { latLonToNm } from "@core";
 import type { LatLon, NmEastNorth } from "@core";
-import { assertArray, assertNumber, assertString, isRecord } from "./load";
+import { assertArray, assertNumber, assertString, isRecord } from "./assertions";
 
 const DATA_JSON = import.meta.glob<unknown>("./data/**/*.json", {
   eager: true,

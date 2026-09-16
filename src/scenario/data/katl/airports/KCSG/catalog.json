@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCSG",
   "name": "COLUMBUS",
-  "spokenAliases": [
-    "COLUMBUS"
-  ],
+  "spokenAliases": ["COLUMBUS"],
   "magVarDeg": -2,
   "fieldElevFt": 398,
   "arp": {

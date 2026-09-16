@@ -7,10 +7,13 @@
  * Generic: walks airport by ICAO without facility-specific branches.
  */
 
-import { isRecord } from "./load";
 import { parseCatalogFiles, type CatalogFileSet } from "./procedures/loadCatalog";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { RegionalFacility } from "./regional";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const DATA_JSON = import.meta.glob<unknown>("./data/**/*.json", {
   eager: true,

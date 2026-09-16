@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KOPN",
   "name": "THOMASTON-UPSON COUNTY",
-  "spokenAliases": [
-    "THOMASTON-UPSON COUNTY"
-  ],
+  "spokenAliases": ["THOMASTON-UPSON COUNTY"],
   "magVarDeg": -3,
   "fieldElevFt": 798,
   "arp": {

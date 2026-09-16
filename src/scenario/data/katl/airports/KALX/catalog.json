@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KALX",
   "name": "THOMAS C RUSSELL FLD",
-  "spokenAliases": [
-    "THOMAS C RUSSELL FLD"
-  ],
+  "spokenAliases": ["THOMAS C RUSSELL FLD"],
   "magVarDeg": -4,
   "fieldElevFt": 686,
   "arp": {

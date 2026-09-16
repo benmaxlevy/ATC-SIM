@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "D73",
   "name": "CY NUNNALLY MEML",
-  "spokenAliases": [
-    "CY NUNNALLY MEML"
-  ],
+  "spokenAliases": ["CY NUNNALLY MEML"],
   "magVarDeg": -4,
   "fieldElevFt": 875,
   "arp": {

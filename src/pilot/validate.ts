@@ -313,7 +313,10 @@ function validateOne(
       if (instruction.approachId.trim() === "") {
         return { ok: false, reason: "EMPTY" };
       }
-      if (!approachKnown(instruction.approachId, opts)) {
+      if (
+        !approachKnown(instruction.approachId, opts) ||
+        !isIlsApproach(instruction.approachId, opts)
+      ) {
         return { ok: false, reason: "UNKNOWN_APPROACH" };
       }
       return { ok: true };
@@ -543,6 +546,7 @@ function isIlsApproach(approachId: string, opts?: ValidateOpts): boolean {
     norm.includes("RNAV") ||
     norm.includes("VOR") ||
     norm.includes("NDB") ||
+    norm.includes("RNP") ||
     norm.includes("VISUAL")
   ) {
     return false;

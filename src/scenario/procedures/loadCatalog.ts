@@ -81,7 +81,7 @@ import {
   assertNumber as assertNumberVal,
   assertString as assertStringVal,
   isRecord,
-} from "../load";
+} from "../assertions";
 
 const assertNumber = (value: unknown, path: string): number =>
   assertNumberVal(value, path, "Catalog");

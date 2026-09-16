@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KDZJ",
   "name": "BLAIRSVILLE",
-  "spokenAliases": [
-    "BLAIRSVILLE"
-  ],
+  "spokenAliases": ["BLAIRSVILLE"],
   "magVarDeg": -3,
   "fieldElevFt": 1907,
   "arp": {

@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCNI",
   "name": "CHEROKEE COUNTY RGNL",
-  "spokenAliases": [
-    "CHEROKEE COUNTY RGNL"
-  ],
+  "spokenAliases": ["CHEROKEE COUNTY RGNL"],
   "magVarDeg": -5,
   "fieldElevFt": 1220,
   "arp": {

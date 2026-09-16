@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCZL",
   "name": "TOM B DAVID FLD",
-  "spokenAliases": [
-    "TOM B DAVID FLD"
-  ],
+  "spokenAliases": ["TOM B DAVID FLD"],
   "magVarDeg": -5,
   "fieldElevFt": 656,
   "arp": {

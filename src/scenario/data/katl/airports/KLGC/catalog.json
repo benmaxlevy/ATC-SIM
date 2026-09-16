@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KLGC",
   "name": "LAGRANGE/CALLAWAY",
-  "spokenAliases": [
-    "LAGRANGE/CALLAWAY"
-  ],
+  "spokenAliases": ["LAGRANGE/CALLAWAY"],
   "magVarDeg": -4,
   "fieldElevFt": 694,
   "arp": {

@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "9A5",
   "name": "BARWICK LAFAYETTE",
-  "spokenAliases": [
-    "BARWICK LAFAYETTE"
-  ],
+  "spokenAliases": ["BARWICK LAFAYETTE"],
   "magVarDeg": -3,
   "fieldElevFt": 776,
   "arp": {

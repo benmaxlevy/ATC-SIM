@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KRMG",
   "name": "RICHARD B RUSSELL RGNL - J H T",
-  "spokenAliases": [
-    "RICHARD B RUSSELL RGNL - J H T"
-  ],
+  "spokenAliases": ["RICHARD B RUSSELL RGNL - J H T"],
   "magVarDeg": -2,
   "fieldElevFt": 644,
   "arp": {

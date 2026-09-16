@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KMCN",
   "name": "MIDDLE GEORGIA RGNL",
-  "spokenAliases": [
-    "MIDDLE GEORGIA RGNL"
-  ],
+  "spokenAliases": ["MIDDLE GEORGIA RGNL"],
   "magVarDeg": -6,
   "fieldElevFt": 354,
   "arp": {

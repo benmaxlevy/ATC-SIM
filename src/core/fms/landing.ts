@@ -9,6 +9,7 @@
 
 import type { Aircraft } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
+import { resolveApproachContext } from "../nav/approachContext";
 import { locAxisForApproach, locDeviation, type LocAxis } from "../nav/localizer";
 import type { World } from "../world";
 import { isLandingInhibited, isOnMissed, missedApproachId, missedSpecFor } from "./missed";
@@ -35,10 +36,11 @@ function locAxisForAircraft(ac: Aircraft, world: World): LocAxis | undefined {
   if (!approachId) {
     return undefined;
   }
+  const ctx = resolveApproachContext(ac, world);
   return locAxisForApproach(
     approachId,
-    world.catalog,
-    world.fixRegistry,
+    ctx.catalog ?? world.catalog,
+    ctx.fixRegistry ?? world.fixRegistry,
     world.navigation.magVarDeg,
   );
 }
@@ -68,7 +70,8 @@ export function isTowerHandoffEligible(ac: Aircraft, world: World): boolean {
   if (along > TOWER_HANDOFF_GATE_NM || along <= 0) {
     return false;
   }
-  const spec = missedSpecFor(approachId, world.catalog);
+  const ctx = resolveApproachContext(ac, world);
+  const spec = missedSpecFor(approachId, ctx.catalog ?? world.catalog);
   return ac.altitudeFt > spec.daFt;
 }
 

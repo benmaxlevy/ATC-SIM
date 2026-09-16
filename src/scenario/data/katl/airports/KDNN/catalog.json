@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KDNN",
   "name": "DALTON MUNI",
-  "spokenAliases": [
-    "DALTON MUNI"
-  ],
+  "spokenAliases": ["DALTON MUNI"],
   "magVarDeg": -3,
   "fieldElevFt": 709,
   "arp": {

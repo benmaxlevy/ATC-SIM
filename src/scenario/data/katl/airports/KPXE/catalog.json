@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KPXE",
   "name": "PERRY-HOUSTON COUNTY",
-  "spokenAliases": [
-    "PERRY-HOUSTON COUNTY"
-  ],
+  "spokenAliases": ["PERRY-HOUSTON COUNTY"],
   "magVarDeg": -6,
   "fieldElevFt": 418,
   "arp": {

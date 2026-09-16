@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KANB",
   "name": "ANNISTON RGNL",
-  "spokenAliases": [
-    "ANNISTON RGNL"
-  ],
+  "spokenAliases": ["ANNISTON RGNL"],
   "magVarDeg": -4,
   "fieldElevFt": 612,
   "arp": {

@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "6A2",
   "name": "GRIFFIN-SPALDING COUNTY",
-  "spokenAliases": [
-    "GRIFFIN-SPALDING COUNTY"
-  ],
+  "spokenAliases": ["GRIFFIN-SPALDING COUNTY"],
   "magVarDeg": -4,
   "fieldElevFt": 958,
   "arp": {

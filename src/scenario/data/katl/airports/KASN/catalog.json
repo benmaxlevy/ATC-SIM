@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KASN",
   "name": "TALLADEGA MUNI",
-  "spokenAliases": [
-    "TALLADEGA MUNI"
-  ],
+  "spokenAliases": ["TALLADEGA MUNI"],
   "magVarDeg": -3,
   "fieldElevFt": 529,
   "arp": {

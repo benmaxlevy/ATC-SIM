@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KAJR",
   "name": "HABERSHAM COUNTY",
-  "spokenAliases": [
-    "HABERSHAM COUNTY"
-  ],
+  "spokenAliases": ["HABERSHAM COUNTY"],
   "magVarDeg": -6,
   "fieldElevFt": 1448,
   "arp": {

@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KAHN",
   "name": "ATHENS/BEN EPPS",
-  "spokenAliases": [
-    "ATHENS/BEN EPPS"
-  ],
+  "spokenAliases": ["ATHENS/BEN EPPS"],
   "magVarDeg": -6,
   "fieldElevFt": 812,
   "arp": {

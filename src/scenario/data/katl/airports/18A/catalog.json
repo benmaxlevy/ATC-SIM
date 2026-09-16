@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "18A",
   "name": "FRANKLIN-HART",
-  "spokenAliases": [
-    "FRANKLIN-HART"
-  ],
+  "spokenAliases": ["FRANKLIN-HART"],
   "magVarDeg": -5,
   "fieldElevFt": 890,
   "arp": {

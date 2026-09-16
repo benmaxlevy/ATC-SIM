@@ -6,7 +6,6 @@ import {
   type VfrRequestConfig,
 } from "@scenario";
 import {
-  approachesFromCatalog,
   catalogFixEntriesFromCatalog,
   parseCommand,
   proceduresFromCatalog,
@@ -14,9 +13,10 @@ import {
   type CatalogFixEntry,
 } from "@parse";
 import {
-  handleRadioCommand,
+  approachesFromWorld,
   createCheckInQueue,
   createVfrRequestQueue,
+  handleRadioCommand,
   type VfrRequestQueue,
 } from "@pilot";
 import {
@@ -182,7 +182,7 @@ export function createApp(deps: AppDeps): AppHandles {
       getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
-      getCatalogApproaches: () => approachesFromCatalog(world.catalog),
+      getCatalogApproaches: () => approachesFromWorld(world),
       getCatalogAirports: () => {
         const results: Array<{ icao: string; name: string; aliases: string[] }> = [];
         const seen = new Set<string>();

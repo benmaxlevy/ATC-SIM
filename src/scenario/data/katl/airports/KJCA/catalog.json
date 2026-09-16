@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KJCA",
   "name": "JACKSON COUNTY",
-  "spokenAliases": [
-    "JACKSON COUNTY"
-  ],
+  "spokenAliases": ["JACKSON COUNTY"],
   "magVarDeg": -5,
   "fieldElevFt": 951,
   "arp": {

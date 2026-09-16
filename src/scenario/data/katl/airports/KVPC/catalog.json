@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KVPC",
   "name": "CARTERSVILLE",
-  "spokenAliases": [
-    "CARTERSVILLE"
-  ],
+  "spokenAliases": ["CARTERSVILLE"],
   "magVarDeg": -4,
   "fieldElevFt": 759,
   "arp": {

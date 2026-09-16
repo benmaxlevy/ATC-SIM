@@ -14,6 +14,8 @@ import {
   assertHandoffOwned,
   findOpenRadioRequest,
   handoffFor,
+  regionalSatelliteIlsApproaches,
+  resolveApproachContext,
   transitionRequestToApproved,
   transitionRequestToAwaitingDetails,
   transitionRequestToDeclined,
@@ -27,6 +29,7 @@ import {
   parseCommand,
   proceduresFromCatalog,
   sanitizeCatalogFixEntries,
+  type CatalogApproach,
   type CatalogFixEntry,
 } from "@parse";
 import type { RegionalFacility } from "../scenario/regional";
@@ -181,6 +184,20 @@ function catalogAirportsFromWorld(world: World): Array<{
   return results;
 }
 
+export function approachesFromWorld(world: World): CatalogApproach[] {
+  const base = approachesFromCatalog(world.catalog);
+  const satellite = regionalSatelliteIlsApproaches(world.regional);
+  const seen = new Set(base.map((a) => a.id.toUpperCase()));
+  const combined = [...base];
+  for (const app of satellite) {
+    if (!seen.has(app.id.toUpperCase())) {
+      seen.add(app.id.toUpperCase());
+      combined.push(app);
+    }
+  }
+  return combined;
+}
+
 function buildCommand(args: {
   callsign: string;
   instructions: Instruction[];
@@ -204,7 +221,7 @@ function logRejected(
   log: SessionLog,
   world: World,
   atWallMs: number,
-  args: { command: Command | null; reason: string; sourceText: string },
+  args: { command: Command | null; reason: string; sourceText?: string },
 ): void {
   log.append({
     type: "command.rejected",
@@ -246,7 +263,7 @@ export async function handleRadioText(
     fixes: fixEntries,
     routeCandidates: fixEntries,
     procedures: proceduresFromCatalog(world.catalog),
-    approaches: approachesFromCatalog(world.catalog),
+    approaches: approachesFromWorld(world),
     airports: catalogAirportsFromWorld(world),
     pathC: opts?.pathC ?? false,
   });
@@ -329,11 +346,15 @@ export function handleRadioCommand(
     return reject(gate.reason, undefined, resolvedCommand, aircraft.wakeCategory === "H");
   }
 
+  const approachCtx = resolveApproachContext(aircraft, world);
+  const effectiveCatalog = approachCtx.catalog ?? world.catalog;
+  const effectiveFixRegistry = approachCtx.fixRegistry ?? world.fixRegistry;
+
   const validated = validateInstructions(aircraft, resolvedCommand.instructions, {
-    fixRegistry: world.fixRegistry,
-    catalog: world.catalog,
+    fixRegistry: effectiveFixRegistry,
+    catalog: effectiveCatalog,
     activeRunwayId: world.activeRunwayId,
-    approachIds: world.catalog?.approaches.map((item) => item.id),
+    approachIds: effectiveCatalog?.approaches.map((item) => item.id),
     radioRequests: world.radioRequests,
     regional: world.regional as RegionalFacility | undefined,
   });
@@ -486,9 +507,9 @@ export function handleRadioCommand(
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {
-    catalog: world.catalog,
+    catalog: effectiveCatalog,
     log,
-    fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
+    fixXy: effectiveFixRegistry ? (id) => effectiveFixRegistry.get(id) : undefined,
     activeRunwayId: world.activeRunwayId,
     flightPlan: world.flightPlans.find(
       (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,

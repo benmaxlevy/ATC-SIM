@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KLZU",
   "name": "GWINNETT COUNTY/BRISCOE FLD",
-  "spokenAliases": [
-    "GWINNETT COUNTY/BRISCOE FLD"
-  ],
+  "spokenAliases": ["GWINNETT COUNTY/BRISCOE FLD"],
   "magVarDeg": -5,
   "fieldElevFt": 1062,
   "arp": {

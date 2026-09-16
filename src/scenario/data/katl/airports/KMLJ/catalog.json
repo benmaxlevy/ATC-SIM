@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KMLJ",
   "name": "BALDWIN COUNTY RGNL",
-  "spokenAliases": [
-    "BALDWIN COUNTY RGNL"
-  ],
+  "spokenAliases": ["BALDWIN COUNTY RGNL"],
   "magVarDeg": -4,
   "fieldElevFt": 385,
   "arp": {

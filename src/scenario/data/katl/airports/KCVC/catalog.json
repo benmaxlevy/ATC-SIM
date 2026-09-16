@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KCVC",
   "name": "COVINGTON MUNI",
-  "spokenAliases": [
-    "COVINGTON MUNI"
-  ],
+  "spokenAliases": ["COVINGTON MUNI"],
   "magVarDeg": -5,
   "fieldElevFt": 820,
   "arp": {

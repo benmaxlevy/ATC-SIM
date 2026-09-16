@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "4A4",
   "name": "POLK COUNTY/CORNELIUS MOORE FL",
-  "spokenAliases": [
-    "POLK COUNTY/CORNELIUS MOORE FL"
-  ],
+  "spokenAliases": ["POLK COUNTY/CORNELIUS MOORE FL"],
   "magVarDeg": -5,
   "fieldElevFt": 979,
   "arp": {

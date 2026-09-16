@@ -116,12 +116,27 @@ export function msawSeverityForAltitude(altFt: number, floorFt: number): MsawSev
   return "alert";
 }
 
+/** Threshold override from aircraft approach context (T04-81). */
+export interface MsawThresholdOverride {
+  xNm: number;
+  yNm: number;
+  fafDistanceNm?: number;
+}
+
 /**
  * Inhibit when `lateral` is LOC | LANDING or `vertical` is GS, **and** planar
  * distance to threshold `<= fafDistanceNm`. HEADING / DIRECT / PROCEDURE /
  * MISSED never inhibit. Missing modes behave like heading.
  */
-export function isMsawInhibited(ac: Aircraft, geom: MsawInhibitGeom): boolean {
+export function isMsawInhibited(
+  ac: Aircraft,
+  geom: MsawInhibitGeom,
+  thresholdOverride?: MsawThresholdOverride,
+): boolean {
+  const thresholdXNm = thresholdOverride?.xNm ?? geom.thresholdXNm;
+  const thresholdYNm = thresholdOverride?.yNm ?? geom.thresholdYNm;
+  const fafDistanceNm = thresholdOverride?.fafDistanceNm ?? geom.fafDistanceNm;
+
   const lat = ac.intent.lateral?.type;
   const vert = ac.intent.vertical?.type;
   const isSidDeparture =
@@ -131,8 +146,8 @@ export function isMsawInhibited(ac: Aircraft, geom: MsawInhibitGeom): boolean {
       Boolean((ac.intent.lateral as { sidId?: string }).sidId));
 
   if (isSidDeparture) {
-    const distNm = Math.hypot(ac.xNm - geom.thresholdXNm, ac.yNm - geom.thresholdYNm);
-    return distNm <= geom.fafDistanceNm;
+    const distNm = Math.hypot(ac.xNm - thresholdXNm, ac.yNm - thresholdYNm);
+    return distNm <= fafDistanceNm;
   }
 
   if (lat !== undefined && NEVER_INHIBIT_LATERAL.has(lat)) {
@@ -145,8 +160,8 @@ export function isMsawInhibited(ac: Aircraft, geom: MsawInhibitGeom): boolean {
   if (!approachMode) {
     return false;
   }
-  const distNm = Math.hypot(ac.xNm - geom.thresholdXNm, ac.yNm - geom.thresholdYNm);
-  return distNm <= geom.fafDistanceNm;
+  const distNm = Math.hypot(ac.xNm - thresholdXNm, ac.yNm - thresholdYNm);
+  return distNm <= fafDistanceNm;
 }
 
 /**
@@ -176,13 +191,15 @@ export function evaluateMsaw(
   aircraft: readonly Aircraft[],
   chart: MvaChart,
   inhibit: MsawInhibitGeom = DEFAULT_MSAW_INHIBIT,
+  resolveThreshold?: (ac: Aircraft) => MsawThresholdOverride | undefined,
 ): MsawAlert[] {
   const out: MsawAlert[] = [];
   for (const ac of aircraft) {
     if (ac.ambientVfr?.alertEligibility === "AMBIENT_SUPPRESSED") {
       continue;
     }
-    if (isMsawInhibited(ac, inhibit)) {
+    const override = resolveThreshold?.(ac);
+    if (isMsawInhibited(ac, inhibit, override)) {
       continue;
     }
     const floorFt = msawFloorFt(ac.xNm, ac.yNm, chart);

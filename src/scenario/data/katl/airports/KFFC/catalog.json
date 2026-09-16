@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KFFC",
   "name": "ATLANTA RGNL FALCON FLD",
-  "spokenAliases": [
-    "ATLANTA RGNL FALCON FLD"
-  ],
+  "spokenAliases": ["ATLANTA RGNL FALCON FLD"],
   "magVarDeg": -5,
   "fieldElevFt": 808,
   "arp": {

@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KGAD",
   "name": "NORTHEAST ALABAMA RGNL",
-  "spokenAliases": [
-    "NORTHEAST ALABAMA RGNL"
-  ],
+  "spokenAliases": ["NORTHEAST ALABAMA RGNL"],
   "magVarDeg": -3,
   "fieldElevFt": 569,
   "arp": {

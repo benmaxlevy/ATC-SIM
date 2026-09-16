@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KJZP",
   "name": "PICKENS COUNTY",
-  "spokenAliases": [
-    "PICKENS COUNTY"
-  ],
+  "spokenAliases": ["PICKENS COUNTY"],
   "magVarDeg": -4,
   "fieldElevFt": 1535,
   "arp": {

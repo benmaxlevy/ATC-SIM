@@ -4,11 +4,7 @@
   "radiusNm": 90,
   "source": {
     "effectiveCycle": "260903",
-    "families": [
-      "CIFP",
-      "NASR_APT",
-      "NASR_TWR"
-    ],
+    "families": ["CIFP", "NASR_APT", "NASR_TWR"],
     "command": "cifp:regional-pack --airport KATL --radius 90"
   },
   "files": {

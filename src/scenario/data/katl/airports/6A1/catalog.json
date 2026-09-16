@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "6A1",
   "name": "BUTLER MUNI",
-  "spokenAliases": [
-    "BUTLER MUNI"
-  ],
+  "spokenAliases": ["BUTLER MUNI"],
   "magVarDeg": -5,
   "fieldElevFt": 667,
   "arp": {

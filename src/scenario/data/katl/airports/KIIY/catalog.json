@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KIIY",
   "name": "WASHINGTON/WILKES COUNTY",
-  "spokenAliases": [
-    "WASHINGTON/WILKES COUNTY"
-  ],
+  "spokenAliases": ["WASHINGTON/WILKES COUNTY"],
   "magVarDeg": -7,
   "fieldElevFt": 646,
   "arp": {

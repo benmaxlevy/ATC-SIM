@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "airportId": "KEBA",
   "name": "ELBERT COUNTY-PATZ FLD",
-  "spokenAliases": [
-    "ELBERT COUNTY-PATZ FLD"
-  ],
+  "spokenAliases": ["ELBERT COUNTY-PATZ FLD"],
   "magVarDeg": -6,
   "fieldElevFt": 615,
   "arp": {
