@@ -5,6 +5,7 @@ import {
   IDENT_DISPLAY_FLASH_MS,
   acknowledgeAlert,
   applyDropTrackToId,
+  applyInitiateTrackToId,
   clearTrackQuery,
   clearAcknowledgedAlert,
   clearScratchpad1,
@@ -21,6 +22,7 @@ import {
   isCaPairInhibited,
   isIdentFlashing,
   isTrackQueried,
+  isVfrWithoutAssociation,
   makeCaPairKey,
   noteIdentAccepted,
   pruneCaPairInhibitsForTrack,
@@ -213,6 +215,43 @@ test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
   handleTrackClick(tracks, world, ac.id);
   expect(td.datablockMode).toBe("partial");
   expect(td.forcedFdb).toBe(false);
+});
+
+test("squawking 1200 with no plan never reveals a callsign on slew", () => {
+  const vfr = makeTestAircraft({
+    id: "ac-vfr1200",
+    callsign: "N1234V",
+    squawk: "1200",
+    reportedSquawk: "1200",
+    flightRules: "VFR",
+    ambientVfr: {
+      mission: "LOCAL",
+      zoneId: "training-box",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+    },
+  });
+  const world = createWorld({ aircraft: [vfr], simTimeMs: 0 });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(vfr.id)!;
+
+  // Sync marks the 1200 target unassociated with a beacon-only LDB.
+  expect(isVfrWithoutAssociation(world, vfr, td)).toBe(true);
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+
+  // Slew queries ground speed instead of promoting to a callsign FDB.
+  handleTrackClick(tracks, world, vfr.id);
+  expect(td.datablockMode).toBe("limited");
+  expect(td.forcedFdb).not.toBe(true);
+  expect(isTrackQueried(td, world.simTimeMs)).toBe(true);
+
+  // F3 INIT CNTL takes the track but still presents no callsign.
+  const owned = applyInitiateTrackToId(tracks, world, vfr.id);
+  expect(owned.applied).toBe(true);
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
 });
 
 test("post-TERM unassociated track cannot be expanded back to an FDB", () => {

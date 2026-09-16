@@ -488,6 +488,31 @@ export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string
   return td;
 }
 
+/**
+ * True when the target is VFR with no beacon-correlated plan: squawking 1200
+ * (or carrying the ambient-VFR / VFR-rules markers) and no display plan from
+ * the canonical resolver. Slewing such a target must never associate an
+ * identity — there is no flight plan to correlate, so no callsign exists to
+ * display. Clicks query ground speed; FDB promotion is refused.
+ */
+export function isVfrWithoutAssociation(
+  world: World,
+  aircraft: Aircraft,
+  td?: Pick<TrackDisplay, "squawk" | "unassociated" | "derivedPlanId">,
+): boolean {
+  if (flightPlanForDatablock(world, aircraft, td)) {
+    return false;
+  }
+  const reported = td?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
+  if (reported === "1200") {
+    return true;
+  }
+  if (aircraft.ambientVfr) {
+    return true;
+  }
+  return (aircraft.flightRules ?? "").trim().toUpperCase() === "VFR";
+}
+
 export function queryTrack(
   td: TrackDisplay,
   simTimeMs: number,
@@ -657,6 +682,15 @@ export function handleTrackClick(
     queryTrack(td, world.simTimeMs);
     return;
   }
+  // Squawking 1200 with no correlated plan: no identity exists to display.
+  // Record the unassociated state (display flags can lag) and query instead
+  // of promoting to a callsign-bearing FDB.
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (ac && isVfrWithoutAssociation(world, ac, td)) {
+    td.unassociated = true;
+    queryTrack(td, world.simTimeMs);
+    return;
+  }
   if (td.ownership === "unowned") {
     toggleTrackPdbFdb(td);
   }
@@ -710,6 +744,15 @@ export function applyInitiateTrackToId(
   const td = ensureTrackDisplay(tracks, aircraftId);
   const accepted = acceptInboundHandoff(world, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!accepted && ac && isVfrWithoutAssociation(world, ac, td)) {
+    // INIT CNTL on a 1200 with no plan takes the track but creates no
+    // identity: keep it unassociated so no callsign is presented.
+    td.unassociated = true;
+    td.datablockMode = "limited";
+    td.forcedFdb = false;
+    return { applied: true, hint: null };
+  }
   td.datablockMode = "full";
   if (accepted) {
     td.unassociated = false;
@@ -1022,6 +1065,17 @@ export function syncTrackDisplays(
         td.tracked = false;
         td.unassociated = true;
         td.datablockMode = "partial";
+      }
+    }
+    // Squawking 1200 with no correlated plan has no display identity.
+    // Mark it unassociated up front so slew/force-FDB paths render the
+    // beacon-only LDB instead of the sim-truth callsign.
+    if (!derivedPlan && !datablockPlan && isVfrWithoutAssociation(world, ac, td)) {
+      delete td.derivedPlanId;
+      td.unassociated = true;
+      if (td.ownership !== "owned") {
+        td.tracked = false;
+        td.datablockMode = "limited";
       }
     }
     if (td.lastReport) {
