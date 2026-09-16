@@ -1,0 +1,76 @@
+{
+  "airportId": "KPXE",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I36",
+      "type": "ILS",
+      "runway": "36",
+      "name": "ILS RWY 36",
+      "locNavaidId": "IPXE",
+      "gsNavaidId": "IPXEGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 5.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 45,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1100,
+      "missed": {
+        "headingDeg": 5,
+        "climbToFt": 456,
+        "directFixId": "RW36"
+      }
+    },
+    {
+      "id": "L36",
+      "type": "LOC",
+      "runway": "36",
+      "name": "LOC RWY 36",
+      "locNavaidId": "IPXE",
+      "gsNavaidId": "IPXEGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 5.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 45,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1100,
+      "missed": {
+        "headingDeg": 5,
+        "climbToFt": 456,
+        "directFixId": "RW36"
+      }
+    },
+    {
+      "id": "R18",
+      "type": "RNAV",
+      "runway": "18",
+      "name": "RNAV RWY 18",
+      "locNavaidId": "IPXE",
+      "gsNavaidId": "IPXEGS",
+      "thresholdFixId": "RW18",
+      "courseDeg": 185.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 45,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 618
+    },
+    {
+      "id": "R36",
+      "type": "RNAV",
+      "runway": "36",
+      "name": "RNAV RWY 36",
+      "locNavaidId": "IPXE",
+      "gsNavaidId": "IPXEGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 5.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 45,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 667
+    }
+  ]
+}

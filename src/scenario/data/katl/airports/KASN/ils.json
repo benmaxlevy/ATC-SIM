@@ -1,0 +1,139 @@
+{
+  "airportId": "KASN",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": 51.671452,
+      "yNm": -57.255167,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "DCU",
+      "kind": "DME",
+      "name": "DECATUR",
+      "xNm": -44.409283,
+      "yNm": 64.7285,
+      "latDeg": 34.648313888888886,
+      "lonDeg": -86.9395138888889,
+      "freqMhz": 112.8,
+      "class": "L"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": 77.183682,
+      "yNm": 20.708833,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 81.939122,
+      "yNm": 3.8435,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "LDK",
+      "kind": "DME",
+      "name": "CRIMSON",
+      "xNm": -74.273677,
+      "yNm": -18.637833,
+      "latDeg": 33.258875,
+      "lonDeg": -87.53688611111112,
+      "freqMhz": 117.8,
+      "class": "T"
+    },
+    {
+      "id": "MXF",
+      "kind": "DME",
+      "name": "MAXWELL",
+      "xNm": -15.8554,
+      "yNm": -71.408333,
+      "latDeg": 32.37936666666667,
+      "lonDeg": -86.36835555555555,
+      "freqMhz": 115,
+      "class": "T"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 87.607071,
+      "yNm": 18.3675,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": 0.425773,
+      "yNm": 0.338833,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": 19.09147,
+      "yNm": -65.078167,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    },
+    {
+      "id": "IASNDME",
+      "kind": "DME",
+      "name": "TALLADEGA MUNI",
+      "xNm": 0.28982,
+      "yNm": 0.5675,
+      "latDeg": 33.57896388888889,
+      "lonDeg": -86.04540555555555,
+      "freqMhz": 109.95,
+      "class": "T"
+    },
+    {
+      "id": "IASNGS",
+      "kind": "GS",
+      "name": "IASN GS",
+      "xNm": -0.167893,
+      "yNm": -0.313167,
+      "latDeg": 33.56428611111111,
+      "lonDeg": -86.05456111111111,
+      "gsAngleDeg": 3,
+      "tchFt": 45
+    },
+    {
+      "id": "IASN",
+      "kind": "LOC",
+      "name": "IASN",
+      "xNm": 0.382168,
+      "yNm": 0.540333,
+      "latDeg": 33.57851111111111,
+      "lonDeg": -86.04355833333334,
+      "freqMhz": 109.95,
+      "courseDeg": 38.4,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.84
+    }
+  ]
+}

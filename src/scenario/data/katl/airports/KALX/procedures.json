@@ -1,0 +1,40 @@
+{
+  "airportId": "KALX",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R18",
+      "type": "RNAV",
+      "runway": "18",
+      "name": "RNAV RWY 18",
+      "thresholdFixId": "RW18",
+      "courseDeg": 181.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1061,
+      "missed": {
+        "headingDeg": 181.5,
+        "climbToFt": 732,
+        "directFixId": "RW18"
+      }
+    },
+    {
+      "id": "R36",
+      "type": "RNAV",
+      "runway": "36",
+      "name": "RNAV RWY 36",
+      "thresholdFixId": "RW36",
+      "courseDeg": 1.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1100,
+      "missed": {
+        "headingDeg": 1.5,
+        "climbToFt": 662,
+        "directFixId": "RW36"
+      }
+    }
+  ]
+}

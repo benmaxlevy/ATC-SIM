@@ -1,0 +1,23 @@
+{
+  "airportId": "52A",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R14",
+      "type": "RNAV",
+      "runway": "14",
+      "name": "RNAV RWY 14",
+      "thresholdFixId": "RW14",
+      "courseDeg": 144.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1100,
+      "missed": {
+        "headingDeg": 144.7,
+        "climbToFt": 676,
+        "directFixId": "RW14"
+      }
+    }
+  ]
+}

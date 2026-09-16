@@ -1,0 +1,71 @@
+{
+  "airportId": "KHMP",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 50.411188,
+      "yNm": 33.4615,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -43.843929,
+      "yNm": -20.447,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": -33.168045,
+      "yNm": -63.4565,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -39.49484,
+      "yNm": 46.359667,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": 41.769647,
+      "yNm": -70.587667,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 37.094652,
+      "yNm": -44.934167,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

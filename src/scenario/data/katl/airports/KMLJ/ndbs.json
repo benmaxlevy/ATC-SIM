@@ -1,0 +1,135 @@
+{
+  "airportId": "KMLJ",
+  "ndbs": [
+    {
+      "id": "AA",
+      "kind": "NDB",
+      "name": "CEDAR",
+      "xNm": 31.497474,
+      "yNm": 22.7435,
+      "latDeg": 33.53328333333333,
+      "lonDeg": -82.61436944444443,
+      "freqKhz": 341
+    },
+    {
+      "id": "AG",
+      "kind": "NDB",
+      "name": "BUSHE",
+      "xNm": 65.028232,
+      "yNm": 7.959667,
+      "latDeg": 33.28688611111111,
+      "lonDeg": -81.94685277777778,
+      "freqKhz": 233
+    },
+    {
+      "id": "AIK",
+      "kind": "NDB",
+      "name": "AIKEN",
+      "xNm": 78.584896,
+      "yNm": 29.8545,
+      "latDeg": 33.6518,
+      "lonDeg": -81.67697222222223,
+      "freqKhz": 347
+    },
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": -17.484395,
+      "yNm": 46.868,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "EMR",
+      "kind": "NDB",
+      "name": "EMORY",
+      "xNm": 62.516488,
+      "yNm": 18.515,
+      "latDeg": 33.462808333333335,
+      "lonDeg": -81.99685555555556,
+      "freqKhz": 385
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": -73.934661,
+      "yNm": 6.163167,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "EZM",
+      "kind": "NDB",
+      "name": "EASTMAN",
+      "xNm": 4.393634,
+      "yNm": -61.352,
+      "latDeg": 32.13169166666667,
+      "lonDeg": -83.15394166666667,
+      "freqKhz": 366
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": -62.539929,
+      "yNm": 8.801667,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "LKG",
+      "kind": "NDB",
+      "name": "LINDBERGH",
+      "xNm": -43.538664,
+      "yNm": -58.784833,
+      "latDeg": 32.174477777777774,
+      "lonDeg": -84.10815833333332,
+      "freqKhz": 242
+    },
+    {
+      "id": "OHY",
+      "kind": "NDB",
+      "name": "CONEY",
+      "xNm": -31.163152,
+      "yNm": -69.382833,
+      "latDeg": 31.997844444444446,
+      "lonDeg": -83.86179166666666,
+      "freqKhz": 400
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": -31.216733,
+      "yNm": 51.9415,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    },
+    {
+      "id": "UQN",
+      "kind": "NDB",
+      "name": "ONYUN",
+      "xNm": 47.41714,
+      "yNm": -55.833333,
+      "latDeg": 32.22366944444445,
+      "lonDeg": -82.29744722222222,
+      "freqKhz": 372
+    },
+    {
+      "id": "VV",
+      "kind": "NDB",
+      "name": "JUNNE",
+      "xNm": 11.03306,
+      "yNm": 29.531167,
+      "latDeg": 33.646411111111114,
+      "lonDeg": -83.02176666666666,
+      "freqKhz": 353
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "airportId": "KOPN",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I30",
+      "type": "ILS",
+      "runway": "30",
+      "name": "ILS RWY 30",
+      "locNavaidId": "IOPN",
+      "gsNavaidId": "IOPNGS",
+      "thresholdFixId": "RW30",
+      "courseDeg": 300.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 301,
+        "climbToFt": 846,
+        "directFixId": "RW30"
+      }
+    },
+    {
+      "id": "L30",
+      "type": "LOC",
+      "runway": "30",
+      "name": "LOC RWY 30",
+      "locNavaidId": "IOPN",
+      "gsNavaidId": "IOPNGS",
+      "thresholdFixId": "RW30",
+      "courseDeg": 300.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1500,
+      "missed": {
+        "headingDeg": 301,
+        "climbToFt": 846,
+        "directFixId": "RW30"
+      }
+    },
+    {
+      "id": "R12",
+      "type": "RNAV",
+      "runway": "12",
+      "name": "RNAV RWY 12",
+      "locNavaidId": "IOPN",
+      "gsNavaidId": "IOPNGS",
+      "fafFixId": "FIDLO",
+      "thresholdFixId": "RW12",
+      "courseDeg": 120.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "fafDistanceNm": 3.294784,
+      "gsInterceptAltFt": 1860
+    },
+    {
+      "id": "R30",
+      "type": "RNAV",
+      "runway": "30",
+      "name": "RNAV RWY 30",
+      "locNavaidId": "IOPN",
+      "gsNavaidId": "IOPNGS",
+      "thresholdFixId": "RW30",
+      "courseDeg": 300.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 996
+    }
+  ]
+}

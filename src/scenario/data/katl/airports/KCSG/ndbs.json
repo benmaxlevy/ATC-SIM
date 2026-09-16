@@ -1,0 +1,105 @@
+{
+  "airportId": "KCSG",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -50.209781,
+      "yNm": 61.080667,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BVG",
+      "kind": "NDB",
+      "name": "BOLL WEEVIL",
+      "xNm": -52.773507,
+      "yNm": -70.616167,
+      "latDeg": 31.339391666666664,
+      "lonDeg": -85.98194166666667,
+      "freqKhz": 352
+    },
+    {
+      "id": "CS",
+      "kind": "NDB",
+      "name": "FENIX",
+      "xNm": -5.216413,
+      "yNm": -3.863333,
+      "latDeg": 32.45193888888889,
+      "lonDeg": -85.04197222222221,
+      "freqKhz": 355
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": 11.414074,
+      "yNm": 44.437,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": 22.890968,
+      "yNm": 47.0755,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": -9.719586,
+      "yNm": 62.965833,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "LKG",
+      "kind": "NDB",
+      "name": "LINDBERGH",
+      "xNm": 42.029245,
+      "yNm": -20.511,
+      "latDeg": 32.174477777777774,
+      "lonDeg": -84.10815833333332,
+      "freqKhz": 242
+    },
+    {
+      "id": "MG",
+      "kind": "NDB",
+      "name": "MARRA",
+      "xNm": -79.52229,
+      "yNm": -12.282667,
+      "latDeg": 32.311616666666666,
+      "lonDeg": -86.51063333333333,
+      "freqKhz": 245
+    },
+    {
+      "id": "OHY",
+      "kind": "NDB",
+      "name": "CONEY",
+      "xNm": 54.493994,
+      "yNm": -31.109,
+      "latDeg": 31.997844444444446,
+      "lonDeg": -83.86179166666666,
+      "freqKhz": 400
+    },
+    {
+      "id": "TOI",
+      "kind": "NDB",
+      "name": "BLOOD",
+      "xNm": -59.047621,
+      "yNm": -41.131833,
+      "latDeg": 31.830797222222223,
+      "lonDeg": -86.10594999999999,
+      "freqKhz": 365
+    }
+  ]
+}

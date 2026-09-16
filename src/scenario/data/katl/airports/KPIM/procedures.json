@@ -1,0 +1,18 @@
+{
+  "airportId": "KPIM",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R09",
+      "type": "RNAV",
+      "runway": "09",
+      "name": "RNAV RWY 09",
+      "thresholdFixId": "RW09",
+      "courseDeg": 91.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1500
+    }
+  ]
+}

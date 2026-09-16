@@ -1,0 +1,71 @@
+{
+  "airportId": "KJZP",
+  "components": [
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 30.124046,
+      "yNm": -49.334833,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -2.478155,
+      "yNm": -32.329167,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GQO",
+      "kind": "DME",
+      "name": "CHOO CHOO",
+      "xNm": -34.44199,
+      "yNm": 30.468167,
+      "latDeg": 34.961275,
+      "lonDeg": -85.15336944444445,
+      "freqMhz": 115.8,
+      "class": "H"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 2.228031,
+      "yNm": -49.1945,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "HRS",
+      "kind": "DME",
+      "name": "HARRIS",
+      "xNm": 26.793131,
+      "yNm": 29.3715,
+      "latDeg": 34.94299722222222,
+      "lonDeg": -83.91567500000001,
+      "freqMhz": 109.8,
+      "class": "T"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 7.837276,
+      "yNm": -34.6705,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    }
+  ]
+}
