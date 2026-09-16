@@ -425,6 +425,13 @@ export type SessionEvent =
       callsign: string;
       aircraftId: string;
       reason: string;
+    }
+  | {
+      type: "pilot.cancel_ifr.acknowledged";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      aircraftId: string;
     };
 
 /**

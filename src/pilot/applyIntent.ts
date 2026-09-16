@@ -445,6 +445,7 @@ function applyOne(
     case "DECLINE_REQUEST":
     case "RADAR_CONTACT":
     case "TERMINATE_RADAR_SERVICE":
+    case "ACKNOWLEDGE_IFR_CANCELLATION":
       return;
     default: {
       const _exhaustive: never = instruction;

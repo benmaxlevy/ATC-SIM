@@ -196,7 +196,8 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "REQUEST_DETAILS" ||
     type === "STANDBY_REQUEST" ||
     type === "APPROVE_FLIGHT_FOLLOWING" ||
-    type === "TERMINATE_RADAR_SERVICE"
+    type === "TERMINATE_RADAR_SERVICE" ||
+    type === "ACKNOWLEDGE_IFR_CANCELLATION"
   ) {
     return keysOk(obj, ["type"]);
   }
@@ -654,6 +655,9 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     return false;
   }
   if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {
+    return false;
+  }
+  if (has(/\bifr\s+cancellation\s+received\b/) && !hasType("ACKNOWLEDGE_IFR_CANCELLATION")) {
     return false;
   }
   return instructions.length > 0;

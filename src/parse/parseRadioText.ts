@@ -110,7 +110,8 @@ function isRequestControlInstruction(inst: Instruction): boolean {
     inst.type === "APPROVE_FLIGHT_FOLLOWING" ||
     inst.type === "DECLINE_REQUEST" ||
     inst.type === "RADAR_CONTACT" ||
-    inst.type === "TERMINATE_RADAR_SERVICE"
+    inst.type === "TERMINATE_RADAR_SERVICE" ||
+    inst.type === "ACKNOWLEDGE_IFR_CANCELLATION"
   );
 }
 
@@ -136,7 +137,8 @@ function isTypedInstructionStart(token: string): boolean {
     token === "STANDBY" ||
     token === "APPROVE" ||
     token === "UNABLE" ||
-    token === "RADAR"
+    token === "RADAR" ||
+    token === "IFR"
   ) {
     return true;
   }
@@ -360,6 +362,16 @@ function parseOneInstruction(
         ok: true,
         instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
         nextIndex: index + 5,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "IFR") {
+    if (tokens[index + 1] === "CANCELLATION" && tokens[index + 2] === "RECEIVED") {
+      return {
+        ok: true,
+        instruction: { type: "ACKNOWLEDGE_IFR_CANCELLATION" },
+        nextIndex: index + 3,
       };
     }
     return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };

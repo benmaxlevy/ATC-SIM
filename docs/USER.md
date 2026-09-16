@@ -151,6 +151,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `unable flight following` / `unable to provide flight following` | `DAL123 unable flight following` | Decline flight following request |
 | | `radar contact <distance> miles from <fix>` | `DAL123 radar contact 5 miles from MERGE` | Establish radar identification with informational position report |
 | | `radar service terminated` | `DAL123 radar service terminated` | Terminate radar advisory service (transponder squawk is not automatically reset to 1200) |
+| **Pilot IFR Cancellation** | `IFR cancellation received` | `DAL123 IFR cancellation received` | Acknowledge pilot-initiated IFR cancellation outside Class B airspace; operational rules revert to VFR and autonomous navigation resumes |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |

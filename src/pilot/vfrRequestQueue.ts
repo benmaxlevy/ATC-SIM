@@ -26,7 +26,13 @@ import {
   type VfrPilotRequestState,
   type World,
 } from "@core";
-import { isPointInside3dVolume, isVfrAvoidanceVolume } from "../core/vfrNavigation";
+import {
+  extractVolumePolygonNm,
+  isPointInside3dVolume,
+  isSafeVfrContinuationAvailable,
+  isVfrAvoidanceVolume,
+  pointInPolygon2D,
+} from "../core/vfrNavigation";
 import {
   DEFAULT_VFR_REQUEST_CONFIG,
   getEligibleVfrDestinations,
@@ -117,6 +123,13 @@ export function defaultIfrCancellationValidator(
   if (aircraft.altitudeFt <= 0) {
     return { ok: false, reason: "ON_GROUND" };
   }
+  if (
+    aircraft.intent.lateral?.type === "LOC" ||
+    aircraft.intent.lateral?.type === "LANDING" ||
+    aircraft.intent.vertical?.type === "GS"
+  ) {
+    return { ok: false, reason: "ON_APPROACH_FINAL" };
+  }
   // Airspace check: aircraft must be outside all Class B avoidance volumes.
   const regional = world.regional as RegionalFacility | undefined;
   if (regional) {
@@ -130,6 +143,16 @@ export function defaultIfrCancellationValidator(
       ) {
         return { ok: false, reason: "INSIDE_CLASS_B" };
       }
+    }
+    const surfaceVolumes = classBVolumes.filter((v) => v.lowerLimitFt <= 0);
+    for (const volume of surfaceVolumes) {
+      const poly = extractVolumePolygonNm(volume);
+      if (pointInPolygon2D({ xNm: aircraft.xNm, yNm: aircraft.yNm }, poly)) {
+        return { ok: false, reason: "INSIDE_SURFACE_BRAVO" };
+      }
+    }
+    if (!isSafeVfrContinuationAvailable(aircraft, regional)) {
+      return { ok: false, reason: "NO_SAFE_CONTINUATION" };
     }
   }
   return { ok: true };
@@ -438,6 +461,7 @@ export class VfrRequestQueue {
       }
 
       candidate.state = "TRANSMITTED";
+      aircraft.cancellationPending = true;
       const reportText = `${candidate.callsign}, canceling IFR`;
       setStatus?.(reportText);
 

@@ -234,6 +234,8 @@ export interface Aircraft {
   airborne?: boolean;
   /** True when aircraft is in radar vectors pending heading state. */
   radarVectorPending?: boolean;
+  /** Pending pilot IFR cancellation report marker (T04-75). */
+  cancellationPending?: boolean;
 }
 
 export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND";
@@ -305,10 +307,17 @@ export interface AircraftInit {
   destinationAirport?: string;
   flightRules?: string;
   ambientVfr?: AmbientVfrState;
+  flightFollowing?: {
+    active: boolean;
+    approvedAtSimMs?: number;
+    requestId?: string;
+  };
+  radarContact?: unknown;
   /** True when aircraft is airborne. Omitted/inferred from altitudeFt > 0 if unset. */
   airborne?: boolean;
   /** True when aircraft is in radar vectors pending heading state. */
   radarVectorPending?: boolean;
+  cancellationPending?: boolean;
 }
 
 /** ICAO heavy transport types used by generated and authored traffic. */
@@ -398,9 +407,14 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
     ...(init.flightRules ? { flightRules: init.flightRules } : {}),
     ...(init.ambientVfr ? { ambientVfr: init.ambientVfr } : {}),
+    ...(init.flightFollowing ? { flightFollowing: init.flightFollowing } : {}),
+    ...(init.radarContact ? { radarContact: init.radarContact as RadioContactReport } : {}),
     ...(init.airborne !== undefined ? { airborne: init.airborne } : {}),
     ...(init.radarVectorPending !== undefined
       ? { radarVectorPending: init.radarVectorPending }
+      : {}),
+    ...(init.cancellationPending !== undefined
+      ? { cancellationPending: init.cancellationPending }
       : {}),
   };
 }

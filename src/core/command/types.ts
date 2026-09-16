@@ -80,9 +80,11 @@ export const INSTRUCTION_TYPES = [
   "DECLINE_REQUEST",
   "RADAR_CONTACT",
   "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
 ] as const;
 
 export type Instruction =
+  | { type: "ACKNOWLEDGE_IFR_CANCELLATION" }
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }
   | { type: "PRESENT_HEADING" }

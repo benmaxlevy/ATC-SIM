@@ -62,6 +62,7 @@ test("SessionEvent includes command events, voice.latency, CA edges, MSAW edges,
     | "pilot.cancel_ifr.scheduled"
     | "pilot.cancel_ifr.reported"
     | "pilot.cancel_ifr.withdrawn"
+    | "pilot.cancel_ifr.acknowledged"
   >();
 });
 

@@ -17,7 +17,8 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
     instruction.type === "DECLINE_REQUEST" ||
     instruction.type === "RADAR_CONTACT" ||
-    instruction.type === "TERMINATE_RADAR_SERVICE"
+    instruction.type === "TERMINATE_RADAR_SERVICE" ||
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
   );
 }
 import {
@@ -254,6 +255,15 @@ function tryRadarServiceTerminated(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "radar") && take(c, "service") && take(c, "terminated")) {
     return { type: "TERMINATE_RADAR_SERVICE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryAcknowledgeIfrCancellation(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "ifr") && take(c, "cancellation") && take(c, "received")) {
+    return { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
   }
   c.i = start;
   return null;
@@ -1084,6 +1094,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryApproveFlightFollowing(c) ??
     tryDeclineRequest(c) ??
     tryRadarServiceTerminated(c) ??
+    tryAcknowledgeIfrCancellation(c) ??
     tryRadarContact(c) ??
     tryAltitude(c) ??
     tryVia(c) ??

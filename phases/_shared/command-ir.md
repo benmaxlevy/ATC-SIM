@@ -103,7 +103,8 @@ export type Instruction =
       referenceId: string;
       referenceKind: "FIX" | "NAVAID";
     }
-  | { type: "TERMINATE_RADAR_SERVICE" };
+  | { type: "TERMINATE_RADAR_SERVICE" }
+  | { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -184,6 +185,7 @@ direct fixes.
 | `unable flight following` / `unable to provide flight following` | `DECLINE_REQUEST { service: "FLIGHT_FOLLOWING" }` (T04-73; decline flight following request) |
 | `radar contact <distance> miles from <fix/navaid>` | `RADAR_CONTACT { distanceNm, referenceId, referenceKind }` (T04-73; radar identification with informational position reference) |
 | `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
+| `IFR cancellation received` | `ACKNOWLEDGE_IFR_CANCELLATION` (T04-75; acknowledge pilot IFR cancellation outside Class B and revert to VFR) |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 

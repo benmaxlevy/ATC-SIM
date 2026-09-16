@@ -17,7 +17,8 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
     instruction.type === "DECLINE_REQUEST" ||
     instruction.type === "RADAR_CONTACT" ||
-    instruction.type === "TERMINATE_RADAR_SERVICE"
+    instruction.type === "TERMINATE_RADAR_SERVICE" ||
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
   );
 }
 import {
@@ -970,6 +971,16 @@ function matchRadarServiceTerminated(
   return null;
 }
 
+function matchAcknowledgeIfrCancellation(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "ifr" && tokens[i + 1] === "cancellation" && tokens[i + 2] === "received") {
+    return { instruction: { type: "ACKNOWLEDGE_IFR_CANCELLATION" }, next: i + 3 };
+  }
+  return null;
+}
+
 function matchRadarContact(
   tokens: readonly string[],
   i: number,
@@ -1564,6 +1575,7 @@ export function matchSpokenPatterns(
       matchApproveFlightFollowing(tokens, i) ??
       matchDeclineRequest(tokens, i) ??
       matchRadarServiceTerminated(tokens, i) ??
+      matchAcknowledgeIfrCancellation(tokens, i) ??
       matchRadarContact(tokens, i, catalog) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??

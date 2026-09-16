@@ -10,7 +10,7 @@ error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service | acknowledge-ifr-cancellation
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -53,6 +53,7 @@ decline-service ::= "\"FLIGHT_FOLLOWING\"" | "\"IFR_PICKUP\""
 radar-contact ::= "{" ws "\"type\"" ws ":" ws "\"RADAR_CONTACT\"" ws "," ws "\"distanceNm\"" ws ":" ws number ws "," ws "\"referenceId\"" ws ":" ws string ws "," ws "\"referenceKind\"" ws ":" ws ref-kind ws "}"
 ref-kind ::= "\"FIX\"" | "\"NAVAID\""
 terminate-radar-service ::= "{" ws "\"type\"" ws ":" ws "\"TERMINATE_RADAR_SERVICE\"" ws "}"
+acknowledge-ifr-cancellation ::= "{" ws "\"type\"" ws ":" ws "\"ACKNOWLEDGE_IFR_CANCELLATION\"" ws "}"
 
 speed-until ::= speed-until-faf | speed-until-fix | speed-until-dme
 speed-until-faf ::= "{" ws "\"type\"" ws ":" ws "\"FAF\"" ws "}"

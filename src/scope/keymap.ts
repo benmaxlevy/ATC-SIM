@@ -174,6 +174,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Terminates radar advisory service; squawk is not automatically reset to 1200.",
       },
       {
+        id: "acknowledge-ifr-cancellation",
+        command: "IFR cancellation received",
+        example: "DAL123 IFR cancellation received",
+        input: "Radio",
+        result:
+          "Acknowledges pilot-initiated IFR cancellation, reverting flight rules to VFR outside Class B.",
+      },
+      {
         id: "callsign",
         command: "<callsign> <instructions>",
         example: "DAL123 H270",

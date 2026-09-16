@@ -9,6 +9,7 @@
 
 import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } from "@core";
 import {
+  applyIfrCancellation,
   applyIfrClearance,
   assertHandoffOwned,
   findOpenRadioRequest,
@@ -28,6 +29,7 @@ import {
   sanitizeCatalogFixEntries,
   type CatalogFixEntry,
 } from "@parse";
+import type { RegionalFacility } from "../scenario/regional";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
@@ -333,6 +335,7 @@ export function handleRadioCommand(
     activeRunwayId: world.activeRunwayId,
     approachIds: world.catalog?.approaches.map((item) => item.id),
     radioRequests: world.radioRequests,
+    regional: world.regional as RegionalFacility | undefined,
   });
   if (!validated.ok) {
     return reject(
@@ -357,6 +360,30 @@ export function handleRadioCommand(
           ? "UNABLE_ROUTE"
           : "CLEARANCE";
       return reject(reason, applied.error.message, resolvedCommand);
+    }
+    const readback = formatReadback({
+      callsign: resolved.callsign,
+      instructions: resolvedCommand.instructions,
+      aircraft,
+    });
+    logAccepted(log, world, atWallMs, resolvedCommand);
+    return { accepted: true, readback, command: resolvedCommand };
+  }
+
+  const ifrCancellation = resolvedCommand.instructions.find(
+    (item) => item.type === "ACKNOWLEDGE_IFR_CANCELLATION",
+  );
+  if (ifrCancellation) {
+    if (resolvedCommand.instructions.length !== 1) {
+      return reject(
+        "CANCELLATION",
+        "cancellation instruction must be the only instruction",
+        resolvedCommand,
+      );
+    }
+    const applied = applyIfrCancellation(world, aircraft, atWallMs, log);
+    if (!applied.ok) {
+      return reject("CANCELLATION", applied.reason, resolvedCommand);
     }
     const readback = formatReadback({
       callsign: resolved.callsign,

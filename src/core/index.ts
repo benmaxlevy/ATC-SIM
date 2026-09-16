@@ -208,6 +208,7 @@ export type {
   IfrClearanceWorld,
 } from "./ifrClearance";
 export { applyIfrClearance } from "./ifrClearance";
+export { applyIfrCancellation, type IfrCancellationResult } from "./ifrCancellation";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
@@ -462,8 +463,10 @@ export {
   distPointToSegment,
   distSegmentToSegment,
   extractVolumePolygonNm,
+  isAircraftInsideClassB,
   isPointInside3dVolume,
   isRouteSafeFromAvoidance,
+  isSafeVfrContinuationAvailable,
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
   pointInPolygon2D,

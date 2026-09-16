@@ -41,8 +41,9 @@ same closed-union and transcript-evidence rules.
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
 flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following`
-(`DECLINE_REQUEST`), `radar contact ...` (`RADAR_CONTACT`), and `radar service
-terminated` (`TERMINATE_RADAR_SERVICE`) are atomic single-instruction
+(`DECLINE_REQUEST`), `radar contact ...` (`RADAR_CONTACT`), `radar service
+terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
+(`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
 transmissions. A compound transmission combining any of these with another
 instruction is `BAD_CLEARANCE`. `RADAR_CONTACT` position fixes/navaids are
 grounded via the shared catalog matcher; ungrounded references return a parse

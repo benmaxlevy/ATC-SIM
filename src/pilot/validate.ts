@@ -15,12 +15,15 @@ import type {
 import {
   alongTrackNm,
   findOpenRadioRequest,
+  isAircraftInsideClassB,
   isOnCourseToFix,
+  isSafeVfrContinuationAvailable,
   joinProcedureTransition,
   normalizeHeading,
   performanceRegistry,
 } from "@core";
 import { isValidBeaconCode } from "@core";
+import type { RegionalFacility } from "../scenario/regional";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -46,7 +49,8 @@ export type ValidateReason =
   | "SQUAWK"
   | "CLEARANCE"
   | "REQUEST"
-  | "RADAR_CONTACT";
+  | "RADAR_CONTACT"
+  | "CANCELLATION";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -77,6 +81,8 @@ export interface ValidateOpts {
   approachIds?: readonly string[] | null;
   performanceProfile?: AircraftPerformanceProfile | null;
   radioRequests?: readonly RadioRequest[];
+  regional?: RegionalFacility | null;
+  vfrContinuationValidator?: (aircraft: Aircraft, regional?: RegionalFacility | null) => boolean;
 }
 
 const REQUEST_CONTROL_TYPES = new Set([
@@ -86,6 +92,7 @@ const REQUEST_CONTROL_TYPES = new Set([
   "DECLINE_REQUEST",
   "RADAR_CONTACT",
   "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
 ]);
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -101,10 +108,13 @@ export function validateInstructions(
     instructions.length > 1 &&
     instructions.some((instruction) => REQUEST_CONTROL_TYPES.has(instruction.type))
   ) {
+    const hasCancel = instructions.some((i) => i.type === "ACKNOWLEDGE_IFR_CANCELLATION");
     return {
       ok: false,
-      reason: "CLEARANCE",
-      detail: "request control instruction must be the only instruction",
+      reason: hasCancel ? "CANCELLATION" : "CLEARANCE",
+      detail: hasCancel
+        ? "cancellation instruction must be the only instruction"
+        : "request control instruction must be the only instruction",
     };
   }
   const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
@@ -444,6 +454,52 @@ function validateOne(
     case "TERMINATE_RADAR_SERVICE": {
       if (!aircraft.flightFollowing?.active) {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: radar service is not active" };
+      }
+      return { ok: true };
+    }
+    case "ACKNOWLEDGE_IFR_CANCELLATION": {
+      if (!aircraft.cancellationPending) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: no pending pilot IFR cancellation",
+        };
+      }
+      if (aircraft.flightRules !== "IFR") {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: aircraft is not operating IFR",
+        };
+      }
+      if (aircraft.altitudeFt <= 0 || aircraft.airborne === false) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: aircraft is on ground",
+        };
+      }
+      if (isAircraftInsideClassB(aircraft, opts?.regional)) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: cannot cancel IFR inside Class B airspace",
+        };
+      }
+      if (opts?.vfrContinuationValidator) {
+        if (!opts.vfrContinuationValidator(aircraft, opts.regional)) {
+          return {
+            ok: false,
+            reason: "CANCELLATION",
+            detail: "CANCELLATION: unable to establish safe VFR continuation",
+          };
+        }
+      } else if (!isSafeVfrContinuationAvailable(aircraft, opts?.regional)) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: unable to establish safe VFR continuation",
+        };
       }
       return { ok: true };
     }

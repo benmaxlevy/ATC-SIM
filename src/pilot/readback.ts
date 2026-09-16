@@ -71,6 +71,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   UNABLE_ROUTE: "unable route",
   REQUEST: "unable request",
   RADAR_CONTACT: "unable radar contact",
+  CANCELLATION: "unable cancellation",
 };
 
 function capitalizeFirst(text: string): string {
@@ -231,6 +232,8 @@ function formatInstructionClause(
       return `radar contact, ${instruction.distanceNm} miles from ${instruction.referenceId}`;
     case "TERMINATE_RADAR_SERVICE":
       return "radar service terminated";
+    case "ACKNOWLEDGE_IFR_CANCELLATION":
+      return "IFR cancellation received";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
