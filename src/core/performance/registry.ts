@@ -207,6 +207,7 @@ function isUsableLegacyProfile(value: unknown): value is AircraftPerformanceProf
 export class AircraftPerformanceRegistry {
   private readonly defaults: AircraftProfileDefaults;
   private readonly aircraft: ReadonlyMap<string, AircraftProfileOverride>;
+  private readonly generalAviation: ReadonlyMap<string, AircraftProfileOverride>;
   private readonly cachedProfiles: Map<string, AircraftPerformanceProfile>;
 
   public constructor(dataset: unknown = profilesJson as unknown) {
@@ -216,6 +217,7 @@ export class AircraftPerformanceRegistry {
       // Legacy dataset handling: clone before freezing to protect source input
       this.defaults = FALLBACK_DEFAULTS;
       this.aircraft = new Map();
+      this.generalAviation = new Map();
       for (const profile of dataset.profiles) {
         if (isUsableLegacyProfile(profile)) {
           const key = profile.icaoType.trim().toUpperCase();
@@ -237,9 +239,22 @@ export class AircraftPerformanceRegistry {
         }
       }
       this.aircraft = acMap;
+      const gaMap = new Map<string, AircraftProfileOverride>();
+      if (isRecord(dataset.generalAviation)) {
+        for (const [k, v] of Object.entries(dataset.generalAviation as Record<string, unknown>)) {
+          if (isRecord(v)) {
+            const key = k.trim().toUpperCase();
+            if (key && key !== "DEFAULT" && !acMap.has(key)) {
+              gaMap.set(key, structuredClone(v) as AircraftProfileOverride);
+            }
+          }
+        }
+      }
+      this.generalAviation = gaMap;
     } else {
       this.defaults = FALLBACK_DEFAULTS;
       this.aircraft = new Map();
+      this.generalAviation = new Map();
     }
   }
 
@@ -252,7 +267,7 @@ export class AircraftPerformanceRegistry {
     if (cached) {
       return cached;
     }
-    const override = this.aircraft.get(key);
+    const override = this.aircraft.get(key) ?? this.generalAviation.get(key);
     if (!override) {
       return DEFAULT_PROFILE;
     }
@@ -263,7 +278,17 @@ export class AircraftPerformanceRegistry {
 
   public has(aircraftType: string): boolean {
     const key = aircraftType.trim().toUpperCase();
-    return this.aircraft.has(key) || this.cachedProfiles.has(key);
+    return this.aircraft.has(key) || this.generalAviation.has(key) || this.cachedProfiles.has(key);
+  }
+
+  /** True only for types in the separate `generalAviation` catalog object. */
+  public hasGeneralAviationType(aircraftType: string): boolean {
+    return this.generalAviation.has(aircraftType.trim().toUpperCase());
+  }
+
+  /** Sorted GA catalog keys. VFR mixes derive from this, never hand-listed. */
+  public listGeneralAviationTypes(): string[] {
+    return [...this.generalAviation.keys()].sort();
   }
 
   private buildProfile(

@@ -40,14 +40,15 @@ export const VFR_ROUTE_XOR = 0x5a1e_7003;
 export const VFR_FUTURE_ENTRY_XOR = 0x5a1e_7004;
 export const VFR_PILOT_REQUEST_XOR = 0x5a1e_7005;
 
-export const DEFAULT_VFR_AIRCRAFT_MIX: VfrAircraftMixRow[] = [
-  {
-    aircraftType: "C172",
+/** Default VFR fleet, derived from the `generalAviation` catalog object. No hand-listed types. */
+export const DEFAULT_VFR_AIRCRAFT_MIX: VfrAircraftMixRow[] = performanceRegistry
+  .listGeneralAviationTypes()
+  .map((aircraftType) => ({
+    aircraftType,
     weight: 1,
     callsignPrefix: "N",
-    performanceSource: "TRAINER_DEFAULT",
-  },
-];
+    performanceSource: "PROFILE_REGISTRY" as const,
+  }));
 
 export const DEFAULT_VFR_ALTITUDE_MIX: VfrAltitudeMixRow[] = [
   {
@@ -352,15 +353,14 @@ export function validateVfrTrafficConfig(
         typeof row.aircraftType === "string" ? row.aircraftType.trim().toUpperCase() : "";
       const perfSource = row.performanceSource;
 
-      if (perfSource === "TRAINER_DEFAULT") {
-        // Valid trainer default
-      } else if (perfSource === "PROFILE_REGISTRY") {
-        if (!acType || !performanceRegistry.has(acType)) {
-          throw new Error(
-            `vfrTraffic aircraft row ${acType || "<TYPE>"} requires a verified profile or explicit trainer default`,
-          );
-        }
-      } else {
+      // VFR fleet lives in the separate `generalAviation` catalog object only.
+      // Airliner `aircraft` keys and unlisted types are rejected here.
+      if (!acType || !performanceRegistry.hasGeneralAviationType(acType)) {
+        throw new Error(
+          `vfrTraffic aircraft row ${acType || "<TYPE>"} requires a verified profile or explicit trainer default`,
+        );
+      }
+      if (perfSource !== "TRAINER_DEFAULT" && perfSource !== "PROFILE_REGISTRY") {
         throw new Error(
           `vfrTraffic aircraft row ${acType || "<TYPE>"} requires a verified profile or explicit trainer default`,
         );

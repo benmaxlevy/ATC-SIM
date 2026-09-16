@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { performanceRegistry } from "@core";
+import { TRAFFIC_AIRLINES } from "../callsigns";
 import { assertScenario, loadKdem } from "../load";
 import {
   VFR_FUTURE_ENTRY_XOR,
@@ -6,6 +8,7 @@ import {
   VFR_MISSION_ZONE_XOR,
   VFR_ROUTE_XOR,
   VFR_PILOT_REQUEST_XOR,
+  DEFAULT_VFR_AIRCRAFT_MIX,
   VfrTrafficManager,
   chooseWeighted,
   validateVfrTrafficConfig,
@@ -175,6 +178,46 @@ describe("T04-71 VfrTrafficConfig schema validation and stable errors", () => {
     ).toThrow(
       "vfrTraffic aircraft row UNLISTED_GA requires a verified profile or explicit trainer default",
     );
+  });
+
+  test("Airliner types are rejected from VFR mixes; default mix mirrors the GA catalog", () => {
+    expect(() =>
+      validateVfrTrafficConfig(
+        {
+          initialCount: 2,
+          zones: [{ id: "north", weight: 1 }],
+          aircraftMix: [
+            {
+              aircraftType: "B738",
+              weight: 1,
+              callsignPrefix: "N",
+              performanceSource: "PROFILE_REGISTRY",
+            },
+          ],
+        },
+        { vfrZones: SYNTHETIC_ZONES },
+      ),
+    ).toThrow(
+      "vfrTraffic aircraft row B738 requires a verified profile or explicit trainer default",
+    );
+
+    // Default fleet is derived from the JSON GA object, never hand-listed.
+    const gaTypes = performanceRegistry.listGeneralAviationTypes();
+    expect(gaTypes.length).toBeGreaterThan(0);
+    expect(DEFAULT_VFR_AIRCRAFT_MIX.map((r) => r.aircraftType).sort()).toEqual(gaTypes);
+    for (const row of DEFAULT_VFR_AIRCRAFT_MIX) {
+      expect(row.performanceSource).toBe("PROFILE_REGISTRY");
+      expect(row.callsignPrefix).toBe("N");
+      expect(row.weight).toBe(1);
+    }
+
+    // IFR arrival airline fleets never intersect the GA catalog.
+    const airlineTypes = new Set(
+      TRAFFIC_AIRLINES.flatMap((a) => a.aircraftTypes.map((t) => t.toUpperCase())),
+    );
+    for (const ga of gaTypes) {
+      expect(airlineTypes.has(ga)).toBe(false);
+    }
   });
 
   test("Stable error 11: altitude row <INDEX> must have finite bounds with min <= max", () => {

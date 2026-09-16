@@ -4,6 +4,10 @@
 Reads src/core/performance/aircraft-profiles.json directly, queries OpenAP
 (openap.prop.aircraft and openap.kinematic.WRAP), and populates aircraft overrides
 with "source": "openap".
+
+The separate "generalAviation" object is never touched: OpenAP has no piston or
+turboprop GA data, so those entries stay hand-sourced manufacturer specs.
+populate_dataset rewrites the whole file and preserves that object as-is.
 """
 from __future__ import annotations
 

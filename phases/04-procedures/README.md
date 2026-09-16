@@ -659,6 +659,12 @@ airspace awareness.
   controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
 - T04-74 implements airborne VFR-to-IFR pickup (atomic transition to operational IFR, clearance limit validation against regional controlled destination airports, unchanged manual flight plan, and datablock/strip/list operational status).
 - T04-75 implements pilot-initiated IFR cancellation and autonomous VFR continuation (atomic reversion to VFR, 3D Class B airspace protection, autonomous navigation recovery, intact flight plan and beacon squawk, and multi-channel command parity).
+- The VFR fleet lives in the separate `generalAviation` object in
+  `src/core/performance/aircraft-profiles.json` (`BE36`, `C172`, `C182`,
+  `C208`, `DA40`, `PA28`, `SR22` with manufacturer-spec limits; OpenAP has no
+  piston/turboprop GA). `DEFAULT_VFR_AIRCRAFT_MIX` derives from that object;
+  VFR mixes reject airliner keys. IFR arrival fleets walk airline lists only,
+  so arrivals never spawn GA types.
 - T04-76 wires the approved population and request controls into session setup
   (`src/ui/controls/session-setup.tsx`, `src/scenario/sessionSetup.ts`) against
   the T04-71/72 schemas and schedulers, with units, labels, and exact upstream

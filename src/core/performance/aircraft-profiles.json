@@ -1625,5 +1625,350 @@
         }
       }
     }
+  },
+  "generalAviation": {
+    "BE36": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "A36 Bonanza",
+      "representativeEngine": "Continental IO-520-B",
+      "limits": {
+        "minControlledSpeedKt": 52,
+        "maxControlledSpeedKt": 176,
+        "serviceCeilingFt": 18500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 1230,
+          "accelKtPerS": 0.8,
+          "minSpeedKt": 85,
+          "maxSpeedKt": 140
+        },
+        "climb": {
+          "nominalClimbFpm": 1100,
+          "accelKtPerS": 0.7,
+          "minSpeedKt": 95,
+          "maxSpeedKt": 160
+        },
+        "enroute": {
+          "nominalDescentFpm": 1000,
+          "minSpeedKt": 120,
+          "maxSpeedKt": 176
+        },
+        "arrival": {
+          "nominalDescentFpm": 1100,
+          "minSpeedKt": 120,
+          "maxSpeedKt": 176
+        },
+        "approach": {
+          "nominalDescentFpm": 750,
+          "minSpeedKt": 80,
+          "maxSpeedKt": 125
+        },
+        "landing": {
+          "nominalDescentFpm": 550,
+          "minSpeedKt": 52,
+          "maxSpeedKt": 85
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 1100,
+          "minSpeedKt": 85,
+          "maxSpeedKt": 140
+        }
+      }
+    },
+    "C172": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "172S Skyhawk",
+      "representativeEngine": "Lycoming IO-360-L2A",
+      "limits": {
+        "minControlledSpeedKt": 48,
+        "maxControlledSpeedKt": 126,
+        "serviceCeilingFt": 14000
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 730,
+          "accelKtPerS": 0.6,
+          "minSpeedKt": 60,
+          "maxSpeedKt": 110
+        },
+        "climb": {
+          "nominalClimbFpm": 700,
+          "accelKtPerS": 0.5,
+          "minSpeedKt": 70,
+          "maxSpeedKt": 120
+        },
+        "enroute": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 124
+        },
+        "arrival": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 124
+        },
+        "approach": {
+          "nominalDescentFpm": 600,
+          "minSpeedKt": 65,
+          "maxSpeedKt": 95
+        },
+        "landing": {
+          "nominalDescentFpm": 500,
+          "minSpeedKt": 48,
+          "maxSpeedKt": 75
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 700,
+          "minSpeedKt": 60,
+          "maxSpeedKt": 110
+        }
+      }
+    },
+    "C182": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "182T Skylane",
+      "representativeEngine": "Lycoming IO-540-AB1A5",
+      "limits": {
+        "minControlledSpeedKt": 49,
+        "maxControlledSpeedKt": 150,
+        "serviceCeilingFt": 18100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 924,
+          "accelKtPerS": 0.6,
+          "minSpeedKt": 65,
+          "maxSpeedKt": 120
+        },
+        "climb": {
+          "nominalClimbFpm": 850,
+          "accelKtPerS": 0.5,
+          "minSpeedKt": 75,
+          "maxSpeedKt": 135
+        },
+        "enroute": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 100,
+          "maxSpeedKt": 145
+        },
+        "arrival": {
+          "nominalDescentFpm": 900,
+          "minSpeedKt": 100,
+          "maxSpeedKt": 145
+        },
+        "approach": {
+          "nominalDescentFpm": 650,
+          "minSpeedKt": 70,
+          "maxSpeedKt": 110
+        },
+        "landing": {
+          "nominalDescentFpm": 500,
+          "minSpeedKt": 49,
+          "maxSpeedKt": 80
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 850,
+          "minSpeedKt": 65,
+          "maxSpeedKt": 120
+        }
+      }
+    },
+    "C208": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "208 Caravan",
+      "representativeEngine": "P&W PT6A-114A",
+      "limits": {
+        "minControlledSpeedKt": 61,
+        "maxControlledSpeedKt": 175,
+        "serviceCeilingFt": 25000
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 1234,
+          "accelKtPerS": 0.8,
+          "minSpeedKt": 95,
+          "maxSpeedKt": 150
+        },
+        "climb": {
+          "nominalClimbFpm": 1100,
+          "accelKtPerS": 0.7,
+          "minSpeedKt": 105,
+          "maxSpeedKt": 165
+        },
+        "enroute": {
+          "nominalDescentFpm": 1000,
+          "minSpeedKt": 130,
+          "maxSpeedKt": 175
+        },
+        "arrival": {
+          "nominalDescentFpm": 1200,
+          "minSpeedKt": 130,
+          "maxSpeedKt": 175
+        },
+        "approach": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 85,
+          "maxSpeedKt": 130
+        },
+        "landing": {
+          "nominalDescentFpm": 600,
+          "minSpeedKt": 61,
+          "maxSpeedKt": 95
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 1100,
+          "minSpeedKt": 95,
+          "maxSpeedKt": 150
+        }
+      }
+    },
+    "DA40": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "DA40 NG",
+      "representativeEngine": "Austro AE300",
+      "limits": {
+        "minControlledSpeedKt": 58,
+        "maxControlledSpeedKt": 154,
+        "serviceCeilingFt": 16400
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 700,
+          "accelKtPerS": 0.6,
+          "minSpeedKt": 75,
+          "maxSpeedKt": 120
+        },
+        "climb": {
+          "nominalClimbFpm": 650,
+          "accelKtPerS": 0.5,
+          "minSpeedKt": 85,
+          "maxSpeedKt": 135
+        },
+        "enroute": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 100,
+          "maxSpeedKt": 154
+        },
+        "arrival": {
+          "nominalDescentFpm": 900,
+          "minSpeedKt": 100,
+          "maxSpeedKt": 154
+        },
+        "approach": {
+          "nominalDescentFpm": 650,
+          "minSpeedKt": 75,
+          "maxSpeedKt": 110
+        },
+        "landing": {
+          "nominalDescentFpm": 500,
+          "minSpeedKt": 58,
+          "maxSpeedKt": 85
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 650,
+          "minSpeedKt": 75,
+          "maxSpeedKt": 120
+        }
+      }
+    },
+    "PA28": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "PA-28-181 Archer III",
+      "representativeEngine": "Lycoming O-360-A4M",
+      "limits": {
+        "minControlledSpeedKt": 45,
+        "maxControlledSpeedKt": 129,
+        "serviceCeilingFt": 14100
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 667,
+          "accelKtPerS": 0.6,
+          "minSpeedKt": 60,
+          "maxSpeedKt": 110
+        },
+        "climb": {
+          "nominalClimbFpm": 630,
+          "accelKtPerS": 0.5,
+          "minSpeedKt": 70,
+          "maxSpeedKt": 120
+        },
+        "enroute": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 128
+        },
+        "arrival": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 128
+        },
+        "approach": {
+          "nominalDescentFpm": 600,
+          "minSpeedKt": 65,
+          "maxSpeedKt": 100
+        },
+        "landing": {
+          "nominalDescentFpm": 500,
+          "minSpeedKt": 45,
+          "maxSpeedKt": 75
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 630,
+          "minSpeedKt": 60,
+          "maxSpeedKt": 110
+        }
+      }
+    },
+    "SR22": {
+      "source": "manufacturer-specs",
+      "representativeVariant": "SR22",
+      "representativeEngine": "Continental IO-550-N",
+      "limits": {
+        "minControlledSpeedKt": 60,
+        "maxControlledSpeedKt": 183,
+        "serviceCeilingFt": 17500
+      },
+      "regimes": {
+        "initialClimb": {
+          "nominalClimbFpm": 1270,
+          "accelKtPerS": 0.8,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 140
+        },
+        "climb": {
+          "nominalClimbFpm": 1150,
+          "accelKtPerS": 0.7,
+          "minSpeedKt": 100,
+          "maxSpeedKt": 160
+        },
+        "enroute": {
+          "nominalDescentFpm": 1000,
+          "minSpeedKt": 120,
+          "maxSpeedKt": 183
+        },
+        "arrival": {
+          "nominalDescentFpm": 1200,
+          "minSpeedKt": 120,
+          "maxSpeedKt": 183
+        },
+        "approach": {
+          "nominalDescentFpm": 800,
+          "minSpeedKt": 85,
+          "maxSpeedKt": 130
+        },
+        "landing": {
+          "nominalDescentFpm": 600,
+          "minSpeedKt": 60,
+          "maxSpeedKt": 90
+        },
+        "missedApproach": {
+          "nominalClimbFpm": 1150,
+          "minSpeedKt": 90,
+          "maxSpeedKt": 140
+        }
+      }
+    }
   }
 }
