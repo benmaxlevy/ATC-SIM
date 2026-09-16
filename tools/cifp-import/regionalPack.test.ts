@@ -388,4 +388,272 @@ describe("T04-70 regionalPack generator", () => {
     expect(mock.written["out/region/airports/KBBB/catalog.json"]).toBeDefined();
     expect(mock.written["out/region/airports/KBBB/procedures.json"]).toBeDefined();
   });
+
+  test("catalog closure failure warns and excludes the airport with catalog_error", () => {
+    const cifp = [
+      pa({ icao: "KAAA", name: "ALPHA METRO", lat: "N00000000", lon: "W000000000" }),
+      pa({ icao: "KFFF", name: "FOXTROT BROKEN", lat: "N00300000", lon: "W000000000" }),
+      pg({
+        icao: "KAAA",
+        rwy: "RW27",
+        lat: "N00000000",
+        lon: "W000000000",
+        bearing: "2700",
+        length: "10000",
+      }),
+      pg({
+        icao: "KFFF",
+        rwy: "RW09",
+        lat: "N00300000",
+        lon: "W000000000",
+        bearing: "0900",
+        length: "06000",
+      }),
+      pc({ icao: "KFFF", id: "FFFAF1", lat: "N00300000", lon: "W000050000", type: "  F" }),
+      pc({ icao: "KFFF", id: "RW09 ", lat: "N00300000", lon: "W000000000", type: "  M" }),
+      pf({
+        icao: "KFFF",
+        appId: "I09  ",
+        routeType: "I",
+        seq: "010",
+        fixId: "FFFAF1",
+        path: "IF",
+        alt: "03000",
+        altDesc: "+",
+      }),
+      pf({
+        icao: "KFFF",
+        appId: "I09  ",
+        routeType: "I",
+        seq: "020",
+        fixId: "GHOST",
+        path: "TF",
+        course: "0900",
+      }),
+    ].join("\n");
+    const apt = [
+      "FAA_ID,ICAO_ID,FACILITY_TYPE,PUBLIC_USE,TOWER_ON_SITE",
+      "AAA,KAAA,AIRPORT,Y,Y",
+      "FFF,KFFF,AIRPORT,Y,Y",
+    ].join("\n");
+    const twr = [
+      "SITE_NUMBER,FAA_ID,ICAO_ID,TOWER_TYPE,TOWER_HOURS",
+      "00001.A,AAA,KAAA,ATCT,24",
+      "00006.A,FFF,KFFF,ATCT,24",
+    ].join("\n");
+
+    const result = buildRegionalPack(cifp, apt, twr, {
+      cifpPath: "test.cifp",
+      nasrAptPath: "apt.txt",
+      nasrTwrPath: "twr.txt",
+      centerAirportId: "KAAA",
+      radiusNm: 90,
+    });
+
+    const catalogDiags = result.diagnostics.filter((d) => d.code === "CATALOG_GENERATION_FAILED");
+    expect(catalogDiags.length).toBeGreaterThanOrEqual(1);
+    for (const d of catalogDiags) {
+      expect(d.severity).toBe("warning");
+    }
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+    const kfff = result.airports.find((a) => a.icao === "KFFF")!;
+    expect(kfff.eligible).toBe(false);
+    expect(kfff.exclusionReason).toBe("catalog_error");
+    expect(result.eligibleAirports.map((a) => a.icao)).not.toContain("KFFF");
+
+    const mock = createMockIo({ "test.cifp": cifp, "apt.txt": apt, "twr.txt": twr });
+    runRegionalPackCli(
+      [
+        "--cifp",
+        "test.cifp",
+        "--nasr-apt",
+        "apt.txt",
+        "--nasr-twr",
+        "twr.txt",
+        "--airport",
+        "KAAA",
+        "--radius",
+        "90",
+        "--out",
+        "out/region",
+      ],
+      mock.io,
+    );
+    expect(mock.written["out/region/regional.json"]).toBeDefined();
+    expect(mock.written["out/region/regional-airports.json"]).toBeDefined();
+    expect(mock.written["out/region/regional-airspace.json"]).toBeDefined();
+  });
+
+  test("90NM-like pack warns, excludes bad airspace and catalog-error airport, still writes", () => {
+    const badAirspace = [
+      uc({
+        center: "KAAA",
+        airspaceClass: "C",
+        name: "BAD CLASS C",
+        seq: 10,
+        lat: "N00050000",
+        lon: "W000050000",
+        boundaryVia: "G",
+        lowerLimit: "02000",
+        lowerLimitUnit: " ",
+        upperLimit: "10000",
+        upperLimitUnit: "M",
+      }),
+      uc({
+        center: "KAAA",
+        airspaceClass: "C",
+        name: "BAD CLASS C",
+        seq: 20,
+        lat: "N00050000",
+        lon: "E000050000",
+        boundaryVia: "G",
+        lowerLimit: "02000",
+        lowerLimitUnit: " ",
+        upperLimit: "10000",
+        upperLimitUnit: "M",
+      }),
+    ].join("\n");
+    const failingAirport = [
+      pa({ icao: "KFFF", name: "FOXTROT BROKEN", lat: "N00300000", lon: "W000000000" }),
+      pg({
+        icao: "KFFF",
+        rwy: "RW09",
+        lat: "N00300000",
+        lon: "W000000000",
+        bearing: "0900",
+        length: "06000",
+      }),
+      pc({ icao: "KFFF", id: "FFFAF1", lat: "N00300000", lon: "W000050000", type: "  F" }),
+      pc({ icao: "KFFF", id: "RW09 ", lat: "N00300000", lon: "W000000000", type: "  M" }),
+      pf({
+        icao: "KFFF",
+        appId: "I09  ",
+        routeType: "I",
+        seq: "010",
+        fixId: "FFFAF1",
+        path: "IF",
+        alt: "03000",
+        altDesc: "+",
+      }),
+      pf({
+        icao: "KFFF",
+        appId: "I09  ",
+        routeType: "I",
+        seq: "020",
+        fixId: "GHOST",
+        path: "TF",
+        course: "0900",
+      }),
+    ].join("\n");
+    const cifp = [SYNTHETIC_CIFP, badAirspace, failingAirport].join("\n");
+    const apt = [...SYNTHETIC_NASR_APT.split("\n"), "FFF,KFFF,AIRPORT,Y,Y"].join("\n");
+    const twr = [...SYNTHETIC_NASR_TWR.split("\n"), "00006.A,FFF,KFFF,ATCT,24"].join("\n");
+
+    const result = buildRegionalPack(cifp, apt, twr, {
+      cifpPath: "test.cifp",
+      nasrAptPath: "apt.txt",
+      nasrTwrPath: "twr.txt",
+      centerAirportId: "KAAA",
+      radiusNm: 90,
+    });
+
+    const airspaceWarnings = result.diagnostics.filter(
+      (d) => d.code === "INVALID_AIRSPACE_VERTICAL_LIMITS",
+    );
+    expect(airspaceWarnings.length).toBeGreaterThanOrEqual(1);
+    for (const d of airspaceWarnings) {
+      expect(d.severity).toBe("warning");
+      expect(d.message).toContain("excluded");
+    }
+    const catalogWarnings = result.diagnostics.filter(
+      (d) => d.code === "CATALOG_GENERATION_FAILED",
+    );
+    expect(catalogWarnings.length).toBeGreaterThanOrEqual(1);
+    for (const d of catalogWarnings) {
+      expect(d.severity).toBe("warning");
+    }
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+    // Bad volume absent from output; only the good Class B remains.
+    expect(result.airspaces.map((a) => a.name)).not.toContain("BAD CLASS C");
+    expect(result.airspaces).toHaveLength(1);
+
+    const kfff = result.airports.find((a) => a.icao === "KFFF")!;
+    expect(kfff.eligible).toBe(false);
+    expect(kfff.exclusionReason).toBe("catalog_error");
+
+    const mock = createMockIo({ "test.cifp": cifp, "apt.txt": apt, "twr.txt": twr });
+    runRegionalPackCli(
+      [
+        "--cifp",
+        "test.cifp",
+        "--nasr-apt",
+        "apt.txt",
+        "--nasr-twr",
+        "twr.txt",
+        "--airport",
+        "KAAA",
+        "--radius",
+        "90",
+        "--out",
+        "out/region",
+      ],
+      mock.io,
+    );
+    expect(mock.written["out/region/regional.json"]).toBeDefined();
+    expect(mock.written["out/region/regional-airports.json"]).toBeDefined();
+    expect(mock.written["out/region/regional-airspace.json"]).toBeDefined();
+    const writtenAirspace = JSON.parse(mock.written["out/region/regional-airspace.json"]!);
+    expect(writtenAirspace.airspaces.map((a: { name: string }) => a.name)).not.toContain(
+      "BAD CLASS C",
+    );
+  });
+
+  test("missing NASR metadata still fails the pack with no files written", () => {
+    const aptWithoutBbb = [
+      "FAA_ID,ICAO_ID,FACILITY_TYPE,PUBLIC_USE,TOWER_ON_SITE",
+      "AAA,KAAA,AIRPORT,Y,Y",
+      "CCC,KCCC,AIRPORT,Y,N",
+      "DOD,KDOD,AIRPORT,N,Y",
+      "EEE,KEEE,AIRPORT,Y,Y",
+    ].join("\n");
+    // KBBB must be absent from both APT and TWR so no service metadata matches.
+    const twrWithoutBbb = [
+      "SITE_NUMBER,FAA_ID,ICAO_ID,TOWER_TYPE,TOWER_HOURS",
+      "00001.A,AAA,KAAA,ATCT,24",
+      "00004.A,KDOD,KDOD,ATCT,16",
+      "00005.A,EEE,KEEE,ATCT,24",
+    ].join("\n");
+    const mock = createMockIo({
+      "test.cifp": SYNTHETIC_CIFP,
+      "apt.txt": aptWithoutBbb,
+      "twr.txt": twrWithoutBbb,
+    });
+
+    expect(() =>
+      runRegionalPackCli(
+        [
+          "--cifp",
+          "test.cifp",
+          "--nasr-apt",
+          "apt.txt",
+          "--nasr-twr",
+          "twr.txt",
+          "--airport",
+          "KAAA",
+          "--radius",
+          "40",
+          "--out",
+          "out/region",
+        ],
+        mock.io,
+      ),
+    ).toThrow(/failed with .* error\(s\)/);
+
+    expect(Object.keys(mock.written)).toHaveLength(0);
+    expect(mock.stderrOutput.some((s) => s.includes("MISSING_AIRPORT_SERVICE_METADATA"))).toBe(
+      true,
+    );
+  });
 });

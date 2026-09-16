@@ -272,9 +272,9 @@ export function buildRegionalPack(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         diagnostics.push({
-          severity: "error",
+          severity: "warning",
           code: "CATALOG_GENERATION_FAILED",
-          message: `Regional catalog generation failed for ${icao}: ${msg}`,
+          message: `Regional catalog generation failed for ${icao}: ${msg} (airport excluded from eligible lookup)`,
           airportId: icao,
         });
         exclusionReason = "catalog_error";

@@ -480,10 +480,17 @@ node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> 
   - Selected airports lacking NASR service metadata trigger
     `MISSING_AIRPORT_SERVICE_METADATA` errors.
   - Missing, invalid, or inconsistent lower/upper altitude limits trigger
-    `INVALID_AIRSPACE_VERTICAL_LIMITS` errors.
+    `INVALID_AIRSPACE_VERTICAL_LIMITS` warnings. The offending volume is
+    excluded from serialized output (runtime `parseRegionalPack` rejects such
+    volumes atomically, so emitting them would crash scenario load) and the
+    pack still writes.
   - Conflicting NASR airport records trigger `CONFLICTING_NASR_RECORD` errors.
-  - In strict mode (default), any error-level diagnostic causes the importer
-    to exit nonzero **without writing any output files**.
+  - Airports whose procedure catalog fails reference closure are excluded with
+    `exclusionReason="catalog_error"` and a `CATALOG_GENERATION_FAILED`
+    warning (both strict and report closure modes); the pack still writes and
+    the airport stays out of the eligible destination lookup.
+  - In strict mode (default), any remaining error-level diagnostic causes the
+    importer to exit nonzero **without writing any output files**.
 
 ## Regional catalog and satellite-arrival pack (T04-70)
 
