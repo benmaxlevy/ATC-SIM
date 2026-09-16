@@ -1,5 +1,34 @@
 # Swarm status
 
+## SATELLITE TRAFFIC SWARM COMPLETE — Session Controls and Acceptance (T04-76, 2026-09-16)
+
+Resumed `feature/sattelite-traffic` for T04-76 only with `muse-spark-1.3` free
+medium worker (user override of `gpt-5.6-luna` `xhigh`). T04-69 through T04-75
+remained merged. Worker continued the existing `.worktrees/T04-76` dirty work,
+preserved every file, and delivered 5 progressive commits (`064a26a`,
+`8409ba8`, `655d75f`, `deceeaf`, `8490927`). Captain squash-merged `bd8829a`.
+
+Delivered: VFR population/request session controls with upstream validation and
+round-trip, N-number callsign parity, synthetic integrated acceptance, Atlanta
+source/provenance acceptance, Bravo no-entry geometry, long-session bounds with
+legacy IFR schedule identity, Help/docs addenda (`docs/USER.md`,
+`phases/04-procedures/README.md`, `tools/cifp-import/README.md`).
+
+Post-merge `npm run ci`: typecheck, lint, format, **231 files, 2367 passed,
+3 skipped**. Speech-api pytest skipped: no speech-api paths changed. Manual
+KATL both-runway-config acceptance recorded as leftover per user authorization;
+FAA edition/paragraphs, scenario/seed, unavailable speech/perf evidence recorded
+honestly in ticket handoff. No push. `.agents/rules/`, `.worktrees/`,
+`GEMINI.md`, `audit.diff` untouched.
+
+## SATELLITE TRAFFIC SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Atlanta satellite traffic T04-69 through T04-76
+Merge target: `feature/sattelite-traffic`
+Merged: T04-69, T04-70, T04-71, T04-72, T04-73, T04-74, T04-75, T04-76
+Tests: final `npm run ci` green (2367 passed, 3 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; trainer deltas per ticket
+
 ## SEVENTY-SECOND SWARM COMPLETE — Cancel Approach Clearance Breakout (T04-66–T04-68)
 
 Completed sequentially on `feature/better-openap-usage` with one worker at a
