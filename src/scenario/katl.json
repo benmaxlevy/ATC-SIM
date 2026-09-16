@@ -3,6 +3,28 @@
   "name": "Hartsfield-Jackson Atlanta Intl",
   "icao": "KATL",
   "regionalPack": "katl",
+  "vfrZones": [
+    {
+      "id": "north",
+      "name": "North practice area",
+      "bounds": { "minXNm": -15, "maxXNm": 15, "minYNm": 15, "maxYNm": 30 }
+    },
+    {
+      "id": "south",
+      "name": "South practice area",
+      "bounds": { "minXNm": -15, "maxXNm": 15, "minYNm": -30, "maxYNm": -15 }
+    },
+    {
+      "id": "east",
+      "name": "East practice area",
+      "bounds": { "minXNm": 15, "maxXNm": 30, "minYNm": -15, "maxYNm": 15 }
+    },
+    {
+      "id": "west",
+      "name": "West practice area",
+      "bounds": { "minXNm": -30, "maxXNm": -15, "minYNm": -15, "maxYNm": 15 }
+    }
+  ],
   "magVarDeg": -5,
   "fieldElevFt": 1026,
   "arp": {
