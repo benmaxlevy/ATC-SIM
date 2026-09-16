@@ -126,7 +126,7 @@ test("T02-72 — DCB WX, *WX, and BRITE WX/WXC share one display-only paint path
   expect(reuse.drawImages[0]!.image).toBe(painted.drawImages[0]!.image);
 
   expect(log.byType("command.accepted")).toHaveLength(0);
-  expect(INSTRUCTION_TYPES).toHaveLength(29);
+  expect(INSTRUCTION_TYPES).toHaveLength(30);
   expect(dal.intent.assignedHeadingDeg).toBe(90);
 
   const result = await handleRadioText(world, "DAL123 H270", log);

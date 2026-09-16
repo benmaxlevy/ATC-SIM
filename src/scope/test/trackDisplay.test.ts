@@ -365,6 +365,23 @@ test("plan scratchpads override derived track scratchpads after flight-plan modi
   expect(deriveScratchpads(ac, td, ["HI", "WEST"])).toEqual({ sp1: "HI", sp2: "WEST" });
 });
 
+test("T04-82: formatApproachShorthand and deriveScratchpads support visual approaches", () => {
+  expect(formatApproachShorthand("VISUAL 27L")).toBe("V27L");
+  expect(formatApproachShorthand("VISUAL 09")).toBe("V09");
+  expect(formatApproachShorthand("VISUAL")).toBe("VIS");
+
+  const ac = makeTestAircraft({ id: "ac-vis", altitudeFt: 3000 });
+  ac.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27L",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  const td = createTrackDisplay("owned");
+  const derived = deriveScratchpads(ac, td);
+  expect(derived.sp1).toBe("V27L");
+});
+
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {
   const ac = makeTestAircraft({
     id: "ac-alt",

@@ -242,6 +242,105 @@ test("CLEARED_APPROACH needs a known approachId when catalog is present", () => 
   expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
 });
 
+test("T04-82: CLEARED_VISUAL validation", () => {
+  // Empty runway
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "" }])).toEqual({
+    ok: false,
+    reason: "EMPTY",
+  });
+  // Invalid runway format
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "XYZ" }])).toEqual({
+    ok: false,
+    reason: "RUNWAY",
+  });
+  // Valid runway without explicit runwayIds in opts passes
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }]).ok).toBe(true);
+
+  // With explicit runwayIds:
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }], {
+      runwayIds: ["27L", "27R"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      runwayIds: ["27L", "27R"],
+    }),
+  ).toEqual({ ok: false, reason: "RUNWAY" });
+
+  // Regional airport validation:
+  const mockRegional = {
+    getAirport: (icao: string) => {
+      if (icao === "KPDK") {
+        return {
+          icao: "KPDK",
+          runways: [{ id: "21L" }, { id: "03R" }],
+        };
+      }
+      if (icao === "KATL") {
+        return {
+          icao: "KATL",
+          runways: [{ id: "27L" }, { id: "27R" }, { id: "08L" }],
+        };
+      }
+      return undefined;
+    },
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+
+  const pdkAc = { ...jet(), destination: "KPDK" };
+  // KPDK has 21L -> ok
+  expect(
+    validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      regional: mockRegional,
+    }).ok,
+  ).toBe(true);
+  // KPDK does not have 27L (KATL runway) -> rejected with RUNWAY
+  expect(
+    validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "27L" }], {
+      regional: mockRegional,
+    }),
+  ).toEqual({ ok: false, reason: "RUNWAY" });
+
+  // On visual final, altitude assignment is rejected
+  const visualAc = {
+    ...jet(),
+    intent: {
+      ...jet().intent,
+      lateral: {
+        type: "VISUAL_FINAL" as const,
+        runwayId: "27L",
+        threshold: { xNm: 0, yNm: 0 },
+        headingDeg: 270,
+      },
+    },
+  };
+  expect(
+    validateInstructions(visualAc, [{ type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the approach already.",
+  });
+
+  // On visual final, GO_AROUND is accepted
+  expect(validateInstructions(visualAc, [{ type: "GO_AROUND" }]).ok).toBe(true);
+
+  // On visual final, CANCEL_APPROACH is accepted
+  expect(validateInstructions(visualAc, [{ type: "CANCEL_APPROACH" }]).ok).toBe(true);
+
+  // CANCEL_APPROACH cannot be followed by CLEARED_VISUAL in same transmission
+  expect(
+    validateInstructions(visualAc, [
+      { type: "CANCEL_APPROACH" },
+      { type: "CLEARED_VISUAL", runwayId: "27L" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+  });
+});
+
 test("DIRECT unknown fix is UNKNOWN_FIX; known catalog id passes", () => {
   const registry = {
     has: (id: string) => id.toUpperCase() === "NEMAX",

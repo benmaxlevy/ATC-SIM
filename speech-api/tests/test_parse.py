@@ -949,6 +949,7 @@ def test_semantic_guard_requires_evidence_for_every_instruction_type() -> None:
         ("join DEM1", {"type": "JOIN_PROCEDURE", "procedureId": "DEM1"}),
         ("cross SEMAX at 4000", {"type": "CROSS", "fixId": "SEMAX", "altitudeFt": 4000, "restriction": "AT"}),
         ("go around", {"type": "GO_AROUND"}),
+        ("cleared visual approach runway 27L", {"type": "CLEARED_VISUAL", "runwayId": "27L"}),
     ]
     for transcript, instruction in cases:
         outcome = ParseOutcome(ok=True, instructions=[instruction])
@@ -1228,3 +1229,26 @@ def test_catalog_guard_rejects_callsign_in_slots() -> None:
         instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
     )
     assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
+
+
+def test_cleared_visual_semantic_guard_and_canonicalization() -> None:
+    from parse_engine import guard_instruction_semantics, validate_instruction
+
+    # Canonicalization
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": "27l"}) == {
+        "type": "CLEARED_VISUAL",
+        "runwayId": "27L",
+    }
+    assert validate_instruction({"type": "CLEARED_VISUAL"}) is None
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": ""}) is None
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": "27L", "extra": 1}) is None
+
+    # Semantic guard with valid runway
+    outcome = ParseOutcome(ok=True, instructions=[{"type": "CLEARED_VISUAL", "runwayId": "27L"}])
+    assert guard_instruction_semantics("cleared visual approach runway 27L", outcome).ok
+    assert guard_instruction_semantics("cleared visual approach runway two seven left", outcome).ok
+
+    # Near-miss without runway rejected
+    assert not guard_instruction_semantics("cleared visual approach", outcome).ok
+    assert not guard_instruction_semantics("Delta 123 radio check", outcome).ok
+

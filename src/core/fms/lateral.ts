@@ -73,6 +73,9 @@ export function applyLateralFms(
   if (lateral.type === "LANDING") {
     return guideLanding(ac, lateral, ctx);
   }
+  if (lateral.type === "VISUAL_FINAL") {
+    return guideVisualFinal(ac, dtS, lateral);
+  }
   if (lateral.type === "MISSED") {
     return ac.intent.assignedHeadingDeg;
   }
@@ -480,4 +483,26 @@ function guideLanding(
   }
   locBreakoutSinceMs.delete(ac);
   return axisPublishedCourse(axis);
+}
+
+function guideVisualFinal(
+  ac: Aircraft,
+  _dtS: number,
+  lateral: Extract<LateralMode, { type: "VISUAL_FINAL" }>,
+): number {
+  const headingRad = (lateral.headingDeg * Math.PI) / 180;
+  const uX = Math.sin(headingRad);
+  const uY = Math.cos(headingRad);
+  const dx = ac.xNm - lateral.threshold.xNm;
+  const dy = ac.yNm - lateral.threshold.yNm;
+  const crossTrackNm = dx * uY - dy * uX;
+  const alongTrackNm = -(dx * uX + dy * uY);
+
+  if (alongTrackNm <= 0.1) {
+    return lateral.headingDeg;
+  }
+
+  const interceptAngleDeg = Math.min(30, Math.max(-30, crossTrackNm * 30));
+  const targetHeading = (lateral.headingDeg - interceptAngleDeg + 360) % 360;
+  return targetHeading;
 }

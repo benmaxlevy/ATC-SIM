@@ -892,6 +892,13 @@ export function stepWorld(world: World, dtS: number): World {
         world.mvaChart,
         world.msawInhibit ?? DEFAULT_MSAW_INHIBIT,
         (ac) => {
+          if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+            return {
+              xNm: ac.intent.lateral.threshold.xNm,
+              yNm: ac.intent.lateral.threshold.yNm,
+              fafDistanceNm: 3.0,
+            };
+          }
           const approachId =
             missedApproachId(ac) ?? ac.intent.clearedApproachId ?? ac.intent.locInterceptApproachId;
           if (!approachId) return undefined;

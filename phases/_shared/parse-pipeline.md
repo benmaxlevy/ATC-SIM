@@ -34,10 +34,15 @@ An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / 
 `CAPP` and spoken `cancel approach clearance` emit the zero-argument
 `CANCEL_APPROACH` instruction. It must be the first instruction and may occur
 only once. Later ordinary heading/altitude/speed instructions retain source
-order; a later approach expectation, clearance, localizer intercept, or
+order; a later approach expectation, clearance, visual clearance, localizer intercept, or
 `GO_AROUND` is `BAD_CLEARANCE`. `CAPP` never consumes an approach ID, and
 `cancel approach` without `clearance` remains `PARSE_MISS`. Path C uses the
 same closed-union and transcript-evidence rules.
+
+Typed `VIS <rwy>` and spoken `cleared visual approach runway <rwy>` emit
+`CLEARED_VISUAL { runwayId }` (T04-82). Spoken visual clearances require the
+runway designation; a near-miss without a runway remains `PARSE_MISS`.
+
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
 flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following`

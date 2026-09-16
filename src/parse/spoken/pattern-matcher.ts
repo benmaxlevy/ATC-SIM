@@ -73,6 +73,7 @@ const COMMAND_TRIGGERS = new Set([
   "approve",
   "unable",
   "radar",
+  "visual",
 ]);
 
 function runwaySide(tok: string | undefined): string | null {
@@ -344,6 +345,28 @@ function matchClearedApproach(
     j += 2;
   } else if (tokens[j] === "for" || tokens[j] === "to") {
     j += 1;
+  }
+
+  if (tokens[j] === "visual") {
+    let vj = j + 1;
+    if (tokens[vj] === "approach") {
+      vj += 1;
+    }
+    const rwy = matchRunway(tokens, vj, false);
+    if (rwy) {
+      let rj = rwy.next;
+      if (tokens[rj] === "approach") {
+        rj += 1;
+      }
+      return {
+        instruction: {
+          type: "CLEARED_VISUAL",
+          runwayId: rwy.id,
+        },
+        next: rj,
+      };
+    }
+    return null;
   }
 
   if (tokens[j] === "ils") {

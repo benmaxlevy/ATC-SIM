@@ -72,7 +72,14 @@ export type LateralMode =
   | { type: "INTERCEPT_LOC"; approachId: string }
   | { type: "LOC"; approachId: string }
   | { type: "MISSED"; approachId: string }
-  | { type: "LANDING"; approachId: string };
+  | { type: "LANDING"; approachId: string }
+  | {
+      type: "VISUAL_FINAL";
+      runwayId: string;
+      threshold: { xNm: number; yNm: number };
+      headingDeg: number;
+      fieldElevFt?: number;
+    };
 
 /**
  * Result of a lateral DIRECT amendment.  The route is copied into the
@@ -104,6 +111,7 @@ export type VerticalMode =
   | { type: "VIA_STAR"; starId: string; sense?: "DESCEND" | "CLIMB" }
   | { type: "VIA_SID"; sidId: string }
   | { type: "GS"; approachId: string }
+  | { type: "GLIDEPATH"; approachId: string }
   | { type: "MISSED_CLIMB"; altitudeFt: number };
 
 /**

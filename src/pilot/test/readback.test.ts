@@ -24,6 +24,25 @@ test("compact CIFP ILS identifiers read back as ILS", () => {
   );
 });
 
+test("T04-82: CLEARED_VISUAL readback", () => {
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "27L" }])).toBe(
+    "Delta 123 cleared visual approach runway 27L",
+  );
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "21L" }])).toBe(
+    "Delta 123 cleared visual approach runway 21L",
+  );
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "08" }])).toBe(
+    "Delta 123 cleared visual approach runway 08",
+  );
+});
+
+test("T04-82: RUNWAY reject readback", () => {
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "RUNWAY" })).toBe(
+    "Delta 123 unable runway",
+  );
+  expect(formatRejectReadback({ reason: "RUNWAY" })).toBe("Unable runway");
+});
+
 test("ambiguous callsign reject", () => {
   expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toMatch(/ambiguous callsign/i);
 });

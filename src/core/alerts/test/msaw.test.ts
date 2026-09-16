@@ -210,3 +210,27 @@ test("LOC outside FAF is not inhibited", () => {
   expect(isMsawInhibited(loc, inhibit)).toBe(false);
   expect(evaluateMsaw([loc], kdem, inhibit)).toHaveLength(1);
 });
+
+test("T04-82: VISUAL_FINAL is inhibited inside 3 NM of threshold and alert outside 3 NM", () => {
+  const visInside = aircraftAt({ xNm: 2, yNm: 0, altitudeFt: 800 });
+  visInside.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  expect(isMsawInhibited(visInside, inhibit)).toBe(true);
+  expect(evaluateMsaw([visInside], kdem, inhibit)).toEqual([]);
+
+  const visOutside = aircraftAt({ xNm: 4, yNm: 0, altitudeFt: 800 });
+  visOutside.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  expect(isMsawInhibited(visOutside, inhibit)).toBe(false);
+  const alerts = evaluateMsaw([visOutside], kdem, inhibit);
+  expect(alerts).toHaveLength(1);
+  expect(alerts[0]?.severity).toBe("alert");
+});

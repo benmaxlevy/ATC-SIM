@@ -138,7 +138,8 @@ function isTypedInstructionStart(token: string): boolean {
     token === "APPROVE" ||
     token === "UNABLE" ||
     token === "RADAR" ||
-    token === "IFR"
+    token === "IFR" ||
+    token === "VIS"
   ) {
     return true;
   }
@@ -285,6 +286,21 @@ function parseOneInstruction(
     return {
       ok: true,
       instruction: { type: approachType, approachId },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "VIS") {
+    const rawRwy = tokens[index + 1];
+    if (rawRwy === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
+    }
+    const runwayId = rawRwy.replace(/^RW/i, "").toUpperCase();
+    if (!/^\d{1,2}[LRC]?$/.test(runwayId)) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRwy };
+    }
+    return {
+      ok: true,
+      instruction: { type: "CLEARED_VISUAL", runwayId },
       nextIndex: index + 2,
     };
   }

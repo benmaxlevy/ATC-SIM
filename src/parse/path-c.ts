@@ -254,6 +254,13 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       obj.approachId.length > 0
     );
   }
+  if (type === "CLEARED_VISUAL") {
+    return (
+      keysOk(obj, ["type", "runwayId"]) &&
+      typeof obj.runwayId === "string" &&
+      obj.runwayId.length > 0
+    );
+  }
   if (type === "ASSIGN_SQUAWK") {
     return (
       keysOk(obj, ["type", "code", "source"]) &&
@@ -629,8 +636,11 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   if (
     has(/\b(?:approach|localizer|ils|cleared\s+(?:the\s+)?runway)\b/) &&
     !has(/\bcancel\s+approach\s+clearance\b/) &&
-    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER")
+    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "CLEARED_VISUAL")
   ) {
+    return false;
+  }
+  if (has(/\bvisual\b/) && !hasType("CLEARED_VISUAL")) {
     return false;
   }
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {

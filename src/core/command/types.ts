@@ -81,6 +81,7 @@ export const INSTRUCTION_TYPES = [
   "RADAR_CONTACT",
   "TERMINATE_RADAR_SERVICE",
   "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CLEARED_VISUAL",
 ] as const;
 
 export type Instruction =
@@ -148,4 +149,5 @@ export type Instruction =
       referenceId: string;
       referenceKind: "FIX" | "NAVAID";
     }
-  | { type: "TERMINATE_RADAR_SERVICE" };
+  | { type: "TERMINATE_RADAR_SERVICE" }
+  | { type: "CLEARED_VISUAL"; runwayId: string };

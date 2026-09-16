@@ -124,6 +124,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Issues a supported approach clearance.",
       },
       {
+        id: "visual-approach",
+        command: "VIS <runway> / cleared visual approach runway <runway>",
+        example: "DAL123 VIS 27L",
+        input: "Radio",
+        result:
+          "Clears the aircraft for a visual approach to the designated runway at its destination airport. Guides straight-in with a 3° descent to touchdown.",
+      },
+      {
         id: "cancel-approach",
         command: "CAPP / cancel approach clearance",
         example: "DAL123 CAPP H270 A50",

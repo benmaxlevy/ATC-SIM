@@ -134,6 +134,23 @@ export function despawnLandedAircraft(world: World): void {
     simTimeMs: world.simTimeMs,
   };
   for (const ac of world.aircraft) {
+    if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+      const lat = ac.intent.lateral;
+      const distNm = Math.hypot(ac.xNm - lat.threshold.xNm, ac.yNm - lat.threshold.yNm);
+      const headingRad = (lat.headingDeg * Math.PI) / 180;
+      const dx = ac.xNm - lat.threshold.xNm;
+      const dy = ac.yNm - lat.threshold.yNm;
+      const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+      const fieldElevFt = lat.fieldElevFt ?? 0;
+      if (
+        (alongTrackNm <= 0 || distNm < LANDING_RW_DIST_NM) &&
+        ac.altitudeFt <= fieldElevFt + LANDING_ALT_MAX_FT
+      ) {
+        emitLanded(ac, ac.intent.clearedApproachId ?? `VISUAL_${lat.runwayId}`, ctx);
+        gone.add(ac.id);
+        continue;
+      }
+    }
     if (!isLandingInhibited(ac)) {
       continue;
     }

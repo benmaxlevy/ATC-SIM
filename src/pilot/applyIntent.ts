@@ -24,6 +24,13 @@ import {
   normalizeHeading,
   transitionRequestToIdentifying,
 } from "@core";
+import {
+  resolveRunwayGeometry,
+  matchesRunway,
+  type VisualRunwayGeometry,
+} from "../core/nav/approachContext";
+import type { World } from "../core/world";
+import type { RegionalFacility, RegionalRunwayGeometry } from "../scenario/regional";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
@@ -40,6 +47,9 @@ export interface ApplyIntentOpts {
   /** Authoritative plan for the aircraft, when one exists. */
   flightPlan?: Pick<FlightPlan, "routeRecord">;
   radioRequests?: RadioRequest[];
+  regional?: RegionalFacility | null;
+  world?: World | null;
+  destinationIcao?: string | null;
 }
 
 export function applyIntent(
@@ -67,7 +77,9 @@ function setHeadingMode(
 
   const clearedApproachId = aircraft.intent.clearedApproachId;
   const isEstablishedOnApproach =
-    aircraft.intent.lateral?.type === "LOC" || aircraft.intent.lateral?.type === "LANDING";
+    aircraft.intent.lateral?.type === "LOC" ||
+    aircraft.intent.lateral?.type === "LANDING" ||
+    aircraft.intent.lateral?.type === "VISUAL_FINAL";
 
   if (clearedApproachId && !isEstablishedOnApproach) {
     aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId: clearedApproachId };
@@ -82,6 +94,7 @@ function setHeadingMode(
     aircraft.intent.vertical?.type === "VIA_STAR" ||
     aircraft.intent.vertical?.type === "VIA_SID" ||
     aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "GLIDEPATH" ||
     aircraft.intent.vertical?.type === "MISSED_CLIMB"
   ) {
     aircraft.intent.vertical = { type: "ASSIGNED" };
@@ -278,8 +291,10 @@ function armLocIntercept(aircraft: Aircraft, approachId: string): void {
 }
 
 function cancelApproach(aircraft: Aircraft): void {
+  const onApproach =
+    Boolean(aircraft.intent.clearedApproachId) || aircraft.intent.lateral?.type === "VISUAL_FINAL";
   if (
-    !aircraft.intent.clearedApproachId ||
+    !onApproach ||
     aircraft.intent.lateral?.type === "MISSED" ||
     aircraft.intent.lateral?.type === "LANDING"
   ) {
@@ -291,7 +306,7 @@ function cancelApproach(aircraft: Aircraft): void {
   aircraft.intent.clearedApproachId = null;
   aircraft.intent.locInterceptApproachId = null;
   aircraft.intent.expectedApproachId = null;
-  if (aircraft.intent.vertical?.type === "GS") {
+  if (aircraft.intent.vertical?.type === "GS" || aircraft.intent.vertical?.type === "GLIDEPATH") {
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
   const lateralType = aircraft.intent.lateral?.type;
@@ -299,10 +314,106 @@ function cancelApproach(aircraft: Aircraft): void {
     lateralType === undefined ||
     lateralType === "HEADING" ||
     lateralType === "INTERCEPT_LOC" ||
-    lateralType === "LOC"
+    lateralType === "LOC" ||
+    lateralType === "VISUAL_FINAL"
   ) {
     aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
   }
+}
+
+function applyClearedVisual(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "CLEARED_VISUAL" }>,
+  opts?: ApplyIntentOpts,
+): void {
+  const clean = instruction.runwayId.replace(/^RW/i, "").toUpperCase();
+  let geom: VisualRunwayGeometry | null = null;
+  if (opts?.world) {
+    geom = resolveRunwayGeometry(aircraft, clean, opts.world);
+  } else if (opts?.regional) {
+    const destIcao = (opts.destinationIcao ?? aircraft.destination ?? "").toUpperCase();
+    const satAirport =
+      opts.regional.airports?.find((a) => a.icao?.toUpperCase() === destIcao) ??
+      opts.regional.airports?.[0];
+    if (satAirport && Array.isArray(satAirport.runways)) {
+      const rwy = (satAirport.runways as readonly RegionalRunwayGeometry[]).find((r) =>
+        matchesRunway(r.id, clean),
+      );
+      if (rwy) {
+        geom = {
+          runwayId: rwy.id,
+          threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
+          headingDeg: rwy.headingMagDeg,
+          fieldElevFt: satAirport.fieldElevFt ?? 0,
+        };
+      }
+    }
+  }
+  if (!geom && opts?.catalog) {
+    const cat = opts.catalog as unknown as {
+      approaches?: Array<{
+        id: string;
+        runway?: string;
+        thresholdFixId?: string;
+        publishedCourseMagneticDeg?: number;
+        courseDeg?: number;
+      }>;
+      fixes?: Array<{ id: string; xNm?: number; yNm?: number }>;
+    };
+    if (cat.approaches) {
+      const app = cat.approaches.find((a) => matchesRunway(a.runway ?? a.id, clean));
+      if (app?.thresholdFixId) {
+        const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
+        if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
+          geom = {
+            runwayId: clean,
+            threshold: { xNm: fix.xNm, yNm: fix.yNm },
+            headingDeg: app.publishedCourseMagneticDeg ?? app.courseDeg ?? 0,
+            fieldElevFt: 0,
+          };
+        }
+      }
+    }
+  }
+  if (!geom && opts?.fixXy) {
+    const xy = opts.fixXy(`RW${clean}`) ?? opts.fixXy(clean);
+    if (xy) {
+      const num = Number(clean.match(/\d+/)?.[0] ?? 27);
+      geom = {
+        runwayId: clean,
+        threshold: xy,
+        headingDeg: (num * 10) % 360,
+        fieldElevFt: 0,
+      };
+    }
+  }
+  if (!geom) {
+    const num = Number(clean.match(/\d+/)?.[0] ?? 27);
+    geom = {
+      runwayId: clean,
+      threshold: { xNm: 0, yNm: 0 },
+      headingDeg: (num * 10) % 360,
+      fieldElevFt: 0,
+    };
+  }
+
+  aircraft.intent.assignedHeadingDeg = geom.headingDeg;
+  aircraft.intent.clearedApproachId = `VISUAL ${geom.runwayId}`;
+  aircraft.intent.locInterceptApproachId = null;
+  aircraft.intent.expectedApproachId = null;
+  aircraft.intent.assignedAltitudeFt = geom.fieldElevFt;
+  aircraft.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: geom.runwayId,
+    threshold: geom.threshold,
+    headingDeg: geom.headingDeg,
+    fieldElevFt: geom.fieldElevFt,
+  };
+  aircraft.intent.vertical = {
+    type: "GLIDEPATH",
+    approachId: `VISUAL ${geom.runwayId}`,
+  };
+  aircraft.intent.cross = undefined;
 }
 
 function applyOne(
@@ -346,6 +457,9 @@ function applyOne(
     case "CLEARED_APPROACH":
       aircraft.intent.clearedApproachId = instruction.approachId;
       armLocIntercept(aircraft, instruction.approachId);
+      return;
+    case "CLEARED_VISUAL":
+      applyClearedVisual(aircraft, instruction, opts);
       return;
     case "INTERCEPT_LOCALIZER":
       aircraft.intent.clearedApproachId = null;

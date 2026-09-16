@@ -294,3 +294,96 @@ export function regionalSatelliteIlsApproaches(regional: unknown): CatalogApproa
   regionalSatelliteIlsCache.set(cacheKey, approaches);
   return approaches;
 }
+
+export interface VisualRunwayGeometry {
+  runwayId: string;
+  threshold: { xNm: number; yNm: number };
+  headingDeg: number;
+  fieldElevFt: number;
+  lengthFt?: number;
+}
+
+export function normalizeRunwayId(raw: string): string {
+  const clean = raw.replace(/^RW/i, "").trim().toUpperCase();
+  const m = clean.match(/^0?(\d{1,2})([LRC]?)$/);
+  if (m) {
+    return `${Number(m[1])}${m[2]}`;
+  }
+  return clean;
+}
+
+export function matchesRunway(a: string, b: string): boolean {
+  return normalizeRunwayId(a) === normalizeRunwayId(b);
+}
+
+/**
+ * Resolve visual runway geometry (threshold, heading, field elevation)
+ * against the aircraft's resolved arrival airport.
+ */
+export function resolveRunwayGeometry(
+  aircraft: Aircraft,
+  runwayId: string,
+  world: World,
+): VisualRunwayGeometry | null {
+  const destIcao = resolveDestinationAirportIcao(aircraft, world);
+  const regional = world.regional as RegionalFacility | undefined;
+
+  if (regional) {
+    const satAirport =
+      typeof regional.getAirport === "function"
+        ? regional.getAirport(destIcao)
+        : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao.toUpperCase());
+    if (satAirport && Array.isArray(satAirport.runways)) {
+      const rwy = satAirport.runways.find((r) => matchesRunway(r.id, runwayId));
+      if (rwy) {
+        return {
+          runwayId: rwy.id,
+          threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
+          headingDeg: rwy.headingMagDeg,
+          fieldElevFt: satAirport.fieldElevFt ?? 0,
+          lengthFt: rwy.lengthFt,
+        };
+      }
+    }
+  }
+
+  const appCtx = resolveApproachContext(aircraft, world);
+  const cat = appCtx.catalog ?? world.catalog;
+  if (cat) {
+    const fieldElevFt = cat.fieldElevFt ?? 0;
+    if (cat.approaches) {
+      const app = cat.approaches.find((a) => matchesRunway(a.runway ?? a.id, runwayId));
+      if (app && app.thresholdFixId) {
+        const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
+        if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
+          return {
+            runwayId: app.runway ?? runwayId.replace(/^RW/i, "").toUpperCase(),
+            threshold: { xNm: fix.xNm, yNm: fix.yNm },
+            headingDeg: app.publishedCourseMagneticDeg ?? app.courseDeg ?? 0,
+            fieldElevFt,
+          };
+        }
+      }
+    }
+    if (cat.fixes) {
+      const clean = runwayId.replace(/^RW/i, "").toUpperCase();
+      const fix = cat.fixes.find(
+        (f) =>
+          matchesRunway(f.id, runwayId) ||
+          f.id.toUpperCase() === `RW${clean}` ||
+          f.id.toUpperCase() === `RW0${clean}`,
+      );
+      if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
+        const num = Number(clean.match(/\d+/)?.[0] ?? 27);
+        return {
+          runwayId: clean,
+          threshold: { xNm: fix.xNm, yNm: fix.yNm },
+          headingDeg: (num * 10) % 360,
+          fieldElevFt,
+        };
+      }
+    }
+  }
+
+  return null;
+}

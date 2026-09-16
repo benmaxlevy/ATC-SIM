@@ -57,6 +57,7 @@ export type Instruction =
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
+  | { type: "CLEARED_VISUAL"; runwayId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
   | { type: "CANCEL_APPROACH" }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
@@ -165,6 +166,7 @@ direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an
 `IFR_CLEARANCE`. Airports are a clearance-limit namespace, never generic
 direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
+| `VIS 27L` | `CLEARED_VISUAL { runwayId: "27L" }` (straight-in lateral and 3° descent to threshold; T04-82) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
 | `CAPP H270 A50` | `CANCEL_APPROACH` + `FLY_HEADING 270` + `ALTITUDE MAINTAIN 5000`; cancellation must be first and cannot be followed by approach re-arm or `GO_AROUND` |

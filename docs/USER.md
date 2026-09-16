@@ -140,6 +140,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Approach** | `APP ILS<RWY>` | `DAL123 APP ILS27` | Cleared ILS Runway 27 approach (arms localizer + glideslope) |
 | | `IL ILS<RWY>` | `DAL123 IL ILS27` | Intercept localizer only (clears localizer tracking, no glideslope) |
 | | `EXP ILS<RWY>` | `DAL123 EXP ILS27` | Expect ILS Runway 27 approach |
+| | `VIS <RWY>` | `DAL123 VIS 27L` | Cleared visual approach Runway 27L (straight-in lateral tracking + 3° descent profile to touchdown) |
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
 | **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |

@@ -357,6 +357,7 @@ export function handleRadioCommand(
     approachIds: effectiveCatalog?.approaches.map((item) => item.id),
     radioRequests: world.radioRequests,
     regional: world.regional as RegionalFacility | undefined,
+    destinationIcao: approachCtx.airportIcao,
   });
   if (!validated.ok) {
     return reject(
@@ -515,6 +516,8 @@ export function handleRadioCommand(
       (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
     ),
     radioRequests: world.radioRequests,
+    regional: world.regional as RegionalFacility | undefined,
+    world,
   });
   const procedureNames = Object.fromEntries([
     ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),

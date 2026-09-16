@@ -44,7 +44,8 @@ export type RejectReason =
   | "CLEARANCE"
   | "UNABLE_ROUTE"
   | "REQUEST"
-  | "RADAR_CONTACT";
+  | "RADAR_CONTACT"
+  | "RUNWAY";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -72,6 +73,7 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   REQUEST: "unable request",
   RADAR_CONTACT: "unable radar contact",
   CANCELLATION: "unable cancellation",
+  RUNWAY: "unable runway",
 };
 
 function capitalizeFirst(text: string): string {
@@ -189,6 +191,8 @@ function formatInstructionClause(
       return formatAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
+    case "CLEARED_VISUAL":
+      return `cleared visual approach runway ${instruction.runwayId.replace(/^RW/i, "").toUpperCase()}`;
     case "INTERCEPT_LOCALIZER":
       return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
     case "CANCEL_APPROACH":

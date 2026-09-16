@@ -23,6 +23,7 @@ import {
   performanceRegistry,
 } from "@core";
 import { isValidBeaconCode } from "@core";
+import { normalizeRunwayId } from "../core/nav/approachContext";
 import type { RegionalFacility } from "../scenario/regional";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -50,7 +51,8 @@ export type ValidateReason =
   | "CLEARANCE"
   | "REQUEST"
   | "RADAR_CONTACT"
-  | "CANCELLATION";
+  | "CANCELLATION"
+  | "RUNWAY";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -73,12 +75,16 @@ export interface ValidateOpts {
           approaches?: ReadonlyArray<ValidateApproach>;
           fixes?: ReadonlyArray<{ id: string }>;
           navaids?: ReadonlyArray<{ id: string }>;
+          airportId?: string;
         })
     | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
+  /** When set, CLEARED_VISUAL runway must match an id in this list. */
+  runwayIds?: readonly string[] | null;
+  destinationIcao?: string | null;
   performanceProfile?: AircraftPerformanceProfile | null;
   radioRequests?: readonly RadioRequest[];
   regional?: RegionalFacility | null;
@@ -165,6 +171,7 @@ function validateProjectedCancellation(
       .some((instruction) =>
         new Set([
           "CLEARED_APPROACH",
+          "CLEARED_VISUAL",
           "INTERCEPT_LOCALIZER",
           "EXPECT_APPROACH",
           "GO_AROUND",
@@ -208,8 +215,10 @@ function cloneAircraftForValidation(aircraft: Aircraft): Aircraft {
 }
 
 function validateCancellation(aircraft: Aircraft): ValidateResult {
+  const onApproach =
+    Boolean(aircraft.intent.clearedApproachId) || aircraft.intent.lateral?.type === "VISUAL_FINAL";
   if (
-    !aircraft.intent.clearedApproachId ||
+    !onApproach ||
     aircraft.intent.lateral?.type === "MISSED" ||
     aircraft.intent.lateral?.type === "LANDING"
   ) {
@@ -232,7 +241,8 @@ function projectCancellation(aircraft: Aircraft): void {
     lateralType === undefined ||
     lateralType === "HEADING" ||
     lateralType === "INTERCEPT_LOC" ||
-    lateralType === "LOC"
+    lateralType === "LOC" ||
+    lateralType === "VISUAL_FINAL"
   ) {
     aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
   }
@@ -320,6 +330,8 @@ function validateOne(
         return { ok: false, reason: "UNKNOWN_APPROACH" };
       }
       return { ok: true };
+    case "CLEARED_VISUAL":
+      return validateClearedVisual(aircraft, instruction, opts);
     case "ASSIGN_SQUAWK":
       if (
         !isValidBeaconCode(instruction.code) ||
@@ -373,7 +385,7 @@ function validateOne(
     case "CROSS":
       return validateCross(aircraft, instruction, opts, profile);
     case "GO_AROUND":
-      if (!aircraft.intent.clearedApproachId) {
+      if (!aircraft.intent.clearedApproachId && aircraft.intent.lateral?.type !== "VISUAL_FINAL") {
         return { ok: false, reason: "NOT_ON_APPROACH" };
       }
       return { ok: true };
@@ -554,14 +566,88 @@ function isIlsApproach(approachId: string, opts?: ValidateOpts): boolean {
   return true;
 }
 
+function validateClearedVisual(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "CLEARED_VISUAL" }>,
+  opts?: ValidateOpts,
+): ValidateResult {
+  const raw = instruction.runwayId.trim();
+  if (raw === "") {
+    return { ok: false, reason: "EMPTY" };
+  }
+  const clean = raw.replace(/^RW/i, "").toUpperCase();
+  if (!/^\d{1,2}[LRC]?$/.test(clean)) {
+    return { ok: false, reason: "RUNWAY" };
+  }
+  const norm = normalizeRunwayId(clean);
+
+  if (opts?.runwayIds) {
+    const matches = opts.runwayIds.some((id) => normalizeRunwayId(id) === norm);
+    if (!matches) {
+      return { ok: false, reason: "RUNWAY" };
+    }
+    return { ok: true };
+  }
+
+  const destIcao = (
+    opts?.destinationIcao ??
+    aircraft.activeClearance?.limitId ??
+    (aircraft.flightPlan as { airportId?: string; destination?: string } | undefined)?.airportId ??
+    aircraft.flightPlan?.destination ??
+    aircraft.destination ??
+    aircraft.destinationAirport ??
+    opts?.catalog?.airportId ??
+    ""
+  )
+    .trim()
+    .toUpperCase();
+
+  if (opts?.regional) {
+    const regional = opts.regional;
+    const airport =
+      typeof regional.getAirport === "function"
+        ? regional.getAirport(destIcao)
+        : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao);
+    if (airport && Array.isArray(airport.runways) && airport.runways.length > 0) {
+      const exists = airport.runways.some((r) => normalizeRunwayId(r.id) === norm);
+      if (!exists) {
+        return { ok: false, reason: "RUNWAY" };
+      }
+      return { ok: true };
+    }
+  }
+
+  if (opts?.catalog) {
+    const cat = opts.catalog;
+    const approachRunways = (cat.approaches ?? [])
+      .map((a) => a.runway ?? a.id.replace(/^ILS/i, ""))
+      .filter(Boolean);
+    const thresholdFixes = (cat.fixes ?? [])
+      .filter((f) => f.id.toUpperCase().startsWith("RW"))
+      .map((f) => f.id.replace(/^RW/i, ""));
+    const allKnown = [...approachRunways, ...thresholdFixes];
+    if (allKnown.length > 0) {
+      const exists = allKnown.some((r) => normalizeRunwayId(r) === norm);
+      if (!exists) {
+        return { ok: false, reason: "RUNWAY" };
+      }
+      return { ok: true };
+    }
+  }
+
+  return { ok: true };
+}
+
 function validateAltitude(
   aircraft: Aircraft,
   instruction: Extract<Instruction, { type: "ALTITUDE" }>,
   profile?: AircraftPerformanceProfile | null,
   opts?: ValidateOpts,
 ): ValidateResult {
-  if (aircraft.intent.clearedApproachId) {
-    const isIls = isIlsApproach(aircraft.intent.clearedApproachId, opts);
+  if (aircraft.intent.clearedApproachId || aircraft.intent.lateral?.type === "VISUAL_FINAL") {
+    const isIls = aircraft.intent.clearedApproachId
+      ? isIlsApproach(aircraft.intent.clearedApproachId, opts)
+      : false;
     return {
       ok: false,
       reason: "ALTITUDE",

@@ -150,6 +150,16 @@ export function isMsawInhibited(
     return distNm <= fafDistanceNm;
   }
 
+  if (lat === "VISUAL_FINAL") {
+    const visualThresh = (ac.intent.lateral as { threshold?: { xNm: number; yNm: number } })
+      ?.threshold;
+    const tX = thresholdOverride?.xNm ?? visualThresh?.xNm ?? thresholdXNm;
+    const tY = thresholdOverride?.yNm ?? visualThresh?.yNm ?? thresholdYNm;
+    const limitNm = thresholdOverride?.fafDistanceNm ?? 3.0;
+    const distNm = Math.hypot(ac.xNm - tX, ac.yNm - tY);
+    return distNm <= limitNm;
+  }
+
   if (lat !== undefined && NEVER_INHIBIT_LATERAL.has(lat)) {
     return false;
   }
