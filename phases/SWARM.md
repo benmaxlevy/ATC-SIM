@@ -5164,3 +5164,63 @@ Workers implement exactly one ticket, never merge or spawn children, and
 return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked
 artifacts (`.worktrees/`, `speech-api/:memory:.ses`) and stale worktrees from
 other phases remain untouched. No push is authorized. Stop after T04-80.
+
+## Arrival-airport approaches, visual clearances, and VFR auto-land swarm planned — 2026-09-16
+
+User approved arrival-airport-first approach resolution (satellite ILS), `CLEARED_VISUAL`
+clearance, and autonomous VFR touchdown; ILS behavior unchanged; RNAV/VOR/NDB fails closed.
+Planning only; execution requires explicit `run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Approaches resolve at arrival airport; satellite ILS captured with center-projected thresholds; visual clearances flyable to touchdown; airport-bound VFR auto-lands; RNAV fails closed. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-81 → T04-82 → T04-83. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-83 squash merge, `npm run ci`, speech mock pytest, KATL manual watch. |
+| Push | No push. |
+
+**Product law:** one shared arrival-airport-first resolver feeds validation, localizer/glidepath
+geometry, speed gates, and landings; center behavior byte-identical; satellite fix coordinates
+projected to center ARP; visuals are straight-in + touchdown with per-aircraft MSAW inhibition;
+only airport-bound VFR auto-lands; non-ILS approaches fail closed during validation; no tower cab,
+spacing, strips, or filed plans.
+
+**Skip:** RNAV execution, contact/circling approaches, EXPECT/INTERCEPT for visuals, departures
+landing elsewhere, center VFR arrivals, phase 5.
+
+**Waves:**
+- Wave A: T04-81 — resolver, satellite ILS, center-ARP projection, fail-closed RNAV guard, unit/regression tests.
+- Wave B: T04-82 — `CLEARED_VISUAL` IR, typed/spoken parsers, Path-C sync, visual guidance, touchdown, 3 NM MSAW inhibit. Starts after T04-81 squash merge and `npm run ci`.
+- Wave C: T04-83 — ambient VFR destination runway seeding, visual final join, auto-land touchdown, acceptance suite. Starts after T04-82 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-81-arrival-airport-approach-context` → `phases/04-procedures/tickets/T04-81-arrival-airport-approach-context.md`
+- `ticket/T04-82-visual-approach-clearance` → `phases/04-procedures/tickets/T04-82-visual-approach-clearance.md`
+- `ticket/T04-83-vfr-auto-land` → `phases/04-procedures/tickets/T04-83-vfr-auto-land.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: arrival-airport approaches, visual clearances, and VFR auto-land T04-81–83
+Merge target: feature/sattelite-traffic
+Merged: T04-81, T04-82, T04-83
+Tests: npm run ci; speech-api mock pytest; KATL manual watch
+Notes: no push; satellite ILS + visual approach parity; VFR auto-land
+```
+
+## Arrival-airport approaches, visual clearances, and VFR auto-land swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-81,
+then T04-82, then T04-83 sequentially with one isolated worker at a time. Each
+ticket gets focused tests and `npm run ci` before the next ticket. Worker model
+resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts
+(`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized.
+Stop after T04-83.
+
+
