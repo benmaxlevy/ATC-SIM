@@ -473,7 +473,7 @@ export function handleRadioCommand(
         const report: {
           distanceNm?: number;
           referenceId?: string;
-          referenceKind?: "FIX" | "NAVAID";
+          referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
           reportedAtSimMs: number;
         } = {
           reportedAtSimMs: world.simTimeMs,

@@ -1268,7 +1268,7 @@ export async function parseCommand(
 
   const typed = tryGroundedLocal(
     groundLocalCallsign(
-      parseRadioText(normalized, { fixes: catalog, procedures }),
+      parseRadioText(normalized, { fixes: catalog, procedures, airports }),
       normalized,
       roster,
       selected,
@@ -1292,6 +1292,7 @@ export async function parseCommand(
     catalog,
     procedures,
     clearanceLimitIds,
+    airports,
   );
   const pathA = tryGroundedLocal(
     groundLocalCallsign(spoken, normalized, roster, selected),
@@ -1311,7 +1312,7 @@ export async function parseCommand(
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
       groundLocalCallsign(
-        parseRadioText(rewritten, { fixes: catalog, procedures }),
+        parseRadioText(rewritten, { fixes: catalog, procedures, airports }),
         normalized,
         roster,
         selected,
@@ -1337,6 +1338,7 @@ export async function parseCommand(
     procedures,
     approaches,
     clearanceLimitIds,
+    airports,
   );
   const island = tryGroundedLocal(
     groundLocalCallsign(islandParsed, normalized, roster, selected),

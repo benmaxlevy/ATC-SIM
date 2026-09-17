@@ -34,11 +34,15 @@ import {
   TENS,
 } from "./numbers";
 import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundAirportToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
   groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
@@ -53,6 +57,8 @@ interface Cursor {
   catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
   clearanceLimitIds?: ReadonlySet<string>;
+  /** Separate airport namespace for position references; never fix grounding. */
+  airports?: readonly CatalogAirport[];
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -289,13 +295,26 @@ function tryRadarContact(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
-  if (!take(c, "from")) {
+  // Optional direction (`25 miles southeast of KATL`); the stored reference
+  // is position only.
+  if (peek(c) !== undefined && EIGHT_POINT_CARDINALS.has(peek(c)!)) {
+    c.i += 1;
+  }
+  if (!take(c, "from") && !take(c, "of")) {
     c.i = start;
     return null;
   }
   const refStart = c.i;
   let refEnd = refStart;
   while (refEnd < c.tokens.length && !RESERVED_SPOKEN.has(c.tokens[refEnd] ?? "")) {
+    refEnd += 1;
+  }
+  // Keep a trailing airport type word in the span so `atlanta international
+  // airport` grounds as one airport reference instead of stranding `airport`.
+  while (
+    refEnd < c.tokens.length &&
+    (c.tokens[refEnd] === "airport" || c.tokens[refEnd] === "field")
+  ) {
     refEnd += 1;
   }
   if (refEnd <= refStart) {
@@ -328,6 +347,16 @@ function tryRadarContact(c: Cursor): Instruction | null {
         referenceKind: phoneticGrounded.referenceKind,
       };
     }
+    const phoneticAirport = groundAirportToCatalog(phoneticId, c.airports ?? []);
+    if (phoneticAirport) {
+      c.i = phoneticEnd;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: phoneticAirport,
+        referenceKind: "AIRPORT",
+      };
+    }
   }
   const grounded = c.catalog ? groundReferenceToCatalog(rawRef, c.catalog) : null;
   if (grounded) {
@@ -351,6 +380,20 @@ function tryRadarContact(c: Cursor): Instruction | null {
         referenceKind: subGrounded.referenceKind,
       };
     }
+  }
+  // Airport names and aliases (`atlanta international airport` → KATL).
+  const airportHit = groundAirportPhraseToCatalog(
+    c.tokens.slice(refStart, refEnd).join(" "),
+    c.airports ?? [],
+  );
+  if (airportHit) {
+    c.i = refStart + airportHit.length;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: airportHit.icao,
+      referenceKind: "AIRPORT",
+    };
   }
   c.i = start;
   return null;
@@ -1177,6 +1220,7 @@ export function parseSpokenGrammar(
   catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   clearanceLimitIds?: ReadonlySet<string>,
+  catalogAirports?: readonly CatalogAirport[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1189,6 +1233,7 @@ export function parseSpokenGrammar(
     catalog: catalogFixes ?? [],
     procedures: catalogProcedures ?? [],
     clearanceLimitIds,
+    airports: catalogAirports ?? [],
   };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
   let callsignToken: string | null = null;

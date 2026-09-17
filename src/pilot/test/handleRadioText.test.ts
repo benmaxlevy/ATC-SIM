@@ -272,3 +272,47 @@ test("bare radar contact identifies with no position report and answers roger", 
   expect(dal.radarContact?.distanceNm).toBeUndefined();
   expect(dal.radarContact?.referenceId).toBeUndefined();
 });
+
+test("spoken of-form with airport reference identifies and answers roger (field report)", async () => {
+  const nNumber = sample("N7214L", "ac-n7214l");
+  const req = {
+    id: "req-n7214l",
+    aircraftId: nNumber.id,
+    callsign: nNumber.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [nNumber],
+    radioRequests: [req],
+    catalog: {
+      airportId: "KATL",
+      name: "Atlanta International",
+      navaids: [],
+      fixes: [],
+      stars: [],
+      sids: [],
+      approaches: [],
+    },
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  const result = await handleRadioText(
+    world,
+    "november seven two one four lima radar contact two eight miles southeast of atlanta international airport",
+    log,
+    0,
+    { source: "voice" },
+  );
+  expect(result.accepted).toBe(true);
+  expect(result.readback).toBe("November 7214 Lima roger");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(nNumber.radarContact).toMatchObject({
+    distanceNm: 28,
+    referenceId: "KATL",
+    referenceKind: "AIRPORT",
+  });
+});

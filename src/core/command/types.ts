@@ -148,7 +148,7 @@ export type Instruction =
       /** Optional informational position reference. All-or-nothing with referenceId/referenceKind. */
       distanceNm?: number;
       referenceId?: string;
-      referenceKind?: "FIX" | "NAVAID";
+      referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
     }
   | { type: "TERMINATE_RADAR_SERVICE" }
   | { type: "CLEARED_VISUAL"; runwayId: string };

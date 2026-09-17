@@ -31,12 +31,16 @@ import {
   squawkDigit,
 } from "./numbers";
 import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundAirportToCatalog,
   groundApproachToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
   groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogApproach,
   type CatalogProcedure,
@@ -1008,6 +1012,7 @@ function matchRadarContact(
   tokens: readonly string[],
   i: number,
   catalog: readonly CatalogFixInput[],
+  airports: readonly CatalogAirport[] = [],
 ): { instruction: Instruction; next: number } | null {
   if (tokens[i] !== "radar" || tokens[i + 1] !== "contact") {
     return null;
@@ -1025,7 +1030,12 @@ function matchRadarContact(
     return null;
   }
   j += 1;
-  if (tokens[j] !== "from") {
+  // Optional direction (`25 miles southeast of KATL`); the stored reference
+  // is position only.
+  if (tokens[j] !== undefined && EIGHT_POINT_CARDINALS.has(tokens[j]!)) {
+    j += 1;
+  }
+  if (tokens[j] !== "from" && tokens[j] !== "of") {
     return null;
   }
   j += 1;
@@ -1066,6 +1076,18 @@ function matchRadarContact(
         next: phoneticEnd,
       };
     }
+    const phoneticAirport = groundAirportToCatalog(phoneticId, airports);
+    if (phoneticAirport) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: phoneticAirport,
+          referenceKind: "AIRPORT",
+        },
+        next: phoneticEnd,
+      };
+    }
   }
   const grounded = groundReferenceToCatalog(rawRef, catalog);
   if (grounded) {
@@ -1093,6 +1115,19 @@ function matchRadarContact(
         next: k,
       };
     }
+  }
+  // Airport names and aliases (`atlanta international airport` → KATL).
+  const airportHit = groundAirportPhraseToCatalog(tokens.slice(j, end).join(" "), airports);
+  if (airportHit) {
+    return {
+      instruction: {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: airportHit.icao,
+        referenceKind: "AIRPORT",
+      },
+      next: j + airportHit.length,
+    };
   }
   return null;
 }
@@ -1591,6 +1626,7 @@ export function matchSpokenPatterns(
   catalogProcedures?: readonly CatalogProcedure[],
   catalogApproaches?: readonly CatalogApproach[],
   clearanceLimitIds?: ReadonlySet<string>,
+  catalogAirports?: readonly CatalogAirport[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1600,6 +1636,7 @@ export function matchSpokenPatterns(
   const catalog = catalogFixes ?? [];
   const procedures = catalogProcedures ?? [];
   const approaches = catalogApproaches ?? [];
+  const airports = catalogAirports ?? [];
 
   const claimed = new Array(tokens.length).fill(false);
   const collectedInstructions: Array<{ start: number; instruction: Instruction }> = [];
@@ -1631,7 +1668,7 @@ export function matchSpokenPatterns(
       matchDeclineRequest(tokens, i) ??
       matchRadarServiceTerminated(tokens, i) ??
       matchAcknowledgeIfrCancellation(tokens, i) ??
-      matchRadarContact(tokens, i, catalog) ??
+      matchRadarContact(tokens, i, catalog, airports) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??

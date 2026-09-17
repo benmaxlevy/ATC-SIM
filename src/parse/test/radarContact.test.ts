@@ -13,6 +13,15 @@ const FULL: Instruction = {
 };
 const BARE: Instruction = { type: "RADAR_CONTACT" };
 const DEM_NAVAD = [{ id: "DEM", kind: "NAVAID" as const }];
+const KATL_AIRPORT = [
+  { icao: "KATL", name: "Atlanta International", aliases: ["Atlanta Airport"] },
+];
+const AIRPORT_POS: Instruction = {
+  type: "RADAR_CONTACT",
+  distanceNm: 25,
+  referenceId: "KATL",
+  referenceKind: "AIRPORT",
+};
 
 describe("RADAR_CONTACT parser & parity", () => {
   it("includes RADAR_CONTACT in INSTRUCTION_TYPES", () => {
@@ -40,6 +49,26 @@ describe("RADAR_CONTACT parser & parity", () => {
     it("rejects a partial position report", () => {
       expect(parseRadioText("DAL123 RADAR CONTACT 5").ok).toBe(false);
       expect(parseRadioText("DAL123 RADAR CONTACT 5 MILES").ok).toBe(false);
+    });
+
+    it("parses direction + of with a navaid reference", () => {
+      const res = parseRadioText("DAL123 RADAR CONTACT 5 MILES SOUTHEAST OF DEM", {
+        fixes: DEM_NAVAD,
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.instructions).toEqual([FULL]);
+    });
+
+    it("parses an airport reference by name", () => {
+      const res = parseRadioText(
+        "N7214L RADAR CONTACT 25 MILES SOUTHEAST OF ATLANTA INTERNATIONAL AIRPORT",
+        { airports: KATL_AIRPORT },
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N7214L");
+      expect(res.instructions).toEqual([AIRPORT_POS]);
     });
 
     it("rejects compound / multi-instruction commands", () => {
@@ -71,6 +100,26 @@ describe("RADAR_CONTACT parser & parity", () => {
       if (!res.ok) return;
       expect(res.instructions).toEqual([FULL]);
     });
+
+    it("parses direction + of with a phonetic airport reference (field report)", () => {
+      const text =
+        "november seven two one four lima radar contact two five miles southeast of kilo alpha tango lima";
+      const res = parseSpokenGrammar(text, undefined, text, [], undefined, undefined, KATL_AIRPORT);
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N7214L");
+      expect(res.instructions).toEqual([AIRPORT_POS]);
+    });
+
+    it("parses direction + of with an airport name reference (field report)", () => {
+      const text =
+        "november seven two one four lima radar contact two eight miles southeast of atlanta international airport";
+      const res = parseSpokenGrammar(text, undefined, text, [], undefined, undefined, KATL_AIRPORT);
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N7214L");
+      expect(res.instructions).toEqual([{ ...AIRPORT_POS, distanceNm: 28 }]);
+    });
   });
 
   describe("Spoken Path B (matchSpokenPatterns)", () => {
@@ -97,11 +146,49 @@ describe("RADAR_CONTACT parser & parity", () => {
       if (!res.ok) return;
       expect(res.instructions).toEqual([FULL]);
     });
+
+    it("matches direction + of with a phonetic airport reference (field report)", () => {
+      const text =
+        "november seven two one four lima radar contact two five miles southeast of kilo alpha tango lima";
+      const res = matchSpokenPatterns(
+        text,
+        undefined,
+        text,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        KATL_AIRPORT,
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N7214L");
+      expect(res.instructions).toEqual([AIRPORT_POS]);
+    });
+
+    it("matches direction + of with an airport name reference (field report)", () => {
+      const text =
+        "november seven two one four lima radar contact two eight miles southeast of atlanta international airport";
+      const res = matchSpokenPatterns(
+        text,
+        undefined,
+        text,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        KATL_AIRPORT,
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N7214L");
+      expect(res.instructions).toEqual([{ ...AIRPORT_POS, distanceNm: 28 }]);
+    });
   });
 
   describe("Path C schema & semantics", () => {
     it("accepts bare and full forms, rejects partial positions", () => {
-      for (const inst of [BARE, FULL]) {
+      for (const inst of [BARE, FULL, AIRPORT_POS]) {
         expect(isLegalInstruction(inst)).toBe(true);
         expect(
           schemaCheckPathC({ ok: true, callsignToken: "DAL123", instructions: [inst] }),
@@ -125,7 +212,11 @@ describe("RADAR_CONTACT parser & parity", () => {
     it("requires transcript evidence for the position when present", () => {
       expect(pathCResultIsComplete("DAL123 radar contact", [BARE])).toBe(true);
       expect(pathCResultIsComplete("DAL123 radar contact 5 miles from DEM", [FULL])).toBe(true);
+      expect(
+        pathCResultIsComplete("DAL123 radar contact 25 miles southeast of KATL", [AIRPORT_POS]),
+      ).toBe(true);
       expect(pathCResultIsComplete("DAL123 radar contact", [FULL])).toBe(false);
+      expect(pathCResultIsComplete("DAL123 radar contact", [AIRPORT_POS])).toBe(false);
       expect(
         pathCResultIsComplete("DAL123 radar contact", [
           { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },

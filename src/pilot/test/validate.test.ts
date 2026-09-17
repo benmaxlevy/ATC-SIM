@@ -1073,6 +1073,42 @@ test("VFR flight following and radio contact instruction validation (T04-73)", (
     reason: "UNKNOWN_FIX",
     detail: "UNKNOWN_FIX",
   });
+  // Airport references validate against regional airports, not fixes.
+  const katlRegion = {
+    airports: [{ icao: "KATL", name: "Atlanta International" }],
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 25,
+          referenceId: "KATL",
+          referenceKind: "AIRPORT",
+        },
+      ],
+      { catalog, radioRequests: [openReq], regional: katlRegion },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 25,
+          referenceId: "KUNK",
+          referenceKind: "AIRPORT",
+        },
+      ],
+      { catalog, radioRequests: [openReq], regional: katlRegion },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
 
   // TERMINATE_RADAR_SERVICE
   expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }])).toEqual({

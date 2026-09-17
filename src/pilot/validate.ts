@@ -466,12 +466,25 @@ function validateOne(
       if (!refId) {
         return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
       }
-      const catalogHasFix =
-        opts?.fixRegistry?.has(refId) ||
-        opts?.catalog?.fixes?.some((f) => f.id.trim().toUpperCase() === refId) ||
-        opts?.catalog?.navaids?.some((n) => n.id.trim().toUpperCase() === refId);
-      if (!catalogHasFix) {
-        return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+      // Airport references live in their own namespace: the own-airport id or
+      // a regional airport, never the fix/navaid catalog.
+      if (instruction.referenceKind === "AIRPORT") {
+        const regionalAirports = opts?.regional?.airports;
+        const knownAirport =
+          opts?.catalog?.airportId?.trim().toUpperCase() === refId ||
+          (Array.isArray(regionalAirports) &&
+            regionalAirports.some((a) => a?.icao?.toUpperCase() === refId));
+        if (!knownAirport) {
+          return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+        }
+      } else {
+        const catalogHasFix =
+          opts?.fixRegistry?.has(refId) ||
+          opts?.catalog?.fixes?.some((f) => f.id.trim().toUpperCase() === refId) ||
+          opts?.catalog?.navaids?.some((n) => n.id.trim().toUpperCase() === refId);
+        if (!catalogHasFix) {
+          return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+        }
       }
       const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
       if (!openReq) {

@@ -221,7 +221,9 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       typeof obj.referenceId === "string" &&
       obj.referenceId.length > 0 &&
       typeof obj.referenceKind === "string" &&
-      (obj.referenceKind === "FIX" || obj.referenceKind === "NAVAID")
+      (obj.referenceKind === "FIX" ||
+        obj.referenceKind === "NAVAID" ||
+        obj.referenceKind === "AIRPORT")
     );
   }
   if (type === "ALTITUDE") {
@@ -673,14 +675,17 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     (instruction): instruction is Extract<Instruction, { type: "RADAR_CONTACT" }> =>
       instruction.type === "RADAR_CONTACT",
   );
-  // A present position report needs transcript evidence; bare `radar contact`
-  // needs only its cue. Either form still requires the cue above.
+  // A present position report needs transcript evidence (`N miles [direction]
+  // from|of <reference>`); bare `radar contact` needs only its cue. Either
+  // form still requires the cue above.
   if (
     radarContact &&
     (radarContact.distanceNm !== undefined ||
       radarContact.referenceId !== undefined ||
       radarContact.referenceKind !== undefined) &&
-    !has(/\bmiles\s+from\b/)
+    !has(
+      /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+)?(?:from|of)\b/,
+    )
   ) {
     return false;
   }

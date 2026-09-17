@@ -242,6 +242,15 @@ CASES: list[dict[str, Any]] = [
             ]
         },
     },
+    {
+        "id": "radar-contact-airport",
+        "text": "radar contact two five miles southeast of atlanta airport",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 25, "referenceId": "KATL", "referenceKind": "AIRPORT"}
+            ]
+        },
+    },
     # --- IFR clearance forms ---
     {
         "id": "clearance-as-filed-airport-alias",

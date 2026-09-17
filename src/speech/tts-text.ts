@@ -151,9 +151,12 @@ function expandTtsCallsignsAndIdentifiers(text: string): string {
     /\bNovember (\d+)\b/g,
     (_, digits: string) => `November ${[...digits].map((ch) => SINGLE_DIGIT_WORDS[ch]!).join(" ")}`,
   );
-  // Fix/navaid reference (`5 miles from DEM`).
-  out = out.replace(/\bmiles? from ([A-Z0-9]{2,5})\b/g, (match, token: string) =>
-    hasLetter(token) ? match.replace(token, speakIdentifier(token)) : match,
+  // Fix/navaid reference (`5 miles from DEM`, `25 miles southeast of KATL` is
+  // covered by the direction anchor below; bare `25 miles of KATL` here).
+  out = out.replace(
+    /\bmiles? (from|of) ([A-Z0-9]{2,5})\b/g,
+    (match, _prep: string, token: string) =>
+      hasLetter(token) ? match.replace(token, speakIdentifier(token)) : match,
   );
   // Airport in a position report (`15 miles north of KPDK`).
   out = out.replace(

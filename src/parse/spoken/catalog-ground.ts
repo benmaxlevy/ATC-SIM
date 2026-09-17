@@ -122,6 +122,60 @@ export function groundAirportToCatalog(
   return hits.length === 1 ? hits[0]!.icao : null;
 }
 
+/**
+ * Longest leading token run that exactly names one airport (ICAO, name, or
+ * alias), for position references such as `southeast of atlanta international
+ * airport`. A trailing `airport`/`field` type word is filler when the name
+ * itself does not contain it, but still counts as consumed. A length with two
+ * different airports matching is ambiguous and abandons the whole phrase,
+ * mirroring the clearance-limit rewrite.
+ */
+export function groundAirportPhraseToCatalog(
+  phrase: string | null | undefined,
+  airports: readonly CatalogAirport[],
+): { icao: string; length: number } | null {
+  const tokens = (phrase ?? "").split(/\s+/).filter((token) => token.length > 0);
+  const clean = sanitizeCatalogAirports(airports);
+  if (clean.length === 0 || tokens.length === 0) return null;
+  const matchKey = (form: string): string | null => {
+    const key = airportKey(form);
+    if (key.length < 2) return null;
+    const hits = clean.filter((airport) =>
+      [airport.icao, airport.name, ...(airport.aliases ?? [])].some(
+        (value) => airportKey(value) === key,
+      ),
+    );
+    if (hits.length > 1) return "AMBIGUOUS";
+    if (hits.length === 1) return hits[0]!.icao;
+    return null;
+  };
+  for (let n = tokens.length; n >= 1; n -= 1) {
+    const slice = tokens.slice(0, n);
+    const hit = matchKey(slice.join(" "));
+    if (hit === "AMBIGUOUS") return null;
+    if (hit !== null) return { icao: hit, length: n };
+    const last = slice[slice.length - 1]!.toLowerCase();
+    if (slice.length > 1 && (last === "airport" || last === "field")) {
+      const stripped = matchKey(slice.slice(0, -1).join(" "));
+      if (stripped === "AMBIGUOUS") return null;
+      if (stripped !== null) return { icao: stripped, length: n };
+    }
+  }
+  return null;
+}
+
+/** Eight-point cardinals for `N miles [direction] from|of <reference>` reports. */
+export const EIGHT_POINT_CARDINALS: ReadonlySet<string> = new Set([
+  "north",
+  "south",
+  "east",
+  "west",
+  "northeast",
+  "northwest",
+  "southeast",
+  "southwest",
+]);
+
 export function catalogAirportAliases(airport: CatalogAirport): string[] {
   return [airport.icao, airport.name, ...(airport.aliases ?? [])];
 }
@@ -572,8 +626,9 @@ export function groundInstructionFixes(
         : { ...inst, limitId, access };
     }
     if (inst.type === "RADAR_CONTACT") {
-      // Bare `radar contact` carries no reference to ground.
-      if (inst.referenceId === undefined) {
+      // Bare `radar contact` carries no reference to ground, and airport
+      // references live in their own namespace.
+      if (inst.referenceId === undefined || inst.referenceKind === "AIRPORT") {
         return inst;
       }
       const grounded = groundReferenceToCatalog(inst.referenceId, catalog);

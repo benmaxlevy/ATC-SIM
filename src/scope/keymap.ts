@@ -169,8 +169,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "radar-contact",
-        command: "radar contact [<N> miles from <fix>]",
-        example: "DAL123 radar contact 5 miles from MERGE",
+        command: "radar contact [<N> miles [direction] from|of <fix|navaid|airport>]",
+        example: "DAL123 radar contact 25 miles southeast of KATL",
         input: "Radio",
         result:
           "Establishes radar identification; the position report is optional and the pilot answers roger.",

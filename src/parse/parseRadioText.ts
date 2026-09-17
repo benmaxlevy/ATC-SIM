@@ -30,7 +30,11 @@ import {
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "./instruction-order";
-import { groundReferenceToCatalog } from "./spoken/catalog-ground";
+import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundReferenceToCatalog,
+} from "./spoken/catalog-ground";
 
 export type ParseResult =
   | {
@@ -413,24 +417,36 @@ function parseOneInstruction(
       if (milesToken !== "MILES" && milesToken !== "MILE") {
         return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: milesToken ?? "" };
       }
-      const fromToken = tokens[index + 4];
-      if (fromToken !== "FROM") {
+      // Optional direction (`25 MILES SOUTHEAST OF KATL`); the stored
+      // reference is position only.
+      let refIndex = index + 4;
+      const maybeDir = tokens[refIndex];
+      if (maybeDir !== undefined && EIGHT_POINT_CARDINALS.has(maybeDir.toLowerCase())) {
+        refIndex += 1;
+      }
+      const fromToken = tokens[refIndex];
+      if (fromToken !== "FROM" && fromToken !== "OF") {
         return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fromToken ?? "" };
       }
-      const refTokens = tokens.slice(index + 5);
+      const refTokens = tokens.slice(refIndex + 1);
       if (refTokens.length === 0) {
         return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID, detail: "missing reference" };
       }
       const rawRef = refTokens.join(" ");
       let referenceId = rawRef;
-      let referenceKind: "FIX" | "NAVAID" = "FIX";
-      if (routeOptions.fixes && routeOptions.fixes.length > 0) {
-        const grounded = groundReferenceToCatalog(rawRef, routeOptions.fixes);
-        if (!grounded) {
-          return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRef };
-        }
+      let referenceKind: "FIX" | "NAVAID" | "AIRPORT" = "FIX";
+      const fixCatalog = routeOptions.fixes ?? [];
+      const hasFixCatalog = fixCatalog.length > 0;
+      const grounded = hasFixCatalog ? groundReferenceToCatalog(rawRef, fixCatalog) : null;
+      const airportHit = groundAirportPhraseToCatalog(rawRef, routeOptions.airports ?? []);
+      if (grounded) {
         referenceId = grounded.referenceId;
         referenceKind = grounded.referenceKind;
+      } else if (airportHit) {
+        referenceId = airportHit.icao;
+        referenceKind = "AIRPORT";
+      } else if (hasFixCatalog) {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRef };
       } else {
         const cleanRef = rawRef.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
         referenceId = cleanRef.toUpperCase();

@@ -46,8 +46,8 @@ runway designation; a near-miss without a runway remains `PARSE_MISS`.
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
 flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following`
-(`DECLINE_REQUEST`), `radar contact` with an optional `<distance> miles from
-<fix/navaid>` position report (`RADAR_CONTACT`), `radar service
+(`DECLINE_REQUEST`), `radar contact` with an optional `<distance> miles
+[direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
 terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
 (`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
 transmissions. A compound transmission combining any of these with another

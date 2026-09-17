@@ -102,7 +102,7 @@ export type Instruction =
       type: "RADAR_CONTACT";
       distanceNm?: number;
       referenceId?: string;
-      referenceKind?: "FIX" | "NAVAID";
+      referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
     }
   | { type: "TERMINATE_RADAR_SERVICE" }
   | { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
@@ -185,7 +185,7 @@ direct fixes.
 | `stand by` / `standby` | `STANDBY_REQUEST` (T04-73; instruct pilot to standby on radio request) |
 | `approve flight following` | `APPROVE_FLIGHT_FOLLOWING` (T04-73; activate advisory flight following for radar-identified aircraft) |
 | `unable flight following` / `unable to provide flight following` | `DECLINE_REQUEST { service: "FLIGHT_FOLLOWING" }` (T04-73; decline flight following request) |
-| `radar contact [<distance> miles from <fix/navaid>]` | `RADAR_CONTACT` with optional all-or-nothing `{ distanceNm, referenceId, referenceKind }` (T04-73; radar identification; pilot answers `roger`) |
+| `radar contact [<distance> miles [direction] from\|of <fix/navaid/airport>]` | `RADAR_CONTACT` with optional all-or-nothing `{ distanceNm, referenceId, referenceKind }` (`referenceKind` is `FIX`, `NAVAID`, or `AIRPORT`; T04-73; radar identification; pilot answers `roger`) |
 | `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
 | `IFR cancellation received` | `ACKNOWLEDGE_IFR_CANCELLATION` (T04-75; acknowledge pilot IFR cancellation outside Class B and revert to VFR) |
 

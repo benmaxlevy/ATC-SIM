@@ -36,7 +36,7 @@ export interface RadioContactReport {
   /** Optional informational position reference; absent for bare `radar contact`. */
   distanceNm?: number;
   referenceId?: string;
-  referenceKind?: "FIX" | "NAVAID";
+  referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
   reportedAtSimMs: number;
 }
 

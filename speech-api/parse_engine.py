@@ -83,7 +83,7 @@ Position advisories are not commands, but never stop parsing later sentences. �
 
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; CLEARED_VISUAL requires cleared visual approach plus runway; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
-New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles from <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind. Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
 
 Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. In routeWindow, fixMatches groups alternatives by one transcript span. A malformed, ambiguous, unknown, airport, unsupported, or evidence-free segment is PARSE_MISS. DIRECT is an optional marker in an IFR route window; when absent, emit one direct segment per supplied fix/navaid candidate, preserving supplied transcript order and spans. Every route segment selects exactly one candidate from one listed fixMatches row; never use an ID from another span, concatenate tokens into an ID such as SWEPT_KIMMY, or move the clearance-limit airport into a tactical DIRECT. A complete route must cover every non-connector token in order; DIRECT and THEN are connectors. An IFR `clear/cleared to ... via ...` transcript is never tactical DIRECT. transitionId only when that transition is nested under the supplied catalog procedure and has transcript evidence. For an IFR clear/cleared-to/via transcript, never output tactical DIRECT. Never invent a field or segment. source is a hint, not another schema.
 """
@@ -897,7 +897,7 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ref_kind = raw["referenceKind"]
         if not isinstance(ref_id, str) or not ref_id:
             return None
-        if ref_kind not in {"FIX", "NAVAID"}:
+        if ref_kind not in {"FIX", "NAVAID", "AIRPORT"}:
             return None
         return {
             "type": "RADAR_CONTACT",
@@ -1189,7 +1189,7 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         if not has(r"\bradar\s+contact\b"):
             return False
         if "distanceNm" in instruction or "referenceId" in instruction or "referenceKind" in instruction:
-            return has(r"\bmiles\s+from\b")
+            return has(r"\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+)?(?:from|of)\b")
         return True
     if instruction_type == "TERMINATE_RADAR_SERVICE":
         return has(r"\bradar\s+service\s+terminat\w*\b")
@@ -1536,6 +1536,10 @@ def guard_catalog_ids(
         if kind == "RADAR_CONTACT":
             ref_id = instruction.get("referenceId")
             if ref_id is None:
+                continue
+            if instruction.get("referenceKind") == "AIRPORT":
+                if airports and ref_id not in airports:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
                 continue
             if roster and ref_id in roster:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
