@@ -88,7 +88,16 @@ import {
 } from "./previewArea";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
-import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
+import {
+  applyDcbShift,
+  armDcbSpinner,
+  backspaceDcbSpinner,
+  cancelDcbSpinner,
+  commitDcbSpinner,
+  handleDcbEscape,
+  inputDcbSpinnerKey,
+  openDcbMenu,
+} from "./dcb/dcbMenu";
 
 function vfrCreationPool(world: World): readonly string[] {
   return beaconPoolFor(world.beaconPools, "vfr");
@@ -956,6 +965,46 @@ export function handleScopeKeyDown(
     view.helpOpen = false;
     ui?.onHandled?.();
     return true;
+  }
+
+  if (view.dcbSpinner.armed) {
+    if (event.key === "Escape" || event.code === "Escape" || event.key === "Clear") {
+      consume(event);
+      cancelDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      commitDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace" || event.code === "Backspace") {
+      consume(event);
+      backspaceDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (
+      !event.ctrlKey &&
+      !event.altKey &&
+      (/^[0-9]$/.test(event.key) ||
+        event.key === "." ||
+        /^Numpad[0-9]$/.test(event.code ?? "") ||
+        event.code === "NumpadDecimal")
+    ) {
+      consume(event);
+      const ch =
+        event.key === "." || event.code === "NumpadDecimal"
+          ? "."
+          : /^Numpad[0-9]$/.test(event.code ?? "")
+            ? event.code!.slice(6)
+            : event.key;
+      inputDcbSpinnerKey(view, ch);
+      ui?.onHandled?.();
+      return true;
+    }
   }
 
   // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11
