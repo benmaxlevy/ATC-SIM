@@ -240,8 +240,8 @@ export interface RangeRingClipInput {
 
 /**
  * Computes radii for range rings: concentric circles expand infinitely until crossing
- * the nearest viewport edge. The circle that crosses the edge is drawn (clipped by
- * the canvas boundary), and generation stops after that ring.
+ * all four viewport edges (left, right, top, bottom). Rings continue until all four
+ * sides are clipped and visible corners are covered, stopping after clipping the viewport.
  */
 export function computeClippedRingRadiiNm(input: RangeRingClipInput): number[] {
   const { camera, viewSize, ringOriginNm, intervalNm } = input;
@@ -256,17 +256,27 @@ export function computeClippedRingRadiiNm(input: RangeRingClipInput): number[] {
   const W = viewSize.widthPx;
   const H = viewSize.heightPx;
 
-  let dNearestPx: number;
-  if (originScreen.x >= 0 && originScreen.x <= W && originScreen.y >= 0 && originScreen.y <= H) {
-    dNearestPx = Math.min(originScreen.x, W - originScreen.x, originScreen.y, H - originScreen.y);
-  } else {
-    const dx = Math.max(0, -originScreen.x, originScreen.x - W);
-    const dy = Math.max(0, -originScreen.y, originScreen.y - H);
-    dNearestPx = Math.hypot(dx, dy);
-  }
+  // Distances to four viewport boundary lines
+  const dLeftPx = Math.abs(originScreen.x);
+  const dRightPx = Math.abs(W - originScreen.x);
+  const dTopPx = Math.abs(originScreen.y);
+  const dBottomPx = Math.abs(H - originScreen.y);
+  const dAllSidesPx = Math.max(dLeftPx, dRightPx, dTopPx, dBottomPx);
+  const dAllSidesNm = dAllSidesPx / scale;
 
-  const dNearestNm = dNearestPx / scale;
-  const maxRadiusNm = (Math.floor((dNearestNm + 1e-6) / intervalNm) + 1) * intervalNm;
+  // Distances to four viewport corners
+  const dCornerTL = Math.hypot(originScreen.x, originScreen.y);
+  const dCornerTR = Math.hypot(W - originScreen.x, originScreen.y);
+  const dCornerBR = Math.hypot(W - originScreen.x, H - originScreen.y);
+  const dCornerBL = Math.hypot(originScreen.x, H - originScreen.y);
+  const dMaxCornerPx = Math.max(dCornerTL, dCornerTR, dCornerBR, dCornerBL);
+  const dMaxCornerNm = dMaxCornerPx / scale;
+
+  // Stop after the ring that crosses all four sides, ensuring visible corners are covered
+  const maxRadiusNm = Math.max(
+    (Math.floor((dAllSidesNm + 1e-6) / intervalNm) + 1) * intervalNm,
+    Math.floor((dMaxCornerNm + 1e-6) / intervalNm) * intervalNm,
+  );
 
   const radii: number[] = [];
   for (let r = intervalNm; r <= maxRadiusNm + 1e-9; r += intervalNm) {

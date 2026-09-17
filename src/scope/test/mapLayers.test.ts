@@ -95,8 +95,12 @@ test("AC3 — range rings expand dynamically until crossing viewport edge, stopp
   const at512 = buildMapCache(
     kdemInput({ camera: { ...DEFAULT_SCOPE_CAMERA, rangeNm: 512 } satisfies ScopeCamera }),
   );
-  expect(at512.ringRadiiNm.length).toBe(Math.floor(512 / 5) + 1);
-  expect(at512.ringRadiiNm[at512.ringRadiiNm.length - 1]).toBe(515);
+  expect(at512.ringRadiiNm[at512.ringRadiiNm.length - 1]).toBe(720);
+
+  // Widescreen 1280x720: top/bottom is 20 NM, left/right is 35.55 NM.
+  // Rings expand past top/bottom to cross left/right as well, reaching 40 NM.
+  const wide = buildMapCache(kdemInput({ viewSize: { widthPx: 1280, heightPx: 720 } }));
+  expect(wide.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35, 40]);
 });
 
 test("AC4 — coastline.enabled false skips the polyline; true with ≥2 points keeps it", () => {
@@ -294,7 +298,7 @@ test("panned view without PLACE RR keeps rings at airport ref", () => {
   const airport = panned.ringCircles[0];
   expect(airport).toBeDefined();
   expect(airport!.x).not.toBeCloseTo(400, 0);
-  expect(panned.ringRadiiNm).toEqual([5, 10, 15]);
+  expect(panned.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30, 35]);
   for (const circle of panned.ringCircles) {
     expect(circle.x).toBeCloseTo(airport!.x, 6);
     expect(circle.y).toBeCloseTo(airport!.y, 6);
@@ -304,7 +308,7 @@ test("panned view without PLACE RR keeps rings at airport ref", () => {
 test("AC4 — range rings draw about PLACE RR origin, not only airport ref", () => {
   const origin = { rangeRingEastNm: 5, rangeRingNorthNm: -3 };
   const cache = buildMapCache(kdemInput(origin));
-  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20]);
+  expect(cache.ringRadiiNm).toEqual([5, 10, 15, 20, 25, 30]);
   const expected = nmToScreen(5, -3, DEFAULT_SCOPE_CAMERA, VIEW);
   expect(cache.ringCircles.length).toBeGreaterThan(0);
   for (const circle of cache.ringCircles) {
