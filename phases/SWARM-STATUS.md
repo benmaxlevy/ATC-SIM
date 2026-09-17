@@ -2140,3 +2140,27 @@ started, no push was performed, and unrelated `.agents/rules/`, `GEMINI.md`,
 and the separate T02-185 worktree were preserved.
 
 **PHASE EXIT GREEN**
+
+## DCB NUMERIC KEYBOARD ENTRY SWARM COMPLETE — T02-200–T02-201
+
+Completed sequentially on `feature/sattelite-traffic` with one configured worker
+and captain squash merges.
+
+- **T02-200**: Extended `DcbSpinnerState` with buffered numeric typing and initial
+  value capture. Added key routing in `handleScopeKeyDown` to intercept digits,
+  decimal point, Backspace, Enter, and Escape/Clear when a DCB spinner is armed,
+  preventing leakage into preview buffer or radio input. Enforced STARS manual limits
+  for Range (6–512), Range Rings (2/5/10/20), Leader Length (0–7), and PTL (0.0–5.0).
+- **T02-201**: Rendered live typed numeric buffer inside active DCB button labels
+  across physical MAIN, legacy MAIN, and submenus. Synchronized mouse wheel stepping
+  with buffer and initial value. Added user documentation in `docs/USER.md` and 18
+  end-to-end integration acceptance tests in `dcbSpinnerKeyboardAcceptance.test.ts`.
+
+Captain commits: `ebca2f4`, `0d85d9a`.
+Final `npm run ci`: **238 files passed, 2,506 passed, 4 skipped, 0 failures**.
+Independent supplied-manual gates passed for both tickets with verdict **PASS**.
+Authoritative citations: FAA/Raytheon STARS TI 6191.409 Revision 30 §2.5, §2.6, §4.4.1, §4.14.3, §6.1.1, §6.3.4.
+No push performed; stop at configured boundary.
+
+**PHASE EXIT GREEN**
+
