@@ -4,11 +4,11 @@
  * Submit runs shared radio pipeline (typed, Path A/B, then health-gated Path C). Not NAS STARS.
  */
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { SessionLog, World } from "@core";
 import { handleRadioText, type PilotResult } from "@pilot";
 import { isAlwaysOnScopeKey, isHandoffKey } from "@scope";
-import { displayCommandLineStatus } from "./voice-status";
+import { displayCommandLineStatus, isTransientVoiceStatus } from "./voice-status";
 
 export type { PilotResult };
 
@@ -80,15 +80,41 @@ export function CommandLine({
   const [value, setValue] = useState(selectedCallsign ?? "");
   const [pttHeld, setPttHeld] = useState(false);
   const [showingReadback, setShowingReadback] = useState(Boolean(voiceStatus));
+  /**
+   * Last pilot transmission (a/c callup, VFR request, or pilot readback) kept
+   * on the line after its TTS stream ends. Cleared only by a new transmission,
+   * a PTT press (`TX`), or an explicit dismiss (click/keys on the line).
+   */
+  const [sticky, setStickyState] = useState("");
   const prevCallsignRef = useRef<string | null>(selectedCallsign ?? null);
   const isFirstMount = useRef(true);
-  // Latest voice status without re-running the selection effect on every
-  // status change; a live pilot callup owns the line until its TTS stream
-  // ends and voiceStatus clears.
+  const readbackMountedRef = useRef(false);
+  // Text the user explicitly dismissed. While the live props still hold it,
+  // stay on the input until a genuinely new transmission arrives.
+  const hiddenForRef = useRef<string | null>(null);
+  const stickyRef = useRef("");
+  const setSticky = useCallback((next: string): void => {
+    stickyRef.current = next;
+    setStickyState(next);
+  }, []);
+  // Latest props without re-running the selection effect on every change; a
+  // live pilot callup owns the line until its TTS stream ends and voiceStatus
+  // clears — then `sticky` keeps it visible until dismissed.
   const voiceStatusRef = useRef(voiceStatus);
   voiceStatusRef.current = voiceStatus;
+  const readbackRef = useRef(readback);
+  readbackRef.current = readback;
   /** Set to true when readback is dismissed by an a/c click — prevents focus-stealing. */
   const skipNextFocusRef = useRef(false);
+
+  /** Dismiss the persisted line to the input. New transmissions still replace it. */
+  const dismissToInput = useCallback((): void => {
+    const live = displayCommandLineStatus(readbackRef.current, voiceStatusRef.current);
+    hiddenForRef.current = live !== "" ? live : stickyRef.current !== "" ? stickyRef.current : null;
+    stickyRef.current = "";
+    setStickyState("");
+    setShowingReadback(false);
+  }, []);
 
   useEffect(() => {
     if (isFirstMount.current) {
@@ -108,7 +134,13 @@ export function CommandLine({
       // A live pilot callup owns the line until its TTS stream ends; stage
       // the callsign in the input underneath instead of cutting the callup
       // text off mid-stream. It is revealed when voiceStatus clears.
+      // A persisted (post-stream) callup is dismissed so the staged callsign
+      // is immediately usable.
       if (!voiceStatusRef.current) {
+        const live = displayCommandLineStatus(readbackRef.current, voiceStatusRef.current);
+        hiddenForRef.current =
+          live !== "" ? live : stickyRef.current !== "" ? stickyRef.current : null;
+        setSticky("");
         setShowingReadback(false);
       }
     } else if (selectedCallsign === null && prevCallsignRef.current !== null) {
@@ -118,12 +150,44 @@ export function CommandLine({
   }, [selectedCallsign, selectionToken]);
 
   useEffect(() => {
-    if (voiceStatus) {
+    const live = displayCommandLineStatus(readback, voiceStatus);
+    if (live !== "") {
+      if (live === hiddenForRef.current) {
+        // Dismissed by click/keys, PTT release, or selection; wait for a new
+        // transmission instead of re-showing the same text.
+        return;
+      }
+      hiddenForRef.current = null;
+      if (isTransientVoiceStatus(live)) {
+        // PTT hit clears a persisted a/c call; TX itself never persists.
+        if (live === "TX") {
+          setSticky("");
+        }
+        setShowingReadback(true);
+        return;
+      }
+      if (!readbackMountedRef.current && !voiceStatus) {
+        // First render with only a typed readback prop: stage it for later
+        // persistence without popping the readback box over the input.
+        readbackMountedRef.current = true;
+        setSticky(live);
+        return;
+      }
+      readbackMountedRef.current = true;
+      // New a/c transmission replaces the persisted line.
+      setSticky(live);
       setShowingReadback(true);
-    } else if (readback === "") {
-      setShowingReadback(false);
+      return;
     }
-  }, [readback, voiceStatus]);
+    readbackMountedRef.current = true;
+    // Live line cleared (TTS stream ended): keep the last a/c transmission
+    // visible until PTT, a new transmission, or a click dismisses it.
+    if (stickyRef.current !== "" && stickyRef.current !== hiddenForRef.current) {
+      setShowingReadback(true);
+      return;
+    }
+    setShowingReadback(false);
+  }, [readback, voiceStatus, setSticky]);
 
   useEffect(() => {
     if (!showingReadback) {
@@ -146,6 +210,7 @@ export function CommandLine({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    hiddenForRef.current = null;
     onSubmit(value);
     setValue("");
     setShowingReadback(true);
@@ -156,9 +221,12 @@ export function CommandLine({
       return;
     }
     setPttHeld(false);
-    setShowingReadback(false);
+    dismissToInput();
     onPttRelease?.();
   }
+
+  const liveText = displayCommandLineStatus(readback, voiceStatus);
+  const visibleText = liveText !== "" ? liveText : sticky;
 
   return (
     <form className="command-line" onSubmit={handleSubmit}>
@@ -169,23 +237,23 @@ export function CommandLine({
           tabIndex={0}
           role="status"
           title="Click to enter command"
-          onClick={() => setShowingReadback(false)}
+          onClick={() => dismissToInput()}
           onKeyDown={(event) => {
             if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              setShowingReadback(false);
+              dismissToInput();
             } else if (
               event.key.length === 1 &&
               !event.ctrlKey &&
               !event.metaKey &&
               !event.altKey
             ) {
-              setShowingReadback(false);
+              dismissToInput();
               setValue(event.key.toUpperCase());
             }
           }}
         >
-          {displayCommandLineStatus(readback, voiceStatus)}
+          {visibleText}
         </div>
       ) : (
         <input
@@ -222,6 +290,9 @@ export function CommandLine({
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
             setPttHeld(true);
+            // PTT hit clears a persisted a/c call; the TX status arriving
+            // next owns the line until release dismisses it to the input.
+            setSticky("");
             void onPttPress();
           }}
           onPointerUp={releasePtt}

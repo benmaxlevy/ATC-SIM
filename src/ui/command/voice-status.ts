@@ -3,7 +3,7 @@
  * Failures show on the command-line readback; they must not `alert()`.
  */
 
-import type { VoiceStatusEvent } from "@speech";
+import { VOICE_ERROR_CODES, type VoiceStatusEvent } from "@speech";
 
 export function formatVoiceStatus(event: VoiceStatusEvent): string {
   switch (event.code) {
@@ -40,4 +40,19 @@ export function displayCommandLineStatus(
   voiceStatus: string | null | undefined,
 ): string {
   return voiceStatus ?? readback;
+}
+
+/**
+ * Formatted `formatVoiceStatus` copy is a transient radio status (TX, failures,
+ * locks) — not a pilot transmission. Pilot callups, VFR requests, and pilot
+ * readbacks persist on the command line until a new transmission, PTT, or a
+ * click dismisses them; transient copy never persists and falls back to the
+ * persisted transmission (if any) once it clears.
+ */
+const TRANSIENT_VOICE_TEXTS: ReadonlySet<string> = new Set(
+  VOICE_ERROR_CODES.map((code) => formatVoiceStatus({ code } as VoiceStatusEvent)),
+);
+
+export function isTransientVoiceStatus(text: string): boolean {
+  return TRANSIENT_VOICE_TEXTS.has(text);
 }
