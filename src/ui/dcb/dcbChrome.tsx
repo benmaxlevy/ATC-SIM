@@ -49,6 +49,7 @@ import {
   openDcbMenu,
   setHistoryDotCount,
   snapBriteLevel,
+  stepDcbSpinner,
   toggleVideoMap,
   toggleWxLevel,
   vipMaskHasPixels,
@@ -127,16 +128,16 @@ export function cancelFilterIfEntering(view: ScopeView): void {
 }
 
 export function setPressed(el: Element | null, pressed: boolean): void {
-  if (!(el instanceof HTMLElement)) {
+  if (!el || (typeof HTMLElement !== "undefined" && !(el instanceof HTMLElement))) {
     return;
   }
   if (
-    el.getAttribute("data-dcb-flashing") === "true" ||
-    el.getAttribute("data-dcb-pointer-down") === "true"
+    el.getAttribute?.("data-dcb-flashing") === "true" ||
+    el.getAttribute?.("data-dcb-pointer-down") === "true"
   ) {
     return;
   }
-  el.setAttribute("aria-pressed", pressed ? "true" : "false");
+  el.setAttribute?.("aria-pressed", pressed ? "true" : "false");
 }
 
 export function setText(id: string, text: string): void {
@@ -147,7 +148,35 @@ export function setText(id: string, text: string): void {
 }
 
 export function spinnerArmed(view: ScopeView, cell: DcbSpinnerCell): boolean {
-  return view.dcbSpinner.armed && view.dcbSpinner.cell === cell;
+  if (!view.dcbSpinner.armed) return false;
+  return (
+    view.dcbSpinner.cell === cell ||
+    (cell === "LDR_LENGTH" && view.dcbSpinner.cell === "LDR_LEN") ||
+    (cell === "LDR_LEN" && view.dcbSpinner.cell === "LDR_LENGTH")
+  );
+}
+
+export function armedSpinnerBuffer(view: ScopeView, cell: DcbSpinnerCell): string | null {
+  if (!view.dcbSpinner.armed || view.dcbSpinner.buffer.length === 0) {
+    return null;
+  }
+  if (
+    view.dcbSpinner.cell === cell ||
+    (cell === "LDR_LENGTH" && view.dcbSpinner.cell === "LDR_LEN") ||
+    (cell === "LDR_LEN" && view.dcbSpinner.cell === "LDR_LENGTH")
+  ) {
+    return view.dcbSpinner.buffer;
+  }
+  return null;
+}
+
+export function formatSpinnerCellReadout(
+  view: ScopeView,
+  cell: DcbSpinnerCell,
+  defaultReadout: string | number,
+): string | number {
+  const buf = armedSpinnerBuffer(view, cell);
+  return buf !== null ? buf : defaultReadout;
 }
 
 export function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCell): void {
@@ -235,8 +264,8 @@ export function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, n
 }
 
 export function onSpinnerWheel(
-  _view: ScopeView,
-  _cell: DcbSpinnerCell,
+  view: ScopeView,
+  cell: DcbSpinnerCell,
   event: WheelEvent<HTMLButtonElement>,
   apply: (delta: -1 | 1) => void,
   onChange: () => void,
@@ -244,7 +273,11 @@ export function onSpinnerWheel(
   event.preventDefault();
   event.stopPropagation();
   const delta: -1 | 1 = event.deltaY < 0 ? 1 : -1;
-  apply(delta);
+  if (spinnerArmed(view, cell)) {
+    stepDcbSpinner(view, delta, apply);
+  } else {
+    apply(delta);
+  }
   afterCell(onChange);
 }
 
@@ -293,12 +326,28 @@ export function syncDisplayControlBar(
   if (!doc) {
     return;
   }
-  setText(DCB_RANGE_READOUT_ID, String(view.camera.rangeNm));
+  setText(
+    DCB_RANGE_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "RANGE", view.camera.rangeNm)),
+  );
   setText(DCB_FILTER_BAND_ID, formatFilterBand(view.altitudeFilter, view.filterEntry));
-  setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm, view.showRings));
+  setText(
+    DCB_RR_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "RR", formatDcbRrReadout(view.ringIntervalNm, view.showRings)),
+    ),
+  );
   setPressed(doc.querySelector('[data-dcb-cell="rr"]'), spinnerArmed(view, "RR"));
-  setText(DCB_LDR_READOUT_ID, dcbLeaderDirReadout(view, world));
-  setText(DCB_LDR_LENGTH_READOUT_ID, formatDcbLdrLengthReadout(view.leaderLengthPx));
+  setText(
+    DCB_LDR_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "LDR_DIR", dcbLeaderDirReadout(view, world))),
+  );
+  setText(
+    DCB_LDR_LENGTH_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "LDR_LENGTH", formatDcbLdrLengthReadout(view.leaderLengthPx)),
+    ),
+  );
   setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizes.dataBlocks));
   setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.brite.mpa));
   for (const el of doc.querySelectorAll("[data-dcb-map-id]")) {
@@ -309,9 +358,20 @@ export function syncDisplayControlBar(
   }
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
-  setText(DCB_HISTORY_READOUT_ID, formatDcbHistoryReadout(view.historyDotCount));
-  setText(DCB_PTL_MINUTES_READOUT_ID, formatDcbPtlMinutesReadout(view.ptlMinutes));
-  setText(DCB_TPA_MI_READOUT_ID, formatDcbTpaMiReadout(view.tpa.radiusNm));
+  setText(
+    DCB_HISTORY_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "HISTORY", formatDcbHistoryReadout(view.historyDotCount)),
+    ),
+  );
+  setText(
+    DCB_PTL_MINUTES_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "PTL", formatDcbPtlMinutesReadout(view.ptlMinutes))),
+  );
+  setText(
+    DCB_TPA_MI_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "TPA_MI", formatDcbTpaMiReadout(view.tpa.radiusNm))),
+  );
   setPressed(doc.querySelector('[data-dcb-cell="ptl-own"]'), view.ptlOwn);
   setPressed(doc.querySelector('[data-dcb-cell="ptl-all"]'), view.ptlOn);
   setPressed(doc.querySelector('[data-dcb-cell="hist"]'), historySpinnerArmed(view));

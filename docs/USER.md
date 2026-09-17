@@ -501,6 +501,16 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `Ctrl + F10` | `<RANGE>` Range Spinner | Arms the DCB `RANGE` NM spinner. |
 | `Ctrl + F11` | `<WX>` Weather Toggle | Cycles weather radar reflectivity layers on/off. |
 
+#### DCB numeric keyboard typing
+
+Clicking or selecting a numeric DCB adjustment button (Range, Range Rings, Leader Length, PTL) arms it for keyboard entry:
+- **Direct typing**: Digits (`0`–`9`) can be typed directly via the keyboard or numeric keypad; `PTL` also accepts decimal (`.`).
+- **Live feedback**: The active typed buffer renders in real time inside the armed DCB button label while typing.
+- **Enter**: Commits and validates the typed value according to STARS limits (reverting without mutation if invalid) and disarms the button.
+- **Escape / Clear**: Cancels adjustment, restores the previous value, and disarms the button.
+- **Backspace**: Edits the buffer by removing the last character.
+- **Mouse wheel**: Continues to work for incremental adjustment while armed, synchronizing the buffer.
+
 #### Scope-focused shortcuts (active when PPI is focused)
 
 | Key | Action | Description |
