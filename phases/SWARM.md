@@ -5223,4 +5223,43 @@ exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts
 (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized.
 Stop after T04-83.
 
+## DCB numeric keyboard entry swarm — 2026-09-16
+
+| Key | Value |
+| --- | --- |
+| Phase | `phases/02-scope/` addendum |
+| Include | T02-200 → T02-201 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Stop | T02-201 squash merge, `npm run ci`, speech mock pytest |
+| Push | No push |
+
+**Product law:** Selecting a DCB adjustment/spinner button arms numeric keyboard capture; typed digits buffer locally; Enter commits valid values; Escape/Clear reverts to initial value; mouse wheel stepping preserved; out-of-scope keys ignored or routed.
+
+**Waves:**
+- Wave A: T02-200 — DCB spinner numeric buffer, scopeKeys keyboard routing, digit capture, Enter commit, and Escape revert.
+- Wave B: T02-201 — DCB button live typing display, rejection handling, and acceptance test suite. Starts after T02-200 squash merge.
+
+**Ticket paths/branches:**
+- `ticket/T02-200-dcb-spinner-numeric-keyboard-entry` → `phases/02-scope/tickets/T02-200-dcb-spinner-numeric-keyboard-entry.md`
+- `ticket/T02-201-dcb-spinner-live-digit-render-and-acceptance` → `phases/02-scope/tickets/T02-201-dcb-spinner-live-digit-render-and-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: DCB numeric keyboard entry T02-200–201
+Merge target: feature/sattelite-traffic
+Merged: T02-200, T02-201
+Tests: npm run ci; speech-api mock pytest
+Notes: no push; STARS §2.6 DCB adjustment numeric entry parity
+```
+
+## DCB numeric keyboard entry swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T02-200, then T02-201 sequentially with one isolated worker at a time. Each ticket gets focused tests and `npm run ci` before the next ticket. Worker model resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized. Stop after T02-201.
+
+
 
