@@ -52,6 +52,7 @@ import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   schemaCheckPathC,
+  pathCHasSelfContainedCue,
   pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
@@ -101,6 +102,7 @@ const IDENT_TRIGGERS = new Set([
   "direct",
   "cross",
   "from",
+  "of",
   "via",
   "cleared",
   "clear",
@@ -1376,7 +1378,9 @@ export async function parseCommand(
 
   if (
     opts.pathC &&
-    (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
+    (routeFallbackHasEvidence ||
+      !emptyIdentifierRetrieve ||
+      pathCHasSelfContainedCue(normalized)) &&
     (!ifrCandidate ||
       routeFallbackHasEvidence ||
       localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds))

@@ -613,6 +613,11 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert guard_instruction_semantics("approve flight following", ParseOutcome(ok=True, instructions=[approve_ff])).ok
     assert guard_instruction_semantics("unable flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
     assert guard_instruction_semantics("unable to provide flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert guard_instruction_semantics("unable ifr pickup", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert guard_instruction_semantics("unable to provide ifr pickup", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert not guard_instruction_semantics("unable flight following", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert not guard_instruction_semantics("unable ifr pickup", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
 
     assert guard_instruction_semantics("radar contact 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
     assert guard_instruction_semantics("radar contact 25 miles southeast of KATL", ParseOutcome(ok=True, instructions=[airport_contact])).ok

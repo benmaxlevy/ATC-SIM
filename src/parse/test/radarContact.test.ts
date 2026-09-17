@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { parseCommand } from "../parse-command";
 import { parseRadioText } from "../parseRadioText";
 import { parseSpokenGrammar } from "../spoken/grammar";
 import { matchSpokenPatterns } from "../spoken/pattern-matcher";
-import { isLegalInstruction, pathCResultIsComplete, schemaCheckPathC } from "../path-c";
+import {
+  isLegalInstruction,
+  pathCHasSelfContainedCue,
+  pathCResultIsComplete,
+  schemaCheckPathC,
+  type ParsePathCFn,
+} from "../path-c";
 import { INSTRUCTION_TYPES, type Instruction } from "../../core/command/types";
 
 const FULL: Instruction = {
@@ -222,6 +229,83 @@ describe("RADAR_CONTACT parser & parity", () => {
           { type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" },
         ]),
       ).toBe(false);
+    });
+
+    it("accepts split-cardinal position evidence", () => {
+      expect(
+        pathCResultIsComplete("DAL123 radar contact 25 miles south east of KATL", [AIRPORT_POS]),
+      ).toBe(true);
+    });
+  });
+
+  describe("Path C fallback (mocked model)", () => {
+    it("salvages bare radar contact when local stages miss", async () => {
+      const model = vi.fn<ParsePathCFn>(async () => ({
+        callsignToken: "N7214L",
+        instructions: [BARE],
+      }));
+      const res = await parseCommand("november seven two one four lima radar contact squawk", {
+        source: "voice",
+        pathC: true,
+        parsePathC: model,
+      });
+      expect(model).toHaveBeenCalled();
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.parseStage).toBe("llm_c");
+      expect(res.instructions).toEqual([BARE]);
+    });
+
+    it("salvages an of-form fix position when local grounding misses", async () => {
+      const fullFix: Instruction = {
+        type: "RADAR_CONTACT",
+        distanceNm: 25,
+        referenceId: "KATL",
+        referenceKind: "FIX",
+      };
+      const model = vi.fn<ParsePathCFn>(async () => ({
+        callsignToken: null,
+        instructions: [fullFix],
+      }));
+      const res = await parseCommand("radar contact 25 miles southeast of katl squawk", {
+        source: "voice",
+        pathC: true,
+        fixes: ["KATL"],
+        parsePathC: model,
+      });
+      expect(model).toHaveBeenCalled();
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.parseStage).toBe("llm_c");
+      expect(res.instructions).toEqual([fullFix]);
+    });
+
+    it("salvages an airport reference with airports context", async () => {
+      const model = vi.fn<ParsePathCFn>(async () => ({
+        callsignToken: null,
+        instructions: [AIRPORT_POS],
+      }));
+      const res = await parseCommand(
+        "radar contact 25 miles southeast of kilo alpha tango lima squawk",
+        {
+          source: "voice",
+          pathC: true,
+          fixes: ["XXX"],
+          airports: KATL_AIRPORT,
+          parsePathC: model,
+        },
+      );
+      expect(model).toHaveBeenCalled();
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.parseStage).toBe("llm_c");
+      expect(res.instructions).toEqual([AIRPORT_POS]);
+    });
+
+    it("marks radar contact transcripts as self-contained cues", () => {
+      expect(pathCHasSelfContainedCue("radar contact 25 miles southeast of katl over")).toBe(true);
+      expect(pathCHasSelfContainedCue("dal123 radar contact")).toBe(true);
+      expect(pathCHasSelfContainedCue("dal123 turn left heading 270")).toBe(false);
     });
   });
 });

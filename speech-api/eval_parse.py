@@ -251,6 +251,42 @@ CASES: list[dict[str, Any]] = [
             ]
         },
     },
+    # --- Request-control commands ---
+    {
+        "id": "say-request",
+        "text": "say request",
+        "expect": {"instructions": [{"type": "REQUEST_DETAILS"}]},
+    },
+    {
+        "id": "standby",
+        "text": "stand by",
+        "expect": {"instructions": [{"type": "STANDBY_REQUEST"}]},
+    },
+    {
+        "id": "approve-flight-following",
+        "text": "approve flight following",
+        "expect": {"instructions": [{"type": "APPROVE_FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-flight-following",
+        "text": "unable flight following",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-ifr-pickup",
+        "text": "unable ifr pickup",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}]},
+    },
+    {
+        "id": "terminate-radar-service",
+        "text": "radar service terminated",
+        "expect": {"instructions": [{"type": "TERMINATE_RADAR_SERVICE"}]},
+    },
+    {
+        "id": "acknowledge-ifr-cancellation",
+        "text": "ifr cancellation received",
+        "expect": {"instructions": [{"type": "ACKNOWLEDGE_IFR_CANCELLATION"}]},
+    },
     # --- IFR clearance forms ---
     {
         "id": "clearance-as-filed-airport-alias",

@@ -984,6 +984,23 @@ function matchDeclineRequest(
         next: i + 5,
       };
     }
+    if (tokens[i + 1] === "ifr" && tokens[i + 2] === "pickup") {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        next: i + 3,
+      };
+    }
+    if (
+      tokens[i + 1] === "to" &&
+      tokens[i + 2] === "provide" &&
+      tokens[i + 3] === "ifr" &&
+      tokens[i + 4] === "pickup"
+    ) {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        next: i + 5,
+      };
+    }
   }
   return null;
 }
@@ -1030,9 +1047,14 @@ function matchRadarContact(
     return null;
   }
   j += 1;
-  // Optional direction (`25 miles southeast of KATL`); the stored reference
-  // is position only.
-  if (tokens[j] !== undefined && EIGHT_POINT_CARDINALS.has(tokens[j]!)) {
+  // Optional direction (`25 miles southeast of KATL`, split `south east`
+  // included); the stored reference is position only.
+  if (tokens[j] === "north" || tokens[j] === "south") {
+    j += 1;
+    if (tokens[j] === "east" || tokens[j] === "west") {
+      j += 1;
+    }
+  } else if (tokens[j] !== undefined && EIGHT_POINT_CARDINALS.has(tokens[j]!)) {
     j += 1;
   }
   if (tokens[j] !== "from" && tokens[j] !== "of") {

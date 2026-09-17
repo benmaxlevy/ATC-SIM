@@ -252,6 +252,12 @@ function tryDeclineRequest(c: Cursor): Instruction | null {
     if (take(c, "to") && take(c, "provide") && take(c, "flight") && take(c, "following")) {
       return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
     }
+    if (take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
   }
   c.i = start;
   return null;
@@ -295,9 +301,14 @@ function tryRadarContact(c: Cursor): Instruction | null {
     c.i = start;
     return null;
   }
-  // Optional direction (`25 miles southeast of KATL`); the stored reference
-  // is position only.
-  if (peek(c) !== undefined && EIGHT_POINT_CARDINALS.has(peek(c)!)) {
+  // Optional direction (`25 miles southeast of KATL`, split `south east`
+  // included); the stored reference is position only.
+  if (peek(c) === "north" || peek(c) === "south") {
+    c.i += 1;
+    if (peek(c) === "east" || peek(c) === "west") {
+      c.i += 1;
+    }
+  } else if (peek(c) !== undefined && EIGHT_POINT_CARDINALS.has(peek(c)!)) {
     c.i += 1;
   }
   if (!take(c, "from") && !take(c, "of")) {

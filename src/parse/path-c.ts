@@ -613,6 +613,32 @@ function requestHasContext(context: PathCContext | undefined): boolean {
 }
 
 /**
+ * Unambiguous cues for self-contained commands: instructions whose acceptance
+ * needs no catalog retrieval (bare request-control types, `roger`-answer
+ * radar contact, visual runway). A transcript carrying one may engage Path C
+ * even when identifier retrieval comes back empty, so a noisy miss on these
+ * forms still reaches the model. Engagement is not acceptance: schema,
+ * completeness, grounding, and identifier-listed guards still apply.
+ */
+const SELF_CONTAINED_CUES: RegExp[] = [
+  /\bradar\s+contact\b/,
+  /\bsay\s+request\b/,
+  /\bstand\s*by\b/,
+  /\bapprove\s+flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/,
+  /\bradar\s+service\s+terminated\b/,
+  /\bifr\s+cancellation\s+received\b/,
+  /\bmaintain\s+vfr\b/,
+  /\bcleared\s+visual\s+approach\s+runway\b/,
+];
+
+export function pathCHasSelfContainedCue(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return SELF_CONTAINED_CUES.some((pattern) => pattern.test(normalized));
+}
+
+/**
  * Reject a model result that silently drops an independent supported clause.
  * This is intentionally conservative: it only requires an instruction when
  * the transcript contains an unambiguous command cue for that instruction.
@@ -665,8 +691,23 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   if (has(/\bapprove\s+flight\s+following\b/) && !hasType("APPROVE_FLIGHT_FOLLOWING")) {
     return false;
   }
-  if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/) && !hasType("DECLINE_REQUEST")) {
-    return false;
+  if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/)) {
+    const decline = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!decline || decline.service !== "FLIGHT_FOLLOWING") {
+      return false;
+    }
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/)) {
+    const decline = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!decline || decline.service !== "IFR_PICKUP") {
+      return false;
+    }
   }
   if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
     return false;
@@ -684,7 +725,7 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
       radarContact.referenceId !== undefined ||
       radarContact.referenceKind !== undefined) &&
     !has(
-      /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest)\s+)?(?:from|of)\b/,
+      /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b/,
     )
   ) {
     return false;

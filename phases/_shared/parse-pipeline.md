@@ -45,16 +45,20 @@ runway designation; a near-miss without a runway remains `PARSE_MISS`.
 
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
-flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following`
-(`DECLINE_REQUEST`), `radar contact` with an optional `<distance> miles
+flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following` /
+`unable ifr pickup` (`DECLINE_REQUEST` with service `FLIGHT_FOLLOWING` /
+`IFR_PICKUP`), `radar contact` with an optional `<distance> miles
 [direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
 terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
 (`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
 transmissions. A compound transmission combining any of these with another
 instruction is `BAD_CLEARANCE`. A present `RADAR_CONTACT` position is
 all-or-nothing; its fixes/navaids are grounded via the shared catalog
-matcher, and ungrounded references return a parse miss. The pilot answer to
-`RADAR_CONTACT` is `roger`.
+matcher, airports via the airport namespace, and ungrounded references return
+a parse miss. The pilot answer to `RADAR_CONTACT` is `roger`. Transcripts
+carrying one of these cues (plus `maintain vfr` and visual-runway cues) may
+engage Path C even when identifier retrieval comes back empty; schema,
+completeness, grounding, and identifier-listed guards still decide acceptance.
 
 ## IFR clearance route windows
 

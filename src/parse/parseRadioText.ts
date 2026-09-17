@@ -384,6 +384,25 @@ function parseOneInstruction(
         nextIndex: index + 5,
       };
     }
+    if (tokens[index + 1] === "IFR" && tokens[index + 2] === "PICKUP") {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        nextIndex: index + 3,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "IFR" &&
+      tokens[index + 4] === "PICKUP"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        nextIndex: index + 5,
+      };
+    }
     return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
   }
   if (token === "IFR") {
@@ -417,11 +436,17 @@ function parseOneInstruction(
       if (milesToken !== "MILES" && milesToken !== "MILE") {
         return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: milesToken ?? "" };
       }
-      // Optional direction (`25 MILES SOUTHEAST OF KATL`); the stored
-      // reference is position only.
+      // Optional direction (`25 MILES SOUTHEAST OF KATL`, split `SOUTH EAST`
+      // included); the stored reference is position only.
       let refIndex = index + 4;
-      const maybeDir = tokens[refIndex];
-      if (maybeDir !== undefined && EIGHT_POINT_CARDINALS.has(maybeDir.toLowerCase())) {
+      const maybeDir = tokens[refIndex]?.toLowerCase();
+      if (maybeDir === "north" || maybeDir === "south") {
+        refIndex += 1;
+        const maybeHalf = tokens[refIndex]?.toLowerCase();
+        if (maybeHalf === "east" || maybeHalf === "west") {
+          refIndex += 1;
+        }
+      } else if (maybeDir !== undefined && EIGHT_POINT_CARDINALS.has(maybeDir)) {
         refIndex += 1;
       }
       const fromToken = tokens[refIndex];

@@ -168,6 +168,13 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Declines an open flight-following request.",
       },
       {
+        id: "decline-ifr-pickup",
+        command: "unable ifr pickup",
+        example: "DAL123 unable ifr pickup",
+        input: "Radio",
+        result: "Declines an open airborne VFR-to-IFR pickup request.",
+      },
+      {
         id: "radar-contact",
         command: "radar contact [<N> miles [direction] from|of <fix|navaid|airport>]",
         example: "DAL123 radar contact 25 miles southeast of KATL",
