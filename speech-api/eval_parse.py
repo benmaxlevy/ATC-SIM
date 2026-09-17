@@ -228,6 +228,20 @@ CASES: list[dict[str, Any]] = [
         "text": "maintain vfr",
         "expect": {"instructions": [{"type": "MAINTAIN_VFR"}]},
     },
+    {
+        "id": "radar-contact-bare",
+        "text": "radar contact",
+        "expect": {"instructions": [{"type": "RADAR_CONTACT"}]},
+    },
+    {
+        "id": "radar-contact-position",
+        "text": "radar contact five miles from CEDAR",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "CEDAR", "referenceKind": "FIX"}
+            ]
+        },
+    },
     # --- IFR clearance forms ---
     {
         "id": "clearance-as-filed-airport-alias",

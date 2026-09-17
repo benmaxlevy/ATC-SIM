@@ -470,12 +470,25 @@ export function handleRadioCommand(
       }
       case "RADAR_CONTACT": {
         const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
-        const report = {
-          distanceNm: requestControl.distanceNm,
-          referenceId: requestControl.referenceId,
-          referenceKind: requestControl.referenceKind,
+        const report: {
+          distanceNm?: number;
+          referenceId?: string;
+          referenceKind?: "FIX" | "NAVAID";
+          reportedAtSimMs: number;
+        } = {
           reportedAtSimMs: world.simTimeMs,
         };
+        // A present position is validated complete before dispatch; copy it
+        // through only when the controller actually gave one.
+        if (
+          requestControl.distanceNm !== undefined &&
+          requestControl.referenceId !== undefined &&
+          requestControl.referenceKind !== undefined
+        ) {
+          report.distanceNm = requestControl.distanceNm;
+          report.referenceId = requestControl.referenceId;
+          report.referenceKind = requestControl.referenceKind;
+        }
         if (req) {
           transitionRequestToIdentified(req, report, world.simTimeMs);
         }

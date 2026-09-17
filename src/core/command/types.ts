@@ -145,9 +145,10 @@ export type Instruction =
   | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" }
   | {
       type: "RADAR_CONTACT";
-      distanceNm: number;
-      referenceId: string;
-      referenceKind: "FIX" | "NAVAID";
+      /** Optional informational position reference. All-or-nothing with referenceId/referenceKind. */
+      distanceNm?: number;
+      referenceId?: string;
+      referenceKind?: "FIX" | "NAVAID";
     }
   | { type: "TERMINATE_RADAR_SERVICE" }
   | { type: "CLEARED_VISUAL"; runwayId: string };

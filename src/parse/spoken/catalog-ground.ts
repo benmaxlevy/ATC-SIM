@@ -572,6 +572,10 @@ export function groundInstructionFixes(
         : { ...inst, limitId, access };
     }
     if (inst.type === "RADAR_CONTACT") {
+      // Bare `radar contact` carries no reference to ground.
+      if (inst.referenceId === undefined) {
+        return inst;
+      }
       const grounded = groundReferenceToCatalog(inst.referenceId, catalog);
       if (grounded) {
         return {

@@ -578,10 +578,14 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
         "referenceKind": "NAVAID",
     }
     assert validate_instruction(radar_contact) == radar_contact
+    bare_radar_contact = {"type": "RADAR_CONTACT"}
+    assert validate_instruction(bare_radar_contact) == bare_radar_contact
     assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": -5, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
     assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 0, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
     assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "", "referenceKind": "NAVAID"}) is None
     assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "DEM", "referenceKind": "INVALID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "referenceId": "DEM"}) is None
 
     term_radar = {"type": "TERMINATE_RADAR_SERVICE"}
     assert validate_instruction(term_radar) == term_radar
@@ -603,6 +607,9 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert guard_instruction_semantics("unable to provide flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
 
     assert guard_instruction_semantics("radar contact 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[bare_radar_contact])).ok
+    assert not guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[bare_radar_contact])).ok
     assert guard_instruction_semantics("radar service terminated", ParseOutcome(ok=True, instructions=[term_radar])).ok
     assert guard_instruction_semantics("ifr cancellation received", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
     assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
@@ -611,6 +618,8 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     rc_outcome = ParseOutcome(ok=True, instructions=[radar_contact])
     assert guard_catalog_ids("radar contact 5 miles from DEM", {"fixes": ["DEM"]}, rc_outcome).ok
     assert not guard_catalog_ids("radar contact 5 miles from UNK", {"fixes": ["DEM"]}, ParseOutcome(ok=True, instructions=[{"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "UNK", "referenceKind": "FIX"}])).ok
+    bare_outcome = ParseOutcome(ok=True, instructions=[bare_radar_contact])
+    assert guard_catalog_ids("radar contact", {"fixes": ["DEM"]}, bare_outcome).ok
 
 
 

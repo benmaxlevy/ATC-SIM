@@ -217,7 +217,7 @@ test("VFR flight following and radio contact command lifecycle (T04-73)", async 
   // 3. radar contact
   const r3 = await handleRadioText(world, "DAL123 radar contact 5 miles from DEM", log);
   expect(r3.accepted).toBe(true);
-  expect(r3.readback).toBe("Delta 123 radar contact, 5 miles from DEM");
+  expect(r3.readback).toBe("Delta 123 roger");
   expect(req.status).toBe("IDENTIFIED");
   expect(dal.radarContact?.distanceNm).toBe(5);
   expect(dal.radarContact?.referenceId).toBe("DEM");
@@ -245,4 +245,30 @@ test("VFR flight following and radio contact command lifecycle (T04-73)", async 
   const rTermAgain = await handleRadioText(world, "DAL123 radar service terminated", log);
   expect(rTermAgain.accepted).toBe(false);
   expect(rTermAgain.detail).toBe("REQUEST: radar service is not active");
+});
+
+test("bare radar contact identifies with no position report and answers roger", async () => {
+  const dal = sample("DAL123", "ac-dal-bare");
+  const req = {
+    id: "req-dal-bare",
+    aircraftId: dal.id,
+    callsign: dal.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [dal],
+    radioRequests: [req],
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  const result = await handleRadioText(world, "DAL123 radar contact", log);
+  expect(result.accepted).toBe(true);
+  expect(result.readback).toBe("Delta 123 roger");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(dal.radarContact?.distanceNm).toBeUndefined();
+  expect(dal.radarContact?.referenceId).toBeUndefined();
 });

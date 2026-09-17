@@ -403,7 +403,7 @@ function parseOneInstruction(
     if (tokens[index + 1] === "CONTACT") {
       const distToken = tokens[index + 2];
       if (distToken === undefined) {
-        return { ok: false, code: PARSE_ERROR.EMPTY, detail: "missing distance" };
+        return { ok: true, instruction: { type: "RADAR_CONTACT" }, nextIndex: index + 2 };
       }
       const dist = Number(distToken);
       if (!Number.isFinite(dist) || dist <= 0) {

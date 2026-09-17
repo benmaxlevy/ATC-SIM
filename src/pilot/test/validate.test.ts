@@ -1050,6 +1050,29 @@ test("VFR flight following and radio contact instruction validation (T04-73)", (
       { catalog, radioRequests: [openReq] },
     ).ok,
   ).toBe(true);
+  // Bare `radar contact` (no position report) identifies with an open request.
+  expect(validateInstructions(ac, [{ type: "RADAR_CONTACT" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "RADAR_CONTACT" }], {
+      catalog,
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  // A partial position never validates.
+  expect(
+    validateInstructions(ac, [{ type: "RADAR_CONTACT", distanceNm: 5 } as unknown as Instruction], {
+      catalog,
+      radioRequests: [openReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
 
   // TERMINATE_RADAR_SERVICE
   expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }])).toEqual({

@@ -110,7 +110,7 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
     const posYBefore = ac.yNm;
     const resRc = await handleRadioText(world, "DAL123 radar contact 5 miles from DEM", log);
     expect(resRc.accepted).toBe(true);
-    expect(resRc.readback).toBe("Delta 123 radar contact, 5 miles from DEM");
+    expect(resRc.readback).toBe("Delta 123 roger");
     expect(req.status).toBe("IDENTIFIED");
     expect(req.radarContact?.distanceNm).toBe(5);
     expect(req.radarContact?.referenceId).toBe("DEM");

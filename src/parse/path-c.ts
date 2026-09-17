@@ -209,6 +209,11 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     );
   }
   if (type === "RADAR_CONTACT") {
+    // Bare `radar contact` (identification, no position report) or the full
+    // all-or-nothing position form. A partial position never validates.
+    if (keysOk(obj, ["type"])) {
+      return true;
+    }
     return (
       keysOk(obj, ["type", "distanceNm", "referenceId", "referenceKind"]) &&
       isFiniteNumber(obj.distanceNm) &&
@@ -662,6 +667,21 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     return false;
   }
   if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
+    return false;
+  }
+  const radarContact = instructions.find(
+    (instruction): instruction is Extract<Instruction, { type: "RADAR_CONTACT" }> =>
+      instruction.type === "RADAR_CONTACT",
+  );
+  // A present position report needs transcript evidence; bare `radar contact`
+  // needs only its cue. Either form still requires the cue above.
+  if (
+    radarContact &&
+    (radarContact.distanceNm !== undefined ||
+      radarContact.referenceId !== undefined ||
+      radarContact.referenceKind !== undefined) &&
+    !has(/\bmiles\s+from\b/)
+  ) {
     return false;
   }
   if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {

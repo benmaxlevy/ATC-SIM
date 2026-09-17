@@ -1013,7 +1013,11 @@ function matchRadarContact(
     return null;
   }
   const dist = parseDistanceNmValue(tokens, i + 2);
-  if (!dist || dist.value <= 0) {
+  if (!dist) {
+    // Bare `radar contact`: identification with no position report.
+    return { instruction: { type: "RADAR_CONTACT" }, next: i + 2 };
+  }
+  if (dist.value <= 0) {
     return null;
   }
   let j = dist.next;
@@ -1035,6 +1039,34 @@ function matchRadarContact(
   }
   const refTokens = tokens.slice(j, end);
   const rawRef = refTokens.join(" ");
+  // Spoken references arrive as NATO runs (`delta echo mike`); translate to
+  // the id before grounding, mirroring parseFixIdFrom. Falls through to
+  // phrase grounding for catalog aliases when the run does not resolve.
+  const phonetics: string[] = [];
+  let phoneticEnd = j;
+  while (
+    phonetics.length < 5 &&
+    tokens[phoneticEnd] !== undefined &&
+    tokens[phoneticEnd]! in PHONETIC_TO_LETTER
+  ) {
+    phonetics.push(PHONETIC_TO_LETTER[tokens[phoneticEnd]!]!);
+    phoneticEnd += 1;
+  }
+  if (phonetics.length >= 2) {
+    const phoneticId = phonetics.join("");
+    const phoneticGrounded = groundReferenceToCatalog(phoneticId, catalog);
+    if (phoneticGrounded) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: phoneticGrounded.referenceId,
+          referenceKind: phoneticGrounded.referenceKind,
+        },
+        next: phoneticEnd,
+      };
+    }
+  }
   const grounded = groundReferenceToCatalog(rawRef, catalog);
   if (grounded) {
     return {

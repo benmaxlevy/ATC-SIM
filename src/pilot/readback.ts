@@ -233,7 +233,7 @@ function formatInstructionClause(
         ? "unable flight following"
         : "unable IFR pickup";
     case "RADAR_CONTACT":
-      return `radar contact, ${instruction.distanceNm} miles from ${instruction.referenceId}`;
+      return "roger";
     case "TERMINATE_RADAR_SERVICE":
       return "radar service terminated";
     case "ACKNOWLEDGE_IFR_CANCELLATION":

@@ -230,7 +230,8 @@ test("VFR flight following and radio contact readbacks (T04-73)", () => {
         referenceKind: "NAVAID",
       },
     ]),
-  ).toBe("Delta 123 radar contact, 5 miles from DEM");
+  ).toBe("Delta 123 roger");
+  expect(readback([{ type: "RADAR_CONTACT" }])).toBe("Delta 123 roger");
   expect(readback([{ type: "TERMINATE_RADAR_SERVICE" }])).toBe(
     "Delta 123 radar service terminated",
   );

@@ -442,14 +442,27 @@ function validateOne(
       return { ok: true };
     }
     case "RADAR_CONTACT": {
-      if (!Number.isFinite(instruction.distanceNm) || instruction.distanceNm <= 0) {
+      // Bare `radar contact` identifies with no position report; a present
+      // position must be complete (positive distance + known fix/navaid).
+      if (
+        instruction.distanceNm === undefined &&
+        instruction.referenceId === undefined &&
+        instruction.referenceKind === undefined
+      ) {
+        const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+        if (!openReq) {
+          return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+        }
+        return { ok: true };
+      }
+      if (!Number.isFinite(instruction.distanceNm) || (instruction.distanceNm ?? 0) <= 0) {
         return {
           ok: false,
           reason: "RADAR_CONTACT",
           detail: "RADAR_CONTACT: distance must be positive",
         };
       }
-      const refId = instruction.referenceId.trim().toUpperCase();
+      const refId = (instruction.referenceId ?? "").trim().toUpperCase();
       if (!refId) {
         return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
       }
