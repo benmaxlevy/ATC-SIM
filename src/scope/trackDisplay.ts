@@ -30,7 +30,7 @@ import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
 
-/** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
+/** Display IDENT window (~2 s sim) for datablock "ID" text. Symbol does not flash. */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
 /** Legacy export retained for callers that still import the old query duration. */
 export const LDB_QUERY_DURATION_MS = 5000;
