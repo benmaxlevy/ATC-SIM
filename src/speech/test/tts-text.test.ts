@@ -100,15 +100,14 @@ test("airport, fix, and navaid codes speak as phonetics in identifier positions"
   expect(readbackForTts("N456, SR22, request flight following")).toBe(
     "November four five six, S R two two, request flight following",
   );
-  expect(readbackForTts("Delta 123 radar contact, 5 miles from DEM")).toBe(
-    "Delta one twenty three radar contact, five miles from Delta Echo Mike",
+  expect(readbackForTts("Delta 123 radar contact 5 miles from DEM")).toBe(
+    "Delta one twenty three radar contact five miles from Delta Echo Mike",
   );
+  expect(readbackForTts("Delta 123 roger")).toBe("Delta one twenty three roger");
   expect(readbackForTts("Delta 123 direct NEMAX")).toBe(
     "Delta one twenty three direct November Echo Mike Alfa X-ray",
   );
-  expect(readbackForTts("Delta 123 squawk VFR")).toBe(
-    "Delta one twenty three squawk Victor Foxtrot Romeo",
-  );
+  expect(readbackForTts("Delta 123 squawk VFR")).toBe("Delta one twenty three squawk V F R");
 });
 
 test("procedure names are never phoneticized", () => {

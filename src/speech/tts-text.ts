@@ -54,7 +54,9 @@ const TENS = [
  */
 const TTS_IDENTIFIER_ALIASES: Readonly<Record<string, string>> = {
   ILS: "India Lima Sierra",
-  VFR: "Victor Foxtrot Romeo",
+  // Flight-rules state is letter-spelled (`squawk VFR` → `squawk V F R`),
+  // never NATO phonetic.
+  VFR: "V F R",
   IFR: "India Foxtrot Romeo",
   DME: "Delta Mike Echo",
   // STAR/procedure name: spoken word, never spelled.
