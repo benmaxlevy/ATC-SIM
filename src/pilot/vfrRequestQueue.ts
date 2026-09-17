@@ -78,6 +78,38 @@ export function bearingToCardinalDirection(bearingDeg: number): string {
 }
 
 /**
+ * Format a VFR flight-following callup with aircraft type, destination, and
+ * altitude, e.g. "N123, 15 miles north of KPDK, C172, request flight
+ * following to KFTY at 4500".
+ *
+ * Generic: destination/altitude segments are omitted only when unknown so
+ * callers with sparse data still produce a valid fallback call.
+ */
+export function formatVfrFlightFollowingRequest(args: {
+  callsign: string;
+  positionPhrase?: string;
+  aircraftType?: string;
+  destinationAirportId?: string;
+  altitudeFt?: number;
+}): string {
+  const typeText = args.aircraftType ?? "type unknown";
+  const segments = [args.callsign];
+  if (args.positionPhrase) {
+    segments.push(args.positionPhrase);
+  }
+  segments.push(typeText);
+  let suffix = "request flight following";
+  if (args.destinationAirportId) {
+    suffix += ` to ${args.destinationAirportId}`;
+  }
+  if (args.altitudeFt !== undefined && Number.isFinite(args.altitudeFt)) {
+    suffix += ` at ${Math.round(args.altitudeFt)}`;
+  }
+  segments.push(suffix);
+  return segments.join(", ");
+}
+
+/**
  * Format a VFR position report relative to the nearest regional airport,
  * e.g. "15 miles north of KAHN".
  *
@@ -379,8 +411,41 @@ export class VfrRequestQueue {
       const altitudeChoices = [3000, 4000, 5000, 6000, 7000, 8000];
       requestedAltitudeFt = altitudeChoices[Math.floor(this.rng() * altitudeChoices.length)];
     } else {
-      // Flight following: intended destination when known from ambient mission
+      // Flight following: intended destination when known from ambient mission,
+      // otherwise a seeded eligible regional destination so the pilot can state
+      // type, destination, and altitude on callup. When no controlled eligible
+      // destination exists (VFR advisories may target any airport), fall back
+      // to the nearest regional airport without consuming the seeded stream.
+      // Missing inventory leaves the destination undefined and the phrase
+      // falls back gracefully.
       destinationAirportId = aircraft.ambientVfr?.destinationAirportId;
+      if (!destinationAirportId) {
+        const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
+        const eligibleDestinations = getEligibleVfrDestinations(regionalFacility);
+        if (eligibleDestinations.length > 0) {
+          const destIndex = Math.floor(this.rng() * eligibleDestinations.length);
+          destinationAirportId = eligibleDestinations[destIndex].icao;
+        } else {
+          const airports = regionalFacility?.airports;
+          if (airports && airports.length > 0) {
+            let nearestIcao: string | undefined;
+            let nearestDist = Number.POSITIVE_INFINITY;
+            for (const apt of airports) {
+              if (typeof apt?.icao !== "string" || !apt?.arpNm) {
+                continue;
+              }
+              const dist = distanceNm(apt.arpNm, { xNm: aircraft.xNm, yNm: aircraft.yNm });
+              if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestIcao = apt.icao;
+              }
+            }
+            destinationAirportId = nearestIcao;
+          }
+        }
+      }
+      // Requested cruise for VFR advisories is the current Mode C altitude.
+      requestedAltitudeFt = Math.round(aircraft.altitudeFt);
     }
 
     // Paced admission spacing: 3_600_000 / cap
@@ -617,6 +682,14 @@ export class VfrRequestQueue {
       next.positionNm = { xNm: aircraft.xNm, yNm: aircraft.yNm };
       next.altitudeFt = aircraft.altitudeFt;
       next.headingDeg = aircraft.headingDeg;
+      if (!next.aircraftType && aircraft.aircraftType) {
+        next.aircraftType = aircraft.aircraftType;
+      }
+      if (next.kind === "FLIGHT_FOLLOWING") {
+        // VFR cruise is current Mode C: refresh so the spoken altitude and the
+        // structured radio-request details always match present altitude.
+        next.requestedAltitudeFt = Math.round(aircraft.altitudeFt);
+      }
       next.state = "TRANSMITTED";
 
       const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
@@ -626,9 +699,13 @@ export class VfrRequestQueue {
       );
       const requestText =
         next.kind === "FLIGHT_FOLLOWING"
-          ? positionPhrase
-            ? `${next.callsign}, ${positionPhrase}, request flight following`
-            : `${next.callsign}, request flight following`
+          ? formatVfrFlightFollowingRequest({
+              callsign: next.callsign,
+              positionPhrase: positionPhrase ?? undefined,
+              aircraftType: next.aircraftType ?? aircraft.aircraftType,
+              destinationAirportId: next.destinationAirportId,
+              altitudeFt: next.requestedAltitudeFt ?? next.altitudeFt,
+            })
           : positionPhrase
             ? `${next.callsign}, ${positionPhrase}, request IFR to ${next.destinationAirportId ?? "destination"}`
             : `${next.callsign}, request IFR to ${next.destinationAirportId ?? "destination"}`;
@@ -700,9 +777,19 @@ export class VfrRequestQueue {
       : undefined;
     const detailText =
       radioReq.kind === "FLIGHT_FOLLOWING"
-        ? detailPosition
-          ? `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, ${detailPosition}, request flight following`
-          : `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, request flight following`
+        ? formatVfrFlightFollowingRequest({
+            callsign: radioReq.callsign,
+            positionPhrase: detailPosition ?? undefined,
+            aircraftType:
+              schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
+            destinationAirportId:
+              schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
+            altitudeFt:
+              schedReq?.requestedAltitudeFt ??
+              radioReq.details.requestedAltitudeFt ??
+              radioReq.details.altitudeFt ??
+              aircraft?.altitudeFt,
+          })
         : detailPosition
           ? `${radioReq.callsign}, ${detailPosition}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`
           : `${radioReq.callsign}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`;

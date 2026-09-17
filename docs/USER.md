@@ -383,7 +383,7 @@ draft edits and return focus. The existing seed control is reused, and
 Full phrases for the new workflow (typed on the command line or spoken over
 PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
 
-1. A generated aircraft calls, for example `N123AB, request flight following`.
+1. A generated aircraft calls, for example `N123AB, 15 miles north of KPDK, C172, request flight following to KFTY at 4500` — position, aircraft type, destination, and altitude.
 2. `N123AB say request` hears the details; `N123AB stand by` defers;
    `N123AB SQ 4721` and `N123AB I` assign a beacon and ident.
 3. `N123AB radar contact 5 miles from MERGE` establishes identification. The

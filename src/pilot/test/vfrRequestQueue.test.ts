@@ -775,7 +775,7 @@ describe("VfrRequestQueue position report on callup", () => {
     expect(formatVfrPositionReport({ xNm: 0, yNm: 0 }, createEmptyRegional())).toBeUndefined();
   });
 
-  it("initial flight-following call includes the position report", () => {
+  it("initial flight-following call includes position, type, destination, and altitude", () => {
     const regional = createSyntheticRegional();
     const queue = createVfrRequestQueue({
       config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
@@ -798,6 +798,47 @@ describe("VfrRequestQueue position report on callup", () => {
     queue.scheduleFromWorld(world, 0);
     queue.drain({ world, log, radio: { isBusy: () => false, play: (t) => void heard.push(t) } });
     expect(heard).toHaveLength(1);
-    expect(heard[0]).toBe("N123, 15 miles north of KPDK, request flight following");
+    expect(heard[0]).toContain("N123, 15 miles north of KPDK");
+    expect(heard[0]).toContain("C172");
+    expect(heard[0]).toContain("request flight following to");
+    expect(heard[0]).toContain("at 4500");
+    const req = queue.getRequests()[0]!;
+    expect(req.destinationAirportId).toBeDefined();
+    expect(req.requestedAltitudeFt).toBe(4500);
+    expect(world.radioRequests?.[0]?.details.destinationAirportId).toBe(req.destinationAirportId);
+    expect(world.radioRequests?.[0]?.details.requestedAltitudeFt).toBe(4500);
+  });
+
+  it("flight-following details repeat type, destination, and altitude", () => {
+    const regional = createSyntheticRegional();
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    const kpdk = regional.getAirport("KPDK")!;
+    const ac = createSyntheticVfrAircraft({
+      id: "ac-detail",
+      callsign: "N456",
+      xNm: kpdk.arpNm.xNm,
+      yNm: kpdk.arpNm.yNm + 15,
+    });
+    world.aircraft = [ac];
+    const log = new SessionLog();
+    queue.scheduleFromWorld(world, 0);
+    queue.drain({ world, log });
+    const radioReq = world.radioRequests?.[0];
+    expect(radioReq).toBeDefined();
+    radioReq!.status = "AWAITING_DETAILS";
+    const details = queue.emitRequestDetails(world, ac.id, log);
+    expect(details).toBeDefined();
+    expect(details!).toContain("N456");
+    expect(details!).toContain("C172");
+    expect(details!).toContain("request flight following to");
+    expect(details!).toContain(`to ${radioReq!.details.destinationAirportId}`);
+    expect(details!).toContain(`at ${radioReq!.details.requestedAltitudeFt}`);
   });
 });
