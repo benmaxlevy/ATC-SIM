@@ -108,6 +108,95 @@ test("PTT parser receives structured fix vocabulary while STT keeps its id proje
   );
 });
 
+test("busy covers TTS synthesis so a second pilot call cannot preempt the visible callup", async () => {
+  let resolveSynth!: (clip: AudioClip) => void;
+  const synthGate = new Promise<AudioClip>((resolve) => {
+    resolveSynth = resolve;
+  });
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe(): Promise<Transcript> {
+      return { text: "", latencyMs: 1 };
+    },
+    synthesize: () => synthGate,
+  };
+  const mockPlayer: ReadbackPlayer = {
+    playing: false,
+    fxEnabled: true,
+    warmUp: vi.fn(async () => {}),
+    playPcm: vi.fn(async () => ({ ok: true as const })),
+    stop: vi.fn(),
+    setConnectSource: vi.fn(),
+    setFxEnabled: vi.fn(),
+  };
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => null,
+    readbackPlayer: mockPlayer,
+  });
+  const pending = loop.playReadback(
+    "N123, 15 miles north of KPDK, request flight following",
+    "N123",
+  );
+  // Synthesis committed but unresolved: the radio is busy, so pilot queue
+  // drains hold instead of replacing the callup text mid-stream.
+  expect(loop.busy).toBe(true);
+  resolveSynth(nonEmptyClip());
+  await pending;
+  expect(loop.busy).toBe(false);
+});
+
+test("stale TTS stream finishing first does not clear newer callup text", async () => {
+  let resolveSynthA!: (clip: AudioClip) => void;
+  let resolveSynthB!: (clip: AudioClip) => void;
+  const synthA = new Promise<AudioClip>((resolve) => {
+    resolveSynthA = resolve;
+  });
+  const synthB = new Promise<AudioClip>((resolve) => {
+    resolveSynthB = resolve;
+  });
+  let synthCalls = 0;
+  const port: SpeechPort = {
+    id: "fake",
+    async transcribe(): Promise<Transcript> {
+      return { text: "", latencyMs: 1 };
+    },
+    synthesize: () => {
+      synthCalls += 1;
+      return synthCalls === 1 ? synthA : synthB;
+    },
+  };
+  const statuses: Array<VoiceLoopStatus | null> = [];
+  const mockPlayer: ReadbackPlayer = {
+    playing: false,
+    fxEnabled: true,
+    warmUp: vi.fn(async () => {}),
+    playPcm: vi.fn(async () => ({ ok: true as const })),
+    stop: vi.fn(),
+    setConnectSource: vi.fn(),
+    setFxEnabled: vi.fn(),
+  };
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => null,
+    onStatus: (status) => statuses.push(status),
+    readbackPlayer: mockPlayer,
+  });
+  const first = loop.playReadback("N123, 15 miles north of KPDK, request flight following", "N123");
+  const second = loop.playReadback("Approach, DAL123, descending via DEMO ONE arrival", "DAL123");
+  resolveSynthA(nonEmptyClip());
+  await first;
+  // Older stream done while newer still synthesizing: line must not clear.
+  expect(statuses).not.toContain(null);
+  resolveSynthB(nonEmptyClip());
+  await second;
+  expect(statuses[statuses.length - 1]).toBe(null);
+});
+
 test("rejected command with callsign and readback synthesizes and plays unable readback clip", async () => {
   const port = fakePort("slow to one two zero");
   const rejectionClip = nonEmptyClip();

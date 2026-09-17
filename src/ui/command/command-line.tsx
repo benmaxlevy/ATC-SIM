@@ -82,6 +82,11 @@ export function CommandLine({
   const [showingReadback, setShowingReadback] = useState(Boolean(voiceStatus));
   const prevCallsignRef = useRef<string | null>(selectedCallsign ?? null);
   const isFirstMount = useRef(true);
+  // Latest voice status without re-running the selection effect on every
+  // status change; a live pilot callup owns the line until its TTS stream
+  // ends and voiceStatus clears.
+  const voiceStatusRef = useRef(voiceStatus);
+  voiceStatusRef.current = voiceStatus;
   /** Set to true when readback is dismissed by an a/c click — prevents focus-stealing. */
   const skipNextFocusRef = useRef(false);
 
@@ -100,7 +105,12 @@ export function CommandLine({
       prevCallsignRef.current = selectedCallsign;
       // Don't steal focus from the PPI when filling the callsign via a/c click.
       skipNextFocusRef.current = true;
-      setShowingReadback(false);
+      // A live pilot callup owns the line until its TTS stream ends; stage
+      // the callsign in the input underneath instead of cutting the callup
+      // text off mid-stream. It is revealed when voiceStatus clears.
+      if (!voiceStatusRef.current) {
+        setShowingReadback(false);
+      }
     } else if (selectedCallsign === null && prevCallsignRef.current !== null) {
       setValue((current) => (current === prevCallsignRef.current ? "" : current));
       prevCallsignRef.current = null;

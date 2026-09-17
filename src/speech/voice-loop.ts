@@ -147,7 +147,12 @@ export interface VoiceLoop {
   handlePttEvent(event: PttCaptureEvent): Promise<void>;
   readonly lastUtteranceMetrics: VoiceUtteranceMetrics | null;
   readonly inFlight: boolean;
-  /** True while capture, transcribe, parse, or playback holds the transmit gate. */
+  /**
+   * True while capture, transcribe, parse, committed TTS synthesis, or
+   * playback holds the transmit gate. Pilot queues gate on this before
+   * replacing the command-line text, so a callup stays visible (and its
+   * audio un-overlapped) for the full TTS stream.
+   */
   readonly busy: boolean;
   readonly latency: VoiceLatencyTracker;
   readonly readbackPlayer: ReadbackPlayer;
@@ -259,6 +264,15 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: (callsign?: string) => string;
   private readonly gate = new TransmitGate();
+  /**
+   * Committed TTS streams (synthesis through playback end). Incremented
+   * synchronously on `playReadback` so `busy` covers the synthesis gap
+   * before `play-started` locks the gate; otherwise a second pilot queue
+   * drain could start mid-synthesis and replace the visible callup text.
+   */
+  private speakActive = 0;
+  /** Latest committed TTS stream; a stale stream never clears newer text. */
+  private speakSeq = 0;
   private readonly latencyTracker: VoiceLatencyTracker;
   private readonly dispatchedCommandIds = new Set<string>();
   readonly readbackPlayer: ReadbackPlayer;
@@ -297,7 +311,7 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   get busy(): boolean {
-    return this.inFlightValue || this.gate.locked;
+    return this.inFlightValue || this.gate.locked || this.speakActive > 0;
   }
 
   get latency(): VoiceLatencyTracker {
@@ -523,6 +537,8 @@ class VoiceLoopImpl implements VoiceLoop {
     if (this.disposed || text === "") {
       return;
     }
+    this.speakActive += 1;
+    const seq = ++this.speakSeq;
 
     const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
@@ -562,8 +578,15 @@ class VoiceLoopImpl implements VoiceLoop {
     } catch {
       this.emitStatus({ code: "tts_failed" });
     } finally {
-      this.syncLock("play-ended");
-      this.emitStatus(null);
+      this.speakActive -= 1;
+      if (this.speakActive === 0) {
+        this.syncLock("play-ended");
+      }
+      // A stale stream finishing after a newer one started must not clear
+      // the newer callup text (or unlock the gate under it) mid-stream.
+      if (seq === this.speakSeq) {
+        this.emitStatus(null);
+      }
     }
   }
 

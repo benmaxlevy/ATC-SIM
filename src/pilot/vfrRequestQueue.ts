@@ -16,6 +16,8 @@
  */
 
 import {
+  courseDeg,
+  distanceNm,
   mulberry32,
   type Aircraft,
   type IfrCancellationCandidate,
@@ -56,6 +58,61 @@ export const VFR_REQUEST_DEFAULT_SEED = 1;
 export const VFR_REQUEST_IDLE_GAP_MS = 500;
 export const VFR_CANCEL_DELAY_MIN_MS = 30_000;
 export const VFR_CANCEL_DELAY_MAX_MS = 120_000;
+
+const VFR_POSITION_CARDINALS = [
+  "north",
+  "northeast",
+  "east",
+  "southeast",
+  "south",
+  "southwest",
+  "west",
+  "northwest",
+] as const;
+
+/** Map a true bearing (deg, clockwise from north) to an 8-point cardinal. */
+export function bearingToCardinalDirection(bearingDeg: number): string {
+  const normalized = ((bearingDeg % 360) + 360) % 360;
+  const index = Math.round(normalized / 45) % 8;
+  return VFR_POSITION_CARDINALS[index]!;
+}
+
+/**
+ * Format a VFR position report relative to the nearest regional airport,
+ * e.g. "15 miles north of KAHN".
+ *
+ * Generic: walks the supplied regional airport inventory without any
+ * facility-specific branch. Returns undefined when no airport inventory
+ * is available so callers can fall back to a position-less call.
+ */
+export function formatVfrPositionReport(
+  positionNm: { xNm: number; yNm: number },
+  regional?: RegionalFacility | null,
+): string | undefined {
+  const airports = regional?.airports;
+  if (!airports || airports.length === 0) {
+    return undefined;
+  }
+  let nearest: { icao: string; arpNm: { xNm: number; yNm: number } } | undefined;
+  let nearestDistNm = Number.POSITIVE_INFINITY;
+  for (const apt of airports) {
+    if (!apt?.arpNm || typeof apt.icao !== "string") {
+      continue;
+    }
+    const dist = distanceNm(apt.arpNm, positionNm);
+    if (dist < nearestDistNm) {
+      nearestDistNm = dist;
+      nearest = apt;
+    }
+  }
+  if (!nearest) {
+    return undefined;
+  }
+  const miles = Math.max(1, Math.round(nearestDistNm));
+  const bearing = courseDeg(nearest.arpNm, positionNm);
+  const cardinal = bearingToCardinalDirection(bearing);
+  return `${miles} mile${miles === 1 ? "" : "s"} ${cardinal} of ${nearest.icao}`;
+}
 
 export interface VfrRequestRadio {
   isBusy(): boolean;
@@ -562,10 +619,19 @@ export class VfrRequestQueue {
       next.headingDeg = aircraft.headingDeg;
       next.state = "TRANSMITTED";
 
+      const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
+      const positionPhrase = formatVfrPositionReport(
+        { xNm: aircraft.xNm, yNm: aircraft.yNm },
+        regionalFacility,
+      );
       const requestText =
         next.kind === "FLIGHT_FOLLOWING"
-          ? `${next.callsign}, request flight following`
-          : `${next.callsign}, request IFR to ${next.destinationAirportId ?? "destination"}`;
+          ? positionPhrase
+            ? `${next.callsign}, ${positionPhrase}, request flight following`
+            : `${next.callsign}, request flight following`
+          : positionPhrase
+            ? `${next.callsign}, ${positionPhrase}, request IFR to ${next.destinationAirportId ?? "destination"}`
+            : `${next.callsign}, request IFR to ${next.destinationAirportId ?? "destination"}`;
       setStatus?.(requestText);
 
       log.append({
@@ -628,10 +694,18 @@ export class VfrRequestQueue {
     }
     const schedReq = this.requests.find((r) => r.id === radioReq.id);
     const aircraft = world.aircraft.find((ac) => ac.id === aircraftId);
+    const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
+    const detailPosition = aircraft
+      ? formatVfrPositionReport({ xNm: aircraft.xNm, yNm: aircraft.yNm }, regionalFacility)
+      : undefined;
     const detailText =
       radioReq.kind === "FLIGHT_FOLLOWING"
-        ? `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, request flight following`
-        : `${radioReq.callsign}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`;
+        ? detailPosition
+          ? `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, ${detailPosition}, request flight following`
+          : `${radioReq.callsign}, ${schedReq?.aircraftType ?? aircraft?.aircraftType ?? "type unknown"}, request flight following`
+        : detailPosition
+          ? `${radioReq.callsign}, ${detailPosition}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`
+          : `${radioReq.callsign}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`;
     setStatus?.(detailText);
     log?.append({
       type: "vfr.request.details_reported",

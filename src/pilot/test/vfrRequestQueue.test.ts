@@ -8,8 +8,10 @@ import {
 } from "@core";
 import { parseRegionalPack, type RegionalFacility } from "@scenario";
 import {
+  bearingToCardinalDirection,
   createVfrRequestQueue,
   defaultIfrCancellationValidator,
+  formatVfrPositionReport,
   isAirborneVfrEligible,
   validateVfrRequestConfig,
   VFR_CANCEL_DELAY_MAX_MS,
@@ -745,5 +747,57 @@ describe("VfrRequestQueue IFR cancellation candidate hook (T04-72)", () => {
     expect(cand.state).toBe("WITHDRAWN");
     expect(cand.withdrawnReason).toBe("ALREADY_VFR");
     expect(log.byType("pilot.cancel_ifr.withdrawn")).toHaveLength(1);
+  });
+});
+
+describe("VfrRequestQueue position report on callup", () => {
+  it("formats distance/cardinal relative to the nearest airport", () => {
+    const regional = createSyntheticRegional();
+    // KPDK arp projects near the scenario origin; 15 NM due north.
+    const kpdk = regional.getAirport("KPDK")!;
+    expect(
+      formatVfrPositionReport({ xNm: kpdk.arpNm.xNm, yNm: kpdk.arpNm.yNm + 15 }, regional),
+    ).toBe("15 miles north of KPDK");
+  });
+
+  it("uses singular mile and 8-point cardinals", () => {
+    const regional = createSyntheticRegional();
+    const kpdk = regional.getAirport("KPDK")!;
+    expect(
+      formatVfrPositionReport({ xNm: kpdk.arpNm.xNm + 1, yNm: kpdk.arpNm.yNm }, regional),
+    ).toBe("1 mile east of KPDK");
+    expect(bearingToCardinalDirection(45)).toBe("northeast");
+    expect(bearingToCardinalDirection(350)).toBe("north");
+  });
+
+  it("falls back to position-less call when no airport inventory exists", () => {
+    expect(formatVfrPositionReport({ xNm: 0, yNm: 0 }, null)).toBeUndefined();
+    expect(formatVfrPositionReport({ xNm: 0, yNm: 0 }, createEmptyRegional())).toBeUndefined();
+  });
+
+  it("initial flight-following call includes the position report", () => {
+    const regional = createSyntheticRegional();
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    const kpdk = regional.getAirport("KPDK")!;
+    const ac = createSyntheticVfrAircraft({
+      id: "ac-pos",
+      callsign: "N123",
+      xNm: kpdk.arpNm.xNm,
+      yNm: kpdk.arpNm.yNm + 15,
+    });
+    world.aircraft = [ac];
+    const log = new SessionLog();
+    const heard: string[] = [];
+    queue.scheduleFromWorld(world, 0);
+    queue.drain({ world, log, radio: { isBusy: () => false, play: (t) => void heard.push(t) } });
+    expect(heard).toHaveLength(1);
+    expect(heard[0]).toBe("N123, 15 miles north of KPDK, request flight following");
   });
 });
