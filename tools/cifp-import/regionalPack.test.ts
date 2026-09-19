@@ -203,6 +203,13 @@ describe("T04-70 regionalPack generator", () => {
     expect(result.manifest.centerAirportId).toBe("KAAA");
     expect(result.manifest.source.effectiveCycle).toBe("2610");
     expect(result.manifest.source.families).toEqual(["CIFP", "CIFP_UC", "NASR_APT", "NASR_TWR"]);
+    expect(result.manifest.source.coverage).toEqual([
+      { family: "CIFP", supplied: true, sourceId: "test.cifp", cycle: "2610" },
+      { family: "CIFP_UC", supplied: true, sourceId: "test.cifp", cycle: "2610" },
+      { family: "CIFP_UR", supplied: false, sourceId: "test.cifp", cycle: "2610" },
+      { family: "NASR_APT", supplied: true, sourceId: "apt.txt", cycle: "2610" },
+      { family: "NASR_TWR", supplied: true, sourceId: "twr.txt", cycle: "2610" },
+    ]);
 
     // Both center and satellite are eligible
     expect(result.eligibleAirports.map((a) => a.icao)).toEqual(["KAAA", "KBBB"]);

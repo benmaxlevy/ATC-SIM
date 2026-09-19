@@ -427,7 +427,7 @@ source model for training simulation.
 ### CLI usage
 
 ```text
-npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] [--nasr-cls-arsp <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
 ```
 
 Or directly:
@@ -449,13 +449,15 @@ node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> 
     and tower presence.
   - `TWR` / `ATC`: Tower and control facility records verifying tower operation
     and operating hours.
-  - `CLS_ARSP`: optional local Class B/C/D shape/airspace product. It is never
-    inferred from a filename; use `--nasr-cls-arsp` when supplied.
+  - `CLS_ARSP` is outside this importer’s supported regional-source boundary;
+    regional airspace comes from CIFP `UC`/`UR` only. The importer does not
+    accept or provenance a `--nasr-cls-arsp` input.
 
 The regional report records explicit coverage for `CIFP`, `CIFP_UC`, `CIFP_UR`,
-`NASR_APT`, `NASR_TWR`, and `NASR_CLS_ARSP`. Missing optional families remain
-marked unavailable; missing required CIFP or APT input is an error. Source IDs
-in generated output are portable product/file names, never absolute paths.
+`NASR_APT`, and `NASR_TWR`. `CLS_ARSP` is not a supported input family.
+Missing families remain marked unavailable; missing required CIFP or APT input
+is an error. Source IDs in generated output are portable product/file names,
+never absolute paths.
 
 ### Provenance and effective-cycle responsibility
 
@@ -508,7 +510,7 @@ catalogs for the center facility and all eligible satellite destination airports
 ### CLI usage
 
 ```text
-npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] [--nasr-cls-arsp <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
 ```
 
 Or directly:

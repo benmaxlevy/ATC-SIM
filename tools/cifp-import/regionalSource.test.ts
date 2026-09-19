@@ -168,10 +168,15 @@ test("AC5 — buildRegionalSource enriches airports and selects airspace in regi
     "CIFP_UR",
     "NASR_APT",
     "NASR_TWR",
-    "NASR_CLS_ARSP",
   ]);
   expect(result.sourceFamilies.find((family) => family.family === "NASR_TWR")?.sourceId).toBe(
     "TWR.txt",
+  );
+  expect(result.sourceFamilies.find((family) => family.family === "CIFP_UC")?.sourceId).toBe(
+    "FAACIFP18",
+  );
+  expect(result.sourceFamilies.find((family) => family.family === "CIFP_UR")?.sourceId).toBe(
+    "FAACIFP18",
   );
 });
 
@@ -194,11 +199,10 @@ test("T04-86 — source coverage and provenance stay explicit and portable", () 
   expect(result.serialized.regionalSource).not.toContain("C:\\\\cycles");
 });
 
-test("T04-86 — missing required family and empty explicit CLS_ARSP fail", () => {
-  const result = buildRegionalSource(SYNTHETIC_CIFP, "", undefined, "", {
+test("T04-86 — missing required family fails", () => {
+  const result = buildRegionalSource(SYNTHETIC_CIFP, "", undefined, {
     cifpPath: "cycle.cifp",
     nasrAptPath: "APT.txt",
-    nasrClsArspPath: "CLS_ARSP.txt",
     centerAirportId: "KAAA",
     radiusNm: 20,
   });
@@ -206,12 +210,29 @@ test("T04-86 — missing required family and empty explicit CLS_ARSP fail", () =
   expect(result.diagnostics).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ code: "MISSING_SOURCE_FAMILY", section: "NASR_APT" }),
-      expect.objectContaining({ code: "MALFORMED_SOURCE_FAMILY", section: "NASR_CLS_ARSP" }),
     ]),
   );
   expect(
     result.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
-  ).toBeGreaterThanOrEqual(2);
+  ).toBeGreaterThanOrEqual(1);
+});
+
+test("T04-86 — unsupported NASR CLS_ARSP flag is rejected", () => {
+  expect(() =>
+    parseRegionalCliArgs([
+      "--cifp",
+      "cycle.cifp",
+      "--nasr-apt",
+      "APT.txt",
+      "--nasr-cls-arsp",
+      "CLS.txt",
+      "--airport",
+      "KAAA",
+      "--radius",
+      "20",
+      "--dry-run",
+    ]),
+  ).toThrow("Unknown argument: --nasr-cls-arsp");
 });
 
 test("AC5 — strict regional mode fails when selected airport lacks NASR metadata", () => {

@@ -87,6 +87,12 @@ export interface RegionalAirspaceVolume {
 export interface RegionalSourceProvenance {
   effectiveCycle?: string;
   families: string[];
+  coverage?: {
+    family: string;
+    supplied: boolean;
+    sourceId?: string;
+    cycle?: string;
+  }[];
   command?: string;
 }
 
@@ -168,6 +174,25 @@ export function parseRegionalPack(
     effectiveCycle:
       isRecord(rawSource) && typeof rawSource.effectiveCycle === "string"
         ? rawSource.effectiveCycle
+        : undefined,
+    coverage:
+      isRecord(rawSource) && Array.isArray(rawSource.coverage)
+        ? rawSource.coverage.map((entry, i) => {
+            if (!isRecord(entry)) {
+              throw new Error(`Regional source.coverage[${i}] must be an object`);
+            }
+            return {
+              family: assertString(entry.family, `source.coverage[${i}].family`),
+              supplied:
+                typeof entry.supplied === "boolean"
+                  ? entry.supplied
+                  : (() => {
+                      throw new Error(`source.coverage[${i}].supplied must be a boolean`);
+                    })(),
+              sourceId: typeof entry.sourceId === "string" ? entry.sourceId : undefined,
+              cycle: typeof entry.cycle === "string" ? entry.cycle : undefined,
+            };
+          })
         : undefined,
     command:
       isRecord(rawSource) && typeof rawSource.command === "string" ? rawSource.command : undefined,
