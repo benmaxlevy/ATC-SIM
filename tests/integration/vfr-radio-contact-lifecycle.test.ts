@@ -355,6 +355,12 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
               boundaryViaType: "GREAT_CIRCLE",
               position: { latDeg: 33.8, lonDeg: -84.4 },
             },
+            {
+              sequence: 5,
+              boundaryVia: "G",
+              boundaryViaType: "GREAT_CIRCLE",
+              position: { latDeg: 33.9, lonDeg: -84.4 },
+            },
           ],
         },
         {
@@ -389,6 +395,12 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
               boundaryVia: "G",
               boundaryViaType: "GREAT_CIRCLE",
               position: { latDeg: 33.7, lonDeg: -84.6 },
+            },
+            {
+              sequence: 5,
+              boundaryVia: "G",
+              boundaryViaType: "GREAT_CIRCLE",
+              position: { latDeg: 33.8, lonDeg: -84.6 },
             },
           ],
         },

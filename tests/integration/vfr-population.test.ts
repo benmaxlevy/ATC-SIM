@@ -123,6 +123,12 @@ const SYNTHETIC_REGIONAL_AIRSPACE = [
         boundaryViaType: "GREAT_CIRCLE",
         position: { latDeg: 32.9, lonDeg: -84.1 }, // x: -5, y: -6
       },
+      {
+        sequence: 5,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 33.1, lonDeg: -84.1 }, // x: -5, y: 6
+      },
     ],
   },
 ];
@@ -372,7 +378,7 @@ describe("T04-71 VFR population end-to-end integration", () => {
         centerAirportId: airportId,
         lowerLimit: { altitudeFt: 0, unit: "GND", reference: "SURFACE", rawAltitude: "SFC" },
         upperLimit: { altitudeFt: 2500, unit: "MSL", reference: "MSL" },
-        segments: corners.map((position, i) => ({
+        segments: [...corners, corners[0]!].map((position, i) => ({
           sequence: i + 1,
           boundaryVia: "G",
           boundaryViaType: "GREAT_CIRCLE",
@@ -479,7 +485,7 @@ describe("T04-80 Satellite-departure line acceptance", () => {
       centerAirportId: airportId,
       lowerLimit: { altitudeFt: 0, unit: "GND", reference: "SURFACE", rawAltitude: "SFC" },
       upperLimit: { altitudeFt: 2500, unit: "MSL", reference: "MSL" },
-      segments: corners.map((position, i) => ({
+      segments: [...corners, corners[0]!].map((position, i) => ({
         sequence: i + 1,
         boundaryVia: "G",
         boundaryViaType: "GREAT_CIRCLE",

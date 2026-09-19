@@ -114,7 +114,7 @@ const SYNTHETIC_AIRPORTS = {
         {
           id: "36",
           threshold: { latDeg: 33.15, lonDeg: -84.1 },
-          headingTrueDeg: 360,
+          headingTrueDeg: 0,
           headingMagDeg: 5,
           lengthFt: 5000,
         },
@@ -175,6 +175,12 @@ const SYNTHETIC_AIRSPACE = {
           boundaryVia: "G",
           boundaryViaType: "GREAT_CIRCLE",
           position: { latDeg: 32.9, lonDeg: -83.9 },
+        },
+        {
+          sequence: 40,
+          boundaryVia: "G",
+          boundaryViaType: "GREAT_CIRCLE",
+          position: { latDeg: 33.1, lonDeg: -84.1 },
         },
       ],
     },
@@ -434,7 +440,7 @@ describe("T04-70 runtime regional facility and loader", () => {
     expect(classB.name).toBe("SYNTHETIC CLASS B");
     expect(classB.lowerLimitFt).toBe(2000);
     expect(classB.upperLimitFt).toBe(10000);
-    expect(classB.segments).toHaveLength(3);
+    expect(classB.segments).toHaveLength(4);
     expect(classB.segments[0]!.positionNm).toBeDefined();
 
     const classD = airspaces.find((a) => a.class === "D")!;
@@ -618,6 +624,7 @@ describe("T04-70 runtime regional facility and loader", () => {
                 ...SYNTHETIC_AIRSPACE.airspaces[0]!.segments[0]!,
                 boundaryViaType: "END",
               },
+              ...SYNTHETIC_AIRSPACE.airspaces[0]!.segments.slice(1, 3),
             ],
           },
         ],
@@ -645,5 +652,58 @@ describe("T04-70 runtime regional facility and loader", () => {
     } as unknown);
     expect(incompleteEligible.getEligibleDestinations()).toHaveLength(0);
     expect(incompleteEligible.getAirport("KSYN")?.exclusionReason).toBe("missing_catalog");
+
+    const mismatchedStatus = parse({
+      ...SYNTHETIC_AIRPORTS,
+      airports: [
+        {
+          ...SYNTHETIC_AIRPORTS.airports[0]!,
+          towered: false,
+        },
+      ],
+    } as unknown);
+    expect(mismatchedStatus.getEligibleDestinations()).toHaveLength(0);
+
+    for (const reference of [
+      "",
+      "/tmp/apt.txt",
+      "C:\\\\apt.txt",
+      "\\\\server\\apt.txt",
+      "../apt.txt",
+    ]) {
+      expect(() =>
+        parse({
+          ...SYNTHETIC_AIRPORTS,
+          airports: [
+            {
+              ...SYNTHETIC_AIRPORTS.airports[0]!,
+              serviceMetadata: {
+                ...SYNTHETIC_AIRPORTS.airports[0]!.serviceMetadata,
+                sourceFile: reference,
+              },
+            },
+          ],
+        } as unknown),
+      ).toThrow(/portable relative reference/);
+    }
+
+    expect(() =>
+      parse(undefined, undefined, {
+        ...SYNTHETIC_MANIFEST,
+        source: { ...SYNTHETIC_MANIFEST.source, command: "pack --input ../apt.txt" },
+      }),
+    ).toThrow(/portable relative reference/);
+
+    expect(() =>
+      parse({
+        ...SYNTHETIC_AIRPORTS,
+        airports: [
+          {
+            ...SYNTHETIC_AIRPORTS.airports[0]!,
+            runways: [{ ...SYNTHETIC_AIRPORTS.airports[0]!.runways[0]!, headingTrueDeg: 360 }],
+          },
+        ],
+      } as unknown),
+    ).toThrow(/headings must be in \[0, 360\)/);
   });
 });

@@ -119,6 +119,12 @@ const SYNTHETIC_REGIONAL_AIRSPACE = [
         boundaryViaType: "GREAT_CIRCLE",
         position: { latDeg: 32.9, lonDeg: -84.1 },
       },
+      {
+        sequence: 5,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 33.1, lonDeg: -84.1 },
+      },
     ],
   },
 ];

@@ -600,7 +600,7 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
       centerAirportId: centerIcao,
       lowerLimit: { altitudeFt: 0, unit: "GND", reference: "SURFACE", rawAltitude: "SFC" },
       upperLimit: { altitudeFt: 2500, unit: "MSL", reference: "MSL" },
-      segments: corners.map((position, i) => ({
+      segments: [...corners, corners[0]!].map((position, i) => ({
         sequence: i + 1,
         boundaryVia: "G",
         boundaryViaType: "GREAT_CIRCLE",

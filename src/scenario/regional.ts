@@ -131,11 +131,12 @@ const SUPPORTED_BOUNDARY_VIAS = new Set([
   "END",
 ]);
 
-const ABSOLUTE_PATH = /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/;
+const ABSOLUTE_PATH = /(?:^|[\s"'=])(?:[A-Za-z]:[\\/]|[\\/])/;
+const PATH_TRAVERSAL = /(?:^|[\s"'=\\/])\.\.(?:$|[\s"'=\\/])/;
 
 function assertPortableReference(value: string, path: string): string {
   const reference = value.trim();
-  if (reference.length === 0 || ABSOLUTE_PATH.test(reference) || reference.includes("..")) {
+  if (reference.length === 0 || ABSOLUTE_PATH.test(reference) || PATH_TRAVERSAL.test(reference)) {
     throw new Error(`${path} must be a portable relative reference (got '${value}')`);
   }
   return reference;
@@ -213,11 +214,7 @@ export function parseRegionalPack(
         : undefined,
     command:
       isRecord(rawSource) && typeof rawSource.command === "string"
-        ? /(?:\/home\/|[A-Za-z]:[\\/])/.test(rawSource.command)
-          ? (() => {
-              throw new Error("source.command must not contain an absolute local path");
-            })()
-          : rawSource.command
+        ? assertPortableReference(rawSource.command, "source.command")
         : undefined,
   };
 
@@ -272,6 +269,8 @@ export function parseRegionalPack(
     const magVarDeg = assertNumber(raw.magVarDeg, `airports[${i}].magVarDeg`);
     const publicUse = raw.publicUse === true;
     const towered = raw.towered === true;
+    const hasExplicitPublicUse = typeof raw.publicUse === "boolean";
+    const hasExplicitTowered = typeof raw.towered === "boolean";
     const declaredEligible = raw.eligible === true;
     const exclusionReason =
       typeof raw.exclusionReason === "string" ? raw.exclusionReason : undefined;
@@ -280,6 +279,31 @@ export function parseRegionalPack(
       typeof raw.catalogRef === "string"
         ? assertPortableReference(raw.catalogRef, `airports[${i}].catalogRef`)
         : undefined;
+
+    const rawMetadata = isRecord(raw.serviceMetadata) ? raw.serviceMetadata : undefined;
+    const serviceMetadata = rawMetadata
+      ? {
+          publicUse: typeof rawMetadata.publicUse === "boolean" ? rawMetadata.publicUse : undefined,
+          towered: typeof rawMetadata.towered === "boolean" ? rawMetadata.towered : undefined,
+          sourceFile:
+            typeof rawMetadata.sourceFile === "string"
+              ? assertPortableReference(
+                  rawMetadata.sourceFile,
+                  `airports[${i}].serviceMetadata.sourceFile`,
+                )
+              : undefined,
+          sourceRecordId:
+            typeof rawMetadata.sourceRecordId === "string"
+              ? assertPortableReference(
+                  rawMetadata.sourceRecordId,
+                  `airports[${i}].serviceMetadata.sourceRecordId`,
+                )
+              : undefined,
+          effectiveDate:
+            typeof rawMetadata.effectiveDate === "string" ? rawMetadata.effectiveDate : undefined,
+          cycle: typeof rawMetadata.cycle === "string" ? rawMetadata.cycle : undefined,
+        }
+      : undefined;
 
     if (catalogRef !== undefined) {
       const previousAirport = catalogRefs.get(catalogRef);
@@ -320,7 +344,12 @@ export function parseRegionalPack(
       if (lengthFt <= 0) {
         throw new Error(`airports[${i}].runways[${j}].lengthFt must be positive`);
       }
-      if (headingTrueDeg < 0 || headingTrueDeg > 360 || headingMagDeg < 0 || headingMagDeg > 360) {
+      if (
+        headingTrueDeg < 0 ||
+        headingTrueDeg >= 360 ||
+        headingMagDeg < 0 ||
+        headingMagDeg >= 360
+      ) {
         throw new Error(`airports[${i}].runways[${j}] headings must be in [0, 360)`);
       }
 
@@ -336,12 +365,20 @@ export function parseRegionalPack(
 
     let eligible = declaredEligible;
     if (eligible) {
-      const metadata = isRecord(raw.serviceMetadata) ? raw.serviceMetadata : undefined;
-      if (metadata?.publicUse !== true || metadata.towered !== true) {
+      if (
+        !hasExplicitPublicUse ||
+        !hasExplicitTowered ||
+        publicUse !== true ||
+        towered !== true ||
+        serviceMetadata?.publicUse !== true ||
+        serviceMetadata.towered !== true ||
+        serviceMetadata.publicUse !== publicUse ||
+        serviceMetadata.towered !== towered
+      ) {
         eligible = false;
       } else if (
-        typeof metadata.sourceFile !== "string" ||
-        typeof metadata.sourceRecordId !== "string"
+        serviceMetadata.sourceFile === undefined ||
+        serviceMetadata.sourceRecordId === undefined
       ) {
         eligible = false;
       } else if (runways.length === 0) {
@@ -353,11 +390,11 @@ export function parseRegionalPack(
     const normalizedExclusionReason =
       eligible || exclusionReason
         ? exclusionReason
-        : !isRecord(raw.serviceMetadata)
+        : !serviceMetadata
           ? "missing_nasr_status"
-          : raw.serviceMetadata.publicUse !== true
+          : serviceMetadata.publicUse !== true || publicUse !== serviceMetadata.publicUse
             ? "private_use"
-            : raw.serviceMetadata.towered !== true
+            : serviceMetadata.towered !== true || towered !== serviceMetadata.towered
               ? "untowered"
               : runways.length === 0
                 ? "no_valid_runway"
@@ -374,34 +411,9 @@ export function parseRegionalPack(
       towered,
       eligible,
       ...(normalizedExclusionReason ? { exclusionReason: normalizedExclusionReason } : {}),
-      ...(isRecord(raw.serviceMetadata)
+      ...(serviceMetadata
         ? {
-            serviceMetadata: {
-              publicUse:
-                typeof raw.serviceMetadata.publicUse === "boolean"
-                  ? raw.serviceMetadata.publicUse
-                  : undefined,
-              towered:
-                typeof raw.serviceMetadata.towered === "boolean"
-                  ? raw.serviceMetadata.towered
-                  : undefined,
-              sourceFile:
-                typeof raw.serviceMetadata.sourceFile === "string"
-                  ? raw.serviceMetadata.sourceFile
-                  : undefined,
-              sourceRecordId:
-                typeof raw.serviceMetadata.sourceRecordId === "string"
-                  ? raw.serviceMetadata.sourceRecordId
-                  : undefined,
-              effectiveDate:
-                typeof raw.serviceMetadata.effectiveDate === "string"
-                  ? raw.serviceMetadata.effectiveDate
-                  : undefined,
-              cycle:
-                typeof raw.serviceMetadata.cycle === "string"
-                  ? raw.serviceMetadata.cycle
-                  : undefined,
-            },
+            serviceMetadata,
           }
         : {}),
       runways,
@@ -557,7 +569,7 @@ export function parseRegionalPack(
     if (segments.length > 1 && distinctPositions.size < 2) {
       throw new Error(`Airspace ${id} has a degenerate boundary`);
     }
-    if (segments.some((segment) => segment.boundaryViaType === "END")) {
+    if (segments.length > 1) {
       const first = segments[0]!.position;
       const last = segments[segments.length - 1]!.position;
       if (segments.length < 3 || !samePosition(first, last) || distinctPositions.size < 3) {

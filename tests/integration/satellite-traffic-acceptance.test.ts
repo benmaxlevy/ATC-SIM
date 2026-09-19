@@ -192,6 +192,13 @@ const SYNTHETIC_REGIONAL_AIRSPACE = [
         position: { latDeg: 32.92, lonDeg: -84.1 },
         positionNm: { xNm: -5, yNm: -5 },
       },
+      {
+        sequence: 5,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 33.08, lonDeg: -84.1 },
+        positionNm: { xNm: -5, yNm: 5 },
+      },
     ],
   },
   {
@@ -233,6 +240,13 @@ const SYNTHETIC_REGIONAL_AIRSPACE = [
         position: { latDeg: 32.84, lonDeg: -84.2 },
         positionNm: { xNm: -10, yNm: -10 },
       },
+      {
+        sequence: 5,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 33.16, lonDeg: -84.2 },
+        positionNm: { xNm: -10, yNm: 10 },
+      },
     ],
   },
   {
@@ -273,6 +287,13 @@ const SYNTHETIC_REGIONAL_AIRSPACE = [
         boundaryViaType: "GREAT_CIRCLE",
         position: { latDeg: 33.25, lonDeg: -84.05 },
         positionNm: { xNm: -3, yNm: 15 },
+      },
+      {
+        sequence: 5,
+        boundaryVia: "G",
+        boundaryViaType: "GREAT_CIRCLE",
+        position: { latDeg: 33.35, lonDeg: -84.05 },
+        positionNm: { xNm: -3, yNm: 21 },
       },
     ],
   },
