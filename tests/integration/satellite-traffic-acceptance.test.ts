@@ -52,6 +52,7 @@ import {
   type Scenario,
 } from "@scenario";
 import { handleRadioText } from "../../src/pilot/handleRadioText";
+import { validateInstructions } from "../../src/pilot/validate";
 import {
   createVfrRequestQueue,
   defaultIfrCancellationValidator,
@@ -59,6 +60,7 @@ import {
 } from "../../src/pilot/vfrRequestQueue";
 import {
   isPointInside3dVolume,
+  isRouteSafeFromAvoidance,
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
   stepVfrAircraftNavigation,
@@ -675,6 +677,56 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
     const regional = buildSyntheticRegionalFacility();
     const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
     expect(classBVolumes.length).toBeGreaterThan(0);
+
+    const cancellationAircraft = createAircraft({
+      id: "ac-cancel-long",
+      callsign: "N555CL",
+      xNm: -20,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 4500,
+      speedKt: 120,
+      squawk: "4721",
+      flightRules: "IFR",
+      airborne: true,
+      cancellationPending: true,
+      ambientVfr: {
+        mission: "TRANSIT",
+        zoneId: "west",
+        spawnedAtSimMs: 0,
+        alertEligibility: "CONTROLLED",
+        waypoints: [{ xNm: 0, yNm: 0, altitudeFt: 4500 }],
+        waypointIndex: 0,
+      },
+    });
+    const cancellationWorld = createWorld({ aircraft: [cancellationAircraft] });
+    cancellationWorld.regional = regional;
+    const cancellationBefore = structuredClone(cancellationAircraft);
+    const cancellationCheck = validateInstructions(
+      cancellationAircraft,
+      [{ type: "ACKNOWLEDGE_IFR_CANCELLATION" }],
+      {
+        regional,
+        vfrContinuationValidator: () =>
+          isRouteSafeFromAvoidance(
+            [
+              {
+                xNm: cancellationAircraft.xNm,
+                yNm: cancellationAircraft.yNm,
+                altitudeFt: cancellationAircraft.altitudeFt,
+              },
+              { xNm: 0, yNm: 0, altitudeFt: 4500 },
+            ],
+            classBVolumes,
+          ),
+      },
+    );
+    expect(cancellationCheck).toEqual({
+      ok: false,
+      reason: "CANCELLATION",
+      detail: "CANCELLATION: unable to establish safe VFR continuation",
+    });
+    expect(cancellationAircraft).toEqual(cancellationBefore);
 
     // Plan route starting west of Bravo [-20, 0] aiming east of Bravo [20, 0] at 4500 ft
     // Direct path would pass straight through Bravo Core (x: [-5, 5], y: [-5, 5], alt 0-10000)

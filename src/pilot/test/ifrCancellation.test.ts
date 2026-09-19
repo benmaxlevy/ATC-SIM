@@ -16,6 +16,7 @@ import { handleRadioText } from "../handleRadioText";
 import { datablockSourceFromWorld } from "../../scope/datablock";
 import { isVfrAircraft } from "../../scope/systemLists";
 import { terminalStripsFromWorld } from "../../ui/strips/terminalStripsFromWorld";
+import { isRouteSafeFromAvoidance } from "../../core/vfrNavigation";
 
 const SYNTHETIC_CLASS_B_VOLUME: RegionalAirspaceVolume = {
   id: "UC:KATL:B_CORE",
@@ -391,6 +392,42 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
       }
     });
 
+    it("rejects a long waypoint leg that sweeps through Class B", () => {
+      const { world, aircraft } = setupTestWorld({
+        xNm: 20,
+        yNm: 20,
+        altitudeFt: 4500,
+        cancellationPending: true,
+      });
+      aircraft.ambientVfr!.waypoints = [
+        { xNm: 0, yNm: 0, altitudeFt: 4500 },
+        { xNm: 20, yNm: 20, altitudeFt: 4500 },
+      ];
+      aircraft.ambientVfr!.waypointIndex = 0;
+      aircraft.ambientVfr!.destinationAirportId = undefined;
+      const before = structuredClone(aircraft);
+      expect(
+        isRouteSafeFromAvoidance(
+          [
+            { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+            { xNm: 0, yNm: 0, altitudeFt: 4500 },
+          ],
+          [SYNTHETIC_CLASS_B_VOLUME],
+        ),
+      ).toBe(false);
+      const result = validateInstructions(aircraft, [{ type: "ACKNOWLEDGE_IFR_CANCELLATION" }], {
+        regional: (world.regional as RegionalFacility) ?? null,
+        vfrContinuationValidator: () => false,
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        reason: "CANCELLATION",
+        detail: "CANCELLATION: unable to establish safe VFR continuation",
+      });
+      expect(aircraft).toEqual(before);
+    });
+
     it("rejects when ACKNOWLEDGE_IFR_CANCELLATION is bundled with another instruction", () => {
       const { world, aircraft } = setupTestWorld({
         xNm: 20,
@@ -468,6 +505,28 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
       expect(res.readback).toBe("Delta 123 IFR cancellation received");
       expect(aircraft.flightRules).toBe("VFR");
     });
+
+    it("clears missed lateral and vertical guidance on success", async () => {
+      const { world, aircraft } = setupTestWorld({
+        xNm: 20,
+        yNm: 20,
+        altitudeFt: 4500,
+        cancellationPending: true,
+      });
+      aircraft.intent.lateral = { type: "MISSED", approachId: "ILS27" };
+      aircraft.intent.vertical = { type: "MISSED_CLIMB", altitudeFt: 6000 };
+
+      const res = await handleRadioText(
+        world,
+        "DAL123 IFR cancellation received",
+        new SessionLog(),
+      );
+
+      expect(res.accepted).toBe(true);
+      expect(aircraft.intent.lateral).toEqual({ type: "HEADING", headingDeg: aircraft.headingDeg });
+      expect(aircraft.intent.vertical).toEqual({ type: "ASSIGNED" });
+      expect(aircraft.intent.assignedAltitudeFt).toBe(aircraft.altitudeFt);
+    });
   });
 
   describe("5. Service separation and flight plan independence (AC5, AC6)", () => {
@@ -480,6 +539,13 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
         withFlightFollowing: true,
         squawk: "4721",
       });
+      aircraft.radarContact = {
+        distanceNm: 5,
+        referenceId: "KATL",
+        referenceKind: "FIX",
+        reportedAtSimMs: 1000,
+      };
+      const radarContactBefore = structuredClone(aircraft.radarContact);
       const log = new SessionLog();
 
       await handleRadioText(world, "DAL123 IFR cancellation received", log);
@@ -489,6 +555,7 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
       // Beacon code is NOT reset to 1200
       expect(aircraft.squawk).toBe("4721");
       expect(aircraft.assignedSquawk).toBe("4721");
+      expect(aircraft.radarContact).toEqual(radarContactBefore);
     });
 
     it("preserves world.flightPlans byte/deep-equal before and after cancellation", async () => {

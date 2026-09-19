@@ -545,13 +545,7 @@ export function applyIfrClearance(
     }
     const cancellationLog = log ?? world.sessionLog ?? undefined;
     if (world.scheduleIfrCancellationCandidate) {
-      const cancellationHook = world.scheduleIfrCancellationCandidate as unknown as (
-        target: unknown,
-        arg1?: unknown,
-        arg2?: unknown,
-      ) => unknown;
-      cancellationHook(world, matchingAircraft.id);
-      cancellationHook(matchingAircraft, world.simTimeMs, {
+      world.scheduleIfrCancellationCandidate(matchingAircraft, world.simTimeMs, {
         log: cancellationLog,
       });
     } else if (world.vfrRequestQueue?.scheduleIfrCancellationCandidate) {

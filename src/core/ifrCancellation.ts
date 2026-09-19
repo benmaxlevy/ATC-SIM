@@ -62,7 +62,11 @@ export function applyIfrCancellation(
   aircraft.intent.locInterceptApproachId = null;
   aircraft.intent.expectedApproachId = null;
 
-  if (aircraft.intent.vertical?.type === "GS" || aircraft.intent.vertical?.type === "GLIDEPATH") {
+  if (
+    aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "GLIDEPATH" ||
+    aircraft.intent.vertical?.type === "MISSED_CLIMB"
+  ) {
     aircraft.intent.vertical = { type: "ASSIGNED" };
     aircraft.intent.assignedAltitudeFt = aircraft.altitudeFt;
   }
@@ -72,13 +76,13 @@ export function applyIfrCancellation(
     lateralType === "LOC" ||
     lateralType === "INTERCEPT_LOC" ||
     lateralType === "VECTOR_PENDING" ||
-    lateralType === "VISUAL_FINAL"
+    lateralType === "VISUAL_FINAL" ||
+    lateralType === "MISSED"
   ) {
     aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
     aircraft.intent.assignedHeadingDeg = aircraft.headingDeg;
   }
   aircraft.radarVectorPending = undefined;
-  delete aircraft.radarContact;
 
   // Restore ambient VFR alert eligibility
   if (aircraft.ambientVfr) {

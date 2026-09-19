@@ -330,7 +330,12 @@ describe("T04-74: Airborne VFR-to-IFR pickup", () => {
       });
       expect(aircraft.radarVectorPending).toBe(true);
       expect(requestRecord?.status).toBe("APPROVED");
-      expect(scheduleIfrCancellationCandidate).toHaveBeenCalledWith(world, "ac-dal");
+      expect(scheduleIfrCancellationCandidate).toHaveBeenCalledTimes(1);
+      expect(scheduleIfrCancellationCandidate).toHaveBeenCalledWith(
+        aircraft,
+        world.simTimeMs,
+        expect.objectContaining({ log: expect.anything() }),
+      );
     });
   });
 
