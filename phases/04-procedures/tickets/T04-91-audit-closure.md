@@ -108,9 +108,8 @@ actual result and must not treat a timeout as a pass.
   Live KATL/browser sessions, speech-latency measurement, 60-FPS performance
   observation, and live-source/facility fidelity checks require local runtime
   access and remain unclaimed by automated tests.
-- Speech mock gate: `SPEECH_API_MOCK=1 .venv/bin/pytest` collected 94 tests but
-  timed out in `tests/test_contract.py` while Starlette `TestClient` waited for
-  the AnyIO portal under this machine's Python 3.13 environment. Direct async
-  lifespan startup completes; the timeout is not counted as a pass. A prior
-  worker-reported 94-pass temporary run is retained as unverified evidence.
+- Speech mock gate: `SPEECH_API_MOCK=1 .venv/bin/pytest` passed with 94 tests
+  in 1.27s when run outside the sandbox. The sandbox-only timeout was caused by
+  its Python 3.13 asyncio thread-wakeup restriction and is not a repository
+  failure.
 - Class B entry approval is not supported and is not implemented.

@@ -20,13 +20,12 @@ correction; final `npm run ci` (**240 files, 2608 passed, 4 skipped**); and
 `tests/integration/satellite-traffic-acceptance.test.ts`; Class B entry
 approval remains explicitly unsupported.
 
-Speech mock pytest is **BLOCKED, not passed** in the current environment:
-`SPEECH_API_MOCK=1 .venv/bin/pytest` collected 94 tests but timed out in
-`tests/test_contract.py` while Starlette `TestClient` waited for the AnyIO
-portal under Python 3.13.5. Direct async lifespan startup succeeds; the
-worker-reported 94-pass temporary run is retained as unverified evidence.
-Unresolved manual leftovers: live KATL/browser sessions, speech latency,
-60-FPS observation, and live-source/facility fidelity checks. No push.
+Speech mock pytest passed outside the sandbox: `SPEECH_API_MOCK=1
+.venv/bin/pytest` (**94 passed, 1.27s**). The earlier sandbox timeout was
+caused by its Python 3.13 asyncio thread-wakeup restriction around Starlette
+`TestClient`, not by repository behavior. Unresolved manual leftovers: live
+KATL/browser sessions, speech latency, 60-FPS observation, and live-source/
+facility fidelity checks. No push.
 
 ## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM COMPLETE — Cold Call Check-in, Enriched IFR Pickup Schema & Say-Request Direct Details (T04-84–T04-85, 2026-09-18)
 
