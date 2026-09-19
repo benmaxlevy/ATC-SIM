@@ -651,22 +651,6 @@ export class VfrRequestQueue {
       return;
     }
 
-    // 1.5 Handle requests awaiting details after controller 'say request'
-    if (world.radioRequests && !this.playInFlight && !(radio?.isBusy() ?? false)) {
-      const awaiting = world.radioRequests.find((r) => r.status === "AWAITING_DETAILS");
-      if (awaiting) {
-        const text = this.emitRequestDetails(world, awaiting.aircraftId, log, setStatus, nowWallMs);
-        if (text) {
-          awaiting.status = "PENDING";
-          if (radio?.play) {
-            this.playInFlight = true;
-            this.beginPlay(radio, text, awaiting.callsign, world.simTimeMs);
-          }
-          return;
-        }
-      }
-    }
-
     // Prune stale terminated/withdrawn requests for exited aircraft to avoid unbounded memory leak
     if (world.radioRequests && world.radioRequests.length > 50) {
       const activeIds = new Set(world.aircraft.map((a) => a.id));

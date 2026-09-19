@@ -344,7 +344,9 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
     // 1. Controller: say request
     const sayReqRes = await handleRadioText(world, `${vfrAc!.callsign} say request`, log);
     expect(sayReqRes.accepted).toBe(true);
-    expect(req.status).toBe("AWAITING_DETAILS");
+    expect(sayReqRes.readback).toContain("request flight following");
+    expect(sayReqRes.readback).not.toContain("say request");
+    expect(req.status).toBe("PENDING");
 
     // Pilot provides details without charging cap
     const details = queue.emitRequestDetails(world, vfrAc!.id, log);

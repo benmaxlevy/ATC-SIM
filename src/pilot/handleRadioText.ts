@@ -17,7 +17,6 @@ import {
   regionalSatelliteIlsApproaches,
   resolveApproachContext,
   transitionRequestToApproved,
-  transitionRequestToAwaitingDetails,
   transitionRequestToDeclined,
   transitionRequestToIdentified,
   transitionRequestToStandby,
@@ -37,6 +36,11 @@ import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
 import { validateInstructions } from "./validate";
+import {
+  formatIfrPickupRequest,
+  formatVfrFlightFollowingRequest,
+  formatVfrPositionReport,
+} from "./vfrRequestQueue";
 
 export type ResolveReason =
   "UNKNOWN_CALLSIGN" | "AMBIGUOUS_CALLSIGN" | "NO_CALLSIGN_OR_SELECTION" | "SELECTED_NOT_FOUND";
@@ -437,10 +441,43 @@ export function handleRadioCommand(
     switch (requestControl.type) {
       case "REQUEST_DETAILS": {
         const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
-        if (req) {
-          transitionRequestToAwaitingDetails(req, world.simTimeMs);
+        if (!req) {
+          return reject("REQUEST", "no open request to report details for", resolvedCommand);
         }
-        break;
+        const regionalFacility = world.regional as RegionalFacility | undefined;
+        const detailPosition = formatVfrPositionReport(
+          { xNm: aircraft.xNm, yNm: aircraft.yNm },
+          regionalFacility,
+        );
+        const detailText =
+          req.kind === "FLIGHT_FOLLOWING"
+            ? formatVfrFlightFollowingRequest({
+                callsign: req.callsign,
+                positionPhrase: detailPosition,
+                aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
+                destinationAirportId: req.details.destinationAirportId,
+                altitudeFt:
+                  req.details.requestedAltitudeFt ?? req.details.altitudeFt ?? aircraft.altitudeFt,
+              })
+            : formatIfrPickupRequest({
+                callsign: req.callsign,
+                positionPhrase: detailPosition,
+                aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
+                destinationAirportId: req.details.destinationAirportId,
+                requestedAltitudeFt: req.details.requestedAltitudeFt ?? req.details.altitudeFt,
+              });
+
+        req.status = "PENDING";
+        log.append({
+          type: "vfr.request.details_reported",
+          atSimMs: world.simTimeMs,
+          atWallMs,
+          callsign: req.callsign,
+          requestId: req.id,
+          text: detailText,
+        });
+        logAccepted(log, world, atWallMs, resolvedCommand);
+        return { accepted: true, readback: detailText, command: resolvedCommand };
       }
       case "STANDBY_REQUEST": {
         const req = findOpenRadioRequest(world.radioRequests, aircraft.id);

@@ -223,7 +223,7 @@ function formatInstructionClause(
     case "DELETE_SPEED_RESTRICTIONS":
       return "delete speed restrictions";
     case "REQUEST_DETAILS":
-      return "say request";
+      return "";
     case "STANDBY_REQUEST":
       return "standby";
     case "APPROVE_FLIGHT_FOLLOWING":
@@ -303,9 +303,9 @@ export function formatReadback(args: {
   const callsignSpeech = formatCallsignSpeech(args.callsign, {
     isHeavy: args.aircraft.wakeCategory === "H",
   });
-  const clauses = args.instructions.map((instruction) =>
-    formatInstructionClause(instruction, args.aircraft, args.procedureNames),
-  );
+  const clauses = args.instructions
+    .map((instruction) => formatInstructionClause(instruction, args.aircraft, args.procedureNames))
+    .filter((clause) => clause.length > 0);
   if (clauses.length === 0) {
     return callsignSpeech;
   }

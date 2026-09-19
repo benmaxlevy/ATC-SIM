@@ -213,7 +213,7 @@ test("formatRejectReadback formats approach and speed boundary unable details", 
 });
 
 test("VFR flight following and radio contact readbacks (T04-73)", () => {
-  expect(readback([{ type: "REQUEST_DETAILS" }])).toBe("Delta 123 say request");
+  expect(readback([{ type: "REQUEST_DETAILS" }])).toBe("Delta 123");
   expect(readback([{ type: "STANDBY_REQUEST" }])).toBe("Delta 123 standby");
   expect(readback([{ type: "APPROVE_FLIGHT_FOLLOWING" }])).toBe(
     "Delta 123 flight following approved",
