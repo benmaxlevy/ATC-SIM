@@ -80,6 +80,11 @@ export interface DcbSpinnerState {
   cell: DcbSpinnerCell | null;
   buffer: string;
   initialValue: number | null;
+  initialShowRings?: boolean;
+  initialMapCache?: unknown;
+  initialPtlOn?: boolean;
+  onCancel?: () => void;
+  onCommit?: (cell: DcbSpinnerCell, value: number) => void;
 }
 
 /** Structural host so this module stays DOM-free and does not import scopeView. */
@@ -179,6 +184,11 @@ function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | 
   }
 }
 
+export interface DcbSpinnerArmOptions {
+  onCancel?: () => void;
+  onCommit?: (cell: DcbSpinnerCell, value: number) => void;
+}
+
 function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: number): void {
   const h = host as unknown as SpinnerHostCandidate;
   switch (cell) {
@@ -226,7 +236,7 @@ function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: numbe
         h.ptlMinutes = val;
       }
       if ("ptlOn" in h) {
-        h.ptlOn = true;
+        h.ptlOn = val > 0;
       }
       break;
     case "HISTORY":
@@ -311,7 +321,7 @@ export function validateDcbSpinnerValue(cell: DcbSpinnerCell, val: number): bool
     case "H_RATE":
       return val >= 1.0 && val <= 10.0;
     case "LDR_DIR":
-      return Number.isInteger(val) && val >= 1 && val <= 9;
+      return Number.isInteger(val) && val >= 1 && val <= 9 && val !== 5;
     case "TPA_MI":
       return [2, 3, 5, 10].includes(val) || (val > 0 && val <= 50);
     default:
@@ -325,6 +335,20 @@ export function validateDcbSpinnerValue(cell: DcbSpinnerCell, val: number): bool
   }
 }
 
+function restoreDcbSpinnerCoupledState(host: DcbMenuHost): void {
+  const h = host as unknown as SpinnerHostCandidate;
+  if (host.dcbSpinner.initialShowRings !== undefined && "showRings" in h) {
+    h.showRings = host.dcbSpinner.initialShowRings;
+  }
+  if (host.dcbSpinner.initialMapCache !== undefined && "mapCache" in h) {
+    h.mapCache = host.dcbSpinner.initialMapCache;
+  }
+  if (host.dcbSpinner.initialPtlOn !== undefined && "ptlOn" in h) {
+    h.ptlOn = host.dcbSpinner.initialPtlOn;
+  }
+  host.dcbSpinner.onCancel?.();
+}
+
 export function cancelDcbSpinner(host: DcbMenuHost): boolean {
   if (!host.dcbSpinner.armed) {
     return false;
@@ -332,18 +356,34 @@ export function cancelDcbSpinner(host: DcbMenuHost): boolean {
   if (host.dcbSpinner.cell && host.dcbSpinner.initialValue !== null) {
     setSpinnerCellValue(host, host.dcbSpinner.cell, host.dcbSpinner.initialValue);
   }
+  restoreDcbSpinnerCoupledState(host);
   host.dcbSpinner.armed = false;
   host.dcbSpinner.cell = null;
   host.dcbSpinner.buffer = "";
   host.dcbSpinner.initialValue = null;
+  host.dcbSpinner.initialShowRings = undefined;
+  host.dcbSpinner.initialMapCache = undefined;
+  host.dcbSpinner.initialPtlOn = undefined;
+  host.dcbSpinner.onCancel = undefined;
+  host.dcbSpinner.onCommit = undefined;
   return true;
 }
 
-export function armDcbSpinner(host: DcbMenuHost, cell: DcbSpinnerCell): void {
+export function armDcbSpinner(
+  host: DcbMenuHost,
+  cell: DcbSpinnerCell,
+  options?: DcbSpinnerArmOptions,
+): void {
+  const h = host as unknown as SpinnerHostCandidate;
   host.dcbSpinner.armed = true;
   host.dcbSpinner.cell = cell;
   host.dcbSpinner.buffer = "";
   host.dcbSpinner.initialValue = getSpinnerCellValue(host, cell);
+  host.dcbSpinner.initialShowRings = "showRings" in h ? h.showRings : undefined;
+  host.dcbSpinner.initialMapCache = "mapCache" in h ? h.mapCache : undefined;
+  host.dcbSpinner.initialPtlOn = "ptlOn" in h ? h.ptlOn : undefined;
+  host.dcbSpinner.onCancel = options?.onCancel;
+  host.dcbSpinner.onCommit = options?.onCommit;
 }
 
 export function inputDcbSpinnerKey(host: DcbMenuHost, key: string): boolean {
@@ -380,16 +420,19 @@ export function commitDcbSpinner(host: DcbMenuHost): boolean {
   const cell = host.dcbSpinner.cell;
   const buffer = host.dcbSpinner.buffer.trim();
   let success = true;
+  let committedValue: number | null = null;
 
   if (buffer.length > 0) {
     const num = Number(buffer);
     if (!isNaN(num) && validateDcbSpinnerValue(cell, num)) {
       setSpinnerCellValue(host, cell, num);
+      committedValue = num;
       success = true;
     } else {
       if (host.dcbSpinner.initialValue !== null) {
         setSpinnerCellValue(host, cell, host.dcbSpinner.initialValue);
       }
+      restoreDcbSpinnerCoupledState(host);
       success = false;
     }
   } else {
@@ -400,6 +443,13 @@ export function commitDcbSpinner(host: DcbMenuHost): boolean {
   host.dcbSpinner.cell = null;
   host.dcbSpinner.buffer = "";
   host.dcbSpinner.initialValue = null;
+  host.dcbSpinner.initialShowRings = undefined;
+  host.dcbSpinner.initialMapCache = undefined;
+  host.dcbSpinner.initialPtlOn = undefined;
+  host.dcbSpinner.onCancel = undefined;
+  const onCommit = host.dcbSpinner.onCommit;
+  host.dcbSpinner.onCommit = undefined;
+  if (success && committedValue !== null) onCommit?.(cell, committedValue);
   return success;
 }
 

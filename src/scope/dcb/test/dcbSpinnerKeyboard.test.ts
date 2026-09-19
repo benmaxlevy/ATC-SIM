@@ -13,6 +13,8 @@ import {
   validateDcbSpinnerValue,
 } from "../dcbMenu";
 import { LEADER_LENGTH_STEPS_PX } from "../../leader";
+import { createWorld, makeTestAircraft } from "@core";
+import { createTrackDisplay } from "../../trackDisplay";
 
 interface MockScopeKeyEvent extends ScopeKeyEvent {
   readonly defaultPrevented: boolean;
@@ -278,6 +280,44 @@ describe("T02-200: DCB spinner numeric keyboard entry state & validation", () =>
     expect(view.dcbSpinner.initialValue).toBe(null);
   });
 
+  it("RR cancellation restores hidden rings and map cache after a wheel step", () => {
+    const view = createScopeView();
+    const cache = { sentinel: true };
+    view.ringIntervalNm = 5;
+    view.showRings = false;
+    view.mapCache = cache as never;
+
+    armDcbSpinner(view, "RR");
+    stepDcbSpinner(view, 1, () => {
+      view.ringIntervalNm = 10;
+      view.showRings = true;
+      view.mapCache = null;
+    });
+
+    expect(cancelDcbSpinner(view)).toBe(true);
+    expect(view.ringIntervalNm).toBe(10);
+    expect(view.showRings).toBe(false);
+    expect(view.mapCache).toBe(cache);
+  });
+
+  it("PTL zero commit disables PTL while positive commit enables it", () => {
+    const view = createScopeView();
+    view.ptlMinutes = 1;
+    view.ptlOn = true;
+
+    armDcbSpinner(view, "PTL");
+    inputDcbSpinnerKey(view, "0");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.ptlMinutes).toBe(0);
+    expect(view.ptlOn).toBe(false);
+
+    armDcbSpinner(view, "PTL");
+    inputDcbSpinnerKey(view, "2");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.ptlMinutes).toBe(2);
+    expect(view.ptlOn).toBe(true);
+  });
+
   it("stepDcbSpinner mouse wheel syncs buffer and updates initialValue", () => {
     const view = createScopeView();
     view.camera.rangeNm = 20;
@@ -424,6 +464,39 @@ describe("T02-200: Scope keyboard routing (handleScopeKeyDown)", () => {
     // Non-digit letter key
     handleScopeKeyDown(makeKeyEvent("a"), view, "scope");
     expect(view.dcbSpinner.buffer).toBe("5");
+  });
+
+  it("consumes Shift, Ctrl, and Alt numeric keys without capture or preview routing", () => {
+    for (const modifier of ["shiftKey", "ctrlKey", "altKey"] as const) {
+      const view = createScopeView();
+      armDcbSpinner(view, "RANGE");
+      const event = makeKeyEvent("7", "Digit7", { [modifier]: true });
+
+      expect(handleScopeKeyDown(event, view, "radio")).toBe(true);
+      expect(event.defaultPrevented).toBe(true);
+      expect(view.dcbSpinner.buffer).toBe("");
+      expect(view.preview.phase).toBe("idle");
+    }
+  });
+
+  it("routes typed LDR_DIR through selected-track scope state and rejects overlay 5", () => {
+    const view = createScopeView();
+    const aircraft = makeTestAircraft({ id: "ac1", callsign: "DAL101" });
+    const world = createWorld({ aircraft: [aircraft] });
+    world.selectedAircraftId = aircraft.id;
+    view.tracks.set(aircraft.id, createTrackDisplay("owned"));
+
+    armDcbSpinner(view, "LDR_DIR");
+    inputDcbSpinnerKey(view, "6");
+    expect(handleScopeKeyDown(makeKeyEvent("Enter"), view, "scope", world)).toBe(true);
+    expect(view.defaultLeaderDir).toBe(6);
+    expect(view.tracks.get(aircraft.id)?.leaderDir).toBe(6);
+
+    armDcbSpinner(view, "LDR_DIR");
+    inputDcbSpinnerKey(view, "5");
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.defaultLeaderDir).toBe(6);
+    expect(view.tracks.get(aircraft.id)?.leaderDir).toBe(6);
   });
 
   it("validateDcbSpinnerValue validates cells according to rules", () => {

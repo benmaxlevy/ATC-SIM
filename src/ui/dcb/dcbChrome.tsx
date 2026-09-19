@@ -45,6 +45,7 @@ import {
   videoMapByDcbNumber,
   effectiveSurveillanceMode,
   setSurveillanceMode,
+  setLeaderDirForId,
   siteDcbChoices,
   surveillanceModeWord,
   surveillanceModesEqual,
@@ -163,12 +164,37 @@ export function formatSpinnerCellReadout(
   return buf !== null ? buf : defaultReadout;
 }
 
-export function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCell): void {
+export function toggleSpinner(
+  view: ScopeView,
+  onChange: () => void,
+  cell: DcbSpinnerCell,
+  world?: Parameters<typeof applyDcbLeaderDir>[1],
+): void {
   cancelFilterIfEntering(view);
   if (spinnerArmed(view, cell)) {
     commitDcbSpinner(view);
   } else {
-    armDcbSpinner(view, cell);
+    const leaderSnapshot =
+      cell === "LDR_DIR"
+        ? new Map([...view.tracks.entries()].map(([id, track]) => [id, track.leaderDir] as const))
+        : undefined;
+    const priorLeaderDefault = cell === "LDR_DIR" ? view.defaultLeaderDir : undefined;
+    armDcbSpinner(view, cell, {
+      onCancel:
+        cell === "LDR_DIR"
+          ? () => {
+              for (const [id, dir] of leaderSnapshot ?? []) {
+                if (world) setLeaderDirForId(view.tracks, world, id, dir);
+              }
+              if (priorLeaderDefault !== undefined) view.defaultLeaderDir = priorLeaderDefault;
+            }
+          : undefined,
+      onCommit:
+        cell === "LDR_DIR" && world
+          ? (_cell, value) =>
+              applyDcbLeaderDir(view, world, value as Parameters<typeof applyDcbLeaderDir>[2])
+          : undefined,
+    });
   }
   afterCell(onChange);
 }

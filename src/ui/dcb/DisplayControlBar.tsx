@@ -304,7 +304,7 @@ function renderPhysicalMain(
             ariaLabel="Leader direction"
             dataDcb="ldr-dir"
             pressed={spinnerArmed(view, "LDR_DIR")}
-            onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+            onClick={() => toggleSpinner(view, onChange, "LDR_DIR", world)}
             onWheel={(event) =>
               onSpinnerWheel(
                 view,
@@ -587,7 +587,7 @@ export function renderMainLegacy(
         ariaLabel="Leader direction"
         dataDcb="ldr-dir"
         pressed={spinnerArmed(view, "LDR_DIR")}
-        onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+        onClick={() => toggleSpinner(view, onChange, "LDR_DIR", world)}
         onWheel={(event) =>
           onSpinnerWheel(
             view,

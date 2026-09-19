@@ -104,6 +104,7 @@ function vfrCreationPool(world: World): readonly string[] {
 }
 
 import {
+  applyDcbLeaderDir,
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
@@ -143,7 +144,12 @@ import {
   terminateTrackWithPlan,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
-import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
+import {
+  DEFAULT_LEADER_DIR,
+  leaderDirFromStarsClock,
+  type LeaderDir,
+  type LeaderLengthPx,
+} from "./leader";
 import { resolveScopeFlid } from "./previewArea";
 import {
   canonicalSystemListId,
@@ -982,7 +988,15 @@ export function handleScopeKeyDown(
     }
     if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
       consume(event);
+      const cell = view.dcbSpinner.cell;
+      const buffer = view.dcbSpinner.buffer;
       commitDcbSpinner(view);
+      if (cell === "LDR_DIR" && world && buffer.trim().length > 0) {
+        const dir = Number(buffer);
+        if (Number.isInteger(dir) && dir !== 5) {
+          applyDcbLeaderDir(view, world, dir as LeaderDir);
+        }
+      }
       ui?.onHandled?.();
       return true;
     }
@@ -992,14 +1006,17 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
-    if (
-      !event.ctrlKey &&
-      !event.altKey &&
-      (/^[0-9]$/.test(event.key) ||
-        event.key === "." ||
-        /^Numpad[0-9]$/.test(event.code ?? "") ||
-        event.code === "NumpadDecimal")
-    ) {
+    const numericSpinnerKey =
+      /^[0-9]$/.test(event.key) ||
+      event.key === "." ||
+      /^Numpad[0-9]$/.test(event.code ?? "") ||
+      event.code === "NumpadDecimal";
+    if (numericSpinnerKey && (event.shiftKey || event.ctrlKey || event.altKey)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (numericSpinnerKey) {
       consume(event);
       const ch =
         event.key === "." || event.code === "NumpadDecimal"
