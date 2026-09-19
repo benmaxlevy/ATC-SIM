@@ -5467,3 +5467,15 @@ Merged: T04-92, T04-93
 Tests: focused cancellation/route acceptance; npm run ci; git diff --check; manual evidence
 Notes: outside-Bravo cancellation replans VFR route; inside-Bravo remains rejected; Class B VFR clearance remains deferred; no push
 ```
+
+## Seventy-fifth swarm started — IFR cancellation VFR route replanning (2026-09-19)
+
+Execution authorized on the current `feature/sattelite-traffic` branch. The
+captain runs T04-92, then T04-93 sequentially with one isolated Luna-medium
+worker at a time. Each ticket gets focused tests and `npm run ci` before the
+next ticket. The captain stops at T04-93; no push is authorized by this swarm.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock, squash
+merges, post-merge CI, manual review, STATUS handoff, and final phase result.
+Preserve unrelated `.worktrees/` and `speech-api/:memory:.ses` artifacts.
