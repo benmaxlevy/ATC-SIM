@@ -442,10 +442,9 @@ function parseLegacyFixedAptRow(
   dataset: NasrDataset,
   sourceFile: string,
 ): void {
-  // Legacy fixed-width APT row: location identifier starts around pos 28, length 4; ICAO at 1210-1216 or use regex
-  // Match FAA 3-4 char airport ID
+  const fixedId = line.length >= 31 ? line.slice(27, 31).trim() : "";
   const matchId = /^APT\s+\S+\s+\S+\s+([A-Z0-9]{3,4})/.exec(line);
-  const rawId = matchId ? matchId[1] : line.slice(27, 31).trim();
+  const rawId = fixedId.length > 0 ? fixedId : matchId ? matchId[1] : "";
   if (!rawId || rawId.length === 0) {
     return;
   }
@@ -459,9 +458,10 @@ function parseLegacyFixedAptRow(
     publicUse = true;
   } else if (fixedUse === "PR") {
     publicUse = false;
-  } else {
-    const hasPu = /\bPU\b/.test(line);
-    const hasPr = /\bPR\b/.test(line);
+  } else if (line.length < 187) {
+    const prefix = line.slice(0, 100);
+    const hasPu = /\bPU\b/.test(prefix);
+    const hasPr = /\bPR\b/.test(prefix);
     publicUse = hasPu ? true : hasPr ? false : undefined;
   }
 

@@ -499,7 +499,10 @@ function guideVisualFinal(
   const alongTrackNm = -(dx * uX + dy * uY);
 
   if (alongTrackNm <= 0.1) {
-    return lateral.headingDeg;
+    if (Math.abs(crossTrackNm) <= 0.1) {
+      return lateral.headingDeg;
+    }
+    return ((Math.atan2(-dx, -dy) * 180) / Math.PI + 360) % 360;
   }
 
   const interceptAngleDeg = Math.min(30, Math.max(-30, crossTrackNm * 30));

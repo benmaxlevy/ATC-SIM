@@ -499,7 +499,7 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">DWELL</span>
           <span id={DCB_DWELL_READOUT_ID} className="dcb-cell-line">
-            {formatSpinnerCellReadout(view, "DWELL", formatDcbDwellReadout(view.dwellMode))}
+            {formatDcbDwellReadout(view.dwellMode)}
           </span>
         </DcbCell>
       </div>

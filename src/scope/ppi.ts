@@ -67,6 +67,7 @@ import {
   scrollSystemList,
 } from "./systemLists";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
+import { cancelDcbSpinner } from "./dcb/dcbMenu";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
@@ -414,6 +415,9 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  if (view.dcbSpinner.armed) {
+    cancelDcbSpinner(view);
+  }
   // A live CA command is a target-slew command, not a list interaction.
   // Handle it before any movable-list hit testing can consume the click.
   const liveTracking = previewTrackingSlew(view.preview);

@@ -17,15 +17,7 @@ import {
   dcbActionCapPressed,
   dcbLeaderDirReadout,
   DCB_ACTION_FLASH_MS,
-  HISTORY_DOT_COUNTS,
-  HISTORY_RATE_STEPS,
-  CURSOR_SPEED_STEPS,
-  LEADER_LENGTH_STEPS_PX,
-  PTL_MINUTE_PRESETS,
-  RANGE_PRESETS_NM,
-  RR_INTERVALS_NM,
   SSA_FILTER_FIELDS,
-  TPA_RADIUS_NM,
   activeDcbPrefName,
   formatDcbBriteReadout,
   formatDcbCharReadout,
@@ -42,13 +34,10 @@ import {
   formatDcbTpaMiReadout,
   formatFilterBand,
   isDcbMapSlotEnabled,
-  isLeaderDir,
   isRangeRingOffViewCenter,
   isVideoMapOn,
   isViewOffAirport,
   openDcbMenu,
-  setHistoryDotCount,
-  snapBriteLevel,
   stepDcbSpinner,
   toggleVideoMap,
   toggleWxLevel,
@@ -59,12 +48,7 @@ import {
   siteDcbChoices,
   surveillanceModeWord,
   surveillanceModesEqual,
-  type BriteChannel,
   type DcbSpinnerCell,
-  type LeaderLengthPx,
-  type PtlMinutes,
-  type RangeNm,
-  type RrIntervalNm,
   type ScopeView,
   type SsaFilterField,
 } from "@scope";
@@ -187,80 +171,6 @@ export function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSp
     armDcbSpinner(view, cell);
   }
   afterCell(onChange);
-}
-
-function nearestPreset<T extends number>(presets: readonly T[], num: number): T {
-  let closest = presets[0]!;
-  let minDiff = Math.abs(num - closest);
-  for (const preset of presets) {
-    const diff = Math.abs(num - preset);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = preset;
-    }
-  }
-  return closest;
-}
-
-function snapRangeToPreset(num: number): RangeNm {
-  return nearestPreset(RANGE_PRESETS_NM, num);
-}
-
-function snapRrToPreset(num: number): RrIntervalNm {
-  return nearestPreset(RR_INTERVALS_NM, num);
-}
-
-function snapPtlToPreset(num: number): PtlMinutes {
-  return nearestPreset(PTL_MINUTE_PRESETS, num);
-}
-
-function snapLeaderLength(num: number): LeaderLengthPx {
-  const step = Math.max(0, Math.min(7, Math.round(num)));
-  return LEADER_LENGTH_STEPS_PX[step] ?? LEADER_LENGTH_STEPS_PX[0];
-}
-
-export function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, num: number): void {
-  switch (cell) {
-    case "RANGE":
-      view.camera.rangeNm = snapRangeToPreset(num);
-      break;
-    case "RR":
-      view.ringIntervalNm = snapRrToPreset(num);
-      view.showRings = view.ringIntervalNm > 0;
-      break;
-    case "LDR_DIR":
-      if (isLeaderDir(num)) {
-        view.defaultLeaderDir = num;
-      }
-      break;
-    case "LDR_LENGTH":
-      view.leaderLengthPx = snapLeaderLength(num);
-      break;
-    case "HISTORY":
-      setHistoryDotCount(view, nearestPreset(HISTORY_DOT_COUNTS, num));
-      break;
-    case "H_RATE":
-      view.historyRateSec = nearestPreset(HISTORY_RATE_STEPS, num);
-      break;
-    case "CSR_SPD":
-      view.cursorSpeed = nearestPreset(CURSOR_SPEED_STEPS, num);
-      break;
-    case "PTL":
-      view.ptlMinutes = snapPtlToPreset(num);
-      view.ptlOn = true;
-      break;
-    case "TPA_MI":
-      view.tpa.radiusNm = nearestPreset(TPA_RADIUS_NM, num);
-      break;
-    default:
-      if (cell.startsWith("BRITE_")) {
-        const channel = cell.slice(6).toLowerCase() as BriteChannel;
-        if (channel in view.brite) {
-          view.brite[channel] = snapBriteLevel(num);
-        }
-      }
-      break;
-  }
 }
 
 export function onSpinnerWheel(
@@ -882,6 +792,7 @@ export function runCell(view: ScopeView, onChange: () => void, fn: () => void): 
 
 export function runAuxCell(view: ScopeView, onChange: () => void, fn: () => void): void {
   cancelFilterIfEntering(view);
+  commitDcbSpinner(view);
   fn();
   afterCell(onChange);
 }

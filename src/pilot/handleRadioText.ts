@@ -502,10 +502,11 @@ export function handleRadioCommand(
           approvedAtSimMs: aircraft.flightFollowing?.approvedAtSimMs,
           requestId: prevRequestId,
         };
+        delete aircraft.radarContact;
         const req =
           (prevRequestId ? world.radioRequests?.find((r) => r.id === prevRequestId) : undefined) ??
           findOpenRadioRequest(world.radioRequests, aircraft.id);
-        if (req && req.status === "APPROVED") {
+        if (req && (req.status === "APPROVED" || req.status === "IDENTIFIED")) {
           transitionRequestToTerminated(req, world.simTimeMs);
         }
         break;

@@ -141,11 +141,12 @@ export function despawnLandedAircraft(world: World): void {
       const dx = ac.xNm - lat.threshold.xNm;
       const dy = ac.yNm - lat.threshold.yNm;
       const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+      const crossTrackNm = Math.abs(dx * Math.cos(headingRad) - dy * Math.sin(headingRad));
       const fieldElevFt = lat.fieldElevFt ?? 0;
-      if (
-        (alongTrackNm <= 0 || distNm < LANDING_RW_DIST_NM) &&
-        ac.altitudeFt <= fieldElevFt + LANDING_ALT_MAX_FT
-      ) {
+      const reachedThreshold =
+        (alongTrackNm <= 0 && alongTrackNm >= -0.5 && crossTrackNm <= 0.2) ||
+        distNm < LANDING_RW_DIST_NM;
+      if (reachedThreshold && ac.altitudeFt <= fieldElevFt + LANDING_ALT_MAX_FT) {
         emitLanded(ac, ac.intent.clearedApproachId ?? `VISUAL_${lat.runwayId}`, ctx);
         gone.add(ac.id);
         continue;

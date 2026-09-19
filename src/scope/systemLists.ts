@@ -736,7 +736,7 @@ export function getSystemListTotalEntries(view: ScopeView, listId: string, world
     }
     case "VL": {
       if (!world) return 0;
-      return getVfrListCallsigns(world, view).length;
+      return getVfrListEntries(world, view.vfrListDroppedCallsigns, view.tracks).length;
     }
     case "TL": {
       if (!world) return 0;

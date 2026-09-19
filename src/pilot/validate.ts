@@ -493,7 +493,7 @@ function validateOne(
       return { ok: true };
     }
     case "TERMINATE_RADAR_SERVICE": {
-      if (!aircraft.flightFollowing?.active) {
+      if (!aircraft.flightFollowing?.active && !aircraft.radarContact) {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: radar service is not active" };
       }
       return { ok: true };
