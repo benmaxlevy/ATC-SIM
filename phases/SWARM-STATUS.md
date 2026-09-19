@@ -1,5 +1,33 @@
 # Swarm status
 
+## SEVENTY-FOURTH SWARM — AUDIT REMEDIATION HANDOFF BLOCKED (T02-202, T04-86–T04-91, 2026-09-19)
+
+Completed on `feature/sattelite-traffic` through T04-91 with captain squash
+commits:
+
+- T02-202 `bdfafb9` — DCB state routing and coupled-state restoration.
+- T04-86 `a39acb5` — regional source coverage and strict diagnostics.
+- T04-87 `194c417` — regional pack eligibility, provenance, and geometry invariants.
+- T04-88 `bbf32d6` — generic VFR destination eligibility and fallback parity.
+- T04-89 `d980c69` — IFR cancellation state recovery and Class B no-entry safety.
+- T04-90 `3827f64` — visual runway geometry fail-closed validation/application parity.
+- T04-91 `da9fa1b` — integrated acceptance, documentation, manual evidence, and
+  whitespace/EOF hygiene.
+
+Gates passed: focused ticket tests; independent manual reviews after each
+correction; final `npm run ci` (**240 files, 2608 passed, 4 skipped**); and
+`git diff --check`. The integrated acceptance test is
+`tests/integration/satellite-traffic-acceptance.test.ts`; Class B entry
+approval remains explicitly unsupported.
+
+Speech mock pytest is **BLOCKED, not passed** in the current environment:
+`SPEECH_API_MOCK=1 .venv/bin/pytest` collected 94 tests but timed out in
+`tests/test_contract.py` while Starlette `TestClient` waited for the AnyIO
+portal under Python 3.13.5. Direct async lifespan startup succeeds; the
+worker-reported 94-pass temporary run is retained as unverified evidence.
+Unresolved manual leftovers: live KATL/browser sessions, speech latency,
+60-FPS observation, and live-source/facility fidelity checks. No push.
+
 ## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM COMPLETE — Cold Call Check-in, Enriched IFR Pickup Schema & Say-Request Direct Details (T04-84–T04-85, 2026-09-18)
 
 Ran on `feature/sattelite-traffic` across two sequential waves:
