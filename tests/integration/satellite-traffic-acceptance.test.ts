@@ -83,6 +83,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KDEM",
+    },
+    catalogRef: ".",
     runways: [
       {
         id: "27",
@@ -103,6 +110,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KPDK",
+    },
+    catalogRef: "airports/KPDK",
     runways: [
       {
         id: "21L",

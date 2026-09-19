@@ -131,6 +131,20 @@ const SUPPORTED_BOUNDARY_VIAS = new Set([
   "END",
 ]);
 
+const ABSOLUTE_PATH = /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/;
+
+function assertPortableReference(value: string, path: string): string {
+  const reference = value.trim();
+  if (reference.length === 0 || ABSOLUTE_PATH.test(reference) || reference.includes("..")) {
+    throw new Error(`${path} must be a portable relative reference (got '${value}')`);
+  }
+  return reference;
+}
+
+function samePosition(a: LatLon, b: LatLon): boolean {
+  return a.latDeg === b.latDeg && a.lonDeg === b.lonDeg;
+}
+
 /**
  * Parse raw regional JSON files into a validated RegionalFacility.
  * Atomic validation: invalid geometry or vertical limits throw immediately;
@@ -189,13 +203,22 @@ export function parseRegionalPack(
                   : (() => {
                       throw new Error(`source.coverage[${i}].supplied must be a boolean`);
                     })(),
-              sourceId: typeof entry.sourceId === "string" ? entry.sourceId : undefined,
+              sourceId:
+                typeof entry.sourceId === "string"
+                  ? assertPortableReference(entry.sourceId, `source.coverage[${i}].sourceId`)
+                  : undefined,
               cycle: typeof entry.cycle === "string" ? entry.cycle : undefined,
             };
           })
         : undefined,
     command:
-      isRecord(rawSource) && typeof rawSource.command === "string" ? rawSource.command : undefined,
+      isRecord(rawSource) && typeof rawSource.command === "string"
+        ? /(?:\/home\/|[A-Za-z]:[\\/])/.test(rawSource.command)
+          ? (() => {
+              throw new Error("source.command must not contain an absolute local path");
+            })()
+          : rawSource.command
+        : undefined,
   };
 
   // Parse airports
@@ -228,6 +251,7 @@ export function parseRegionalPack(
   }
 
   const airportMap = new Map<string, RegionalAirport>();
+  const catalogRefs = new Map<string, string>();
   const airports: RegionalAirport[] = [];
 
   for (let i = 0; i < rawAirportsList.length; i++) {
@@ -248,14 +272,28 @@ export function parseRegionalPack(
     const magVarDeg = assertNumber(raw.magVarDeg, `airports[${i}].magVarDeg`);
     const publicUse = raw.publicUse === true;
     const towered = raw.towered === true;
-    const eligible = raw.eligible === true;
+    const declaredEligible = raw.eligible === true;
     const exclusionReason =
       typeof raw.exclusionReason === "string" ? raw.exclusionReason : undefined;
     const hasPublishedApproaches = raw.hasPublishedApproaches === true;
-    const catalogRef = typeof raw.catalogRef === "string" ? raw.catalogRef : undefined;
+    const catalogRef =
+      typeof raw.catalogRef === "string"
+        ? assertPortableReference(raw.catalogRef, `airports[${i}].catalogRef`)
+        : undefined;
+
+    if (catalogRef !== undefined) {
+      const previousAirport = catalogRefs.get(catalogRef);
+      if (previousAirport !== undefined) {
+        throw new Error(
+          `Duplicate regional catalog reference '${catalogRef}' for airports ${previousAirport} and ${icao}`,
+        );
+      }
+      catalogRefs.set(catalogRef, icao);
+    }
 
     const rawRunways = assertArray(raw.runways ?? [], `airports[${i}].runways`);
     const runways: RegionalRunwayGeometry[] = [];
+    const runwayIds = new Set<string>();
 
     for (let j = 0; j < rawRunways.length; j++) {
       const rw = rawRunways[j];
@@ -263,6 +301,10 @@ export function parseRegionalPack(
         throw new Error(`airports[${i}].runways[${j}] must be an object`);
       }
       const id = assertString(rw.id, `airports[${i}].runways[${j}].id`, "Regional", true);
+      if (runwayIds.has(id)) {
+        throw new Error(`Duplicate runway ID in regional airport ${icao}: ${id}`);
+      }
+      runwayIds.add(id);
       const threshold = parseLatLon(rw.threshold, `airports[${i}].runways[${j}].threshold`);
       const thresholdNm = latLonToNm(threshold, centerArp);
       const headingTrueDeg = assertNumber(
@@ -278,6 +320,9 @@ export function parseRegionalPack(
       if (lengthFt <= 0) {
         throw new Error(`airports[${i}].runways[${j}].lengthFt must be positive`);
       }
+      if (headingTrueDeg < 0 || headingTrueDeg > 360 || headingMagDeg < 0 || headingMagDeg > 360) {
+        throw new Error(`airports[${i}].runways[${j}] headings must be in [0, 360)`);
+      }
 
       runways.push({
         id,
@@ -289,6 +334,35 @@ export function parseRegionalPack(
       });
     }
 
+    let eligible = declaredEligible;
+    if (eligible) {
+      const metadata = isRecord(raw.serviceMetadata) ? raw.serviceMetadata : undefined;
+      if (metadata?.publicUse !== true || metadata.towered !== true) {
+        eligible = false;
+      } else if (
+        typeof metadata.sourceFile !== "string" ||
+        typeof metadata.sourceRecordId !== "string"
+      ) {
+        eligible = false;
+      } else if (runways.length === 0) {
+        eligible = false;
+      } else if (catalogRef === undefined) {
+        eligible = false;
+      }
+    }
+    const normalizedExclusionReason =
+      eligible || exclusionReason
+        ? exclusionReason
+        : !isRecord(raw.serviceMetadata)
+          ? "missing_nasr_status"
+          : raw.serviceMetadata.publicUse !== true
+            ? "private_use"
+            : raw.serviceMetadata.towered !== true
+              ? "untowered"
+              : runways.length === 0
+                ? "no_valid_runway"
+                : "missing_catalog";
+
     const airport: RegionalAirport = {
       icao,
       name,
@@ -299,7 +373,7 @@ export function parseRegionalPack(
       publicUse,
       towered,
       eligible,
-      ...(exclusionReason ? { exclusionReason } : {}),
+      ...(normalizedExclusionReason ? { exclusionReason: normalizedExclusionReason } : {}),
       ...(isRecord(raw.serviceMetadata)
         ? {
             serviceMetadata: {
@@ -367,8 +441,10 @@ export function parseRegionalPack(
     airspaceIds.add(id);
 
     const name = assertString(raw.name, `airspaces[${i}].name`, "Regional");
-    const type = assertString(raw.type, `airspaces[${i}].type`, "Regional") as
-      "CONTROLLED" | "SPECIAL_USE";
+    const type = assertString(raw.type, `airspaces[${i}].type`, "Regional");
+    if (type !== "CONTROLLED" && type !== "SPECIAL_USE") {
+      throw new Error(`Airspace ${id} has unsupported type: ${type}`);
+    }
     const airspaceClass = typeof raw.class === "string" ? raw.class : undefined;
     const specialUseKind = typeof raw.specialUseKind === "string" ? raw.specialUseKind : undefined;
     const centerAirport = typeof raw.centerAirportId === "string" ? raw.centerAirportId : undefined;
@@ -410,7 +486,7 @@ export function parseRegionalPack(
     const lowerLimitFt: number = isSurface ? 0 : (rawLowerAlt as number);
     const upperLimitFt: number = rawUpperAlt as number;
 
-    if (lowerLimitFt > upperLimitFt) {
+    if (lowerLimitFt >= upperLimitFt) {
       throw new Error(
         `Invalid airspace vertical limits: lower limit ${lowerLimitFt} exceeds upper limit ${upperLimitFt} for airspace ${id}`,
       );
@@ -473,6 +549,20 @@ export function parseRegionalPack(
         ...(arcDistanceNm !== undefined ? { arcDistanceNm } : {}),
         ...(typeof seg.arcBearingDeg === "number" ? { arcBearingDeg: seg.arcBearingDeg } : {}),
       });
+    }
+
+    const distinctPositions = new Set(
+      segments.map((segment) => `${segment.position.latDeg},${segment.position.lonDeg}`),
+    );
+    if (segments.length > 1 && distinctPositions.size < 2) {
+      throw new Error(`Airspace ${id} has a degenerate boundary`);
+    }
+    if (segments.some((segment) => segment.boundaryViaType === "END")) {
+      const first = segments[0]!.position;
+      const last = segments[segments.length - 1]!.position;
+      if (segments.length < 3 || !samePosition(first, last) || distinctPositions.size < 3) {
+        throw new Error(`Airspace ${id} has an open or degenerate closed boundary`);
+      }
     }
 
     airspaces.push({

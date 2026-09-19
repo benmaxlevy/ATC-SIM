@@ -275,6 +275,13 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
           publicUse: true,
           towered: true,
           eligible: true,
+          serviceMetadata: {
+            publicUse: true,
+            towered: true,
+            sourceFile: "APT.csv",
+            sourceRecordId: "KPDK",
+          },
+          catalogRef: ".",
           runways: [
             {
               id: "21L",
@@ -295,6 +302,13 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
           publicUse: true,
           towered: true,
           eligible: true,
+          serviceMetadata: {
+            publicUse: true,
+            towered: true,
+            sourceFile: "APT.csv",
+            sourceRecordId: "KFTY",
+          },
+          catalogRef: "airports/KFTY",
           runways: [
             {
               id: "08",

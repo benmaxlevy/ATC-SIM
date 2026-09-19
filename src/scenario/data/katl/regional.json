@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "centerAirportId": "KATL",
-  "radiusNm": 90,
+  "radiusNm": 40,
   "source": {
     "effectiveCycle": "260903",
     "families": ["CIFP", "NASR_APT", "NASR_TWR"],
-    "command": "cifp:regional-pack --airport KATL --radius 90"
+    "command": "cifp:regional-pack --airport KATL --radius 40"
   },
   "files": {
     "airports": "regional-airports.json",

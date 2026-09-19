@@ -32,7 +32,12 @@ const SYNTHETIC_AIRPORTS = {
       publicUse: true,
       towered: true,
       eligible: true,
-      serviceMetadata: { publicUse: true, towered: true, sourceFile: "apt.txt" },
+      serviceMetadata: {
+        publicUse: true,
+        towered: true,
+        sourceFile: "apt.txt",
+        sourceRecordId: "KSYN",
+      },
       runways: [
         {
           id: "27",
@@ -54,7 +59,12 @@ const SYNTHETIC_AIRPORTS = {
       publicUse: true,
       towered: true,
       eligible: true,
-      serviceMetadata: { publicUse: true, towered: true, sourceFile: "apt.txt" },
+      serviceMetadata: {
+        publicUse: true,
+        towered: true,
+        sourceFile: "apt.txt",
+        sourceRecordId: "KSAT",
+      },
       runways: [
         {
           id: "09",
@@ -558,5 +568,82 @@ describe("T04-70 runtime regional facility and loader", () => {
     expect(() =>
       parseRegionalPack(missingCenterManifest, SYNTHETIC_AIRPORTS, SYNTHETIC_AIRSPACE),
     ).toThrow(/center airport 'KMISSING' not found in airports list/);
+  });
+
+  test("T04-87: rejects malformed types, references, provenance, limits, and boundaries", () => {
+    const parse = (
+      airports: unknown = SYNTHETIC_AIRPORTS,
+      airspace: unknown = SYNTHETIC_AIRSPACE,
+      manifest: unknown = SYNTHETIC_MANIFEST,
+    ) => parseRegionalPack(manifest, airports, airspace, SYNTHETIC_CENTER_ARP);
+
+    expect(() =>
+      parse(undefined, {
+        ...SYNTHETIC_AIRSPACE,
+        airspaces: [{ ...SYNTHETIC_AIRSPACE.airspaces[0]!, type: "UNKNOWN" }],
+      }),
+    ).toThrow(/unsupported type: UNKNOWN/);
+
+    expect(() =>
+      parse({
+        ...SYNTHETIC_AIRPORTS,
+        airports: [
+          SYNTHETIC_AIRPORTS.airports[0]!,
+          { ...SYNTHETIC_AIRPORTS.airports[1]!, catalogRef: "." },
+        ],
+      }),
+    ).toThrow(/Duplicate regional catalog reference/);
+
+    expect(() =>
+      parse(undefined, {
+        ...SYNTHETIC_AIRSPACE,
+        airspaces: [
+          {
+            ...SYNTHETIC_AIRSPACE.airspaces[0]!,
+            lowerLimit: { altitudeFt: 10000, unit: "MSL", reference: "MSL" },
+            upperLimit: { altitudeFt: 10000, unit: "MSL", reference: "MSL" },
+          },
+        ],
+      }),
+    ).toThrow(/lower limit 10000 exceeds upper limit 10000/);
+
+    expect(() =>
+      parse(undefined, {
+        ...SYNTHETIC_AIRSPACE,
+        airspaces: [
+          {
+            ...SYNTHETIC_AIRSPACE.airspaces[0]!,
+            segments: [
+              {
+                ...SYNTHETIC_AIRSPACE.airspaces[0]!.segments[0]!,
+                boundaryViaType: "END",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/open or degenerate closed boundary/);
+
+    expect(() =>
+      parse(undefined, undefined, {
+        ...SYNTHETIC_MANIFEST,
+        source: {
+          ...SYNTHETIC_MANIFEST.source,
+          coverage: [{ family: "CIFP", supplied: true, sourceId: "/home/local.cifp" }],
+        },
+      } as unknown),
+    ).toThrow(/portable relative reference/);
+
+    const incompleteEligible = parse({
+      ...SYNTHETIC_AIRPORTS,
+      airports: [
+        {
+          ...SYNTHETIC_AIRPORTS.airports[0]!,
+          serviceMetadata: { publicUse: true, towered: true, sourceFile: "apt.txt" },
+        },
+      ],
+    } as unknown);
+    expect(incompleteEligible.getEligibleDestinations()).toHaveLength(0);
+    expect(incompleteEligible.getAirport("KSYN")?.exclusionReason).toBe("missing_catalog");
   });
 });

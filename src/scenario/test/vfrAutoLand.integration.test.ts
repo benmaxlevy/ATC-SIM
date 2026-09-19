@@ -28,6 +28,13 @@ function buildTestRegional(): RegionalFacility {
         publicUse: true,
         towered: true,
         eligible: true,
+        serviceMetadata: {
+          publicUse: true,
+          towered: true,
+          sourceFile: "APT.csv",
+          sourceRecordId: "KDEM",
+        },
+        catalogRef: ".",
         runways: [
           {
             id: "09L",
@@ -47,6 +54,13 @@ function buildTestRegional(): RegionalFacility {
         publicUse: true,
         towered: true,
         eligible: true,
+        serviceMetadata: {
+          publicUse: true,
+          towered: true,
+          sourceFile: "APT.csv",
+          sourceRecordId: "KSAT1",
+        },
+        catalogRef: "airports/KSAT1",
         runways: [
           {
             id: "27",
@@ -73,6 +87,13 @@ function buildTestRegional(): RegionalFacility {
         publicUse: true,
         towered: true,
         eligible: true,
+        serviceMetadata: {
+          publicUse: true,
+          towered: true,
+          sourceFile: "APT.csv",
+          sourceRecordId: "KSAT2",
+        },
+        catalogRef: "airports/KSAT2",
         runways: [
           {
             id: "18",

@@ -11,11 +11,21 @@
 import { describe, expect, test } from "vitest";
 import katlJson from "../katl.json";
 import katl08Json from "../katl-08.json";
+import katlRegionalManifest from "../data/katl/regional.json";
+import katlRegionalAirports from "../data/katl/regional-airports.json";
 import { assertScenario } from "../load";
 import { loadPlayableScenario } from "../playableScenarios";
 import { getEligibleVfrDestinations, type RegionalFacility } from "@scenario";
 
 describe("T04-76 Atlanta data and contract acceptance", () => {
+  test("T04-87 KATL regional manifest uses portable 40 NM declaration", () => {
+    expect(katlRegionalManifest.radiusNm).toBe(40);
+    expect(katlRegionalManifest.source.command).toContain("--radius 40");
+    for (const airport of katlRegionalAirports.airports) {
+      expect(airport.serviceMetadata?.sourceFile ?? "").not.toMatch(/^(?:[A-Za-z]:[\\/]|[\\/])/);
+    }
+  });
+
   test("KATL scenarios declare regionalPack 'katl' and preserve existing arrival/departure routes", () => {
     // Both configurations declare regionalPack: "katl"
     expect(katlJson.regionalPack).toBe("katl");

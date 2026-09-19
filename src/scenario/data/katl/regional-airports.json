@@ -16,7 +16,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "00GA"
       },
       "runways": [],
@@ -37,7 +37,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "02GA"
       },
       "runways": [],
@@ -58,7 +58,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "02GE"
       },
       "runways": [],
@@ -79,7 +79,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "07GA"
       },
       "runways": [],
@@ -100,7 +100,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "09GE"
       },
       "runways": [
@@ -142,7 +142,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GA0"
       },
       "runways": [],
@@ -163,7 +163,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GA2"
       },
       "runways": [],
@@ -184,7 +184,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GA3"
       },
       "runways": [],
@@ -205,7 +205,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GA6"
       },
       "runways": [],
@@ -226,7 +226,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GA9"
       },
       "runways": [
@@ -268,7 +268,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GE0"
       },
       "runways": [],
@@ -289,7 +289,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GE4"
       },
       "runways": [],
@@ -310,7 +310,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "0GE5"
       },
       "runways": [],
@@ -331,7 +331,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "10GA"
       },
       "runways": [],
@@ -352,7 +352,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "17GA"
       },
       "runways": [],
@@ -373,7 +373,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "18A"
       },
       "runways": [
@@ -416,7 +416,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "18GA"
       },
       "runways": [],
@@ -437,7 +437,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "19GA"
       },
       "runways": [],
@@ -458,7 +458,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1A3"
       },
       "runways": [
@@ -501,7 +501,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GA2"
       },
       "runways": [],
@@ -522,7 +522,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GA9"
       },
       "runways": [],
@@ -543,7 +543,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GE2"
       },
       "runways": [],
@@ -564,7 +564,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GE3"
       },
       "runways": [],
@@ -585,7 +585,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GE5"
       },
       "runways": [],
@@ -606,7 +606,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GE7"
       },
       "runways": [],
@@ -627,7 +627,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "1GE9"
       },
       "runways": [],
@@ -649,7 +649,7 @@
       "serviceMetadata": {
         "publicUse": false,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "20GA"
       },
       "runways": [
@@ -691,7 +691,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "22GA"
       },
       "runways": [],
@@ -712,7 +712,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "25GA"
       },
       "runways": [],
@@ -733,7 +733,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "26A"
       },
       "runways": [
@@ -765,7 +765,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "26GA"
       },
       "runways": [
@@ -807,7 +807,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "27GA"
       },
       "runways": [],
@@ -828,7 +828,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "29GA"
       },
       "runways": [],
@@ -849,7 +849,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2AL5"
       },
       "runways": [],
@@ -870,7 +870,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2AL8"
       },
       "runways": [],
@@ -891,7 +891,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GA0"
       },
       "runways": [
@@ -933,7 +933,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GA1"
       },
       "runways": [],
@@ -954,7 +954,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GA5"
       },
       "runways": [],
@@ -975,7 +975,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GA8"
       },
       "runways": [],
@@ -996,7 +996,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GA9"
       },
       "runways": [],
@@ -1017,7 +1017,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "2GE8"
       },
       "runways": [],
@@ -1038,7 +1038,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "30GA"
       },
       "runways": [
@@ -1080,7 +1080,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "30GE"
       },
       "runways": [
@@ -1122,7 +1122,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "31GE"
       },
       "runways": [
@@ -1164,7 +1164,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "32GA"
       },
       "runways": [],
@@ -1185,7 +1185,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "33GA"
       },
       "runways": [],
@@ -1206,7 +1206,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3AL5"
       },
       "runways": [],
@@ -1227,7 +1227,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA0"
       },
       "runways": [],
@@ -1248,7 +1248,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA1"
       },
       "runways": [],
@@ -1269,7 +1269,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA3"
       },
       "runways": [],
@@ -1290,7 +1290,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA6"
       },
       "runways": [],
@@ -1311,7 +1311,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA7"
       },
       "runways": [
@@ -1353,7 +1353,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GA9"
       },
       "runways": [],
@@ -1374,7 +1374,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "3GE3"
       },
       "runways": [],
@@ -1395,7 +1395,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "47GA"
       },
       "runways": [],
@@ -1416,7 +1416,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "47GE"
       },
       "runways": [
@@ -1458,7 +1458,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "49A"
       },
       "runways": [
@@ -1501,7 +1501,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4A4"
       },
       "runways": [
@@ -1544,7 +1544,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4A9"
       },
       "runways": [
@@ -1587,7 +1587,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4GA1"
       },
       "runways": [],
@@ -1608,7 +1608,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4GA4"
       },
       "runways": [],
@@ -1629,7 +1629,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4GA6"
       },
       "runways": [],
@@ -1650,7 +1650,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4GA7"
       },
       "runways": [],
@@ -1671,7 +1671,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "4GA9"
       },
       "runways": [],
@@ -1692,7 +1692,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "52A"
       },
       "runways": [
@@ -1735,7 +1735,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "53A"
       },
       "runways": [
@@ -1778,7 +1778,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "53GA"
       },
       "runways": [
@@ -1820,7 +1820,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "55GE"
       },
       "runways": [],
@@ -1841,7 +1841,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "57GA"
       },
       "runways": [],
@@ -1862,7 +1862,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5A2"
       },
       "runways": [],
@@ -1883,7 +1883,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5A9"
       },
       "runways": [
@@ -1925,7 +1925,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GA2"
       },
       "runways": [],
@@ -1946,7 +1946,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GA3"
       },
       "runways": [
@@ -1988,7 +1988,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GA4"
       },
       "runways": [],
@@ -2009,7 +2009,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GA5"
       },
       "runways": [],
@@ -2030,7 +2030,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GA9"
       },
       "runways": [
@@ -2072,7 +2072,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "5GE1"
       },
       "runways": [],
@@ -2093,7 +2093,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "60GE"
       },
       "runways": [
@@ -2135,7 +2135,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "62GA"
       },
       "runways": [],
@@ -2156,7 +2156,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "64GA"
       },
       "runways": [],
@@ -2177,7 +2177,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "64GE"
       },
       "runways": [
@@ -2219,7 +2219,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "67GA"
       },
       "runways": [],
@@ -2240,7 +2240,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6A1"
       },
       "runways": [
@@ -2303,7 +2303,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6A2"
       },
       "runways": [
@@ -2346,7 +2346,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6AL0"
       },
       "runways": [
@@ -2388,7 +2388,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GA0"
       },
       "runways": [],
@@ -2409,7 +2409,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GA1"
       },
       "runways": [],
@@ -2430,7 +2430,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GA4"
       },
       "runways": [],
@@ -2451,7 +2451,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GA5"
       },
       "runways": [],
@@ -2472,7 +2472,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GA8"
       },
       "runways": [],
@@ -2493,7 +2493,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GE2"
       },
       "runways": [],
@@ -2514,7 +2514,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "6GE4"
       },
       "runways": [],
@@ -2535,7 +2535,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "74GA"
       },
       "runways": [],
@@ -2556,7 +2556,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "75GA"
       },
       "runways": [],
@@ -2577,7 +2577,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "77GA"
       },
       "runways": [],
@@ -2598,7 +2598,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "78GA"
       },
       "runways": [],
@@ -2619,7 +2619,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7A3"
       },
       "runways": [
@@ -2662,7 +2662,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7A5"
       },
       "runways": [
@@ -2705,7 +2705,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7GA4"
       },
       "runways": [],
@@ -2726,7 +2726,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7GA7"
       },
       "runways": [],
@@ -2747,7 +2747,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7GA9"
       },
       "runways": [],
@@ -2768,7 +2768,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "7GE7"
       },
       "runways": [
@@ -2810,7 +2810,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "80GA"
       },
       "runways": [],
@@ -2831,7 +2831,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "81GA"
       },
       "runways": [],
@@ -2852,7 +2852,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "82A"
       },
       "runways": [],
@@ -2873,7 +2873,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "85GA"
       },
       "runways": [],
@@ -2894,7 +2894,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "86GA"
       },
       "runways": [],
@@ -2915,7 +2915,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "88GA"
       },
       "runways": [
@@ -2957,7 +2957,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8AL3"
       },
       "runways": [],
@@ -2978,7 +2978,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8GA1"
       },
       "runways": [],
@@ -2999,7 +2999,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8GA6"
       },
       "runways": [],
@@ -3020,7 +3020,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8GA7"
       },
       "runways": [],
@@ -3041,7 +3041,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8GA8"
       },
       "runways": [],
@@ -3062,7 +3062,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "8GA9"
       },
       "runways": [],
@@ -3083,7 +3083,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "91GA"
       },
       "runways": [],
@@ -3104,7 +3104,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "95GA"
       },
       "runways": [],
@@ -3125,7 +3125,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "96GA"
       },
       "runways": [],
@@ -3146,7 +3146,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "97GA"
       },
       "runways": [],
@@ -3167,7 +3167,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "98GA"
       },
       "runways": [
@@ -3209,7 +3209,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9A0"
       },
       "runways": [
@@ -3251,7 +3251,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9A5"
       },
       "runways": [
@@ -3294,7 +3294,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9GA0"
       },
       "runways": [],
@@ -3315,7 +3315,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9GA6"
       },
       "runways": [],
@@ -3336,7 +3336,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9GA9"
       },
       "runways": [],
@@ -3357,7 +3357,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "9GE7"
       },
       "runways": [],
@@ -3378,7 +3378,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL09"
       },
       "runways": [
@@ -3420,7 +3420,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL27"
       },
       "runways": [],
@@ -3441,7 +3441,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL32"
       },
       "runways": [],
@@ -3462,7 +3462,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL51"
       },
       "runways": [],
@@ -3483,7 +3483,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL60"
       },
       "runways": [],
@@ -3504,7 +3504,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AL89"
       },
       "runways": [],
@@ -3525,7 +3525,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "D73"
       },
       "runways": [
@@ -3568,7 +3568,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA00"
       },
       "runways": [],
@@ -3589,7 +3589,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA01"
       },
       "runways": [],
@@ -3610,7 +3610,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA03"
       },
       "runways": [],
@@ -3631,7 +3631,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA04"
       },
       "runways": [],
@@ -3652,7 +3652,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA06"
       },
       "runways": [],
@@ -3673,7 +3673,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA10"
       },
       "runways": [],
@@ -3694,7 +3694,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA16"
       },
       "runways": [],
@@ -3715,7 +3715,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA18"
       },
       "runways": [],
@@ -3736,7 +3736,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA2"
       },
       "runways": [],
@@ -3757,7 +3757,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA23"
       },
       "runways": [],
@@ -3778,7 +3778,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA29"
       },
       "runways": [],
@@ -3799,7 +3799,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA30"
       },
       "runways": [],
@@ -3820,7 +3820,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA31"
       },
       "runways": [],
@@ -3841,7 +3841,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA44"
       },
       "runways": [],
@@ -3862,7 +3862,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA45"
       },
       "runways": [],
@@ -3883,7 +3883,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA50"
       },
       "runways": [],
@@ -3904,7 +3904,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA53"
       },
       "runways": [],
@@ -3925,7 +3925,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA61"
       },
       "runways": [],
@@ -3946,7 +3946,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA62"
       },
       "runways": [],
@@ -3967,7 +3967,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA65"
       },
       "runways": [
@@ -4009,7 +4009,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA67"
       },
       "runways": [],
@@ -4030,7 +4030,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA68"
       },
       "runways": [],
@@ -4051,7 +4051,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA72"
       },
       "runways": [],
@@ -4072,7 +4072,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA73"
       },
       "runways": [],
@@ -4093,7 +4093,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA74"
       },
       "runways": [],
@@ -4114,7 +4114,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA75"
       },
       "runways": [],
@@ -4135,7 +4135,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA76"
       },
       "runways": [],
@@ -4156,7 +4156,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA77"
       },
       "runways": [],
@@ -4177,7 +4177,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA80"
       },
       "runways": [],
@@ -4198,7 +4198,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA81"
       },
       "runways": [],
@@ -4219,7 +4219,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA83"
       },
       "runways": [],
@@ -4240,7 +4240,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA86"
       },
       "runways": [],
@@ -4261,7 +4261,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA87"
       },
       "runways": [],
@@ -4282,7 +4282,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA89"
       },
       "runways": [],
@@ -4303,7 +4303,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA90"
       },
       "runways": [],
@@ -4324,7 +4324,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA92"
       },
       "runways": [],
@@ -4345,7 +4345,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA94"
       },
       "runways": [],
@@ -4366,7 +4366,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA95"
       },
       "runways": [],
@@ -4387,7 +4387,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA98"
       },
       "runways": [],
@@ -4408,7 +4408,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GA99"
       },
       "runways": [],
@@ -4429,7 +4429,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE04"
       },
       "runways": [],
@@ -4450,7 +4450,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE05"
       },
       "runways": [],
@@ -4471,7 +4471,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE11"
       },
       "runways": [],
@@ -4492,7 +4492,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE27"
       },
       "runways": [],
@@ -4513,7 +4513,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE33"
       },
       "runways": [],
@@ -4534,7 +4534,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE35"
       },
       "runways": [],
@@ -4555,7 +4555,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE53"
       },
       "runways": [],
@@ -4576,7 +4576,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE56"
       },
       "runways": [
@@ -4618,7 +4618,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE61"
       },
       "runways": [
@@ -4660,7 +4660,7 @@
       "exclusionReason": "private_use",
       "serviceMetadata": {
         "publicUse": false,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GE72"
       },
       "runways": [
@@ -4722,7 +4722,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AHN"
       },
       "runways": [
@@ -4785,7 +4785,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AJR"
       },
       "runways": [
@@ -4828,7 +4828,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "ALX"
       },
       "runways": [
@@ -4871,7 +4871,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "ANB"
       },
       "runways": [
@@ -4914,7 +4914,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "ASN"
       },
       "runways": [
@@ -4957,7 +4957,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "ATL"
       },
       "runways": [
@@ -5080,7 +5080,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "AUO"
       },
       "runways": [
@@ -5143,7 +5143,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CCO"
       },
       "runways": [
@@ -5186,7 +5186,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CNI"
       },
       "runways": [
@@ -5230,7 +5230,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CPP"
       },
       "runways": [
@@ -5272,7 +5272,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CSG"
       },
       "runways": [
@@ -5335,7 +5335,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CTJ"
       },
       "runways": [
@@ -5378,7 +5378,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CVC"
       },
       "runways": [
@@ -5421,7 +5421,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "CZL"
       },
       "runways": [
@@ -5464,7 +5464,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "DNN"
       },
       "runways": [
@@ -5507,7 +5507,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "DZJ"
       },
       "runways": [
@@ -5550,7 +5550,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "EBA"
       },
       "runways": [
@@ -5593,7 +5593,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "FFC"
       },
       "runways": [
@@ -5636,7 +5636,7 @@
       "exclusionReason": "untowered",
       "serviceMetadata": {
         "publicUse": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "FGU"
       },
       "runways": [
@@ -5678,7 +5678,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "FTY"
       },
       "runways": [
@@ -5721,7 +5721,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GAD"
       },
       "runways": [
@@ -5764,7 +5764,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "GVL"
       },
       "runways": [
@@ -5827,7 +5827,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "HMP"
       },
       "runways": [
@@ -5870,7 +5870,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "IIY"
       },
       "runways": [
@@ -5913,7 +5913,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "JCA"
       },
       "runways": [
@@ -5956,7 +5956,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "JZP"
       },
       "runways": [
@@ -5999,7 +5999,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "LGC"
       },
       "runways": [
@@ -6063,7 +6063,7 @@
       "serviceMetadata": {
         "publicUse": false,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "LSF"
       },
       "runways": [
@@ -6105,7 +6105,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "LZU"
       },
       "runways": [
@@ -6149,7 +6149,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "MAC"
       },
       "runways": [
@@ -6191,7 +6191,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "MCN"
       },
       "runways": [
@@ -6255,7 +6255,7 @@
       "serviceMetadata": {
         "publicUse": false,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "MGE"
       },
       "runways": [
@@ -6317,7 +6317,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "MLJ"
       },
       "runways": [
@@ -6360,7 +6360,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "OKZ"
       },
       "runways": [
@@ -6403,7 +6403,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "OPN"
       },
       "runways": [
@@ -6446,7 +6446,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "PDK"
       },
       "runways": [
@@ -6529,7 +6529,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "PIM"
       },
       "runways": [
@@ -6572,7 +6572,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "PUJ"
       },
       "runways": [
@@ -6615,7 +6615,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "PXE"
       },
       "runways": [
@@ -6658,7 +6658,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "PYP"
       },
       "runways": [
@@ -6701,7 +6701,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "RMG"
       },
       "runways": [
@@ -6764,7 +6764,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "RYY"
       },
       "runways": [
@@ -6807,7 +6807,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "TOC"
       },
       "runways": [
@@ -6870,7 +6870,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "VPC"
       },
       "runways": [
@@ -6913,7 +6913,7 @@
       "serviceMetadata": {
         "publicUse": true,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "WDR"
       },
       "runways": [
@@ -6977,7 +6977,7 @@
       "serviceMetadata": {
         "publicUse": false,
         "towered": true,
-        "sourceFile": "/home/ben/Documents/APT.txt",
+        "sourceFile": "APT.csv",
         "sourceRecordId": "WRB"
       },
       "runways": [
