@@ -1169,7 +1169,12 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
             return False
         if instruction.get("source") == "VFR":
             return has(r"\bvfr\b")
-        return bool(re.search(r"\b[0-7]{4}\b", text))
+        return bool(re.search(r"\b[0-7]{4}\b", text)) or bool(
+            re.search(
+                r"\b(?:zero|one|two|three|four|five|six|seven)(?:\s+(?:zero|one|two|three|four|five|six|seven)){3}\b",
+                text,
+            )
+        )
     if instruction_type == "MAINTAIN_VFR":
         return has(r"\bmaintain\s+vfr\b")
     if instruction_type == "IFR_CLEARANCE":

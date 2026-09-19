@@ -997,6 +997,9 @@ def test_semantic_guard_requires_evidence_for_every_instruction_type() -> None:
         ("cross SEMAX at 4000", {"type": "CROSS", "fixId": "SEMAX", "altitudeFt": 4000, "restriction": "AT"}),
         ("go around", {"type": "GO_AROUND"}),
         ("cleared visual approach runway 27L", {"type": "CLEARED_VISUAL", "runwayId": "27L"}),
+        ("squawk 2222", {"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}),
+        ("squawk four two one zero", {"type": "ASSIGN_SQUAWK", "code": "4210", "source": "DISCRETE"}),
+        ("squawk vfr", {"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"}),
     ]
     for transcript, instruction in cases:
         outcome = ParseOutcome(ok=True, instructions=[instruction])
