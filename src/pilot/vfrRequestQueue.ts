@@ -110,6 +110,38 @@ export function formatVfrFlightFollowingRequest(args: {
 }
 
 /**
+ * Format an airborne IFR pickup callup with aircraft identification, position,
+ * aircraft type, destination, and requested altitude (FAA AIM §5-1-14).
+ *
+ * Format: "${callsign}, ${positionPhrase}, ${aircraftType}, request IFR to ${destinationAirportId}, requested altitude ${requestedAltitudeFt}"
+ *
+ * Degrades gracefully: segments whose properties are undefined or empty are omitted
+ * without trailing or duplicate commas.
+ */
+export function formatIfrPickupRequest(args: {
+  callsign: string;
+  positionPhrase?: string;
+  aircraftType?: string;
+  destinationAirportId?: string;
+  requestedAltitudeFt?: number;
+}): string {
+  const segments: string[] = [args.callsign];
+  if (args.positionPhrase && args.positionPhrase.trim().length > 0) {
+    segments.push(args.positionPhrase.trim());
+  }
+  if (args.aircraftType && args.aircraftType.trim().length > 0) {
+    segments.push(args.aircraftType.trim());
+  }
+  const dest = args.destinationAirportId?.trim();
+  const requestSegment = dest ? `request IFR to ${dest}` : "request IFR";
+  segments.push(requestSegment);
+  if (args.requestedAltitudeFt !== undefined && Number.isFinite(args.requestedAltitudeFt)) {
+    segments.push(`requested altitude ${Math.round(args.requestedAltitudeFt)}`);
+  }
+  return segments.join(", ");
+}
+
+/**
  * Format a VFR position report relative to the nearest regional airport,
  * e.g. "15 miles north of KAHN".
  *
@@ -717,23 +749,10 @@ export class VfrRequestQueue {
       next.state = "TRANSMITTED";
 
       const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
-      const positionPhrase = formatVfrPositionReport(
-        { xNm: aircraft.xNm, yNm: aircraft.yNm },
-        regionalFacility,
-      );
-      const requestText =
-        next.kind === "FLIGHT_FOLLOWING"
-          ? formatVfrFlightFollowingRequest({
-              callsign: next.callsign,
-              positionPhrase: positionPhrase ?? undefined,
-              aircraftType: next.aircraftType ?? aircraft.aircraftType,
-              destinationAirportId: next.destinationAirportId,
-              altitudeFt: next.requestedAltitudeFt ?? next.altitudeFt,
-            })
-          : positionPhrase
-            ? `${next.callsign}, ${positionPhrase}, request IFR to ${next.destinationAirportId ?? "destination"}`
-            : `${next.callsign}, request IFR to ${next.destinationAirportId ?? "destination"}`;
-      setStatus?.(requestText);
+      const facilityName = regionalFacility?.facilityName?.trim();
+      const facilityPrefix = facilityName ? `${facilityName} ` : "";
+      const checkInText = `${facilityPrefix}Approach, ${next.callsign}`;
+      setStatus?.(checkInText);
 
       log.append({
         type: "vfr.request.transmitted",
@@ -765,14 +784,31 @@ export class VfrRequestQueue {
             headingDeg: next.headingDeg,
           },
         });
+      } else {
+        existingRadioReq.status = "PENDING";
+        existingRadioReq.details = {
+          aircraftType: next.aircraftType,
+          destinationAirportId: next.destinationAirportId,
+          requestedAltitudeFt: next.requestedAltitudeFt,
+          positionNm: next.positionNm,
+          altitudeFt: next.altitudeFt,
+          headingDeg: next.headingDeg,
+        };
       }
 
       if (radio?.play) {
         this.playInFlight = true;
-        this.beginPlay(radio, requestText, next.callsign, world.simTimeMs);
+        this.beginPlay(radio, checkInText, next.callsign, world.simTimeMs);
       }
       return;
     }
+  }
+
+  /**
+   * Alias for drain() to satisfy step()-driven callers and lifecycle harnesses.
+   */
+  public step(args: DrainVfrRequestsArgs): void {
+    this.drain(args);
   }
 
   /**
@@ -814,9 +850,16 @@ export class VfrRequestQueue {
               radioReq.details.altitudeFt ??
               aircraft?.altitudeFt,
           })
-        : detailPosition
-          ? `${radioReq.callsign}, ${detailPosition}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`
-          : `${radioReq.callsign}, request IFR to ${schedReq?.destinationAirportId ?? "destination"}`;
+        : formatIfrPickupRequest({
+            callsign: radioReq.callsign,
+            positionPhrase: detailPosition ?? undefined,
+            aircraftType:
+              schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
+            destinationAirportId:
+              schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
+            requestedAltitudeFt:
+              schedReq?.requestedAltitudeFt ?? radioReq.details.requestedAltitudeFt,
+          });
     setStatus?.(detailText);
     log?.append({
       type: "vfr.request.details_reported",

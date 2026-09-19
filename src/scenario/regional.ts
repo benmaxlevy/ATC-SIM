@@ -93,6 +93,7 @@ export interface RegionalSourceProvenance {
 export interface RegionalFacility {
   schemaVersion: 1;
   centerAirportId: string;
+  facilityName?: string;
   radiusNm: number;
   arp: LatLon;
   source: RegionalSourceProvenance;
@@ -149,6 +150,10 @@ export function parseRegionalPack(
     "Regional",
     true,
   ).toUpperCase();
+  const facilityName =
+    typeof manifestJson.facilityName === "string" && manifestJson.facilityName.trim().length > 0
+      ? manifestJson.facilityName.trim()
+      : undefined;
   const radiusNm = assertNumber(manifestJson.radiusNm, "manifest.radiusNm");
   if (!Number.isFinite(radiusNm) || radiusNm <= 0) {
     throw new Error(`Regional radiusNm must be a positive number (got ${radiusNm})`);
@@ -478,6 +483,7 @@ export function parseRegionalPack(
   return {
     schemaVersion: 1,
     centerAirportId,
+    ...(facilityName ? { facilityName } : {}),
     radiusNm,
     arp: centerArp,
     source,

@@ -11,6 +11,7 @@ import {
   bearingToCardinalDirection,
   createVfrRequestQueue,
   defaultIfrCancellationValidator,
+  formatIfrPickupRequest,
   formatVfrPositionReport,
   isAirborneVfrEligible,
   validateVfrRequestConfig,
@@ -775,7 +776,7 @@ describe("VfrRequestQueue position report on callup", () => {
     expect(formatVfrPositionReport({ xNm: 0, yNm: 0 }, createEmptyRegional())).toBeUndefined();
   });
 
-  it("initial flight-following call includes position, type, destination, and altitude", () => {
+  it("initial flight-following call emits cold call and stores enriched details in world.radioRequests", () => {
     const regional = createSyntheticRegional();
     const queue = createVfrRequestQueue({
       config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
@@ -795,18 +796,120 @@ describe("VfrRequestQueue position report on callup", () => {
     world.aircraft = [ac];
     const log = new SessionLog();
     const heard: string[] = [];
+    let statusText: string | undefined;
     queue.scheduleFromWorld(world, 0);
-    queue.drain({ world, log, radio: { isBusy: () => false, play: (t) => void heard.push(t) } });
+    queue.drain({
+      world,
+      log,
+      setStatus: (text) => {
+        statusText = text;
+      },
+      radio: { isBusy: () => false, play: (t) => void heard.push(t) },
+    });
     expect(heard).toHaveLength(1);
-    expect(heard[0]).toContain("N123, 15 miles north of KPDK");
-    expect(heard[0]).toContain("C172");
-    expect(heard[0]).toContain("request flight following to");
-    expect(heard[0]).toContain("at 4500");
+    expect(heard[0]).toBe("Approach, N123");
+    expect(statusText).toBe("Approach, N123");
+
     const req = queue.getRequests()[0]!;
     expect(req.destinationAirportId).toBeDefined();
     expect(req.requestedAltitudeFt).toBe(4500);
-    expect(world.radioRequests?.[0]?.details.destinationAirportId).toBe(req.destinationAirportId);
-    expect(world.radioRequests?.[0]?.details.requestedAltitudeFt).toBe(4500);
+
+    expect(world.radioRequests).toHaveLength(1);
+    const radioReq = world.radioRequests![0];
+    expect(radioReq.status).toBe("PENDING");
+    expect(radioReq.kind).toBe("FLIGHT_FOLLOWING");
+    expect(radioReq.callsign).toBe("N123");
+    expect(radioReq.details.aircraftType).toBe("C172");
+    expect(radioReq.details.destinationAirportId).toBe(req.destinationAirportId);
+    expect(radioReq.details.requestedAltitudeFt).toBe(4500);
+    expect(radioReq.details.positionNm).toEqual({ xNm: ac.xNm, yNm: ac.yNm });
+    expect(radioReq.details.altitudeFt).toBe(4500);
+    expect(radioReq.details.headingDeg).toBe(90);
+  });
+
+  it("initial check-in emits facility prefix when facilityName is provided", () => {
+    const regional = createSyntheticRegional();
+    regional.facilityName = "Atlanta";
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    const ac = createSyntheticVfrAircraft({
+      id: "ac-atl",
+      callsign: "Skyhawk 172SP",
+    });
+    ac.callsign = "Skyhawk 172SP";
+    world.aircraft = [ac];
+    const log = new SessionLog();
+    const heard: string[] = [];
+    queue.scheduleFromWorld(world, 0);
+    queue.drain({
+      world,
+      log,
+      radio: { isBusy: () => false, play: (t) => void heard.push(t) },
+    });
+    expect(heard).toHaveLength(1);
+    expect(heard[0]).toBe("Atlanta Approach, Skyhawk 172SP");
+  });
+
+  it("initial IFR pickup call emits cold call and stores enriched details with PENDING status", () => {
+    const regional = createSyntheticRegional();
+    regional.facilityName = "Atlanta";
+    regional.airspaces.push({
+      id: "KPDK-CLASS-D",
+      name: "KPDK Class D",
+      type: "CONTROLLED",
+      class: "D",
+      centerAirportId: "KPDK",
+      lowerLimit: { reference: "MSL", unit: "MSL", altitudeFt: 0 },
+      upperLimit: { reference: "MSL", unit: "MSL", altitudeFt: 3000 },
+      lowerLimitFt: 0,
+      upperLimitFt: 3000,
+      segments: [],
+    });
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 0, ifrPickupPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    const ac = createSyntheticVfrAircraft({
+      id: "ac-ifr",
+      callsign: "Cessna 210AB",
+      aircraftType: "C210",
+      altitudeFt: 5500,
+      headingDeg: 180,
+    });
+    ac.callsign = "Cessna 210AB";
+    world.aircraft = [ac];
+    const log = new SessionLog();
+    const heard: string[] = [];
+    queue.scheduleFromWorld(world, 0);
+    queue.drain({
+      world,
+      log,
+      radio: { isBusy: () => false, play: (t) => void heard.push(t) },
+    });
+    expect(heard).toHaveLength(1);
+    expect(heard[0]).toBe("Atlanta Approach, Cessna 210AB");
+
+    expect(world.radioRequests).toHaveLength(1);
+    const radioReq = world.radioRequests![0];
+    expect(radioReq.status).toBe("PENDING");
+    expect(radioReq.kind).toBe("IFR_PICKUP");
+    expect(radioReq.callsign).toBe("Cessna 210AB");
+    expect(radioReq.details.aircraftType).toBe("C210");
+    expect(radioReq.details.destinationAirportId).toBeDefined();
+    expect(radioReq.details.requestedAltitudeFt).toBeDefined();
+    expect(radioReq.details.positionNm).toEqual({ xNm: ac.xNm, yNm: ac.yNm });
+    expect(radioReq.details.altitudeFt).toBe(5500);
+    expect(radioReq.details.headingDeg).toBe(180);
   });
 
   it("flight-following details repeat type, destination, and altitude", () => {
@@ -840,5 +943,56 @@ describe("VfrRequestQueue position report on callup", () => {
     expect(details!).toContain("request flight following to");
     expect(details!).toContain(`to ${radioReq!.details.destinationAirportId}`);
     expect(details!).toContain(`at ${radioReq!.details.requestedAltitudeFt}`);
+  });
+});
+
+describe("formatIfrPickupRequest (T04-84)", () => {
+  it("formats complete fields per FAA AIM §5-1-14", () => {
+    const str = formatIfrPickupRequest({
+      callsign: "N123",
+      positionPhrase: "15 miles NE of PDK",
+      aircraftType: "C172",
+      destinationAirportId: "KPDK",
+      requestedAltitudeFt: 5000,
+    });
+    expect(str).toBe(
+      "N123, 15 miles NE of PDK, C172, request IFR to KPDK, requested altitude 5000",
+    );
+  });
+
+  it("omits missing optional segments cleanly without malformed or duplicate commas", () => {
+    // Missing position and aircraftType
+    expect(
+      formatIfrPickupRequest({
+        callsign: "N123",
+        destinationAirportId: "KPDK",
+        requestedAltitudeFt: 5000,
+      }),
+    ).toBe("N123, request IFR to KPDK, requested altitude 5000");
+
+    // Missing altitude
+    expect(
+      formatIfrPickupRequest({
+        callsign: "N123",
+        positionPhrase: "15 miles NE of PDK",
+        aircraftType: "C172",
+        destinationAirportId: "KPDK",
+      }),
+    ).toBe("N123, 15 miles NE of PDK, C172, request IFR to KPDK");
+
+    // Missing destination and altitude
+    expect(
+      formatIfrPickupRequest({
+        callsign: "N123",
+        aircraftType: "C172",
+      }),
+    ).toBe("N123, C172, request IFR");
+
+    // Minimal callsign only
+    expect(
+      formatIfrPickupRequest({
+        callsign: "Skyhawk 172SP",
+      }),
+    ).toBe("Skyhawk 172SP, request IFR");
   });
 });

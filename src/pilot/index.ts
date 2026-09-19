@@ -88,6 +88,9 @@ export {
   VfrRequestQueue,
   createVfrRequestQueue,
   defaultIfrCancellationValidator,
+  formatIfrPickupRequest,
+  formatVfrFlightFollowingRequest,
+  formatVfrPositionReport,
   isAirborneVfrEligible,
   validateVfrRequestConfig,
 } from "./vfrRequestQueue";

@@ -92,6 +92,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
 - **Automated check-ins**: Staggered arrival and departure check-in radio calls:
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SID departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
+  - Airborne VFR flight following / IFR pickup cold call: *"[Facility ]Approach, <callsign>"* (e.g. *"Atlanta Approach, Skyhawk 172SP"* or *"Approach, Skyhawk 172SP"*). Full request details are provided upon controller query (`say request`).
 - **Inbound & departure handoff workflow**:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F1` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.

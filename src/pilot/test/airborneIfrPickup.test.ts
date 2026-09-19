@@ -7,9 +7,11 @@ import {
   type RadioRequest,
 } from "@core";
 import { handleRadioText } from "../handleRadioText";
+import { createVfrRequestQueue, formatIfrPickupRequest } from "../vfrRequestQueue";
 import { datablockSourceFromWorld } from "../../scope/datablock";
 import { isVfrAircraft } from "../../scope/systemLists";
 import { terminalStripsFromWorld } from "../../ui/strips/terminalStripsFromWorld";
+import type { RegionalFacility } from "@scenario";
 
 function setupRegionalWorld(options?: {
   airborne?: boolean;
@@ -421,5 +423,198 @@ describe("T04-74: Airborne VFR-to-IFR pickup", () => {
       expect(stripAfter?.flightRules).toBe("IFR");
       expect(stripAfter?.destinationAirport).toBe("KPDK");
     });
+  });
+});
+
+describe("T04-84: Cold call check-in and enriched IFR pickup request schema", () => {
+  it("initial check-in emits cold call ('Atlanta Approach, <callsign>' or 'Approach, <callsign>') and stores PENDING request with full details", () => {
+    const regionalFacility: RegionalFacility = {
+      schemaVersion: 1,
+      centerAirportId: "KATL",
+      facilityName: "Atlanta",
+      radiusNm: 40,
+      arp: { latDeg: 33.64, lonDeg: -84.42 },
+      source: { families: ["CIFP"] },
+      airports: [
+        {
+          icao: "KPDK",
+          name: "Peachtree-DeKalb",
+          arp: { latDeg: 33.87, lonDeg: -84.3 },
+          arpNm: { xNm: 12, yNm: 18 },
+          fieldElevFt: 1000,
+          magVarDeg: -5,
+          publicUse: true,
+          towered: true,
+          eligible: true,
+          hasPublishedApproaches: true,
+          runways: [
+            {
+              id: "21L",
+              threshold: { latDeg: 33.87, lonDeg: -84.3 },
+              thresholdNm: { xNm: 12, yNm: 18 },
+              headingTrueDeg: 210,
+              headingMagDeg: 215,
+              lengthFt: 6000,
+            },
+          ],
+        },
+      ],
+      airspaces: [
+        {
+          id: "KPDK-CLASS-D",
+          name: "KPDK Class D",
+          type: "CONTROLLED",
+          class: "D",
+          centerAirportId: "KPDK",
+          lowerLimit: { reference: "MSL", unit: "MSL", altitudeFt: 0 },
+          upperLimit: { reference: "MSL", unit: "MSL", altitudeFt: 3000 },
+          lowerLimitFt: 0,
+          upperLimitFt: 3000,
+          segments: [],
+        },
+      ],
+      getAirport: (icao) => (icao === "KPDK" ? regionalFacility.airports[0] : undefined),
+      hasAirport: (icao) => icao === "KPDK",
+      getEligibleDestinations: () => [regionalFacility.airports[0]],
+      getEligibleDestination: (icao) => {
+        if (icao === "KPDK") return regionalFacility.airports[0];
+        throw new Error("not found");
+      },
+      getAirspaces: () => regionalFacility.airspaces,
+    };
+
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 0, ifrPickupPercent: 100, requestCapPerHour: 10 },
+      regional: regionalFacility,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+
+    const aircraft = createAircraft({
+      id: "ac-ifr-test",
+      callsign: "C172SP",
+      xNm: 10,
+      yNm: 15,
+      altitudeFt: 5000,
+      headingDeg: 120,
+      speedKt: 110,
+      aircraftType: "C172",
+      flightRules: "VFR",
+    });
+    aircraft.callsign = "Skyhawk 172SP";
+    aircraft.ambientVfr = {
+      mission: "LOCAL",
+      zoneId: "Z1",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+      phase: "CRUISE",
+    };
+
+    const world = createWorld({
+      aircraft: [aircraft],
+      regional: regionalFacility,
+    });
+
+    const log = new SessionLog();
+    const heard: string[] = [];
+    let statusText: string | undefined;
+
+    queue.scheduleFromWorld(world, 0);
+    queue.drain({
+      world,
+      log,
+      setStatus: (txt) => {
+        statusText = txt;
+      },
+      radio: { isBusy: () => false, play: (t) => void heard.push(t) },
+    });
+
+    // 1. Initial check-in emits cold call with facility prefix
+    expect(heard).toHaveLength(1);
+    expect(heard[0]).toBe("Atlanta Approach, Skyhawk 172SP");
+    expect(statusText).toBe("Atlanta Approach, Skyhawk 172SP");
+
+    // 2. Request pushed to world.radioRequests with status PENDING and complete details
+    expect(world.radioRequests).toHaveLength(1);
+    const radioReq = world.radioRequests![0];
+    expect(radioReq.status).toBe("PENDING");
+    expect(radioReq.kind).toBe("IFR_PICKUP");
+    expect(radioReq.callsign).toBe("Skyhawk 172SP");
+    expect(radioReq.details).toMatchObject({
+      aircraftType: "C172",
+      destinationAirportId: "KPDK",
+      positionNm: { xNm: 10, yNm: 15 },
+      altitudeFt: 5000,
+      headingDeg: 120,
+    });
+    expect(radioReq.details.requestedAltitudeFt).toBeDefined();
+
+    // 3. Generic fallback without facilityName
+    delete regionalFacility.facilityName;
+    const aircraft2 = createAircraft({
+      id: "ac-ifr-generic",
+      callsign: "C182RG",
+      xNm: 5,
+      yNm: 8,
+      altitudeFt: 6000,
+      headingDeg: 90,
+      speedKt: 120,
+      aircraftType: "C182",
+      flightRules: "VFR",
+    });
+    aircraft2.ambientVfr = {
+      mission: "LOCAL",
+      zoneId: "Z1",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+      phase: "CRUISE",
+    };
+    world.aircraft.push(aircraft2);
+    queue.scheduleFromWorld(world, 0);
+    world.simTimeMs = 3600000;
+    const heard2: string[] = [];
+    queue.drain({
+      world,
+      log,
+      radio: { isBusy: () => false, play: (t) => void heard2.push(t) },
+    });
+    expect(heard2).toHaveLength(1);
+    expect(heard2[0]).toBe("Approach, C182RG");
+  });
+
+  it("formatIfrPickupRequest produces complete and sparse strings cleanly", () => {
+    // Complete string
+    const complete = formatIfrPickupRequest({
+      callsign: "N12345",
+      positionPhrase: "10 miles south of KPDK",
+      aircraftType: "C172",
+      destinationAirportId: "KPDK",
+      requestedAltitudeFt: 4000,
+    });
+    expect(complete).toBe(
+      "N12345, 10 miles south of KPDK, C172, request IFR to KPDK, requested altitude 4000",
+    );
+
+    // Sparse: omitted position and aircraft type
+    const sparseNoPosNoType = formatIfrPickupRequest({
+      callsign: "N12345",
+      destinationAirportId: "KPDK",
+      requestedAltitudeFt: 5000,
+    });
+    expect(sparseNoPosNoType).toBe("N12345, request IFR to KPDK, requested altitude 5000");
+
+    // Sparse: omitted altitude
+    const sparseNoAlt = formatIfrPickupRequest({
+      callsign: "N12345",
+      aircraftType: "BE36",
+      destinationAirportId: "KFTY",
+    });
+    expect(sparseNoAlt).toBe("N12345, BE36, request IFR to KFTY");
+
+    // Minimal: callsign only
+    const minimal = formatIfrPickupRequest({
+      callsign: "N12345",
+    });
+    expect(minimal).toBe("N12345, request IFR");
   });
 });
