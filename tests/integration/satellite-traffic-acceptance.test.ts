@@ -669,6 +669,30 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
         regional.airspaces.filter(isVfrAvoidanceVolume),
       ),
     ).toBe(true);
+    const firstReplacementWaypoint = (replanningVfr!.waypoints ?? [])[0];
+    if (!firstReplacementWaypoint) {
+      throw new Error("expected replanned VFR route to have a first waypoint");
+    }
+    const navigationStep = stepVfrAircraftNavigation(
+      replanningAircraft,
+      replanningWorld.simTimeMs,
+      0,
+      cancelLog,
+      regional.airspaces.filter(isVfrAvoidanceVolume),
+    );
+    expect(navigationStep.exited).toBe(false);
+    expect(replanningAircraft.ambientVfr!.waypointIndex).toBe(0);
+    const expectedHeading =
+      (Math.atan2(
+        firstReplacementWaypoint.xNm - replanningAircraft.xNm,
+        firstReplacementWaypoint.yNm - replanningAircraft.yNm,
+      ) *
+        180) /
+      Math.PI;
+    expect(replanningAircraft.intent.assignedHeadingDeg).toBeCloseTo(
+      expectedHeading < 0 ? expectedHeading + 360 : expectedHeading,
+      8,
+    );
     expect(replanningAircraft.activeClearance).toBeUndefined();
     expect(replanningAircraft.assignedSquawk).toBe("4722");
     expect(replanningAircraft.flightFollowing).toEqual(originalService);
