@@ -1,10 +1,10 @@
 # T04-70 Regional catalog and satellite-arrival pack
 
-**Phase:** 04 Procedures (post-exit addendum)  
-**Priority:** P0  
-**Size:** L  
-**Depends on:** T04-69  
-**Blocks:** T04-71  
+**Phase:** 04 Procedures (post-exit addendum)
+**Priority:** P0
+**Size:** L
+**Depends on:** T04-69
+**Blocks:** T04-71
 **Launch:** Implement this ticket only. Do not start VFR navigation, request handling, or UI work.
 
 ## Goal

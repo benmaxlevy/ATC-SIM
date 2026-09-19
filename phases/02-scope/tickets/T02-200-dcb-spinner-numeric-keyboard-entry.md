@@ -1,11 +1,11 @@
 # T02-200 DCB spinner numeric keyboard entry state and routing
 
-**Phase:** 02 Scope  
-**Priority:** P0  
-**Size:** M  
-**Depends on:** none  
-**Blocks:** T02-201  
-**Merge target:** `feature/sattelite-traffic`  
+**Phase:** 02 Scope
+**Priority:** P0
+**Size:** M
+**Depends on:** none
+**Blocks:** T02-201
+**Merge target:** `feature/sattelite-traffic`
 **Launch:** Implement this ticket only; stop at configured boundary.
 
 ## Mission

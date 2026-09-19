@@ -84,3 +84,28 @@ actual result and must not treat a timeout as a pass.
 
 - New runtime features, Class B approval, tower cab, scoring, speech providers,
   live FAA downloads, or later phase work.
+
+## Closure evidence
+
+- Integrated acceptance: `tests/integration/satellite-traffic-acceptance.test.ts`
+  covers regional boot, VFR destination selection, visual rejection/touchdown,
+  IFR cancellation/Class B protection, and DCB state restoration.
+- Focused acceptance: 13 tests passed.
+- `npm run ci`: passed (240 files, 2,608 tests passed; 4 skipped).
+- `git diff --check master`: passed after removing branch-introduced whitespace
+  and EOF issues.
+- Speech mock: `SPEECH_API_MOCK=1 pytest` passed with the temporary repository
+  venv using FastAPI 0.115.12 / Starlette 0.46.2 (94 passed, 1 warning). The
+  unconstrained latest dependency resolution hung in the first TestClient
+  contract test; that timeout is not treated as a pass.
+- Manual evidence: the supplied TI 6191.409 Rev. 30 manual was reviewed for
+  satellite-arrival list behavior (§2.15.5, printed pp. 2-96–2-97), VFR plan
+  inputs/results (§5.5.10, pp. 5-128–5-139), interfacility VFR plans
+  (§5.5.13, p. 5-139), destination-airport assignment (§5.7.6, p. 5-193),
+  and handoff acceptance (§§5.1.11–5.1.12, pp. 5-22–5-23). Those sections do
+  not define this trainer's generated traffic, autonomous visual touchdown,
+  IFR cancellation, or Class B approval policy; no contradiction was found.
+  Live KATL/browser sessions, speech-latency measurement, 60-FPS performance
+  observation, and live-source/facility fidelity checks require local runtime
+  access and remain unclaimed by automated tests.
+- Class B entry approval is not supported and is not implemented.

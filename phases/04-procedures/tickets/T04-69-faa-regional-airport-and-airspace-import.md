@@ -1,10 +1,10 @@
 # T04-69 FAA regional airport and airspace import
 
-**Phase:** 04 Procedures (post-exit addendum)  
-**Priority:** P0  
-**Size:** L  
-**Depends on:** T04-34  
-**Blocks:** T04-70  
+**Phase:** 04 Procedures (post-exit addendum)
+**Priority:** P0
+**Size:** L
+**Depends on:** T04-34
+**Blocks:** T04-70
 **Launch:** Implement this ticket only. Do not start T04-70 or traffic/navigation work.
 
 ## Goal

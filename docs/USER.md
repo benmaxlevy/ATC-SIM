@@ -422,11 +422,16 @@ eligible towered satellite destinations, swept-path Bravo avoidance is
 enforced on every planned route, and the trainer issues no VFR Bravo
 clearance. Other-airspace and tower coordination is assumed, not simulated.
 
-Trainer deltas: deterministic virtual pilots with configurable workload, not
-observed traffic statistics; VMC assumed for generated IFR cancellation; no
-tower cab, ground traffic, emergencies, scoring, or certification. Speech
-runs only through the self-hosted speech API or in-tab fallback; if speech
-is unavailable, every phrase above works typed.
+Trainer limitations: deterministic virtual pilots with configurable workload,
+not observed traffic statistics; VMC assumed for generated IFR cancellation;
+Class B entry approval is not supported; the trainer only rejects unsafe
+continuations and routes generated VFR traffic around modeled Class B volumes.
+There is no tower cab, ground traffic, emergencies, scoring, or certification.
+Visual approaches use simplified straight-in guidance and touchdown. Regional
+airspace and runway data are deterministic training approximations, not
+operational or certified data. Speech runs only through the self-hosted speech
+API or in-tab fallback; if speech is unavailable, every phrase above works
+typed.
 
 ## Controls & keybindings
 

@@ -699,7 +699,20 @@ CIFP-only and missing-status rows never qualify.
 Trainer limitations: The regional pack provides physical and procedural geometry
 as a training approximation. It does not model a certified tower cab or claim
 operational airspace accuracy. Simulated tower handoff, landing clearances, and
-aircraft despawn are trainer behaviors supplied by downstream tickets.
+aircraft despawn are trainer behaviors supplied by downstream tickets. Class B
+entry approval is not supported: the trainer rejects unsafe IFR cancellation
+inside modeled Class B and keeps generated VFR routes outside modeled volumes;
+it does not issue, simulate, or imply a Class B clearance.
+
+### Post-exit addendum (T04-91 audit closure)
+
+The audit closure suite joins regional scenario loading, generic VFR destination
+eligibility, fail-closed visual rejection and visual touchdown, IFR cancellation
+state recovery with Class B no-entry protection, and DCB coupled-state behavior.
+These checks prove existing remediation contracts together; they add no runtime
+behavior. Manual KATL live-source, STARS-manual, speech-latency, and performance
+evidence remains an explicit handoff item when the required local data and
+browser session are unavailable. Class B entry approval is not supported.
 
 ### Post-exit addendum (T04-77–78 VFR setup simplification)
 
@@ -768,4 +781,3 @@ Do not start phase 5 until every box is true.
 Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, T04-36–42,
 T04-46–50, and T04-69–76 are post-exit addenda. Historical exit boxes stay
 unchecked-as-written.
-

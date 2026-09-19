@@ -1302,4 +1302,3 @@ def test_cleared_visual_semantic_guard_and_canonicalization() -> None:
     assert not guard_instruction_semantics("cleared visual approach", outcome).ok
     assert not guard_instruction_semantics("Delta 123 radio check", outcome).ok
     assert not guard_instruction_semantics("cleared visual approach runway two seven", outcome).ok
-

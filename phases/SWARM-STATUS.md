@@ -2184,4 +2184,3 @@ Authoritative citations: FAA/Raytheon STARS TI 6191.409 Revision 30 §2.5, §2.6
 No push performed; stop at configured boundary.
 
 **PHASE EXIT GREEN**
-

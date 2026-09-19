@@ -4298,7 +4298,7 @@ Waves unchanged: **A** T04-13 alone → **B** T04-14 ∥ T04-15 (isolated worktr
 
 ## Seventh swarm — roles, product law, waves
 
-Phase folder: `phases/02-scope/`  
+Phase folder: `phases/02-scope/`
 Tickets: **T02-22–30**. **Skip T02-01–21** (already on master).
 
 | Wave | Tickets (≤3) | Wait for |
@@ -4464,7 +4464,7 @@ Second paragraph why.
 
 Dependencies on the ticket still win if a wave disagrees. **This run uses the seventh-swarm table** in **Seventh swarm — roles, product law, waves** (T02-22–30). Do not execute the archived T04-16–17 table.
 
-Phase folder: `phases/02-scope/`  
+Phase folder: `phases/02-scope/`
 Tickets: **T02-22–30**. **Skip T02-01–21.** Skip all T03/T04/T05.
 
 | Wave | Tickets (≤3) | Wait for |
@@ -5399,6 +5399,3 @@ untracked `.worktrees/` and `speech-api/:memory:.ses` remain untouched.
 The product law, skip list, waves, ticket ownership, paths, and captain return
 format are defined in the preceding Seventy-fourth planned section. This start
 section changes only worker model/launch state to satisfy the user override.
-
-
-

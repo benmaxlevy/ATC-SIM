@@ -1,11 +1,11 @@
 # T02-201 DCB spinner live digit rendering and integration acceptance
 
-**Phase:** 02 Scope  
-**Priority:** P0  
-**Size:** M  
-**Depends on:** T02-200  
-**Blocks:** none  
-**Merge target:** `feature/sattelite-traffic`  
+**Phase:** 02 Scope
+**Priority:** P0
+**Size:** M
+**Depends on:** T02-200
+**Blocks:** none
+**Merge target:** `feature/sattelite-traffic`
 **Launch:** Implement this ticket only; stop at configured boundary.
 
 ## Mission

@@ -237,4 +237,3 @@ service, MSAW marker, ownership, and kinematics unchanged.
 - `phases/_shared/parse-pipeline.md`
 - `phases/04-procedures/README.md`
 - `docs/USER.md`
-

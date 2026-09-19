@@ -37,6 +37,7 @@ import {
   getOperationalService,
   mulberry32,
   SessionLog,
+  SIM_DT_S,
   stepWorld,
   type AmbientVfrMission,
 } from "@core";
@@ -47,12 +48,21 @@ import {
   generateDepartureSchedule,
   getEligibleVfrDestinations,
   loadKdem,
+  loadPlayableScenario,
   parseRegionalPack,
   type RegionalFacility,
   type Scenario,
 } from "@scenario";
 import { handleRadioText } from "../../src/pilot/handleRadioText";
+import { applyIntent } from "../../src/pilot/applyIntent";
 import { validateInstructions } from "../../src/pilot/validate";
+import {
+  armDcbSpinner,
+  cancelDcbSpinner,
+  commitDcbSpinner,
+  createScopeView,
+  inputDcbSpinnerKey,
+} from "@scope";
 import {
   createVfrRequestQueue,
   defaultIfrCancellationValidator,
@@ -891,6 +901,101 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
     const eligibleIcaos = eligible.map((d) => d.icao);
     expect(eligibleIcaos).toContain("KPDK");
     expect(eligibleIcaos).not.toContain("KUNF");
+  });
+
+  test("T04-91 integrated audit closure: regional load, visual lifecycle, and DCB state", () => {
+    // Regional scenario boot remains generic and KDEM remains the default.
+    const katl = loadPlayableScenario("katl");
+    expect(katl.icao).toBe("KATL");
+    expect(katl.regional).toBeDefined();
+    expect(katl.regional?.radiusNm).toBe(40);
+    expect(getEligibleVfrDestinations(katl.regional!).every((airport) => airport.eligible)).toBe(
+      true,
+    );
+
+    const regional = buildSyntheticRegionalFacility();
+    expect(getEligibleVfrDestinations(regional).map((airport) => airport.icao)).toEqual([
+      "KDEM",
+      "KPDK",
+    ]);
+
+    // Visual validation fails closed when the resolved destination has no runway geometry.
+    const rejectedVisual = createAircraft({
+      id: "ac-visual-rejected",
+      callsign: "N901VR",
+      destination: "KUNF",
+      xNm: 4,
+      yNm: 0,
+      headingDeg: 270,
+      altitudeFt: 1500,
+      speedKt: 120,
+    });
+    const rejectedWorld = createWorld({
+      aircraft: [rejectedVisual],
+      catalog: loadKdem().catalog,
+      regional: {
+        centerAirportId: "KDEM",
+        airports: [{ icao: "KUNF", fieldElevFt: 800, runways: [] }],
+      },
+    });
+    expect(
+      validateInstructions(rejectedVisual, [{ type: "CLEARED_VISUAL", runwayId: "09" }], {
+        world: rejectedWorld,
+      }),
+    ).toEqual({ ok: false, reason: "RUNWAY" });
+
+    // Valid center geometry drives the existing visual final through touchdown.
+    const visualAircraft = createAircraft({
+      id: "ac-visual-arrival",
+      callsign: "N902VA",
+      xNm: 0.05,
+      yNm: 0,
+      headingDeg: 270,
+      altitudeFt: 40,
+      speedKt: 130,
+    });
+    const visualWorld = createWorld({
+      aircraft: [visualAircraft],
+      catalog: {
+        airportId: "KDEM",
+        fieldElevFt: 0,
+        approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+        navaids: [],
+        fixes: [{ id: "RW27", xNm: 0, yNm: 0 }],
+        sids: [],
+        stars: [],
+      },
+      sessionLog: new SessionLog(),
+    });
+    expect(
+      validateInstructions(visualAircraft, [{ type: "CLEARED_VISUAL", runwayId: "27" }], {
+        world: visualWorld,
+      }).ok,
+    ).toBe(true);
+    applyIntent(visualAircraft, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, {
+      world: visualWorld,
+    });
+    for (let i = 0; i < 20; i++) stepWorld(visualWorld, SIM_DT_S);
+    expect(visualWorld.aircraft).toHaveLength(0);
+    expect(visualWorld.sessionLog?.byType("nav.landed")).toHaveLength(1);
+
+    // DCB cancellation restores coupled range-ring state; PTL zero disables PTL.
+    const view = createScopeView();
+    view.ringIntervalNm = 5;
+    view.showRings = false;
+    armDcbSpinner(view, "RR");
+    inputDcbSpinnerKey(view, "2");
+    inputDcbSpinnerKey(view, "0");
+    view.showRings = true;
+    cancelDcbSpinner(view);
+    expect(view.ringIntervalNm).toBe(5);
+    expect(view.showRings).toBe(false);
+
+    armDcbSpinner(view, "PTL");
+    inputDcbSpinnerKey(view, "0");
+    commitDcbSpinner(view);
+    expect(view.ptlMinutes).toBe(0);
+    expect(view.ptlOn).toBe(false);
   });
 
   describe.each<{

@@ -83,4 +83,3 @@ The regional facility provides destination and runway geometry as a training
 approximation for satellite arrivals and navigation. Tower coordination, landing
 clearances, and aircraft removal/despawn are trainer behaviors supplied by
 downstream simulation tickets.
-
