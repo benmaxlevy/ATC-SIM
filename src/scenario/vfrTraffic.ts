@@ -29,7 +29,12 @@ import {
 } from "../core/vfrNavigation";
 import { trueToMagneticDeg } from "../core/nav/headingFrames";
 import type { World } from "../core/world";
-import type { RegionalAirport, RegionalAirspaceVolume, RegionalFacility } from "./regional";
+import {
+  getRegionalAirportEligibility,
+  type RegionalAirport,
+  type RegionalAirspaceVolume,
+  type RegionalFacility,
+} from "./regional";
 import type {
   Scenario,
   VfrAircraftMixRow,
@@ -89,19 +94,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Resolve eligible imported controlled B/C/D destination airports from regional facility. */
 export function getEligibleVfrDestinations(regional?: RegionalFacility): RegionalAirport[] {
   if (!regional) return [];
-  const controlledAirspaces = regional.airspaces.filter(
-    (v) => v.type === "CONTROLLED" && (v.class === "B" || v.class === "C" || v.class === "D"),
-  );
-  const controlledAirportIds = new Set(
-    controlledAirspaces
-      .map((v) => v.centerAirportId?.toUpperCase())
-      .filter((id): id is string => Boolean(id)),
-  );
-
-  return regional.airports.filter(
-    (apt) =>
-      apt.publicUse && apt.runways.length > 0 && controlledAirportIds.has(apt.icao.toUpperCase()),
-  );
+  return regional.airports.filter((airport) => getRegionalAirportEligibility(airport).eligible);
 }
 
 /**

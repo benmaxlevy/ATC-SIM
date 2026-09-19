@@ -56,6 +56,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KSYN",
+    },
+    catalogRef: "airports/KSYN",
     runways: [
       {
         id: "27",
@@ -76,6 +83,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KSAT",
+    },
+    catalogRef: "airports/KSAT",
     runways: [
       {
         id: "09",
@@ -401,6 +415,13 @@ describe("T04-71 VFR population end-to-end integration", () => {
       publicUse: true,
       towered: true,
       eligible: true,
+      serviceMetadata: {
+        publicUse: true,
+        towered: true,
+        sourceFile: "APT.csv",
+        sourceRecordId: icao,
+      },
+      catalogRef: `airports/${icao}`,
       runways: [
         {
           id: runwayId,
@@ -509,6 +530,13 @@ describe("T04-80 Satellite-departure line acceptance", () => {
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: icao,
+    },
+    catalogRef: `airports/${icao}`,
     runways: [
       {
         id: runwayId,

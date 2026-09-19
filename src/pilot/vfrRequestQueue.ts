@@ -37,6 +37,7 @@ import {
 } from "../core/vfrNavigation";
 import {
   DEFAULT_VFR_REQUEST_CONFIG,
+  getRegionalAirportEligibility,
   getEligibleVfrDestinations,
   validateVfrRequestConfig,
   VFR_PILOT_REQUEST_XOR,
@@ -465,7 +466,11 @@ export class VfrRequestQueue {
             let nearestIcao: string | undefined;
             let nearestDist = Number.POSITIVE_INFINITY;
             for (const apt of airports) {
-              if (typeof apt?.icao !== "string" || !apt?.arpNm) {
+              if (
+                typeof apt?.icao !== "string" ||
+                !apt?.arpNm ||
+                !getRegionalAirportEligibility(apt).eligible
+              ) {
                 continue;
               }
               const dist = distanceNm(apt.arpNm, { xNm: aircraft.xNm, yNm: aircraft.yNm });

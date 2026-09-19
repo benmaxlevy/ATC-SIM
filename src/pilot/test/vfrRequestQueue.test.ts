@@ -52,6 +52,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KPDK",
+    },
+    catalogRef: "airports/KPDK",
     runways: [
       {
         id: "21L",
@@ -72,6 +79,13 @@ const SYNTHETIC_REGIONAL_AIRPORTS = [
     publicUse: true,
     towered: true,
     eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KFTY",
+    },
+    catalogRef: "airports/KFTY",
     runways: [
       {
         id: "08",
@@ -831,6 +845,53 @@ describe("VfrRequestQueue position report on callup", () => {
     expect(radioReq.details.positionNm).toEqual({ xNm: ac.xNm, yNm: ac.yNm });
     expect(radioReq.details.altitudeFt).toBe(4500);
     expect(radioReq.details.headingDeg).toBe(90);
+  });
+
+  it("flight-following destination selection skips an ineligible nearest airport", () => {
+    const regional = createSyntheticRegional();
+    regional.airports[0]!.eligible = false;
+    regional.airports[0]!.exclusionReason = "untowered";
+    const nearest = regional.airports[0]!;
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    world.aircraft = [
+      createSyntheticVfrAircraft({
+        id: "ac-eligible-farther",
+        xNm: nearest.arpNm.xNm,
+        yNm: nearest.arpNm.yNm,
+      }),
+    ];
+
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()[0]!.destinationAirportId).toBe("KFTY");
+  });
+
+  it("flight-following keeps destination absent when no eligible airport exists", () => {
+    const regional = createSyntheticRegional();
+    for (const airport of regional.airports) {
+      airport.eligible = false;
+      airport.exclusionReason = "missing_catalog";
+    }
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      regional,
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.regional = regional;
+    world.aircraft = [createSyntheticVfrAircraft({ id: "ac-no-destination" })];
+
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()[0]!.destinationAirportId).toBeUndefined();
   });
 
   it("initial check-in emits facility prefix when facilityName is provided", () => {

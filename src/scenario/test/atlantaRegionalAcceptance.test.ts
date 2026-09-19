@@ -79,6 +79,11 @@ describe("T04-76 Atlanta data and contract acceptance", () => {
       // Eligible destinations have publicUse, towered, and valid runways
       const destinations = getEligibleVfrDestinations(regional);
       expect(destinations.length).toBeGreaterThan(0);
+      const kpdK = destinations.find((destination) => destination.icao === "KPDK");
+      expect(kpdK).toBeDefined();
+      expect(kpdK?.runways.map((runway) => runway.id)).toEqual(
+        expect.arrayContaining(["03L", "03R", "16", "21L", "21R", "34"]),
+      );
       for (const dest of destinations) {
         expect(dest.publicUse).toBe(true);
         expect(dest.towered).toBe(true);

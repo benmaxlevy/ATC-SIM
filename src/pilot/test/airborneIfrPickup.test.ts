@@ -446,6 +446,13 @@ describe("T04-84: Cold call check-in and enriched IFR pickup request schema", ()
           publicUse: true,
           towered: true,
           eligible: true,
+          serviceMetadata: {
+            publicUse: true,
+            towered: true,
+            sourceFile: "APT.csv",
+            sourceRecordId: "KPDK",
+          },
+          catalogRef: "airports/KPDK",
           hasPublishedApproaches: true,
           runways: [
             {

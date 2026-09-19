@@ -8,7 +8,12 @@ import {
 import { trueToMagneticDeg } from "../../core/nav/headingFrames";
 import { TRAFFIC_AIRLINES } from "../callsigns";
 import { assertScenario, loadKdem } from "../load";
-import { parseRegionalPack, type RegionalFacility } from "../regional";
+import {
+  getRegionalAirportEligibility,
+  parseRegionalPack,
+  type RegionalAirport,
+  type RegionalFacility,
+} from "../regional";
 import {
   VFR_FUTURE_ENTRY_XOR,
   VFR_INITIAL_PLACEMENT_XOR,
@@ -19,12 +24,87 @@ import {
   VfrTrafficManager,
   chooseWeighted,
   getDepartureVfrAirports,
+  getEligibleVfrDestinations,
+  fixedVfrMovementMix,
   resolveVfrExitRadiusNm,
   resolveVfrSpawnRadiusNm,
   validateVfrTrafficConfig,
 } from "../vfrTraffic";
 import type { Scenario } from "../types";
 import { createWorldFromScenario } from "../spawn";
+
+const ELIGIBILITY_RUNWAY = {
+  id: "18",
+  threshold: { latDeg: 33, lonDeg: -84 },
+  thresholdNm: { xNm: 1, yNm: 1 },
+  headingTrueDeg: 180,
+  headingMagDeg: 180,
+  lengthFt: 4000,
+};
+
+function makeEligibilityAirport(overrides: Partial<RegionalAirport> = {}): RegionalAirport {
+  return {
+    icao: "KAAA",
+    name: "Synthetic Airport",
+    arp: { latDeg: 33, lonDeg: -84 },
+    arpNm: { xNm: 1, yNm: 1 },
+    fieldElevFt: 1000,
+    magVarDeg: 0,
+    publicUse: true,
+    towered: true,
+    eligible: true,
+    serviceMetadata: {
+      publicUse: true,
+      towered: true,
+      sourceFile: "APT.csv",
+      sourceRecordId: "KAAA",
+    },
+    runways: [ELIGIBILITY_RUNWAY],
+    hasPublishedApproaches: false,
+    catalogRef: ".",
+    ...overrides,
+  };
+}
+
+describe("T04-88 generic VFR destination eligibility", () => {
+  test.each([
+    ["eligible", makeEligibilityAirport(), true, undefined],
+    [
+      "excluded",
+      makeEligibilityAirport({ eligible: false, exclusionReason: "private_use" }),
+      false,
+      "private_use",
+    ],
+    ["incomplete", makeEligibilityAirport({ catalogRef: undefined }), false, "missing_catalog"],
+  ])("returns explicit reason for %s airport", (_label, airport, expected, reason) => {
+    expect(getRegionalAirportEligibility(airport)).toEqual(
+      expected ? { eligible: true } : { eligible: false, reason },
+    );
+  });
+
+  test("shared-airspace airport stays eligible without center-airport ownership", () => {
+    const airport = makeEligibilityAirport({ icao: "KSHR" });
+    const regional = {
+      airports: [airport],
+      airspaces: [{ centerAirportId: "KOTHER", type: "CONTROLLED", class: "B" }],
+    } as unknown as RegionalFacility;
+
+    expect(getEligibleVfrDestinations(regional)).toEqual([airport]);
+  });
+
+  test("no eligible destination keeps configured local fallback", () => {
+    const regional = {
+      airports: [makeEligibilityAirport({ eligible: false, exclusionReason: "untowered" })],
+      airspaces: [],
+    } as unknown as RegionalFacility;
+
+    expect(fixedVfrMovementMix(regional)).toEqual({
+      localPercent: 80,
+      transitPercent: 20,
+      airportBoundPercent: 0,
+    });
+  });
+});
 
 describe("T04-71 VfrTrafficConfig schema validation and stable errors", () => {
   test("Omitted vfrTraffic returns undefined and is disabled", () => {
@@ -565,6 +645,13 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
       publicUse: true,
       towered: true,
       eligible: true,
+      serviceMetadata: {
+        publicUse: true,
+        towered: true,
+        sourceFile: "APT.csv",
+        sourceRecordId: icao,
+      },
+      catalogRef: `airports/${icao}`,
       runways: [
         {
           id: runwayId,
@@ -732,7 +819,11 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
         .sort(),
     ).toEqual([SAT_A_ICAO, SAT_B_ICAO]);
     expect(getDepartureVfrAirports(undefined, CENTER_ICAO)).toEqual([]);
-    expect(getDepartureVfrAirports(buildNoAirspaceRegional(), CENTER_ICAO)).toEqual([]);
+    expect(
+      getDepartureVfrAirports(buildNoAirspaceRegional(), CENTER_ICAO)
+        .map((a) => a.icao)
+        .sort(),
+    ).toEqual([SAT_A_ICAO, SAT_B_ICAO]);
   });
 
   test("Boot initial population stays disc-spawned with no origin fields", () => {
@@ -944,7 +1035,7 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
     }
   });
 
-  test("Empty source list skips with NO_DEPARTURE_AIRPORT and never mid-air spawns", () => {
+  test("Airports stay eligible when controlled airspace geometry is absent", () => {
     const regional = buildNoAirspaceRegional();
     const scenario = satelliteScenario(regional, {
       initialCount: 0,
@@ -954,7 +1045,10 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
       seed: 5,
     });
     const manager = new VfrTrafficManager({ config: scenario.vfrTraffic!, scenario, seed: 5 });
-    expect(manager.departureSources).toHaveLength(0);
+    expect(manager.departureSources.map((airport) => airport.icao).sort()).toEqual([
+      SAT_A_ICAO,
+      SAT_B_ICAO,
+    ]);
 
     const world = createWorldFromScenario(loadKdem());
     const log = new SessionLog();
@@ -962,12 +1056,8 @@ describe("T04-79 Satellite-origin continuous VFR entries", () => {
     manager.step(world, 1.0);
     manager.step(world, 1.0);
 
-    expect(world.aircraft.filter((a) => a.ambientVfr !== undefined)).toHaveLength(0);
-    const skips = log.byType("vfr.spawn.skipped");
-    expect(skips).toHaveLength(2);
-    for (const skip of skips) {
-      expect(skip.reason).toBe("NO_DEPARTURE_AIRPORT");
-    }
+    expect(world.aircraft.filter((a) => a.ambientVfr !== undefined)).toHaveLength(2);
+    expect(log.byType("vfr.spawn.skipped")).toHaveLength(0);
   });
 
   test("Liftoff inside Bravo exhausts to NO_SAFE_ROUTE without spawning or throwing", () => {

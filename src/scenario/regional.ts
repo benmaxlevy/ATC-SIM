@@ -50,6 +50,66 @@ export interface RegionalAirport {
   catalogRef?: string;
 }
 
+export type RegionalAirportExclusionReason =
+  | "ineligible"
+  | "missing_nasr_status"
+  | "private_use"
+  | "untowered"
+  | "no_valid_runway"
+  | "missing_catalog";
+
+export interface RegionalAirportEligibility {
+  eligible: boolean;
+  reason?: RegionalAirportExclusionReason;
+}
+
+/** Validate complete source-backed airport contract used by every destination selector. */
+export function getRegionalAirportEligibility(
+  airport: RegionalAirport,
+): RegionalAirportEligibility {
+  if (airport.eligible !== true) {
+    return {
+      eligible: false,
+      reason: (airport.exclusionReason as RegionalAirportExclusionReason) ?? "ineligible",
+    };
+  }
+  if (airport.publicUse !== true) {
+    return { eligible: false, reason: "private_use" };
+  }
+  if (airport.towered !== true) {
+    return { eligible: false, reason: "untowered" };
+  }
+  if (
+    airport.serviceMetadata?.publicUse !== true ||
+    airport.serviceMetadata.towered !== true ||
+    airport.serviceMetadata.sourceFile === undefined ||
+    airport.serviceMetadata.sourceRecordId === undefined
+  ) {
+    return { eligible: false, reason: "missing_nasr_status" };
+  }
+  if (
+    airport.runways.length === 0 ||
+    airport.runways.some(
+      (runway) =>
+        runway.id.trim().length === 0 ||
+        runway.lengthFt <= 0 ||
+        !Number.isFinite(runway.lengthFt) ||
+        !Number.isFinite(runway.headingTrueDeg) ||
+        !Number.isFinite(runway.headingMagDeg) ||
+        runway.headingTrueDeg < 0 ||
+        runway.headingTrueDeg >= 360 ||
+        runway.headingMagDeg < 0 ||
+        runway.headingMagDeg >= 360,
+    )
+  ) {
+    return { eligible: false, reason: "no_valid_runway" };
+  }
+  if (typeof airport.catalogRef !== "string" || airport.catalogRef.trim().length === 0) {
+    return { eligible: false, reason: "missing_catalog" };
+  }
+  return { eligible: true };
+}
+
 export interface RegionalAirspaceAltitude {
   altitudeFt?: number;
   unit: string;
@@ -618,15 +678,17 @@ export function parseRegionalPack(
     airspaces,
     getAirport: (icao: string) => airportMap.get(icao.toUpperCase()),
     hasAirport: (icao: string) => airportMap.has(icao.toUpperCase()),
-    getEligibleDestinations: () => airports.filter((a) => a.eligible),
+    getEligibleDestinations: () =>
+      airports.filter((airport) => getRegionalAirportEligibility(airport).eligible),
     getEligibleDestination: (icao: string) => {
       const apt = airportMap.get(icao.toUpperCase());
       if (!apt) {
         throw new Error(`Unknown regional destination airport: ${icao}`);
       }
-      if (!apt.eligible) {
+      const eligibility = getRegionalAirportEligibility(apt);
+      if (!eligibility.eligible) {
         throw new Error(
-          `Airport ${icao} is not an eligible destination (${apt.exclusionReason ?? "ineligible"})`,
+          `Airport ${icao} is not an eligible destination (${eligibility.reason ?? "ineligible"})`,
         );
       }
       return apt;

@@ -105,7 +105,12 @@ export {
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";
-export { hasRegionalPack, loadRegionalPack, parseRegionalPack } from "./regional";
+export {
+  getRegionalAirportEligibility,
+  hasRegionalPack,
+  loadRegionalPack,
+  parseRegionalPack,
+} from "./regional";
 export { loadRegionalAirportCatalog } from "./regionalCatalogs";
 export type { AtpaTrackPose, AtpaVolumeGeometry } from "./atpaVolume";
 export {
