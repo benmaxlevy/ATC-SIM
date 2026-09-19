@@ -361,7 +361,7 @@ class VoiceLoopImpl implements VoiceLoop {
 
   private syncLock(event: TransmitGateEvent): void {
     this.gate.apply(event);
-    this.setTransmitLocked(this.gate.locked);
+    this.setTransmitLocked(this.gate.locked || this.busy);
   }
 
   private emitStatus(event: VoiceStatusEvent | null): void {
@@ -541,6 +541,7 @@ class VoiceLoopImpl implements VoiceLoop {
     }
     this.speakActive += 1;
     this.speakSeq += 1;
+    this.setTransmitLocked(true);
 
     const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
@@ -592,6 +593,7 @@ class VoiceLoopImpl implements VoiceLoop {
         this.syncLock("play-ended");
         this.emitStatus(null);
       }
+      this.setTransmitLocked(this.gate.locked || this.busy);
     }
   }
 

@@ -420,6 +420,8 @@ class PttCaptureControllerImpl implements PttCaptureController {
       return;
     }
     if (this.transmitLocked) {
+      this.capturing = false;
+      this.pttHeld = false;
       this.emit({ type: "ignored-locked" });
       return;
     }
