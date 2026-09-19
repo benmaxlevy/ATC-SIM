@@ -53,6 +53,7 @@ value. Items already shipped or limited to manual validation are excluded.
 31. KATL MAPS/GEO/BRITE visual operator validation.
 32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
 33. Radio communications transfer to tower ("contact tower [frequency]") for all controlled airports.
+34. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
@@ -821,6 +822,35 @@ Constraints later work must keep:
   `speech-api/parse_engine.py`, GBNF, prompt, validator, parity guard, and docs together.
 - Inbound pilot check-in on tower frequency remains decoupled from TRACON simulation or scored
   as appropriate.
+
+### General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB")
+
+Visible now: Pilot telephony and speech synthesis support GA aircraft make/model names (e.g.
+"Skyhawk 172SP", "Cherokee 4821V", "Cirrus 210AB"), title-casing the manufacturer/model and
+expanding the alphanumeric tail phonetically for initial check-ins and readbacks
+(`formatCallsignSpeech` in `src/pilot/telephony.ts`, `readbackForTts` in `src/speech/tts-text.ts`).
+In controller input, `N<digits>` ("November 1 2 3"), numeric suffixes ("123"), or track selection
+without callsign are accepted across typed commands and spoken paths (Path A, B, and C).
+
+Deliberately missing: Spoken input (STT) and typed commands do not accept GA aircraft make/model
+names followed by flight/tail numbers (e.g., controller speaking `"Skyhawk 172SP, turn left heading 270"`
+or `"Cirrus 210AB, squawk 0421"`). In the spoken frontend parser (Path A/B), non-airline prefixes
+trigger an `unknown_telephony` error because GA makes/models are absent from
+`src/parse/spoken/telephony.json`. In typed commands, space-separated tokens reject make words as
+`UNKNOWN_TOKEN`. In Path C (`speech-api/parse_engine.py`), `_CALLSIGN_RE` enforces single tokens
+`^[A-Z0-9]{2,8}$` without spaces, and prompt/normalization rules only map airline ICAO telephony to
+on-frequency callsigns.
+
+Constraints later work must keep:
+- Keep aircraft profiles, make/model aliases, and telephony data-first (e.g. extending aircraft
+  profiles or telephony catalogs, not hardcoded switch-cases or facility branches).
+- Synchronize across all paths: Path A (grammar), Path B (pattern matcher / spoken telephony),
+  Path C (`speech-api/parse_engine.py`, GBNF, prompt, few-shots, and evaluation corpus), and typed
+  command parser.
+- Grounding resolution must map make/model + tail/suffix (or abbreviated tail) to the matching
+  on-frequency target (e.g., `"Skyhawk 172SP"` or `"Skyhawk 2SP"` resolving to aircraft with callsign
+  `N172SP` or `Skyhawk 172SP`), without ambiguity or misidentifying other aircraft.
+- Self-hosted speech and parsing only; no cloud inference or metered SDKs.
 
 ## Explicit boundary
 
