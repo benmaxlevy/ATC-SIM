@@ -752,7 +752,10 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
             or not raw["runwayId"].strip()
         ):
             return None
-        return {"type": "CLEARED_VISUAL", "runwayId": raw["runwayId"].strip().upper()}
+        rwy = raw["runwayId"].strip().upper()
+        if not re.fullmatch(r"\d{1,2}[LRC]?", rwy):
+            return None
+        return {"type": "CLEARED_VISUAL", "runwayId": rwy}
     if instr_type == "INTERCEPT_LOCALIZER":
         if (
             not _exact_keys(raw, {"type", "approachId"})
@@ -1087,11 +1090,26 @@ def _runway_has_transcript_evidence(runway_id: str, text: str) -> bool:
     if digits in lower:
         digit_ok = True
     elif len(digits) == 2:
+        group_words = {
+            "10": "ten", "11": "eleven", "12": "twelve", "13": "thirteen", "14": "fourteen",
+            "15": "fifteen", "16": "sixteen", "17": "seventeen", "18": "eighteen", "19": "nineteen",
+            "20": "twenty", "30": "thirty",
+        }
+        tens_words = {"2": "twenty", "3": "thirty"}
+        gw = group_words.get(digits)
+        group_match = bool(gw and re.search(rf"\b{gw}\b", lower))
         w1 = RUNWAY_DIGIT_WORDS.get(digits[0], set())
         w2 = RUNWAY_DIGIT_WORDS.get(digits[1], set())
-        digit_ok = any(re.search(rf"\b{w}\b", lower) for w in w1) and any(
+        single_match = any(re.search(rf"\b{w}\b", lower) for w in w1) and any(
             re.search(rf"\b{w}\b", lower) for w in w2
         )
+        ten_prefix = tens_words.get(digits[0])
+        ten_match = bool(
+            ten_prefix
+            and re.search(rf"\b{ten_prefix}\b", lower)
+            and any(re.search(rf"\b{w}\b", lower) for w in w2)
+        )
+        digit_ok = group_match or single_match or ten_match
     elif len(digits) == 1:
         w = RUNWAY_DIGIT_WORDS.get(digits, set())
         digit_ok = any(re.search(rf"\b{word}\b", lower) for word in w)

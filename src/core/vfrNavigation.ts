@@ -484,6 +484,22 @@ export function checkSweptSegmentVolumeCollision(
     return true;
   }
 
+  // 2.5 Path climbing/descending vertically through volume interior
+  const interiorSamples = 10;
+  for (let s = 1; s < interiorSamples; s++) {
+    const t = s / interiorSamples;
+    const alt = p1.altitudeFt + t * (p2.altitudeFt - p1.altitudeFt);
+    if (alt >= effectiveFloor && alt <= effectiveCeiling) {
+      const pt = {
+        xNm: p1.xNm + t * (p2.xNm - p1.xNm),
+        yNm: p1.yNm + t * (p2.yNm - p1.yNm),
+      };
+      if (pointInPolygon2D(pt, poly)) {
+        return true;
+      }
+    }
+  }
+
   // 3. Horizontal segment vs polygon boundary edges
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i++) {
     const e1 = poly[i]!;

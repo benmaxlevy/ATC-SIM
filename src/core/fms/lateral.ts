@@ -499,7 +499,7 @@ function guideVisualFinal(
   const alongTrackNm = -(dx * uX + dy * uY);
 
   if (alongTrackNm <= 0.1) {
-    if (Math.abs(crossTrackNm) <= 0.1) {
+    if (alongTrackNm <= 0 || Math.abs(crossTrackNm) <= 0.1) {
       return lateral.headingDeg;
     }
     return ((Math.atan2(-dx, -dy) * 180) / Math.PI + 360) % 360;

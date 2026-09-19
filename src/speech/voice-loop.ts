@@ -398,7 +398,7 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   private onPttDown(): void {
-    if (this.inFlightValue || this.gate.current === "playing") {
+    if (this.inFlightValue || this.gate.current === "playing" || this.busy) {
       this.emitStatus({ code: "ptt_locked" });
       return;
     }
@@ -588,6 +588,7 @@ class VoiceLoopImpl implements VoiceLoop {
     } finally {
       this.speakActive -= 1;
       if (this.speakActive === 0) {
+        this.playbackQueue = Promise.resolve();
         this.syncLock("play-ended");
         this.emitStatus(null);
       }

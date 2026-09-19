@@ -221,11 +221,17 @@ export interface ScopeKeyUi {
 }
 
 function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
-  return (
-    typeof HTMLElement !== "undefined" &&
-    target instanceof HTMLElement &&
-    target.closest('[role="dialog"][aria-modal="true"]') !== null
-  );
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target.isContentEditable
+  ) {
+    return true;
+  }
+  return target.closest('[role="dialog"][aria-modal="true"]') !== null;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {

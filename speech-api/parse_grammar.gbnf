@@ -20,7 +20,7 @@ speed ::= "{" ws "\"type\"" ws ":" ws "\"SPEED\"" ws "," ws "\"speedKt\"" ws ":"
 direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
 expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
-cleared-visual ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_VISUAL\"" ws "," ws "\"runwayId\"" ws ":" ws string ws "}"
+cleared-visual ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_VISUAL\"" ws "," ws "\"runwayId\"" ws ":" ws runway-string ws "}"
 intercept-localizer ::= "{" ws "\"type\"" ws ":" ws "\"INTERCEPT_LOCALIZER\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cancel-approach ::= "{" ws "\"type\"" ws ":" ws "\"CANCEL_APPROACH\"" ws "}"
 assign-squawk ::= "{" ws "\"type\"" ws ":" ws "\"ASSIGN_SQUAWK\"" ws "," ws "\"code\"" ws ":" ws octal-code ws "," ws "\"source\"" ws ":" ws squawk-source ws "}"
@@ -69,6 +69,7 @@ cross-restriction ::= "\"AT\"" | "\"AT_OR_ABOVE\"" | "\"AT_OR_BELOW\""
 squawk-source ::= "\"DISCRETE\"" | "\"VFR\""
 octal-code ::= "\"" octal-digit octal-digit octal-digit octal-digit "\""
 octal-digit ::= [0-7]
+runway-string ::= "\"" [0-9] [0-9]? [LRC]? "\""
 boolean ::= "true" | "false"
 
 number ::= "-"? [0-9]+ ("." [0-9]+)?

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ARRIVALS_PER_HOUR_MAX,
   ARRIVALS_PER_HOUR_MIN,
@@ -47,7 +47,10 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
     availableConfigs.find((entry) => entry.id === draft.scenarioId) ??
     availableConfigs.find((entry) => entry.default) ??
     availableConfigs[0];
-  const selectedScenario = selectedEntry ? loadPlayableScenario(selectedEntry.id) : null;
+  const selectedScenario = useMemo(
+    () => (selectedEntry ? loadPlayableScenario(selectedEntry.id) : null),
+    [selectedEntry?.id],
+  );
   const departureAvailable =
     selectedScenario?.departureConfig?.policy !== "none" &&
     (selectedScenario?.catalog.sids.length ?? 0) > 0;
@@ -69,7 +72,7 @@ export function SessionSetup({ open, initial, onCancel, onApply }: SessionSetupP
       document.removeEventListener("keydown", onKeyDown);
       openerRef.current?.focus();
     };
-  }, [initial, onCancel, open]);
+  }, [open]);
 
   if (!open) return null;
 

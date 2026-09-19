@@ -303,6 +303,14 @@ export function parseDistanceNmValue(
     }
   }
 
+  // Group-form 3-digit: "one twenty", "two fifty five"
+  if (d1 !== null && d1 >= 1 && d1 <= 9) {
+    const tens = parseTurnDegreesValue(tokens, i + 1);
+    if (tens && tens.value >= 10 && tens.value <= 99) {
+      return { value: d1 * 100 + tens.value, next: tens.next };
+    }
+  }
+
   // Spoken hundred: "one hundred [and] [twenty [five]]"
   if (d1 !== null && tokens[i + 1] === "hundred") {
     let next = i + 2;

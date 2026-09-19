@@ -676,7 +676,7 @@ export function pathCResultIsComplete(
   ) {
     return false;
   }
-  if (has(/\bvisual\b/) && !hasType("CLEARED_VISUAL")) {
+  if (has(/\b(?:cleared|clear)\s+visual\b/) && !hasType("CLEARED_VISUAL")) {
     return false;
   }
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {

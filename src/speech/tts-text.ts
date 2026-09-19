@@ -159,9 +159,8 @@ function expandTtsCallsignsAndIdentifiers(text: string): string {
     (match, _prep: string, token: string) =>
       hasLetter(token) ? match.replace(token, speakIdentifier(token)) : match,
   );
-  // Airport in a position report (`15 miles north of KPDK`).
   out = out.replace(
-    /\b(north|south|east|west|northeast|northwest|southeast|southwest) of ([A-Z]{3,4})\b/g,
+    /\b(north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west) of ([A-Z]{3,4})\b/gi,
     (_, dir: string, token: string) => `${dir} of ${speakIdentifier(token)}`,
   );
   // Clearance limit / flight-following destination (`cleared to KATL`, `following to KFTY`).
@@ -237,9 +236,24 @@ export function speakGroupedNumber(raw: string | number): string {
 }
 
 export function readbackForTts(text: string): string {
+  // Expand runway with side (e.g. `runway 27L` -> `runway twenty seven left`)
+  const withRunway = text.replace(
+    /\brunway\s+(\d{1,2})([LRC])?\b/gi,
+    (_, num: string, side?: string) => {
+      const sideWord =
+        side?.toUpperCase() === "L"
+          ? " left"
+          : side?.toUpperCase() === "R"
+            ? " right"
+            : side?.toUpperCase() === "C"
+              ? " center"
+              : "";
+      return `runway ${speakGroupedNumber(num)}${sideWord}`;
+    },
+  );
   // Callsigns/identifiers first: the generic 4-letter spacer below must not
   // shred `KPDK` before the `of KPDK` anchor sees it.
-  return expandTtsIdentifiers(expandTtsCallsignsAndIdentifiers(text))
+  return expandTtsIdentifiers(expandTtsCallsignsAndIdentifiers(withRunway))
     .replace(/\s*\(\d+\)/g, "")
     .replace(/\d+/g, (digits) => speakGroupedNumber(digits))
     .replace(/\s+/g, " ")

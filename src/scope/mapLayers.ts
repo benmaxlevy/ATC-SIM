@@ -278,8 +278,9 @@ export function computeClippedRingRadiiNm(input: RangeRingClipInput): number[] {
     Math.floor((dMaxCornerNm + 1e-6) / intervalNm) * intervalNm,
   );
 
+  const MAX_RINGS = 500;
   const radii: number[] = [];
-  for (let r = intervalNm; r <= maxRadiusNm + 1e-9; r += intervalNm) {
+  for (let r = intervalNm; r <= maxRadiusNm + 1e-9 && radii.length < MAX_RINGS; r += intervalNm) {
     radii.push(r);
   }
   return radii;
