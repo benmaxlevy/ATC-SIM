@@ -5305,7 +5305,100 @@ Execution authorized on `feature/sattelite-traffic`. The captain runs T04-84, th
 
 Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. Push `feature/sattelite-traffic` authorized after green phase exit. Stop after T04-85.
 
+## Seventy-fourth swarm planned — satellite traffic audit remediation (2026-09-19)
 
+User approved the code-quality and functionality audit remediation plan on the
+current `feature/sattelite-traffic` branch. The plan addresses regional source
+strictness, regional pack invariants, VFR destination eligibility, IFR
+cancellation state/Class B safety, visual approach fail-closed behavior, and
+DCB state integrity. Existing swarm history and the current branch spelling are
+preserved.
+
+| Key | Value |
+| --- | --- |
+| Goal | Remediate all verified audit findings without adding unsupported Class B entry approval or new phase scope. |
+| Phase | `phases/02-scope/` and `phases/04-procedures/` addenda |
+| Include | T02-202; T04-86 → T04-91 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 2 isolated workers maximum; `inherit` |
+| Stop | T04-91, focused tests, `npm run ci`, speech mock pytest, `git diff --check`, and manual evidence record |
+| Push | No push authorized by this plan |
+
+**Product law:** Invalid regional source data, malformed regional geometry,
+incomplete airport metadata, unknown visual runways, and unavailable visual
+geometry fail closed. KATL regional coverage is 40 NM with portable provenance;
+VFR destination selection is generic and data-first. IFR cancellation is
+accepted only outside the full 3D Class B volume, restores VFR navigation once,
+and keeps the post-cancellation path clear of Bravo; this swarm does not add
+Class B entry approval or automatic Bravo-exit behavior. Visual clearances use
+resolved arrival-airport runway geometry only. DCB remains scope-only and
+restores coupled state on cancellation. KDEM, existing IFR behavior, speech
+restrictions, and shipped file splits remain unchanged.
+
+**Skip:** Class B clearance/entry, automatic Bravo-exit instructions, tower
+cab, new Command IR instructions, new speech providers, live FAA downloads,
+chart scraping, facility-specific branches, full NAS STARS behavior, phase 5,
+and unrelated UI or performance polish.
+
+**Waves:**
+
+- Wave A: T02-202 ∥ T04-86.
+- Wave B: T04-87 after T04-86.
+- Wave C: T04-88 ∥ T04-89 ∥ T04-90 after their dependencies.
+- Wave D: T04-91 after all remediation tickets.
+
+**Ticket ownership:**
+
+- T02-202 owns DCB coupled-state restoration and modifier routing.
+- T04-86 owns regional source-family coverage, strict diagnostics, and no-write failures.
+- T04-87 owns regional pack/runtime invariants, 40-NM KATL data, and portable provenance.
+- T04-88 owns generic VFR destination eligibility and shared-airspace selection.
+- T04-89 owns IFR cancellation state clearing, callback normalization, and Class B no-entry preservation.
+- T04-90 owns visual runway validation/application fail-closed behavior.
+- T04-91 owns integrated acceptance, documentation, hygiene, speech-test completion, and final evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-202-dcb-state-integrity-and-routing` → `phases/02-scope/tickets/T02-202-dcb-state-integrity-and-routing.md`
+- `ticket/T04-86-regional-source-strictness` → `phases/04-procedures/tickets/T04-86-regional-source-strictness.md`
+- `ticket/T04-87-regional-pack-invariants` → `phases/04-procedures/tickets/T04-87-regional-pack-invariants.md`
+- `ticket/T04-88-vfr-destination-eligibility` → `phases/04-procedures/tickets/T04-88-vfr-destination-eligibility.md`
+- `ticket/T04-89-ifr-cancellation-class-b-safety` → `phases/04-procedures/tickets/T04-89-ifr-cancellation-class-b-safety.md`
+- `ticket/T04-90-visual-approach-fail-closed` → `phases/04-procedures/tickets/T04-90-visual-approach-fail-closed.md`
+- `ticket/T04-91-audit-closure` → `phases/04-procedures/tickets/T04-91-audit-closure.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. Same-wave workers use separate worktrees;
+the captain owns the merge lock, post-merge gates, and final handoff. Preserve
+`.worktrees/` and `speech-api/:memory:.ses`; do not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: satellite traffic audit remediation T02-202, T04-86–T04-91
+Merge target: feature/sattelite-traffic
+Merged: T02-202, T04-86, T04-87, T04-88, T04-89, T04-90, T04-91
+Tests: npm run ci; speech-api mock pytest; focused acceptance; git diff --check; manual evidence
+Notes: all verified audit findings addressed; Class B entry approval remains out of scope; no push
+```
+
+## Seventy-fourth swarm started — satellite traffic audit remediation (2026-09-19)
+
+Execution authorized on the current `feature/sattelite-traffic` branch. The
+captain runs T02-202 and T04-86 through T04-91 under the planned dependency
+waves, using Luna medium workers as the user-requested model override. The
+captain stops at T04-91; no push is authorized.
+
+Worker limit is 2 isolated workers maximum. Same-wave workers use separate
+worktrees, implement exactly one ticket, never merge or spawn, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock, squash
+merges, CI/manual gates, STATUS handoff, and final phase result. Existing
+untracked `.worktrees/` and `speech-api/:memory:.ses` remain untouched.
+
+The product law, skip list, waves, ticket ownership, paths, and captain return
+format are defined in the preceding Seventy-fourth planned section. This start
+section changes only worker model/launch state to satisfy the user override.
 
 
 
