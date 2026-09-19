@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createAircraft } from "@core";
+import { createAircraft, createWorld } from "@core";
 import type { CatalogStar } from "@core";
 import { applyIntent } from "../applyIntent";
 import proceduresJson from "../../scenario/data/kdem/procedures.json";
@@ -213,6 +213,48 @@ test("T04-82: CLEARED_VISUAL sets VISUAL_FINAL lateral and GLIDEPATH vertical gu
     type: "GLIDEPATH",
     approachId: "VISUAL 27",
   });
+});
+
+test("T04-90: center visual uses exact runway geometry", () => {
+  const ac = jet();
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      fieldElevFt: 15,
+      approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+      navaids: [],
+      fixes: [{ id: "RW27", xNm: 4, yNm: 5 }],
+      sids: [],
+      stars: [],
+    },
+  });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent.lateral).toMatchObject({
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 4, yNm: 5 },
+  });
+});
+
+test("T04-90: apply-time missing visual geometry leaves intent unchanged", () => {
+  const ac = jet();
+  const before = structuredClone(ac.intent);
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      approaches: [],
+      navaids: [],
+      fixes: [],
+      sids: [],
+      stars: [],
+    },
+  });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent).toEqual(before);
 });
 
 test("T04-82: FLY_HEADING or CANCEL_APPROACH breaks out of VISUAL_FINAL", () => {

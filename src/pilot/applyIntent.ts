@@ -30,7 +30,7 @@ import {
   type VisualRunwayGeometry,
 } from "../core/nav/approachContext";
 import type { World } from "../core/world";
-import type { RegionalFacility, RegionalRunwayGeometry } from "../scenario/regional";
+import type { RegionalFacility } from "../scenario/regional";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
@@ -330,16 +330,18 @@ function applyClearedVisual(
   let geom: VisualRunwayGeometry | null = null;
   if (opts?.world) {
     geom = resolveRunwayGeometry(aircraft, clean, opts.world);
+    if (!geom) return;
   } else if (opts?.regional) {
     const destIcao = (opts.destinationIcao ?? aircraft.destination ?? "").toUpperCase();
-    const satAirport =
-      opts.regional.airports?.find((a) => a.icao?.toUpperCase() === destIcao) ??
-      opts.regional.airports?.[0];
+    const satAirport = opts.regional.airports?.find((a) => a.icao?.toUpperCase() === destIcao);
     if (satAirport && Array.isArray(satAirport.runways)) {
-      const rwy = (satAirport.runways as readonly RegionalRunwayGeometry[]).find((r) =>
-        matchesRunway(r.id, clean),
-      );
-      if (rwy) {
+      const rwy = satAirport.runways.find((r) => matchesRunway(r.id, clean));
+      if (
+        rwy &&
+        Number.isFinite(rwy.thresholdNm?.xNm) &&
+        Number.isFinite(rwy.thresholdNm?.yNm) &&
+        Number.isFinite(rwy.headingMagDeg)
+      ) {
         geom = {
           runwayId: rwy.id,
           threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
@@ -349,53 +351,7 @@ function applyClearedVisual(
       }
     }
   }
-  if (!geom && opts?.catalog) {
-    const cat = opts.catalog as unknown as {
-      approaches?: Array<{
-        id: string;
-        runway?: string;
-        thresholdFixId?: string;
-        publishedCourseMagneticDeg?: number;
-        courseDeg?: number;
-      }>;
-      fixes?: Array<{ id: string; xNm?: number; yNm?: number }>;
-    };
-    if (cat.approaches) {
-      const app = cat.approaches.find((a) => matchesRunway(a.runway ?? a.id, clean));
-      if (app?.thresholdFixId) {
-        const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
-        if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
-          geom = {
-            runwayId: clean,
-            threshold: { xNm: fix.xNm, yNm: fix.yNm },
-            headingDeg: app.publishedCourseMagneticDeg ?? app.courseDeg ?? 0,
-            fieldElevFt: 0,
-          };
-        }
-      }
-    }
-  }
-  if (!geom && opts?.fixXy) {
-    const xy = opts.fixXy(`RW${clean}`) ?? opts.fixXy(clean);
-    if (xy) {
-      const num = Number(clean.match(/\d+/)?.[0] ?? 27);
-      geom = {
-        runwayId: clean,
-        threshold: xy,
-        headingDeg: (num * 10) % 360,
-        fieldElevFt: 0,
-      };
-    }
-  }
-  if (!geom) {
-    const num = Number(clean.match(/\d+/)?.[0] ?? 27);
-    geom = {
-      runwayId: clean,
-      threshold: { xNm: 0, yNm: 0 },
-      headingDeg: (num * 10) % 360,
-      fieldElevFt: 0,
-    };
-  }
+  if (!geom) return;
 
   aircraft.intent.assignedHeadingDeg = geom.headingDeg;
   aircraft.intent.clearedApproachId = `VISUAL ${geom.runwayId}`;

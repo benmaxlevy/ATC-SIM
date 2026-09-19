@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createAircraft, performanceRegistry, type Instruction } from "@core";
+import { createAircraft, createWorld, performanceRegistry, type Instruction } from "@core";
 import { validateInstructions } from "../validate";
 
 function jet(overrides: { altitudeFt?: number; headingDeg?: number; speedKt?: number } = {}) {
@@ -253,15 +253,35 @@ test("T04-82: CLEARED_VISUAL validation", () => {
     ok: false,
     reason: "RUNWAY",
   });
-  // Valid runway without explicit runwayIds in opts passes
-  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }]).ok).toBe(true);
+  // No resolved airport/runway context is fail-closed.
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }])).toEqual({
+    ok: false,
+    reason: "RUNWAY",
+  });
 
-  // With explicit runwayIds:
+  const centerWorld = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      fieldElevFt: 15,
+      approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+      navaids: [],
+      fixes: [{ id: "RW27", xNm: 4, yNm: 5 }],
+      sids: [],
+      stars: [],
+    },
+  });
+  expect(
+    validateInstructions(jet({}), [{ type: "CLEARED_VISUAL", runwayId: "27" }], {
+      world: centerWorld,
+    }).ok,
+  ).toBe(true);
+
+  // A runway allow-list cannot replace resolved airport context.
   expect(
     validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }], {
       runwayIds: ["27L", "27R"],
-    }).ok,
-  ).toBe(true);
+    }),
+  ).toEqual({ ok: false, reason: "RUNWAY" });
   expect(
     validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
       runwayIds: ["27L", "27R"],

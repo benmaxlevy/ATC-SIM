@@ -335,7 +335,12 @@ export function resolveRunwayGeometry(
         : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao.toUpperCase());
     if (satAirport && Array.isArray(satAirport.runways)) {
       const rwy = satAirport.runways.find((r) => matchesRunway(r.id, runwayId));
-      if (rwy) {
+      if (
+        rwy &&
+        Number.isFinite(rwy.thresholdNm?.xNm) &&
+        Number.isFinite(rwy.thresholdNm?.yNm) &&
+        Number.isFinite(rwy.headingMagDeg)
+      ) {
         return {
           runwayId: rwy.id,
           threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
@@ -355,7 +360,12 @@ export function resolveRunwayGeometry(
       const app = cat.approaches.find((a) => matchesRunway(a.runway ?? a.id, runwayId));
       if (app && app.thresholdFixId) {
         const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
-        if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
+        if (
+          fix &&
+          typeof fix.xNm === "number" &&
+          typeof fix.yNm === "number" &&
+          Number.isFinite(app.publishedCourseMagneticDeg ?? app.courseDeg)
+        ) {
           return {
             runwayId: app.runway ?? runwayId.replace(/^RW/i, "").toUpperCase(),
             threshold: { xNm: fix.xNm, yNm: fix.yNm },
@@ -363,24 +373,6 @@ export function resolveRunwayGeometry(
             fieldElevFt,
           };
         }
-      }
-    }
-    if (cat.fixes) {
-      const clean = runwayId.replace(/^RW/i, "").toUpperCase();
-      const fix = cat.fixes.find(
-        (f) =>
-          matchesRunway(f.id, runwayId) ||
-          f.id.toUpperCase() === `RW${clean}` ||
-          f.id.toUpperCase() === `RW0${clean}`,
-      );
-      if (fix && typeof fix.xNm === "number" && typeof fix.yNm === "number") {
-        const num = Number(clean.match(/\d+/)?.[0] ?? 27);
-        return {
-          runwayId: clean,
-          threshold: { xNm: fix.xNm, yNm: fix.yNm },
-          headingDeg: (num * 10) % 360,
-          fieldElevFt,
-        };
       }
     }
   }

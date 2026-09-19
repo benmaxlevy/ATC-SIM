@@ -362,6 +362,7 @@ export function handleRadioCommand(
     radioRequests: world.radioRequests,
     regional: world.regional as RegionalFacility | undefined,
     destinationIcao: approachCtx.airportIcao,
+    world,
   });
   if (!validated.ok) {
     return reject(

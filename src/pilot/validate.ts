@@ -24,6 +24,8 @@ import {
 } from "@core";
 import { isValidBeaconCode } from "@core";
 import { normalizeRunwayId } from "../core/nav/approachContext";
+import { resolveRunwayGeometry } from "../core/nav/approachContext";
+import type { World } from "../core/world";
 import type { RegionalFacility } from "../scenario/regional";
 
 export const ALTITUDE_MIN_FT = 1000;
@@ -88,6 +90,7 @@ export interface ValidateOpts {
   performanceProfile?: AircraftPerformanceProfile | null;
   radioRequests?: readonly RadioRequest[];
   regional?: RegionalFacility | null;
+  world?: World | null;
   vfrContinuationValidator?: (aircraft: Aircraft, regional?: RegionalFacility | null) => boolean;
 }
 
@@ -607,12 +610,17 @@ function validateClearedVisual(
   }
   const norm = normalizeRunwayId(clean);
 
+  if (opts?.world) {
+    return resolveRunwayGeometry(aircraft, norm, opts.world)
+      ? { ok: true }
+      : { ok: false, reason: "RUNWAY" };
+  }
+
   if (opts?.runwayIds) {
     const matches = opts.runwayIds.some((id) => normalizeRunwayId(id) === norm);
     if (!matches) {
       return { ok: false, reason: "RUNWAY" };
     }
-    return { ok: true };
   }
 
   const destIcao = (
@@ -661,7 +669,7 @@ function validateClearedVisual(
     }
   }
 
-  return { ok: true };
+  return { ok: false, reason: "RUNWAY" };
 }
 
 function validateAltitude(
