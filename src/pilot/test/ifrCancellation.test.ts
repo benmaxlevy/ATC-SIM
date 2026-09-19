@@ -280,6 +280,54 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
       const result = defaultIfrCancellationValidator(aircraft, world);
       expect(result.ok).toBe(true);
     });
+
+    it("passes and replans when the existing suffix crosses Class B", async () => {
+      const { world, aircraft } = setupTestWorld({ xNm: 20, yNm: 20, altitudeFt: 4500 });
+      const regional = world.regional as unknown as {
+        airports: { centerAirport: unknown; destinations: unknown[] } | unknown[];
+      };
+      if (!Array.isArray(regional.airports)) {
+        regional.airports = [regional.airports.centerAirport, ...regional.airports.destinations];
+      }
+      const airports = regional.airports as Array<{
+        icao: string;
+        arpNm?: { xNm: number; yNm: number };
+      }>;
+      const destination = airports.find((airport) => airport.icao === "KPDK");
+      if (destination) destination.arpNm = { xNm: 15, yNm: 20 };
+      aircraft.ambientVfr!.mission = "TRANSIT";
+      aircraft.ambientVfr!.waypoints = [
+        { xNm: 0, yNm: 0, altitudeFt: 4500, speedKt: 140 },
+        { xNm: 20, yNm: 20, altitudeFt: 4500, speedKt: 140 },
+      ];
+      aircraft.ambientVfr!.waypointIndex = 0;
+      const originalRoute = structuredClone(aircraft.ambientVfr!.waypoints);
+
+      expect(defaultIfrCancellationValidator(aircraft, world)).toEqual({ ok: true });
+      expect(aircraft.ambientVfr!.waypoints).toEqual(originalRoute);
+
+      const result = await handleRadioText(
+        world,
+        "DAL123 IFR cancellation received",
+        new SessionLog(),
+      );
+      expect(result.accepted).toBe(true);
+      expect(aircraft.flightRules).toBe("VFR");
+      expect(aircraft.ambientVfr!.waypoints).not.toEqual(originalRoute);
+      expect(aircraft.ambientVfr!.waypointIndex).toBe(0);
+    });
+
+    it("rejects an unsafe suffix when no destination target exists", () => {
+      const { world, aircraft } = setupTestWorld({ xNm: 20, yNm: 20, altitudeFt: 4500 });
+      aircraft.ambientVfr!.destinationAirportId = undefined;
+      aircraft.ambientVfr!.waypoints = [{ xNm: 0, yNm: 0, altitudeFt: 4500 }];
+      aircraft.ambientVfr!.waypointIndex = 0;
+      const before = structuredClone(aircraft);
+
+      const result = defaultIfrCancellationValidator(aircraft, world);
+      expect(result).toEqual({ ok: false, reason: "NO_SAFE_CONTINUATION" });
+      expect(aircraft).toEqual(before);
+    });
   });
 
   describe("2. VfrRequestQueue candidate schedule and transmission (AC1)", () => {

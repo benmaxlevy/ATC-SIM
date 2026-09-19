@@ -31,7 +31,7 @@ import {
 import {
   extractVolumePolygonNm,
   isPointInsideAvoidanceVolumes,
-  isSafeVfrContinuationAvailable,
+  planSafeVfrContinuation,
   isVfrAvoidanceVolume,
   pointInPolygon2D,
 } from "../core/vfrNavigation";
@@ -272,7 +272,7 @@ export function defaultIfrCancellationValidator(
         return { ok: false, reason: "INSIDE_SURFACE_BRAVO" };
       }
     }
-    if (!isSafeVfrContinuationAvailable(aircraft, regional)) {
+    if (!planSafeVfrContinuation(aircraft, regional)) {
       return { ok: false, reason: "NO_SAFE_CONTINUATION" };
     }
   }

@@ -17,7 +17,7 @@ import {
   findOpenRadioRequest,
   isAircraftInsideClassB,
   isOnCourseToFix,
-  isSafeVfrContinuationAvailable,
+  planSafeVfrContinuation,
   joinProcedureTransition,
   normalizeHeading,
   performanceRegistry,
@@ -541,7 +541,7 @@ function validateOne(
             detail: "CANCELLATION: unable to establish safe VFR continuation",
           };
         }
-      } else if (!isSafeVfrContinuationAvailable(aircraft, opts?.regional)) {
+      } else if (!planSafeVfrContinuation(aircraft, opts?.regional)) {
         return {
           ok: false,
           reason: "CANCELLATION",

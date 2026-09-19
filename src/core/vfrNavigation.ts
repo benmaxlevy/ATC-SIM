@@ -12,7 +12,7 @@
  * Generic: operates on scenario coordinates and regional catalog volumes without facility-specific branches.
  */
 
-import type { Aircraft, AmbientVfrMission } from "./aircraft";
+import type { Aircraft, AmbientVfrMission, AmbientVfrWaypoint } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import { courseDeg, distanceNm } from "./nav/geometry";
 import { magneticToTrueDeg, trueToMagneticDeg } from "./nav/headingFrames";
@@ -1163,6 +1163,130 @@ export function isAircraftInsideClassB(
   );
 }
 
+export interface VfrContinuationPlan {
+  waypoints: AmbientVfrWaypoint[];
+  waypointIndex: number;
+}
+
+const IFR_CANCELLATION_DOGLEG_OFFSETS_NM = [6, 12, 18, 24, 30] as const;
+
+/**
+ * Produce the deterministic ambient-VFR suffix used by IFR cancellation.
+ * This is pure: it never mutates the aircraft or regional facility.
+ */
+export function planSafeVfrContinuation(
+  aircraft: Aircraft,
+  regional?: RegionalFacility | null,
+): VfrContinuationPlan | null {
+  if ((aircraft as unknown as { continuationBlocked?: boolean }).continuationBlocked) {
+    return null;
+  }
+
+  const vfr = aircraft.ambientVfr;
+  const currentPos: Point3D = {
+    xNm: aircraft.xNm,
+    yNm: aircraft.yNm,
+    altitudeFt: aircraft.altitudeFt,
+  };
+  const currentWaypoints = vfr?.waypoints ?? [];
+  const currentIndex = Math.min(Math.max(vfr?.waypointIndex ?? 0, 0), currentWaypoints.length);
+  const remainingWaypoints = currentWaypoints
+    .slice(currentIndex)
+    .map((waypoint) => ({ ...waypoint }));
+  const remainingRoutePoints: Point3D[] = remainingWaypoints.map((waypoint) => ({
+    xNm: waypoint.xNm,
+    yNm: waypoint.yNm,
+    altitudeFt: waypoint.altitudeFt ?? aircraft.altitudeFt,
+  }));
+
+  if (!regional?.airspaces || regional.airspaces.length === 0) {
+    return { waypoints: remainingWaypoints, waypointIndex: 0 };
+  }
+  const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
+  if (classBVolumes.length === 0) {
+    return { waypoints: remainingWaypoints, waypointIndex: 0 };
+  }
+  if (isPointInsideAvoidanceVolumes(currentPos, classBVolumes)) {
+    return null;
+  }
+
+  const currentRoute = [currentPos, ...remainingRoutePoints];
+  if (isRouteSafeFromAvoidance(currentRoute, classBVolumes)) {
+    return { waypoints: remainingWaypoints, waypointIndex: 0 };
+  }
+
+  const destinationId =
+    vfr?.destinationAirportId ?? aircraft.destinationAirport ?? aircraft.destination;
+  const destination = destinationId
+    ? regional.airports?.find(
+        (airport) => airport.icao.toUpperCase() === destinationId.toUpperCase(),
+      )
+    : undefined;
+  if (!destination) {
+    return null;
+  }
+
+  const patternAltitude = Math.max(destination.fieldElevFt + 1000, 1500);
+  const runway =
+    (vfr?.destinationRunwayId
+      ? destination.runways?.find((candidate) =>
+          matchesRunway(candidate.id, vfr.destinationRunwayId!),
+        )
+      : undefined) ?? destination.runways?.[0];
+  let target: Point3D = {
+    xNm: destination.arpNm.xNm,
+    yNm: destination.arpNm.yNm,
+    altitudeFt: patternAltitude,
+  };
+  if (vfr?.mission === "AIRPORT_BOUND" && runway) {
+    const headingRad = (runway.headingMagDeg * Math.PI) / 180;
+    const entryDistNm = 4;
+    target = {
+      xNm: runway.thresholdNm.xNm - entryDistNm * Math.sin(headingRad),
+      yNm: runway.thresholdNm.yNm - entryDistNm * Math.cos(headingRad),
+      altitudeFt: Math.max(
+        destination.fieldElevFt + Math.round(entryDistNm * 318),
+        patternAltitude,
+      ),
+    };
+  }
+
+  const targetWaypoint: VfrNavWaypoint = {
+    ...target,
+    speedKt: Math.min(aircraft.speedKt, 100),
+    targetToleranceNm: 2,
+  };
+  if (isRouteSafeFromAvoidance([currentPos, target], classBVolumes)) {
+    return { waypoints: [targetWaypoint], waypointIndex: 0 };
+  }
+
+  const course = Math.atan2(target.xNm - currentPos.xNm, target.yNm - currentPos.yNm);
+  const perpendicular = course + Math.PI / 2;
+  for (const sign of [1, -1]) {
+    for (const offsetNm of IFR_CANCELLATION_DOGLEG_OFFSETS_NM) {
+      const midpoint: Point3D = {
+        xNm: (currentPos.xNm + target.xNm) / 2 + sign * offsetNm * Math.sin(perpendicular),
+        yNm: (currentPos.yNm + target.yNm) / 2 + sign * offsetNm * Math.cos(perpendicular),
+        altitudeFt: Math.round((currentPos.altitudeFt + target.altitudeFt) / 2),
+      };
+      if (isRouteSafeFromAvoidance([currentPos, midpoint, target], classBVolumes)) {
+        return {
+          waypoints: [
+            {
+              ...midpoint,
+              speedKt: aircraft.speedKt,
+              targetToleranceNm: 1.5,
+            },
+            targetWaypoint,
+          ],
+          waypointIndex: 0,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Check whether a safe autonomous VFR continuation path exists from aircraft's current position avoiding Class B (T04-75).
  */
@@ -1170,87 +1294,5 @@ export function isSafeVfrContinuationAvailable(
   aircraft: Aircraft,
   regional?: RegionalFacility | null,
 ): boolean {
-  if ((aircraft as unknown as { continuationBlocked?: boolean }).continuationBlocked) {
-    return false;
-  }
-  if (!regional?.airspaces || regional.airspaces.length === 0) {
-    return true;
-  }
-  const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
-  if (classBVolumes.length === 0) {
-    return true;
-  }
-
-  const currentPos: Point3D = {
-    xNm: aircraft.xNm,
-    yNm: aircraft.yNm,
-    altitudeFt: aircraft.altitudeFt,
-  };
-
-  if (isPointInsideAvoidanceVolumes(currentPos, classBVolumes)) {
-    return false;
-  }
-
-  // If aircraft has ambientVfr with remaining waypoints, verify route to remaining waypoints
-  if (aircraft.ambientVfr?.waypoints && aircraft.ambientVfr.waypoints.length > 0) {
-    const curIdx = aircraft.ambientVfr.waypointIndex ?? 0;
-    const remainingWps = aircraft.ambientVfr.waypoints.slice(curIdx);
-    if (remainingWps.length > 0) {
-      const routePoints: Point3D[] = [
-        currentPos,
-        ...remainingWps.map((wp) => ({
-          xNm: wp.xNm,
-          yNm: wp.yNm,
-          altitudeFt: wp.altitudeFt ?? aircraft.altitudeFt,
-        })),
-      ];
-      if (isRouteSafeFromAvoidance(routePoints, classBVolumes)) {
-        return true;
-      }
-    }
-  }
-
-  // If destination airport exists, check if direct or dogleg path avoids Class B
-  const destId =
-    aircraft.ambientVfr?.destinationAirportId ??
-    aircraft.destinationAirport ??
-    aircraft.destination;
-  if (destId && regional.airports) {
-    const destAirport = regional.airports.find(
-      (a) => (a.icao ?? (a as { id?: string }).id ?? "").toUpperCase() === destId.toUpperCase(),
-    );
-    if (destAirport) {
-      const destElev = destAirport.fieldElevFt ?? 1000;
-      const patternAlt = Math.max(destElev + 1000, 1500);
-      const destPos: Point3D = {
-        xNm: destAirport.arpNm.xNm,
-        yNm: destAirport.arpNm.yNm,
-        altitudeFt: patternAlt,
-      };
-
-      // 1. Direct path
-      if (isRouteSafeFromAvoidance([currentPos, destPos], classBVolumes)) {
-        return true;
-      }
-
-      // 2. Dogleg paths around Class B
-      const course = Math.atan2(destPos.xNm - currentPos.xNm, destPos.yNm - currentPos.yNm);
-      const perpAngle = course + Math.PI / 2;
-      for (const sign of [1, -1]) {
-        for (const offsetNm of [6, 12, 18, 24, 30]) {
-          const midPt: Point3D = {
-            xNm: (currentPos.xNm + destPos.xNm) / 2 + sign * offsetNm * Math.sin(perpAngle),
-            yNm: (currentPos.yNm + destPos.yNm) / 2 + sign * offsetNm * Math.cos(perpAngle),
-            altitudeFt: Math.round((currentPos.altitudeFt + patternAlt) / 2),
-          };
-          if (isRouteSafeFromAvoidance([currentPos, midPt, destPos], classBVolumes)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
-  }
-
-  return true;
+  return planSafeVfrContinuation(aircraft, regional) !== null;
 }

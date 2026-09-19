@@ -7,7 +7,7 @@ import type { Aircraft } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import type { World } from "./world";
 import type { RegionalFacility } from "../scenario/regional";
-import { isAircraftInsideClassB, isSafeVfrContinuationAvailable } from "./vfrNavigation";
+import { isAircraftInsideClassB, planSafeVfrContinuation } from "./vfrNavigation";
 
 export interface IfrCancellationResult {
   ok: boolean;
@@ -44,7 +44,8 @@ export function applyIfrCancellation(
   if (isAircraftInsideClassB(aircraft, regional)) {
     return { ok: false, reason: "CANCELLATION: cannot cancel IFR inside Class B airspace" };
   }
-  if (!isSafeVfrContinuationAvailable(aircraft, regional)) {
+  const continuationPlan = planSafeVfrContinuation(aircraft, regional);
+  if (!continuationPlan) {
     return { ok: false, reason: "CANCELLATION: unable to establish safe VFR continuation" };
   }
 
@@ -86,6 +87,8 @@ export function applyIfrCancellation(
 
   // Restore ambient VFR alert eligibility
   if (aircraft.ambientVfr) {
+    aircraft.ambientVfr.waypoints = continuationPlan.waypoints;
+    aircraft.ambientVfr.waypointIndex = continuationPlan.waypointIndex;
     aircraft.ambientVfr.alertEligibility = "AMBIENT_SUPPRESSED";
   }
 

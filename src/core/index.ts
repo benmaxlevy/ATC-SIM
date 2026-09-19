@@ -485,6 +485,7 @@ export {
   isPointInsideAvoidanceVolumes,
   isRouteSafeFromAvoidance,
   isSafeVfrContinuationAvailable,
+  planSafeVfrContinuation,
   isSegmentUnsafeFromAvoidance,
   isVfrAvoidanceVolume,
   planSafeVfrRoute,
