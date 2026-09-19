@@ -68,7 +68,7 @@ test("spells aviation identifiers for TTS without changing display readbacks", (
     "Delta one twenty three cleared to Kilo Alfa Tango Lima via direct",
   );
   expect(readbackForTts("Delta 123 cleared ILS runway 27 approach")).toBe(
-    "Delta one twenty three cleared India Lima Sierra runway twenty seven approach",
+    "Delta one twenty three cleared I L S runway twenty seven approach",
   );
 });
 
@@ -77,7 +77,7 @@ test("VFR N-numbers speak digit-by-digit with phonetics", () => {
     "November one two seven Sierra, request flight following",
   );
   expect(readbackForTts("N172SP, canceling IFR")).toBe(
-    "November one seven two Sierra Papa, canceling India Foxtrot Romeo",
+    "November one seven two Sierra Papa, canceling I F R",
   );
   // Already-expanded callsigns in controller readbacks keep single digits.
   expect(readbackForTts("November 127 Sierra heading 270")).toBe(

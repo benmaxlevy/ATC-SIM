@@ -593,6 +593,12 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
         "referenceKind": "AIRPORT",
     }
     assert validate_instruction(airport_contact) == airport_contact
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "dem", "referenceKind": "FIX"}) == {
+        "type": "RADAR_CONTACT",
+        "distanceNm": 5,
+        "referenceId": "DEM",
+        "referenceKind": "FIX",
+    }
     assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "KATL", "referenceKind": "WRONG"}) is None
 
     term_radar = {"type": "TERMINATE_RADAR_SERVICE"}
@@ -602,6 +608,12 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     ack_cancellation = {"type": "ACKNOWLEDGE_IFR_CANCELLATION"}
     assert validate_instruction(ack_cancellation) == ack_cancellation
     assert validate_instruction({"type": "ACKNOWLEDGE_IFR_CANCELLATION", "extra": True}) is None
+
+    # Compound request control rejection
+    from parse_engine import validate_parse_json
+    assert validate_parse_json({"ok": True, "instructions": [req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}]}).error == "BAD_CLEARANCE"
+    assert validate_parse_json({"ok": True, "instructions": [bare_radar_contact, {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "CLIMB"}]}).error == "BAD_CLEARANCE"
+    assert guard_instruction_semantics("say request turn left heading 270", ParseOutcome(ok=True, instructions=[req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}])).error == "BAD_CLEARANCE"
 
     # Semantics guards
     assert guard_instruction_semantics("say request", ParseOutcome(ok=True, instructions=[req_details])).ok
@@ -1286,4 +1298,5 @@ def test_cleared_visual_semantic_guard_and_canonicalization() -> None:
     # Near-miss without runway rejected
     assert not guard_instruction_semantics("cleared visual approach", outcome).ok
     assert not guard_instruction_semantics("Delta 123 radio check", outcome).ok
+    assert not guard_instruction_semantics("cleared visual approach runway two seven", outcome).ok
 

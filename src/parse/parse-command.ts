@@ -904,10 +904,12 @@ function pathCContext(
   const fixes = pathCFixIds(catalog, queryTokens, retrieved);
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
-  const pathAirports = (route ? clearanceAirports : airports)
+  const candidateAirports = route ? clearanceAirports : airports;
+  const pathAirports = candidateAirports
     .filter(
       (airport) =>
         route !== undefined ||
+        candidateAirports.length <= MAX_PATH_C_FIXES ||
         queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
     )
     .slice(0, MAX_PATH_C_FIXES)
@@ -1219,6 +1221,17 @@ function pathCIdentifierListed(
     ) {
       if (!approaches.has(inst.approachId)) {
         return false;
+      }
+    }
+    if (inst.type === "RADAR_CONTACT" && inst.referenceId !== undefined) {
+      if (inst.referenceKind === "AIRPORT") {
+        if (!airports.has(inst.referenceId)) {
+          return false;
+        }
+      } else {
+        if (airports.has(inst.referenceId) || !fixes.has(inst.referenceId)) {
+          return false;
+        }
       }
     }
   }

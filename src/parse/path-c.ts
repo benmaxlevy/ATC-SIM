@@ -265,7 +265,7 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     return (
       keysOk(obj, ["type", "runwayId"]) &&
       typeof obj.runwayId === "string" &&
-      obj.runwayId.length > 0
+      /^\d{1,2}[LRC]?$/i.test(obj.runwayId)
     );
   }
   if (type === "ASSIGN_SQUAWK") {
@@ -630,7 +630,7 @@ const SELF_CONTAINED_CUES: RegExp[] = [
   /\bradar\s+service\s+terminated\b/,
   /\bifr\s+cancellation\s+received\b/,
   /\bmaintain\s+vfr\b/,
-  /\bcleared\s+visual\s+approach\s+runway\b/,
+  /\b(?:cleared|clear)\s+visual\b/,
 ];
 
 export function pathCHasSelfContainedCue(text: string): boolean {
@@ -643,10 +643,13 @@ export function pathCHasSelfContainedCue(text: string): boolean {
  * This is intentionally conservative: it only requires an instruction when
  * the transcript contains an unambiguous command cue for that instruction.
  */
-export function pathCResultIsComplete(text: string, instructions: readonly Instruction[]): boolean {
-  const normalized = text.toLowerCase();
-  const has = (pattern: RegExp): boolean => pattern.test(normalized);
-  const hasType = (...types: Instruction["type"][]): boolean =>
+export function pathCResultIsComplete(
+  sourceText: string,
+  instructions: readonly Instruction[],
+): boolean {
+  const text = sourceText.toLowerCase();
+  const has = (pattern: RegExp) => pattern.test(text);
+  const hasType = (...types: string[]) =>
     instructions.some((instruction) => types.includes(instruction.type));
   if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
     return false;
@@ -679,6 +682,15 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {
     return false;
   }
+  if (has(/\b(?:ident|iden)\b/) && !hasType("IDENT")) {
+    return false;
+  }
+  if (has(/\bsay\s+heading\b/) && !hasType("SAY_HEADING")) {
+    return false;
+  }
+  if (has(/\bsay\s+altitude\b/) && !hasType("SAY_ALTITUDE")) {
+    return false;
+  }
   if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
     return false;
   }
@@ -692,22 +704,18 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     return false;
   }
   if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/)) {
-    const decline = instructions.find(
+    const dec = instructions.find(
       (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
         instruction.type === "DECLINE_REQUEST",
     );
-    if (!decline || decline.service !== "FLIGHT_FOLLOWING") {
-      return false;
-    }
+    if (!dec || dec.service !== "FLIGHT_FOLLOWING") return false;
   }
   if (has(/\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/)) {
-    const decline = instructions.find(
+    const dec = instructions.find(
       (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
         instruction.type === "DECLINE_REQUEST",
     );
-    if (!decline || decline.service !== "IFR_PICKUP") {
-      return false;
-    }
+    if (!dec || dec.service !== "IFR_PICKUP") return false;
   }
   if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
     return false;
@@ -716,19 +724,26 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
     (instruction): instruction is Extract<Instruction, { type: "RADAR_CONTACT" }> =>
       instruction.type === "RADAR_CONTACT",
   );
-  // A present position report needs transcript evidence (`N miles [direction]
+  // Position-report radar contact (`radar contact <N> miles [direction]
   // from|of <reference>`); bare `radar contact` needs only its cue. Either
   // form still requires the cue above.
-  if (
-    radarContact &&
-    (radarContact.distanceNm !== undefined ||
+  const hasRadarPositionCue = has(
+    /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b/,
+  );
+  if (radarContact) {
+    const hasPositionFields =
+      radarContact.distanceNm !== undefined ||
       radarContact.referenceId !== undefined ||
-      radarContact.referenceKind !== undefined) &&
-    !has(
-      /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b/,
-    )
-  ) {
-    return false;
+      radarContact.referenceKind !== undefined;
+    if (hasPositionFields && !hasRadarPositionCue) {
+      return false;
+    }
+    if (
+      hasRadarPositionCue &&
+      (radarContact.distanceNm === undefined || radarContact.referenceId === undefined)
+    ) {
+      return false;
+    }
   }
   if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {
     return false;

@@ -69,6 +69,17 @@ TURN_DEGREES_DIRS = frozenset({"LEFT", "RIGHT"})
 ALTITUDE_VERBS = frozenset({"CLIMB", "DESCEND", "MAINTAIN"})
 SPEED_VERBS = frozenset({"MAINTAIN", "INCREASE", "REDUCE"})
 CROSS_RESTRICTIONS = frozenset({"AT", "AT_OR_ABOVE", "AT_OR_BELOW"})
+REQUEST_CONTROL_TYPES = frozenset(
+    {
+        "REQUEST_DETAILS",
+        "STANDBY_REQUEST",
+        "APPROVE_FLIGHT_FOLLOWING",
+        "DECLINE_REQUEST",
+        "RADAR_CONTACT",
+        "TERMINATE_RADAR_SERVICE",
+        "ACKNOWLEDGE_IFR_CANCELLATION",
+    }
+)
 
 # Constrained JSON / GBNF target (Command IR v0). Loaded from parse_grammar.gbnf.
 GRAMMAR_PATH = Path(__file__).resolve().parent / "parse_grammar.gbnf"
@@ -895,9 +906,9 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         dist = _as_number(raw["distanceNm"])
         if dist <= 0:
             return None
-        ref_id = raw["referenceId"]
+        ref_id = str(raw["referenceId"]).strip().upper()
         ref_kind = raw["referenceKind"]
-        if not isinstance(ref_id, str) or not ref_id:
+        if not ref_id:
             return None
         if ref_kind not in {"FIX", "NAVAID", "AIRPORT"}:
             return None
@@ -1018,6 +1029,8 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         instructions.append(checked)
     if cancel_approach_sequence_error(instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if request_control_sequence_error(instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     return ParseOutcome(ok=True, callsign_token=token, instructions=instructions)
 
 
@@ -1037,6 +1050,12 @@ def cancel_approach_sequence_error(instructions: list[dict[str, Any]]) -> str | 
         for instruction in instructions[1:]
     ):
         return "CANCEL_APPROACH cannot be followed by approach or go-around instructions"
+    return None
+
+
+def request_control_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
+    if any(instruction.get("type") in REQUEST_CONTROL_TYPES for instruction in instructions) and len(instructions) != 1:
+        return "request instruction must be the only instruction"
     return None
 
 
@@ -1080,11 +1099,11 @@ def _runway_has_transcript_evidence(runway_id: str, text: str) -> bool:
         digit_ok = False
     if not digit_ok:
         return False
-    if side == "L" and not (re.search(r"\b(?:left|l)\b", lower) or "l" in lower):
+    if side == "L" and not re.search(r"\b(?:left|l)\b", lower):
         return False
-    if side == "R" and not (re.search(r"\b(?:right|r)\b", lower) or "r" in lower):
+    if side == "R" and not re.search(r"\b(?:right|r)\b", lower):
         return False
-    if side == "C" and not (re.search(r"\b(?:center|centre|c)\b", lower) or "c" in lower):
+    if side == "C" and not re.search(r"\b(?:center|centre|c)\b", lower):
         return False
     return True
 
@@ -1259,6 +1278,8 @@ def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcom
     if not outcome.ok:
         return outcome
     if cancel_approach_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if request_control_sequence_error(outcome.instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     normalized = normalize_evidence_text(text)
     kept = [
@@ -1807,7 +1828,7 @@ class LlamaParseEngine:
         t0 = time.perf_counter()
         gguf, weights = _ensure_gguf(settings)
         n_gpu = _parse_n_gpu_layers()
-        n_ctx = int(os.environ.get("PARSE_CTX", "2048"))
+        n_ctx = int(os.environ.get("PARSE_CTX", "4096"))
         n_threads_raw = os.environ.get("PARSE_N_THREADS", "").strip()
         n_threads = int(n_threads_raw) if n_threads_raw else None
         device = _llm_device(n_gpu)

@@ -127,6 +127,40 @@ describe("RADAR_CONTACT parser & parity", () => {
       expect(res.callsignToken).toBe("N7214L");
       expect(res.instructions).toEqual([{ ...AIRPORT_POS, distanceNm: 28 }]);
     });
+
+    it("parses distances >= 100 NM (hundreds group and 3-digit digits)", () => {
+      const text1 =
+        "november seven two one four lima radar contact one hundred miles southeast of atlanta airport";
+      const res1 = parseSpokenGrammar(
+        text1,
+        undefined,
+        text1,
+        [],
+        undefined,
+        undefined,
+        KATL_AIRPORT,
+      );
+      expect(res1.ok).toBe(true);
+      if (res1.ok) {
+        expect(res1.instructions).toEqual([{ ...AIRPORT_POS, distanceNm: 100 }]);
+      }
+
+      const text2 =
+        "november seven two one four lima radar contact one two zero miles southeast of atlanta airport";
+      const res2 = parseSpokenGrammar(
+        text2,
+        undefined,
+        text2,
+        [],
+        undefined,
+        undefined,
+        KATL_AIRPORT,
+      );
+      expect(res2.ok).toBe(true);
+      if (res2.ok) {
+        expect(res2.instructions).toEqual([{ ...AIRPORT_POS, distanceNm: 120 }]);
+      }
+    });
   });
 
   describe("Spoken Path B (matchSpokenPatterns)", () => {
@@ -302,10 +336,67 @@ describe("RADAR_CONTACT parser & parity", () => {
       expect(res.instructions).toEqual([AIRPORT_POS]);
     });
 
+    it("rejects an unlisted airport reference in Path C", async () => {
+      const model = vi.fn<ParsePathCFn>(async () => ({
+        callsignToken: null,
+        instructions: [
+          {
+            type: "RADAR_CONTACT",
+            distanceNm: 25,
+            referenceId: "KUNK",
+            referenceKind: "AIRPORT",
+          },
+        ],
+      }));
+      const res = await parseCommand("radar contact 25 miles southeast of unknown airport squawk", {
+        source: "voice",
+        pathC: true,
+        fixes: ["XXX"],
+        airports: KATL_AIRPORT,
+        parsePathC: model,
+      });
+      expect(model).toHaveBeenCalled();
+      expect(res.ok).toBe(false);
+    });
+
+    it("requires position fields when transcript contains position report", () => {
+      expect(pathCResultIsComplete("radar contact 25 miles southeast of katl", [AIRPORT_POS])).toBe(
+        true,
+      );
+      expect(pathCResultIsComplete("radar contact 25 miles southeast of katl", [BARE])).toBe(false);
+      expect(pathCResultIsComplete("radar contact", [BARE])).toBe(true);
+    });
+
     it("marks radar contact transcripts as self-contained cues", () => {
       expect(pathCHasSelfContainedCue("radar contact 25 miles southeast of katl over")).toBe(true);
       expect(pathCHasSelfContainedCue("dal123 radar contact")).toBe(true);
       expect(pathCHasSelfContainedCue("dal123 turn left heading 270")).toBe(false);
+    });
+  });
+
+  describe("CLEARED_VISUAL spoken grammar (Path A)", () => {
+    it("parses cleared visual approach in Path A", () => {
+      const res = parseSpokenGrammar(
+        "delta one two three cleared visual approach runway two seven left",
+        undefined,
+        "Delta 123, cleared visual approach runway 27L",
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("DAL123");
+      expect(res.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "27L" }]);
+    });
+
+    it("parses cleared visual without approach word", () => {
+      const res = parseSpokenGrammar(
+        "delta one two three cleared visual runway two seven",
+        undefined,
+        "Delta 123, cleared visual runway 27",
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("DAL123");
+      expect(res.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "27" }]);
     });
   });
 });

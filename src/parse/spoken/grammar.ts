@@ -1003,7 +1003,24 @@ function ilsApproachIdFromRunway(rwy: string): string {
 
 function tryCleared(c: Cursor): Instruction | null {
   const start = c.i;
-  if ((!take(c, "clear") && !take(c, "cleared")) || !take(c, "ils")) {
+  if (!take(c, "clear") && !take(c, "cleared")) {
+    c.i = start;
+    return null;
+  }
+  take(c, "for");
+  take(c, "the");
+  take(c, "to");
+  if (take(c, "visual")) {
+    take(c, "approach");
+    const rwy = runwayId(c);
+    if (rwy === null) {
+      c.i = start;
+      return null;
+    }
+    take(c, "approach");
+    return { type: "CLEARED_VISUAL", runwayId: rwy };
+  }
+  if (!take(c, "ils")) {
     c.i = start;
     return null;
   }

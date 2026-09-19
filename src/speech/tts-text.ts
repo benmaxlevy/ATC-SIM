@@ -53,11 +53,11 @@ const TENS = [
  * that cannot turn `KATL` into a guessed word or `ILS` into just `I`.
  */
 const TTS_IDENTIFIER_ALIASES: Readonly<Record<string, string>> = {
-  ILS: "India Lima Sierra",
+  ILS: "I L S",
   // Flight-rules state is letter-spelled (`squawk VFR` → `squawk V F R`),
   // never NATO phonetic.
   VFR: "V F R",
-  IFR: "India Foxtrot Romeo",
+  IFR: "I F R",
   DME: "Delta Mike Echo",
   // STAR/procedure name: spoken word, never spelled.
   DEMO: "Demo",
@@ -112,7 +112,8 @@ function speakIdentifierChar(ch: string): string {
   if (ch >= "0" && ch <= "9") {
     return SINGLE_DIGIT_WORDS[ch]!;
   }
-  return NATO_PHONETIC[ch] ?? ch;
+  const upper = ch.toUpperCase();
+  return NATO_PHONETIC[upper] ?? ch;
 }
 
 /** Airport/fix/navaid code → phonetics (`KATL` → `Kilo Alfa Tango Lima`). */

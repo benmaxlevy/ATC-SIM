@@ -291,6 +291,31 @@ export function parseDistanceNmValue(
       return { value: val, next: i + 1 };
     }
   }
+
+  // 3-digit single digit sequence: "one two zero", "one zero five"
+  const d1 = singleDigit(tokens[i]);
+  const d2 = singleDigit(tokens[i + 1]);
+  const d3 = singleDigit(tokens[i + 2]);
+  if (d1 !== null && d2 !== null && d3 !== null) {
+    const val = d1 * 100 + d2 * 10 + d3;
+    if (val > 0) {
+      return { value: val, next: i + 3 };
+    }
+  }
+
+  // Spoken hundred: "one hundred [and] [twenty [five]]"
+  if (d1 !== null && tokens[i + 1] === "hundred") {
+    let next = i + 2;
+    if (tokens[next] === "and") next += 1;
+    let remainder = 0;
+    const rest = parseTurnDegreesValue(tokens, next);
+    if (rest) {
+      remainder = rest.value;
+      next = rest.next;
+    }
+    return { value: d1 * 100 + remainder, next };
+  }
+
   const turnVal = parseTurnDegreesValue(tokens, i);
   if (turnVal && turnVal.value > 0) {
     if (

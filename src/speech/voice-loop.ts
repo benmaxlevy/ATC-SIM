@@ -273,6 +273,8 @@ class VoiceLoopImpl implements VoiceLoop {
   private speakActive = 0;
   /** Latest committed TTS stream; a stale stream never clears newer text. */
   private speakSeq = 0;
+  /** Serialized audio playback queue to avoid overlapping playPcm rejections. */
+  private playbackQueue: Promise<void> = Promise.resolve();
   private readonly latencyTracker: VoiceLatencyTracker;
   private readonly dispatchedCommandIds = new Set<string>();
   readonly readbackPlayer: ReadbackPlayer;
@@ -538,7 +540,7 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     this.speakActive += 1;
-    const seq = ++this.speakSeq;
+    this.speakSeq += 1;
 
     const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
@@ -570,21 +572,23 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.disposed) {
         return;
       }
-      this.syncLock("play-started");
-      const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
-      if (!outcome.ok) {
-        this.emitStatus({ code: "tts_failed" });
-      }
+      const playTask = async (): Promise<void> => {
+        if (this.disposed) return;
+        this.syncLock("play-started");
+        const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
+        if (!outcome.ok) {
+          this.emitStatus({ code: "tts_failed" });
+        }
+      };
+      const currentPlayback = this.playbackQueue.then(playTask, playTask);
+      this.playbackQueue = currentPlayback;
+      await currentPlayback;
     } catch {
       this.emitStatus({ code: "tts_failed" });
     } finally {
       this.speakActive -= 1;
       if (this.speakActive === 0) {
         this.syncLock("play-ended");
-      }
-      // A stale stream finishing after a newer one started must not clear
-      // the newer callup text (or unlock the gate under it) mid-stream.
-      if (seq === this.speakSeq) {
         this.emitStatus(null);
       }
     }

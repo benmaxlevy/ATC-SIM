@@ -485,6 +485,16 @@ CASES: list[dict[str, Any]] = [
         "expect": {"instructions": [{"type": "CLEARED_APPROACH", "approachId": "RNAV18"}]},
     },
     {
+        "id": "app-visual-clean",
+        "text": "cleared visual approach runway zero niner",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "09"}]},
+    },
+    {
+        "id": "app-visual-rwy",
+        "text": "cleared visual runway one eight",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "18"}]},
+    },
+    {
         "id": "loc-clean",
         "text": "intercept runway zero niner localizer",
         "expect": {"instructions": [{"type": "INTERCEPT_LOCALIZER", "approachId": "ILS09"}]},
