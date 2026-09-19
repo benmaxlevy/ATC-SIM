@@ -823,6 +823,45 @@ Constraints later work must keep:
 - Inbound pilot check-in on tower frequency remains decoupled from TRACON simulation or scored
   as appropriate.
 
+### Controller VFR clearances through/into Class B
+
+Visible now: Ambient VFR traffic and post-cancellation autonomous navigation are guarded by
+the modeled three-dimensional Class B volumes. Flight following, radar contact, and
+`MAINTAIN_VFR` are advisory/radio states only; none authorizes Class B entry. A future IFR
+cancellation fix must replan an unsafe autonomous VFR suffix around Class B when the aircraft
+is outside the volume, while cancellation inside Class B remains rejected until explicit
+authorization exists.
+
+Deliberately missing:
+
+- Controller-issued VFR route and altitude clearances through or into Class B, including
+  explicit authorization state and pilot readback.
+- Route-grounded typed, spoken, and Path C grammar for `CLEARED THROUGH/TO ENTER/OUT OF
+  BRAVO AIRSPACE`, optional route, and altitude instructions.
+- Active VFR-clearance state, 3D swept-route validation, execution, route conformance, and
+  issued/accepted/rejected/entered/exited audit events.
+- Deterministic IFR-cancellation route rewriting when the existing ambient VFR route would
+  enter Class B; this must be implemented as a separate safety follow-up and must not grant
+  Class B access.
+
+Constraints later work must keep:
+
+- VFR entry into Class B requires explicit controller clearance; ordinary flight following,
+  radar contact, `MAINTAIN_VFR`, or IFR cancellation never implies approval. FAA JO 7110.65
+  §7-9-2 specifies clearance to enter/through/out of Bravo, with route and altitude as
+  applicable.
+- Cancellation outside Class B should first produce and validate a deterministic safe VFR
+  continuation; cancellation inside Class B remains rejected until this clearance workflow
+  exists.
+- Validate complete 3D swept segments against grouped Class B geometry, and keep rejected
+  commands atomic. Preserve flight following, beacon state, and the editable flight plan
+  unless a later clearance contract explicitly changes them.
+- Use generic regional-airspace and catalog walkers; no KATL/KDEM branches. Keep frontend
+  parser, Command IR, Path A/B, Path C, `speech-api`, GBNF, prompt, readback, parity tests,
+  and documentation synchronized.
+- Do not add VFR-on-top, SVFR, Class C/D authorization, cloud speech, or implicit route
+  repair from an unrelated command.
+
 ### General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB")
 
 Visible now: Pilot telephony and speech synthesis support GA aircraft make/model names (e.g.

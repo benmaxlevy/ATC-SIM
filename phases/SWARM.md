@@ -5399,3 +5399,71 @@ untracked `.worktrees/` and `speech-api/:memory:.ses` remain untouched.
 The product law, skip list, waves, ticket ownership, paths, and captain return
 format are defined in the preceding Seventy-fourth planned section. This start
 section changes only worker model/launch state to satisfy the user override.
+
+## Seventy-fifth swarm planned — IFR cancellation VFR route replanning (2026-09-19)
+
+Human approved the correction on the current `feature/sattelite-traffic`
+branch. Outside modeled Class B, an IFR aircraft may cancel when its existing
+VFR continuation is unsafe if the trainer can deterministically replace that
+route with a safe one. Inside Class B, cancellation remains rejected because
+VFR Class B clearance is still not implemented.
+
+| Key | Value |
+| --- | --- |
+| Goal | Replan unsafe autonomous VFR continuation during safe outside-Bravo IFR cancellation, then prove and document the boundary. |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-92 → T04-93 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `gpt-5.6-luna` medium |
+| Stop | T04-93, focused tests, `npm run ci`, `git diff --check`, and manual evidence record |
+| Push | No push unless separately requested |
+
+**Product law:** Outside Class B, pending pilot IFR cancellation first resolves
+one shared deterministic pure VFR continuation plan. A safe existing suffix is
+preserved; an unsafe suffix is replaced around full 3D modeled Bravo geometry
+when a safe target route exists. Only then does atomic IFR→VFR state recovery
+clear IFR guidance and preserve flight following, beacon, and editable plan.
+Inside Class B, on-ground, invalid-state, and genuinely unrouteable
+cancellations remain rejected unchanged. This swarm adds no Class B approval,
+VFR clearance, automatic exit, new Command IR, or parser behavior.
+
+**Skip:** Controller-issued VFR clearances through/into Class B, new speech or
+Path C contracts, automatic Bravo entry/exit, tower cab, random/unbounded route
+repair, facility branches, terrain/weather, flight-plan editor work, phase 5,
+and unrelated UI/performance polish.
+
+**Waves:**
+
+- Wave A: T04-92 — pure continuation planner, cancellation validation/application,
+  state atomicity, and focused tests.
+- Wave B: T04-93 — integrated acceptance, user/phase/backlog documentation,
+  hygiene, and final manual evidence. Starts after T04-92 squash merge and
+  `npm run ci`.
+
+**Ticket ownership:**
+
+- T04-92 owns the shared route-planning result, candidate/command/application
+  integration, exact rejection behavior, and unit/regression tests.
+- T04-93 owns one integrated acceptance file, docs/backlog truth, historical
+  supersession notes if needed, and final verification/manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T04-92-ifr-cancellation-vfr-route-replan` → `phases/04-procedures/tickets/T04-92-ifr-cancellation-vfr-route-replan.md`
+- `ticket/T04-93-ifr-cancellation-replan-acceptance-and-docs` → `phases/04-procedures/tickets/T04-93-ifr-cancellation-replan-acceptance-and-docs.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock,
+post-merge gates, STATUS handoff, and final phase result. Preserve untracked
+`.worktrees/` and `speech-api/:memory:.ses`; do not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: IFR cancellation VFR route replanning T04-92–T04-93
+Merge target: feature/sattelite-traffic
+Merged: T04-92, T04-93
+Tests: focused cancellation/route acceptance; npm run ci; git diff --check; manual evidence
+Notes: outside-Bravo cancellation replans VFR route; inside-Bravo remains rejected; Class B VFR clearance remains deferred; no push
+```
