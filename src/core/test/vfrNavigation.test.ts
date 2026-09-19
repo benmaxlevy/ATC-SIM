@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { makeTestAircraft } from "../aircraft";
-import type { RegionalAirport, RegionalAirspaceVolume } from "../../scenario/regional";
+import type {
+  RegionalAirport,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+} from "../../scenario/regional";
 import {
   buildGroupedAvoidanceVolumes,
   checkSweptSegmentVolumeCollision,
@@ -12,6 +16,7 @@ import {
   isPointInside3dVolume,
   isPointInsideAvoidanceVolumes,
   isRouteSafeFromAvoidance,
+  planSafeVfrContinuation,
   planSafeVfrRoute,
   samplePointInBox,
   SATELLITE_DEPARTURE_WOBBLE_MAX_NM,
@@ -439,6 +444,15 @@ const FRAGMENTED_VOLUMES: RegionalAirspaceVolume[] = [
   singlePointFragment("UC:KSYN:B-F6", 0, -22, 5000),
 ];
 
+const SMALL_FRAGMENTED_VOLUMES: RegionalAirspaceVolume[] = [
+  singlePointFragment("UC:KSYN:B-S1", -6, -4, 2500),
+  singlePointFragment("UC:KSYN:B-S2", 6, -4, 2500),
+  singlePointFragment("UC:KSYN:B-S3", 6, 4, 3000),
+  singlePointFragment("UC:KSYN:B-S4", -6, 4, 3500),
+  singlePointFragment("UC:KSYN:B-S5", 0, 7, 4000),
+  singlePointFragment("UC:KSYN:B-S6", 0, -7, 5000),
+];
+
 describe("VFR arc tessellation and fragmented-shelf fallback", () => {
   test("Chained arc tessellates the bulge into the polygon", () => {
     const poly = extractVolumePolygonNm(ARC_SHELF_VOLUME);
@@ -613,6 +627,166 @@ describe("VFR arc tessellation and fragmented-shelf fallback", () => {
     stepVfrAircraftNavigation(ac, 0, 0, null, FRAGMENTED_VOLUMES);
     // Course from (-40,-40) to (-45,-45) is southwest (225 true, magVar 0).
     expect(ac.intent.assignedHeadingDeg).toBe(225);
+  });
+});
+
+function plannerRegional(
+  airspaces: RegionalAirspaceVolume[],
+  destination?: { icao: string; xNm: number; yNm: number },
+): RegionalFacility {
+  const airports: RegionalAirport[] = destination
+    ? [
+        {
+          icao: destination.icao,
+          name: "Synthetic destination",
+          arp: { latDeg: 33, lonDeg: -84 },
+          arpNm: { xNm: destination.xNm, yNm: destination.yNm },
+          fieldElevFt: 500,
+          magVarDeg: 0,
+          publicUse: true,
+          towered: true,
+          eligible: true,
+          runways: [],
+          hasPublishedApproaches: false,
+        },
+      ]
+    : [];
+  return { airspaces, airports } as unknown as RegionalFacility;
+}
+
+describe("T04-92 continuation planner contract", () => {
+  test("plans around grouped fragmented shelves instead of preserving a crossing suffix", () => {
+    const aircraft = makeTestAircraft({
+      xNm: -30,
+      yNm: 0,
+      altitudeFt: 5000,
+      speedKt: 110,
+      ambientVfr: {
+        mission: "LOCAL",
+        zoneId: "TEST_ZONE",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 30, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1 }],
+        waypointIndex: 0,
+      },
+      destination: "KDEST",
+    });
+
+    const plan = planSafeVfrContinuation(
+      aircraft,
+      plannerRegional(SMALL_FRAGMENTED_VOLUMES, { icao: "KDEST", xNm: 30, yNm: 0 }),
+    );
+
+    expect(plan).not.toBeNull();
+    expect(plan!.waypoints.length).toBe(2);
+    expect(plan!.waypointIndex).toBe(0);
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+          ...plan!.waypoints.map(({ xNm, yNm, altitudeFt }) => ({
+            xNm,
+            yNm,
+            altitudeFt: altitudeFt ?? aircraft.altitudeFt,
+          })),
+        ],
+        SMALL_FRAGMENTED_VOLUMES,
+      ),
+    ).toBe(true);
+    expect(plan!.waypoints[0]!.yNm).not.toBe(0);
+  });
+
+  test("preserves a direct suffix below and above the Class B vertical band", () => {
+    const regional = plannerRegional([SYNTHETIC_CLASS_B_VOLUME]);
+    const makeAircraft = (altitudeFt: number) =>
+      makeTestAircraft({
+        xNm: -10,
+        yNm: 0,
+        altitudeFt,
+        ambientVfr: {
+          mission: "LOCAL",
+          zoneId: "TEST_ZONE",
+          spawnedAtSimMs: 0,
+          alertEligibility: "AMBIENT_SUPPRESSED",
+          waypoints: [{ xNm: 10, yNm: 0, altitudeFt, speedKt: 110, targetToleranceNm: 1 }],
+          waypointIndex: 0,
+        },
+      });
+
+    const below = planSafeVfrContinuation(makeAircraft(2000), regional);
+    const above = planSafeVfrContinuation(makeAircraft(11000), regional);
+
+    expect(below?.waypoints).toEqual([
+      { xNm: 10, yNm: 0, altitudeFt: 2000, speedKt: 110, targetToleranceNm: 1 },
+    ]);
+    expect(above?.waypoints).toEqual([
+      { xNm: 10, yNm: 0, altitudeFt: 11000, speedKt: 110, targetToleranceNm: 1 },
+    ]);
+  });
+
+  test("rejects an unsafe suffix when there is no destination target", () => {
+    const aircraft = makeTestAircraft({
+      xNm: -10,
+      yNm: 0,
+      altitudeFt: 5000,
+      ambientVfr: {
+        mission: "LOCAL",
+        zoneId: "TEST_ZONE",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 10, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1 }],
+        waypointIndex: 0,
+      },
+    });
+
+    expect(planSafeVfrContinuation(aircraft, plannerRegional([SYNTHETIC_CLASS_B_VOLUME]))).toBe(
+      null,
+    );
+  });
+
+  test("returns a deterministic dogleg when the direct destination route is unsafe", () => {
+    const makeAircraft = () =>
+      makeTestAircraft({
+        xNm: -10,
+        yNm: 0,
+        altitudeFt: 5000,
+        speedKt: 110,
+        ambientVfr: {
+          mission: "LOCAL",
+          zoneId: "TEST_ZONE",
+          spawnedAtSimMs: 0,
+          alertEligibility: "AMBIENT_SUPPRESSED",
+          waypoints: [{ xNm: 10, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1 }],
+          waypointIndex: 0,
+        },
+        destination: "KDEST",
+      });
+    const regional = plannerRegional([SYNTHETIC_CLASS_B_VOLUME], {
+      icao: "KDEST",
+      xNm: 10,
+      yNm: 0,
+    });
+
+    const first = planSafeVfrContinuation(makeAircraft(), regional);
+    const second = planSafeVfrContinuation(makeAircraft(), regional);
+
+    expect(first).not.toBeNull();
+    expect(first).toEqual(second);
+    expect(first!.waypoints).toHaveLength(2);
+    expect(first!.waypoints[0]!.yNm).not.toBe(0);
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          { xNm: -10, yNm: 0, altitudeFt: 5000 },
+          ...first!.waypoints.map(({ xNm, yNm, altitudeFt }) => ({
+            xNm,
+            yNm,
+            altitudeFt: altitudeFt ?? 5000,
+          })),
+        ],
+        [SYNTHETIC_CLASS_B_VOLUME],
+      ),
+    ).toBe(true);
   });
 });
 
