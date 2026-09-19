@@ -427,7 +427,7 @@ source model for training simulation.
 ### CLI usage
 
 ```text
-npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] [--nasr-cls-arsp <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
 ```
 
 Or directly:
@@ -444,11 +444,18 @@ node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> 
   - `UR`: Restrictive (Special Use) Airspace records covering Restricted (`R`),
     Prohibited (`P`), Warning (`W`), Alert (`A`), MOA (`M`), and SATR (`U`)
     airspaces.
-- **FAA NASR subscription tables:**
+  - **FAA NASR subscription tables:**
   - `APT`: Airport records providing public-use vs private-use status (`FAC_USE`)
     and tower presence.
   - `TWR` / `ATC`: Tower and control facility records verifying tower operation
     and operating hours.
+  - `CLS_ARSP`: optional local Class B/C/D shape/airspace product. It is never
+    inferred from a filename; use `--nasr-cls-arsp` when supplied.
+
+The regional report records explicit coverage for `CIFP`, `CIFP_UC`, `CIFP_UR`,
+`NASR_APT`, `NASR_TWR`, and `NASR_CLS_ARSP`. Missing optional families remain
+marked unavailable; missing required CIFP or APT input is an error. Source IDs
+in generated output are portable product/file names, never absolute paths.
 
 ### Provenance and effective-cycle responsibility
 
@@ -480,10 +487,9 @@ node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> 
   - Selected airports lacking NASR service metadata trigger
     `MISSING_AIRPORT_SERVICE_METADATA` errors.
   - Missing, invalid, or inconsistent lower/upper altitude limits trigger
-    `INVALID_AIRSPACE_VERTICAL_LIMITS` warnings. The offending volume is
-    excluded from serialized output (runtime `parseRegionalPack` rejects such
-    volumes atomically, so emitting them would crash scenario load) and the
-    pack still writes.
+    strict `INVALID_AIRSPACE_VERTICAL_LIMITS` errors. The offending volume is
+    excluded from serialized output and regional write/dry-run commands fail
+    before any output is written.
   - Conflicting NASR airport records trigger `CONFLICTING_NASR_RECORD` errors.
   - Airports whose procedure catalog fails reference closure are excluded with
     `exclusionReason="catalog_error"` and a `CATALOG_GENERATION_FAILED`
@@ -502,7 +508,7 @@ catalogs for the center facility and all eligible satellite destination airports
 ### CLI usage
 
 ```text
-npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] [--nasr-cls-arsp <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
 ```
 
 Or directly:
@@ -574,5 +580,3 @@ satellite-arrival pack (T04-70)` with an authorized local FAA source; CI and
 review use synthetic fixtures only. No hand-filled FAA airport or airspace
 values: every destination, provenance record, and airspace volume comes from
 that reproducible pipeline.
-
-

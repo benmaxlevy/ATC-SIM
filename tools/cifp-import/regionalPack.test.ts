@@ -202,7 +202,7 @@ describe("T04-70 regionalPack generator", () => {
     expect(result.options.radiusNm).toBe(40);
     expect(result.manifest.centerAirportId).toBe("KAAA");
     expect(result.manifest.source.effectiveCycle).toBe("2610");
-    expect(result.manifest.source.families).toEqual(["CIFP", "NASR_APT", "NASR_TWR"]);
+    expect(result.manifest.source.families).toEqual(["CIFP", "CIFP_UC", "NASR_APT", "NASR_TWR"]);
 
     // Both center and satellite are eligible
     expect(result.eligibleAirports.map((a) => a.icao)).toEqual(["KAAA", "KBBB"]);
@@ -485,7 +485,7 @@ describe("T04-70 regionalPack generator", () => {
     expect(mock.written["out/region/regional-airspace.json"]).toBeDefined();
   });
 
-  test("90NM-like pack warns, excludes bad airspace and catalog-error airport, still writes", () => {
+  test("90NM-like pack errors before writing bad airspace and catalog-error airport", () => {
     const badAirspace = [
       uc({
         center: "KAAA",
@@ -563,7 +563,7 @@ describe("T04-70 regionalPack generator", () => {
     );
     expect(airspaceWarnings.length).toBeGreaterThanOrEqual(1);
     for (const d of airspaceWarnings) {
-      expect(d.severity).toBe("warning");
+      expect(d.severity).toBe("error");
       expect(d.message).toContain("excluded");
     }
     const catalogWarnings = result.diagnostics.filter(
@@ -573,7 +573,7 @@ describe("T04-70 regionalPack generator", () => {
     for (const d of catalogWarnings) {
       expect(d.severity).toBe("warning");
     }
-    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === "error").length).toBeGreaterThan(0);
 
     // Bad volume absent from output; only the good Class B remains.
     expect(result.airspaces.map((a) => a.name)).not.toContain("BAD CLASS C");
@@ -584,30 +584,26 @@ describe("T04-70 regionalPack generator", () => {
     expect(kfff.exclusionReason).toBe("catalog_error");
 
     const mock = createMockIo({ "test.cifp": cifp, "apt.txt": apt, "twr.txt": twr });
-    runRegionalPackCli(
-      [
-        "--cifp",
-        "test.cifp",
-        "--nasr-apt",
-        "apt.txt",
-        "--nasr-twr",
-        "twr.txt",
-        "--airport",
-        "KAAA",
-        "--radius",
-        "90",
-        "--out",
-        "out/region",
-      ],
-      mock.io,
-    );
-    expect(mock.written["out/region/regional.json"]).toBeDefined();
-    expect(mock.written["out/region/regional-airports.json"]).toBeDefined();
-    expect(mock.written["out/region/regional-airspace.json"]).toBeDefined();
-    const writtenAirspace = JSON.parse(mock.written["out/region/regional-airspace.json"]!);
-    expect(writtenAirspace.airspaces.map((a: { name: string }) => a.name)).not.toContain(
-      "BAD CLASS C",
-    );
+    expect(() =>
+      runRegionalPackCli(
+        [
+          "--cifp",
+          "test.cifp",
+          "--nasr-apt",
+          "apt.txt",
+          "--nasr-twr",
+          "twr.txt",
+          "--airport",
+          "KAAA",
+          "--radius",
+          "90",
+          "--out",
+          "out/region",
+        ],
+        mock.io,
+      ),
+    ).toThrow(/no files written/);
+    expect(Object.keys(mock.written)).toHaveLength(0);
   });
 
   test("missing NASR metadata still fails the pack with no files written", () => {

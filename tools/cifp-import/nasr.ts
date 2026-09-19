@@ -593,6 +593,10 @@ export function enrichAirportsWithNasr(
   enriched: NormalizedAirport[];
   diagnostics: CifpDiagnostic[];
 } {
+  const portableSourceId = (source: string): string => {
+    const normalized = source.replaceAll("\\", "/");
+    return normalized.slice(normalized.lastIndexOf("/") + 1) || "local-source";
+  };
   const diagnostics: CifpDiagnostic[] = [...nasr.diagnostics];
   const matchedNasrKeys = new Set<string>();
 
@@ -612,7 +616,7 @@ export function enrichAirportsWithNasr(
         serviceMetadata: {
           publicUse: match.publicUse,
           towered: match.towered,
-          sourceFile: match.sourceFile,
+          sourceFile: portableSourceId(match.sourceFile),
           sourceRecordId: match.faaId ?? match.airportId,
           effectiveDate: match.effectiveDate,
           cycle: match.cycle,

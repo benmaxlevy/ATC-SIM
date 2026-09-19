@@ -19,10 +19,21 @@ import type {
   SourceLatLon,
 } from "./types.ts";
 
+export type RegionalSourceFamily =
+  "CIFP" | "CIFP_UC" | "CIFP_UR" | "NASR_APT" | "NASR_TWR" | "NASR_CLS_ARSP";
+
+export interface RegionalSourceFamilyCoverage {
+  family: RegionalSourceFamily;
+  supplied: boolean;
+  sourceId?: string;
+  cycle?: string;
+}
+
 export interface RegionalSourceOptions {
   cifpPath: string;
   nasrAptPath: string;
   nasrTwrPath?: string;
+  nasrClsArspPath?: string;
   centerAirportId: string;
   radiusNm: number;
   outDir?: string;
@@ -49,6 +60,7 @@ export interface RegionalSourceResult {
   selectedAirspaces: NormalizedAirspace[];
   diagnostics: CifpDiagnostic[];
   counts: RegionalCounts;
+  sourceFamilies: RegionalSourceFamilyCoverage[];
   cifpSource?: NormalizedCifpSource;
   serialized: {
     airports: string;
@@ -68,8 +80,11 @@ export function buildRegionalSource(
   cifpText: string,
   nasrAptText: string,
   nasrTwrText: string | undefined,
-  options: RegionalSourceOptions,
+  optionsOrClsArsp: RegionalSourceOptions | string | undefined,
+  maybeOptions?: RegionalSourceOptions,
 ): RegionalSourceResult {
+  const options = typeof optionsOrClsArsp === "object" ? optionsOrClsArsp : maybeOptions!;
+  const nasrClsArspText = typeof optionsOrClsArsp === "string" ? optionsOrClsArsp : undefined;
   const diagnostics: CifpDiagnostic[] = [];
   const strict = options.strict ?? true;
 
@@ -88,6 +103,68 @@ export function buildRegionalSource(
   }
 
   const nasrMerged = mergeNasrData(datasets);
+
+  const portableSourceId = (source: string): string => {
+    const normalized = source.replaceAll("\\", "/");
+    return normalized.slice(normalized.lastIndexOf("/") + 1) || "local-source";
+  };
+  const hasCifpFamily = (section: "UC" | "UR"): boolean =>
+    cifpSource.airspaces.some((a) => a.identity.section === section) ||
+    Object.keys(cifpSource.skippedByType).some((key) => key.startsWith(section));
+  const sourceFamilies: RegionalSourceFamilyCoverage[] = [
+    {
+      family: "CIFP",
+      supplied: cifpText.trim().length > 0,
+      sourceId: portableSourceId(options.cifpPath),
+      cycle: options.effectiveCycle,
+    },
+    {
+      family: "CIFP_UC",
+      supplied: hasCifpFamily("UC"),
+      cycle: options.effectiveCycle,
+    },
+    {
+      family: "CIFP_UR",
+      supplied: hasCifpFamily("UR"),
+      cycle: options.effectiveCycle,
+    },
+    {
+      family: "NASR_APT",
+      supplied: nasrAptText.trim().length > 0,
+      sourceId: portableSourceId(options.nasrAptPath),
+      cycle: options.effectiveCycle,
+    },
+    {
+      family: "NASR_TWR",
+      supplied: nasrTwrText !== undefined && nasrTwrText.trim().length > 0,
+      sourceId: options.nasrTwrPath ? portableSourceId(options.nasrTwrPath) : undefined,
+      cycle: options.effectiveCycle,
+    },
+    {
+      family: "NASR_CLS_ARSP",
+      supplied: nasrClsArspText !== undefined && nasrClsArspText.trim().length > 0,
+      sourceId: options.nasrClsArspPath ? portableSourceId(options.nasrClsArspPath) : undefined,
+      cycle: options.effectiveCycle,
+    },
+  ];
+  for (const family of sourceFamilies) {
+    if (!family.supplied && (family.family === "CIFP" || family.family === "NASR_APT")) {
+      diagnostics.push({
+        severity: "error",
+        code: "MISSING_SOURCE_FAMILY",
+        message: `CIFP regional import: required source family ${family.family} is missing`,
+        section: family.family,
+      });
+    }
+  }
+  if (nasrClsArspText !== undefined && nasrClsArspText.trim().length === 0) {
+    diagnostics.push({
+      severity: "error",
+      code: "MALFORMED_SOURCE_FAMILY",
+      message: "CIFP regional import: NASR_CLS_ARSP source is empty",
+      section: "NASR_CLS_ARSP",
+    });
+  }
 
   // 3. Enrich CIFP airports with NASR metadata
   const enrichedResult = enrichAirportsWithNasr(cifpSource.airports, nasrMerged);
@@ -141,16 +218,14 @@ export function buildRegionalSource(
     }
 
     // 6b. Each selected airspace must have valid vertical limits and units.
-    // Invalid volumes are excluded with a warning so one bad UC record cannot
-    // fail the whole pack. Runtime parseRegionalPack rejects such volumes
-    // atomically, so they must not appear in serialized output.
+    // Strict regional generation rejects invalid volumes before any write.
     const invalidAirspaceKeys = new Set<string>();
-    const pushVerticalLimitWarning = (
+    const pushVerticalLimitError = (
       airspace: (typeof filteredAirspaces)[number],
       message: string,
     ): void => {
       diagnostics.push({
-        severity: "warning",
+        severity: "error",
         code: "INVALID_AIRSPACE_VERTICAL_LIMITS",
         message: `${message} (volume excluded)`,
         lineNo: airspace.sourceLineNo,
@@ -169,21 +244,21 @@ export function buildRegionalSource(
         upper.unit === "UNKNOWN" ||
         upper.unit === "NOT_SPECIFIED"
       ) {
-        pushVerticalLimitWarning(
+        pushVerticalLimitError(
           airspace,
           `CIFP regional import: airspace ${airspace.identity.key} has invalid or unspecified altitude unit (lower: ${lower.unit}, upper: ${upper.unit})`,
         );
       }
 
       if (lower.altitudeFt === undefined && lower.unit !== "GND" && lower.reference !== "SURFACE") {
-        pushVerticalLimitWarning(
+        pushVerticalLimitError(
           airspace,
           `CIFP regional import: airspace ${airspace.identity.key} has non-surface lower limit with missing altitude value`,
         );
       }
 
       if (upper.altitudeFt === undefined) {
-        pushVerticalLimitWarning(
+        pushVerticalLimitError(
           airspace,
           `CIFP regional import: airspace ${airspace.identity.key} has missing upper altitude value`,
         );
@@ -194,7 +269,7 @@ export function buildRegionalSource(
         upper.altitudeFt !== undefined &&
         lower.altitudeFt > upper.altitudeFt
       ) {
-        pushVerticalLimitWarning(
+        pushVerticalLimitError(
           airspace,
           `CIFP regional import: airspace ${airspace.identity.key} lower limit ${lower.altitudeFt} exceeds upper limit ${upper.altitudeFt}`,
         );
@@ -227,6 +302,7 @@ export function buildRegionalSource(
     radiusNm: options.radiusNm,
     arp: origin,
     effectiveCycle: options.effectiveCycle,
+    sourceFamilies,
     counts,
     airports: selectedAirports,
     airspaces: filteredAirspaces,
@@ -260,6 +336,7 @@ export function buildRegionalSource(
     selectedAirspaces: filteredAirspaces,
     diagnostics,
     counts,
+    sourceFamilies,
     cifpSource,
     serialized,
   };
@@ -312,6 +389,7 @@ export function parseRegionalCliArgs(args: string[]): RegionalSourceOptions {
   let cifpPath: string | undefined;
   let nasrAptPath: string | undefined;
   let nasrTwrPath: string | undefined;
+  let nasrClsArspPath: string | undefined;
   let centerAirportId: string | undefined;
   let radiusRaw: string | undefined;
   let outDir: string | undefined;
@@ -343,6 +421,14 @@ export function parseRegionalCliArgs(args: string[]): RegionalSourceOptions {
     }
     if (arg.startsWith("--nasr-twr=") || arg.startsWith("--twr=")) {
       nasrTwrPath = arg.slice(arg.indexOf("=") + 1);
+      continue;
+    }
+    if (arg === "--nasr-cls-arsp") {
+      nasrClsArspPath = requireArgValue(args, ++i, arg);
+      continue;
+    }
+    if (arg.startsWith("--nasr-cls-arsp=")) {
+      nasrClsArspPath = arg.slice("--nasr-cls-arsp=".length);
       continue;
     }
     if (arg === "--airport" || arg === "--center") {
@@ -413,6 +499,7 @@ export function parseRegionalCliArgs(args: string[]): RegionalSourceOptions {
     cifpPath,
     nasrAptPath,
     nasrTwrPath,
+    nasrClsArspPath,
     centerAirportId: centerAirportId.trim().toUpperCase(),
     radiusNm,
     outDir,
@@ -460,7 +547,22 @@ export function runRegionalCli(args: string[], io: RegionalIo): void {
     }
   }
 
-  const result = buildRegionalSource(cifpText, nasrAptText, nasrTwrText, options);
+  let nasrClsArspText: string | undefined;
+  if (options.nasrClsArspPath !== undefined) {
+    try {
+      nasrClsArspText = io.readFile(options.nasrClsArspPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      io.stderr(
+        `cifp-import error: unable to read NASR CLS_ARSP source '${options.nasrClsArspPath}': ${msg}\n`,
+      );
+      throw new Error(
+        `MISSING_SOURCE_FILE: unable to read NASR CLS_ARSP source '${options.nasrClsArspPath}'`,
+      );
+    }
+  }
+
+  const result = buildRegionalSource(cifpText, nasrAptText, nasrTwrText, nasrClsArspText, options);
   io.stderr(formatRegionalReport(result, options.dryRun));
 
   const errorCount = result.diagnostics.filter((d) => d.severity === "error").length;

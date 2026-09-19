@@ -162,6 +162,56 @@ test("AC5 — buildRegionalSource enriches airports and selects airspace in regi
   expect(report).toContain("center: KAAA");
   expect(report).toContain("radius: 20 NM");
   expect(report).toContain("towered=1 public=2");
+  expect(result.sourceFamilies.map((family) => family.family)).toEqual([
+    "CIFP",
+    "CIFP_UC",
+    "CIFP_UR",
+    "NASR_APT",
+    "NASR_TWR",
+    "NASR_CLS_ARSP",
+  ]);
+  expect(result.sourceFamilies.find((family) => family.family === "NASR_TWR")?.sourceId).toBe(
+    "TWR.txt",
+  );
+});
+
+test("T04-86 — source coverage and provenance stay explicit and portable", () => {
+  const result = buildRegionalSource(SYNTHETIC_CIFP, SYNTHETIC_NASR_APT, undefined, {
+    cifpPath: "/workstation/cycles/FAACIFP18",
+    nasrAptPath: "C:\\cycles\\APT.txt",
+    centerAirportId: "KAAA",
+    radiusNm: 20,
+  });
+
+  expect(result.sourceFamilies.find((family) => family.family === "NASR_TWR")?.supplied).toBe(
+    false,
+  );
+  const serialized = JSON.parse(result.serialized.airports) as Array<{
+    serviceMetadata?: { sourceFile?: string };
+  }>;
+  expect(serialized[0]?.serviceMetadata?.sourceFile).toBe("APT.txt");
+  expect(result.serialized.regionalSource).not.toContain("/workstation/");
+  expect(result.serialized.regionalSource).not.toContain("C:\\\\cycles");
+});
+
+test("T04-86 — missing required family and empty explicit CLS_ARSP fail", () => {
+  const result = buildRegionalSource(SYNTHETIC_CIFP, "", undefined, "", {
+    cifpPath: "cycle.cifp",
+    nasrAptPath: "APT.txt",
+    nasrClsArspPath: "CLS_ARSP.txt",
+    centerAirportId: "KAAA",
+    radiusNm: 20,
+  });
+
+  expect(result.diagnostics).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: "MISSING_SOURCE_FAMILY", section: "NASR_APT" }),
+      expect.objectContaining({ code: "MALFORMED_SOURCE_FAMILY", section: "NASR_CLS_ARSP" }),
+    ]),
+  );
+  expect(
+    result.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
+  ).toBeGreaterThanOrEqual(2);
 });
 
 test("AC5 — strict regional mode fails when selected airport lacks NASR metadata", () => {
@@ -183,7 +233,7 @@ test("AC5 — strict regional mode fails when selected airport lacks NASR metada
   expect(missingMeta[0]?.airportId).toBe("KBBB");
 });
 
-test("AC5 — strict regional mode warns and excludes airspace with invalid vertical limits", () => {
+test("T04-86 — strict regional mode errors and excludes airspace with invalid vertical limits", () => {
   const badAirspaceCifp = [
     pa({ icao: "KAAA", name: "ALPHA", lat: "N00000000", lon: "W000000000" }),
     // Airspace with lowerLimitUnit = ' ' (NOT_SPECIFIED)
@@ -215,11 +265,10 @@ test("AC5 — strict regional mode warns and excludes airspace with invalid vert
   );
   expect(limitWarnings.length).toBeGreaterThanOrEqual(1);
   for (const w of limitWarnings) {
-    expect(w.severity).toBe("warning");
+    expect(w.severity).toBe("error");
     expect(w.message).toContain("excluded");
   }
-  // No error-severity diagnostics remain from the bad volume.
-  expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(1);
   // Bad volume is excluded from selection and serialized output.
   expect(result.selectedAirspaces).toHaveLength(0);
   expect(result.counts.selectedAirspaces).toBe(0);
@@ -227,7 +276,7 @@ test("AC5 — strict regional mode warns and excludes airspace with invalid vert
   expect(JSON.parse(result.serialized.airspaces)).toHaveLength(0);
 });
 
-test("AC5 — strict regional mode still writes when only invalid airspaces are present", () => {
+test("T04-86 — strict regional mode writes no output when vertical limits are invalid", () => {
   const badAirspaceCifp = [
     pa({ icao: "KAAA", name: "ALPHA", lat: "N00000000", lon: "W000000000" }),
     uc({
@@ -250,26 +299,24 @@ test("AC5 — strict regional mode still writes when only invalid airspaces are 
   };
   const { io, written } = createMockIo(files);
 
-  runRegionalCli(
-    [
-      "--cifp",
-      "FAACIFP18",
-      "--nasr-apt",
-      "APT.txt",
-      "--airport",
-      "KAAA",
-      "--radius",
-      "20",
-      "--out",
-      "out/reg",
-    ],
-    io,
-  );
-
-  expect(written["out/reg/airports.json"]).toBeDefined();
-  expect(written["out/reg/airspaces.json"]).toBeDefined();
-  expect(written["out/reg/regional-source.json"]).toBeDefined();
-  expect(JSON.parse(written["out/reg/airspaces.json"]!)).toHaveLength(0);
+  expect(() =>
+    runRegionalCli(
+      [
+        "--cifp",
+        "FAACIFP18",
+        "--nasr-apt",
+        "APT.txt",
+        "--airport",
+        "KAAA",
+        "--radius",
+        "20",
+        "--out",
+        "out/reg",
+      ],
+      io,
+    ),
+  ).toThrow(/no files written/);
+  expect(Object.keys(written)).toHaveLength(0);
 });
 
 test("AC5 — missing NASR metadata still fails closed with no files written", () => {

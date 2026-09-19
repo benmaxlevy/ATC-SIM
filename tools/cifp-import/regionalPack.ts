@@ -30,6 +30,7 @@ export interface RegionalPackOptions {
   cifpPath: string;
   nasrAptPath: string;
   nasrTwrPath?: string;
+  nasrClsArspPath?: string;
   centerAirportId: string;
   radiusNm: number;
   outDir?: string;
@@ -159,15 +160,17 @@ export function buildRegionalPack(
   nasrAptText: string,
   nasrTwrText: string | undefined,
   options: RegionalPackOptions,
+  nasrClsArspText?: string,
 ): RegionalPackResult {
   const strict = options.strict ?? true;
   const diagnostics: CifpDiagnostic[] = [];
 
   // 1. Build regional source (parses CIFP, NASR, enriches, selects by radius, validates)
-  const regionalSource = buildRegionalSource(cifpText, nasrAptText, nasrTwrText, {
+  const regionalSource = buildRegionalSource(cifpText, nasrAptText, nasrTwrText, nasrClsArspText, {
     cifpPath: options.cifpPath,
     nasrAptPath: options.nasrAptPath,
     nasrTwrPath: options.nasrTwrPath,
+    nasrClsArspPath: options.nasrClsArspPath,
     centerAirportId: options.centerAirportId,
     radiusNm: options.radiusNm,
     dryRun: options.dryRun,
@@ -342,10 +345,9 @@ export function buildRegionalPack(
   const eligibleAirports = airportRows.filter((a) => a.eligible);
   const excludedAirports = airportRows.filter((a) => !a.eligible);
 
-  const families = ["CIFP", "NASR_APT"];
-  if (options.nasrTwrPath) {
-    families.push("NASR_TWR");
-  }
+  const families = regionalSource.sourceFamilies
+    .filter((family) => family.supplied)
+    .map((family) => family.family);
 
   const manifest: RegionalManifest = {
     schemaVersion: 1,
@@ -439,6 +441,7 @@ export function parseRegionalPackCliArgs(args: string[]): RegionalPackOptions {
   let cifpPath: string | undefined;
   let nasrAptPath: string | undefined;
   let nasrTwrPath: string | undefined;
+  let nasrClsArspPath: string | undefined;
   let centerAirportId: string | undefined;
   let radiusRaw: string | undefined;
   let outDir: string | undefined;
@@ -470,6 +473,14 @@ export function parseRegionalPackCliArgs(args: string[]): RegionalPackOptions {
     }
     if (arg.startsWith("--nasr-twr=") || arg.startsWith("--twr=")) {
       nasrTwrPath = arg.slice(arg.indexOf("=") + 1);
+      continue;
+    }
+    if (arg === "--nasr-cls-arsp") {
+      nasrClsArspPath = requireArgValue(args, ++i, arg);
+      continue;
+    }
+    if (arg.startsWith("--nasr-cls-arsp=")) {
+      nasrClsArspPath = arg.slice("--nasr-cls-arsp=".length);
       continue;
     }
     if (arg === "--airport" || arg === "--center") {
@@ -540,6 +551,7 @@ export function parseRegionalPackCliArgs(args: string[]): RegionalPackOptions {
     cifpPath,
     nasrAptPath,
     nasrTwrPath,
+    nasrClsArspPath,
     centerAirportId: centerAirportId.trim().toUpperCase(),
     radiusNm,
     outDir,
@@ -588,7 +600,22 @@ export function runRegionalPackCli(args: string[], io: RegionalIo): void {
     }
   }
 
-  const result = buildRegionalPack(cifpText, nasrAptText, nasrTwrText, options);
+  let nasrClsArspText: string | undefined;
+  if (options.nasrClsArspPath !== undefined) {
+    try {
+      nasrClsArspText = io.readFile(options.nasrClsArspPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      io.stderr(
+        `cifp-import error: unable to read NASR CLS_ARSP source '${options.nasrClsArspPath}': ${msg}\n`,
+      );
+      throw new Error(
+        `MISSING_SOURCE_FILE: unable to read NASR CLS_ARSP source '${options.nasrClsArspPath}'`,
+      );
+    }
+  }
+
+  const result = buildRegionalPack(cifpText, nasrAptText, nasrTwrText, options, nasrClsArspText);
   io.stderr(formatRegionalPackReport(result, options.dryRun));
 
   const errorCount = result.diagnostics.filter((d) => d.severity === "error").length;
