@@ -218,6 +218,7 @@ const PREVIEW_TABLE: Readonly<Record<string, PreviewTableEntry>> = {
 
 /** Full callsign / numeric-tail / 4-digit squawk — duplicated, not `@pilot`. */
 export const FULL_CALLSIGN = /^[A-Z]{3}[0-9]{1,4}[A-Z]?$/;
+export const GA_CALLSIGN = /^N[0-9]{1,5}[A-Z]{0,2}$/;
 export const SUFFIX_CALLSIGN = /^[0-9]{1,4}[A-Z]?$/;
 export const SQUAWK_CODE = /^[0-7]{4}$/;
 const SCRATCHPAD = /^Δ[A-Z0-9+/. *]{0,4}$/;
@@ -1113,6 +1114,7 @@ function isCompleteFlidToken(token: string): boolean {
   if (/^\d{4}$/.test(token)) return SQUAWK_CODE.test(token);
   return (
     FULL_CALLSIGN.test(token) ||
+    GA_CALLSIGN.test(token) ||
     SUFFIX_CALLSIGN.test(token) ||
     SQUAWK_CODE.test(token) ||
     /^\d{1,2}$/.test(token)

@@ -44,6 +44,8 @@ export interface FiledRouteCatalog {
       }>;
     }>;
   }>;
+  /** Regional airport endpoints for IFR clearance limits. */
+  regionalAirports?: ReadonlyArray<{ icao: string }>;
 }
 
 export type FiledRouteErrorCode =
@@ -130,7 +132,9 @@ function idsEqual(left: string, right: string): boolean {
 }
 
 function catalogAirport(catalog: FiledRouteCatalog, id: string): boolean {
-  return catalog.airportId !== undefined && idsEqual(catalog.airportId, id);
+  if (catalog.airportId !== undefined && idsEqual(catalog.airportId, id)) return true;
+  if (catalog.regionalAirports?.some((apt) => idsEqual(apt.icao, id))) return true;
+  return false;
 }
 
 function legsToIds(legs: ReadonlyArray<{ fixId: string }> | undefined): string[] {
@@ -1017,6 +1021,7 @@ export function saveFlightPlanDraft(
     aircraft?: ReadonlyArray<{ id?: string; assignedSquawk?: string }>;
     beaconPools?: BeaconPoolConfig;
     catalog?: FiledRouteCatalog | null;
+    regional?: unknown;
   },
   input: FlightPlanDraftInput,
 ): FlightPlanDraftResult {
@@ -1094,7 +1099,40 @@ export function saveFlightPlanDraft(
   const routeText = hasRouteInput
     ? (input.filedRoute ?? input.route ?? "")
     : (existing?.filedRoute?.text ?? existing?.route ?? "");
-  const route = resolveFiledRoute(routeText, world.catalog);
+  const reg = world.regional as
+    | {
+        airports?:
+          | Array<{ icao: string }>
+          | {
+              centerAirport?: { icao: string };
+              destinations?: Array<{ icao: string }>;
+            };
+      }
+    | undefined;
+  const rawAirports = reg?.airports;
+  const rawList: Array<{ icao: string }> = Array.isArray(rawAirports)
+    ? rawAirports
+    : rawAirports && typeof rawAirports === "object" && "destinations" in rawAirports
+      ? [rawAirports.centerAirport, ...(rawAirports.destinations ?? [])].filter(
+          (a): a is { icao: string } => Boolean(a),
+        )
+      : [];
+  const regionalAirports = rawList.length > 0 ? rawList.map((a) => ({ icao: a.icao })) : undefined;
+  const effectiveCatalog: FiledRouteCatalog | null | undefined = world.catalog
+    ? {
+        ...world.catalog,
+        regionalAirports: world.catalog.regionalAirports ?? regionalAirports,
+      }
+    : regionalAirports
+      ? {
+          fixes: [],
+          navaids: [],
+          stars: [],
+          sids: [],
+          regionalAirports,
+        }
+      : world.catalog;
+  const route = resolveFiledRoute(routeText, effectiveCatalog);
   if (!route.ok) return { ok: false, error: route.error };
   const otherPlans = world.flightPlans.filter(
     (item) => item.status !== "deleted" && item.id !== existing?.id,

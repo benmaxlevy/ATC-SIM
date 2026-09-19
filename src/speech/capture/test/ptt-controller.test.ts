@@ -90,3 +90,13 @@ test("permission denied emits a signal and does not throw", async () => {
   expect(events.some((e) => e.type === "permission-denied")).toBe(true);
   controller.dispose();
 });
+
+test("transmitLocked ignores keydown without starting capture", async () => {
+  const { controller, events } = setup();
+  controller.setTransmitLocked(true);
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events).toEqual([{ type: "ignored-locked" }]);
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events).toEqual([{ type: "ignored-locked" }]);
+  controller.dispose();
+});

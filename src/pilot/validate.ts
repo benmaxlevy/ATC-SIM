@@ -9,16 +9,22 @@ import type {
   FixRegistry,
   Instruction,
   ProcedureJoinCatalog,
+  RadioRequest,
   VerticalCatalog,
 } from "@core";
 import {
   alongTrackNm,
+  findOpenRadioRequest,
+  isAircraftInsideClassB,
   isOnCourseToFix,
+  isSafeVfrContinuationAvailable,
   joinProcedureTransition,
   normalizeHeading,
   performanceRegistry,
 } from "@core";
 import { isValidBeaconCode } from "@core";
+import { normalizeRunwayId } from "../core/nav/approachContext";
+import type { RegionalFacility } from "../scenario/regional";
 
 export const ALTITUDE_MIN_FT = 1000;
 export const ALTITUDE_MAX_FT = 18000;
@@ -42,7 +48,11 @@ export type ValidateReason =
   | "UNKNOWN_APPROACH"
   | "NOT_ON_APPROACH"
   | "SQUAWK"
-  | "CLEARANCE";
+  | "CLEARANCE"
+  | "REQUEST"
+  | "RADAR_CONTACT"
+  | "CANCELLATION"
+  | "RUNWAY";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -60,14 +70,36 @@ export interface ValidateApproach {
 export interface ValidateOpts {
   fixRegistry?: FixRegistry | null;
   catalog?:
-    | (VerticalCatalog & ProcedureJoinCatalog & { approaches?: ReadonlyArray<ValidateApproach> })
+    | (VerticalCatalog &
+        ProcedureJoinCatalog & {
+          approaches?: ReadonlyArray<ValidateApproach>;
+          fixes?: ReadonlyArray<{ id: string }>;
+          navaids?: ReadonlyArray<{ id: string }>;
+          airportId?: string;
+        })
     | null;
   /** Scenario active runway; runway-tagged STAR transitions must match. */
   activeRunwayId?: string | null;
   /** When set (catalog loaded), CLEARED/EXPECT must match an approach id. */
   approachIds?: readonly string[] | null;
+  /** When set, CLEARED_VISUAL runway must match an id in this list. */
+  runwayIds?: readonly string[] | null;
+  destinationIcao?: string | null;
   performanceProfile?: AircraftPerformanceProfile | null;
+  radioRequests?: readonly RadioRequest[];
+  regional?: RegionalFacility | null;
+  vfrContinuationValidator?: (aircraft: Aircraft, regional?: RegionalFacility | null) => boolean;
 }
+
+const REQUEST_CONTROL_TYPES = new Set([
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
+]);
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
 export function validateInstructions(
@@ -77,6 +109,19 @@ export function validateInstructions(
 ): ValidateResult {
   if (instructions.length === 0) {
     return { ok: false, reason: "EMPTY" };
+  }
+  if (
+    instructions.length > 1 &&
+    instructions.some((instruction) => REQUEST_CONTROL_TYPES.has(instruction.type))
+  ) {
+    const hasCancel = instructions.some((i) => i.type === "ACKNOWLEDGE_IFR_CANCELLATION");
+    return {
+      ok: false,
+      reason: hasCancel ? "CANCELLATION" : "CLEARANCE",
+      detail: hasCancel
+        ? "cancellation instruction must be the only instruction"
+        : "request control instruction must be the only instruction",
+    };
   }
   const profile = opts?.performanceProfile ?? performanceRegistry.getProfile(aircraft.aircraftType);
   if (instructions.some((instruction) => instruction.type === "CANCEL_APPROACH")) {
@@ -126,6 +171,7 @@ function validateProjectedCancellation(
       .some((instruction) =>
         new Set([
           "CLEARED_APPROACH",
+          "CLEARED_VISUAL",
           "INTERCEPT_LOCALIZER",
           "EXPECT_APPROACH",
           "GO_AROUND",
@@ -169,8 +215,10 @@ function cloneAircraftForValidation(aircraft: Aircraft): Aircraft {
 }
 
 function validateCancellation(aircraft: Aircraft): ValidateResult {
+  const onApproach =
+    Boolean(aircraft.intent.clearedApproachId) || aircraft.intent.lateral?.type === "VISUAL_FINAL";
   if (
-    !aircraft.intent.clearedApproachId ||
+    !onApproach ||
     aircraft.intent.lateral?.type === "MISSED" ||
     aircraft.intent.lateral?.type === "LANDING"
   ) {
@@ -193,7 +241,8 @@ function projectCancellation(aircraft: Aircraft): void {
     lateralType === undefined ||
     lateralType === "HEADING" ||
     lateralType === "INTERCEPT_LOC" ||
-    lateralType === "LOC"
+    lateralType === "LOC" ||
+    lateralType === "VISUAL_FINAL"
   ) {
     aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
   }
@@ -274,10 +323,15 @@ function validateOne(
       if (instruction.approachId.trim() === "") {
         return { ok: false, reason: "EMPTY" };
       }
-      if (!approachKnown(instruction.approachId, opts)) {
+      if (
+        !approachKnown(instruction.approachId, opts) ||
+        !isIlsApproach(instruction.approachId, opts)
+      ) {
         return { ok: false, reason: "UNKNOWN_APPROACH" };
       }
       return { ok: true };
+    case "CLEARED_VISUAL":
+      return validateClearedVisual(aircraft, instruction, opts);
     case "ASSIGN_SQUAWK":
       if (
         !isValidBeaconCode(instruction.code) ||
@@ -331,7 +385,7 @@ function validateOne(
     case "CROSS":
       return validateCross(aircraft, instruction, opts, profile);
     case "GO_AROUND":
-      if (!aircraft.intent.clearedApproachId) {
+      if (!aircraft.intent.clearedApproachId && aircraft.intent.lateral?.type !== "VISUAL_FINAL") {
         return { ok: false, reason: "NOT_ON_APPROACH" };
       }
       return { ok: true };
@@ -343,6 +397,153 @@ function validateOne(
     case "SAY_ALTITUDE":
     case "DELETE_SPEED_RESTRICTIONS":
       return { ok: true };
+    case "REQUEST_DETAILS": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
+      }
+      return { ok: true };
+    }
+    case "STANDBY_REQUEST": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
+      }
+      return { ok: true };
+    }
+    case "APPROVE_FLIGHT_FOLLOWING": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id, "FLIGHT_FOLLOWING");
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status !== "IDENTIFIED") {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: radar identification required" };
+      }
+      return { ok: true };
+    }
+    case "DECLINE_REQUEST": {
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id, instruction.service);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.status === "APPROVED") {
+        return {
+          ok: false,
+          reason: "REQUEST",
+          detail: "REQUEST: active service must be terminated",
+        };
+      }
+      return { ok: true };
+    }
+    case "RADAR_CONTACT": {
+      // Bare `radar contact` identifies with no position report; a present
+      // position must be complete (positive distance + known fix/navaid).
+      if (
+        instruction.distanceNm === undefined &&
+        instruction.referenceId === undefined &&
+        instruction.referenceKind === undefined
+      ) {
+        const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+        if (!openReq) {
+          return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+        }
+        return { ok: true };
+      }
+      if (!Number.isFinite(instruction.distanceNm) || (instruction.distanceNm ?? 0) <= 0) {
+        return {
+          ok: false,
+          reason: "RADAR_CONTACT",
+          detail: "RADAR_CONTACT: distance must be positive",
+        };
+      }
+      const refId = (instruction.referenceId ?? "").trim().toUpperCase();
+      if (!refId) {
+        return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+      }
+      // Airport references live in their own namespace: the own-airport id or
+      // a regional airport, never the fix/navaid catalog.
+      if (instruction.referenceKind === "AIRPORT") {
+        const regionalAirports = opts?.regional?.airports;
+        const knownAirport =
+          opts?.catalog?.airportId?.trim().toUpperCase() === refId ||
+          (Array.isArray(regionalAirports) &&
+            regionalAirports.some((a) => a?.icao?.toUpperCase() === refId));
+        if (!knownAirport) {
+          return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+        }
+      } else {
+        const catalogHasFix =
+          opts?.fixRegistry?.has(refId) ||
+          opts?.catalog?.fixes?.some((f) => f.id.trim().toUpperCase() === refId) ||
+          opts?.catalog?.navaids?.some((n) => n.id.trim().toUpperCase() === refId);
+        if (!catalogHasFix) {
+          return { ok: false, reason: "UNKNOWN_FIX", detail: "UNKNOWN_FIX" };
+        }
+      }
+      const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
+      if (!openReq) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      return { ok: true };
+    }
+    case "TERMINATE_RADAR_SERVICE": {
+      if (!aircraft.flightFollowing?.active && !aircraft.radarContact) {
+        return { ok: false, reason: "REQUEST", detail: "REQUEST: radar service is not active" };
+      }
+      return { ok: true };
+    }
+    case "ACKNOWLEDGE_IFR_CANCELLATION": {
+      if (!aircraft.cancellationPending) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: no pending pilot IFR cancellation",
+        };
+      }
+      if (aircraft.flightRules !== "IFR") {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: aircraft is not operating IFR",
+        };
+      }
+      if (aircraft.altitudeFt <= 0 || aircraft.airborne === false) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: aircraft is on ground",
+        };
+      }
+      if (isAircraftInsideClassB(aircraft, opts?.regional)) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: cannot cancel IFR inside Class B airspace",
+        };
+      }
+      if (opts?.vfrContinuationValidator) {
+        if (!opts.vfrContinuationValidator(aircraft, opts.regional)) {
+          return {
+            ok: false,
+            reason: "CANCELLATION",
+            detail: "CANCELLATION: unable to establish safe VFR continuation",
+          };
+        }
+      } else if (!isSafeVfrContinuationAvailable(aircraft, opts?.regional)) {
+        return {
+          ok: false,
+          reason: "CANCELLATION",
+          detail: "CANCELLATION: unable to establish safe VFR continuation",
+        };
+      }
+      return { ok: true };
+    }
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
@@ -383,11 +584,84 @@ function isIlsApproach(approachId: string, opts?: ValidateOpts): boolean {
     norm.includes("RNAV") ||
     norm.includes("VOR") ||
     norm.includes("NDB") ||
+    norm.includes("RNP") ||
     norm.includes("VISUAL")
   ) {
     return false;
   }
   return true;
+}
+
+function validateClearedVisual(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "CLEARED_VISUAL" }>,
+  opts?: ValidateOpts,
+): ValidateResult {
+  const raw = instruction.runwayId.trim();
+  if (raw === "") {
+    return { ok: false, reason: "EMPTY" };
+  }
+  const clean = raw.replace(/^RW/i, "").toUpperCase();
+  if (!/^\d{1,2}[LRC]?$/.test(clean)) {
+    return { ok: false, reason: "RUNWAY" };
+  }
+  const norm = normalizeRunwayId(clean);
+
+  if (opts?.runwayIds) {
+    const matches = opts.runwayIds.some((id) => normalizeRunwayId(id) === norm);
+    if (!matches) {
+      return { ok: false, reason: "RUNWAY" };
+    }
+    return { ok: true };
+  }
+
+  const destIcao = (
+    opts?.destinationIcao ??
+    aircraft.activeClearance?.limitId ??
+    (aircraft.flightPlan as { airportId?: string; destination?: string } | undefined)?.airportId ??
+    aircraft.flightPlan?.destination ??
+    aircraft.destination ??
+    aircraft.destinationAirport ??
+    opts?.catalog?.airportId ??
+    ""
+  )
+    .trim()
+    .toUpperCase();
+
+  if (opts?.regional) {
+    const regional = opts.regional;
+    const airport =
+      typeof regional.getAirport === "function"
+        ? regional.getAirport(destIcao)
+        : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao);
+    if (airport && Array.isArray(airport.runways) && airport.runways.length > 0) {
+      const exists = airport.runways.some((r) => normalizeRunwayId(r.id) === norm);
+      if (!exists) {
+        return { ok: false, reason: "RUNWAY" };
+      }
+      return { ok: true };
+    }
+  }
+
+  if (opts?.catalog) {
+    const cat = opts.catalog;
+    const approachRunways = (cat.approaches ?? [])
+      .map((a) => a.runway ?? a.id.replace(/^ILS/i, ""))
+      .filter(Boolean);
+    const thresholdFixes = (cat.fixes ?? [])
+      .filter((f) => f.id.toUpperCase().startsWith("RW"))
+      .map((f) => f.id.replace(/^RW/i, ""));
+    const allKnown = [...approachRunways, ...thresholdFixes];
+    if (allKnown.length > 0) {
+      const exists = allKnown.some((r) => normalizeRunwayId(r) === norm);
+      if (!exists) {
+        return { ok: false, reason: "RUNWAY" };
+      }
+      return { ok: true };
+    }
+  }
+
+  return { ok: true };
 }
 
 function validateAltitude(
@@ -396,8 +670,10 @@ function validateAltitude(
   profile?: AircraftPerformanceProfile | null,
   opts?: ValidateOpts,
 ): ValidateResult {
-  if (aircraft.intent.clearedApproachId) {
-    const isIls = isIlsApproach(aircraft.intent.clearedApproachId, opts);
+  if (aircraft.intent.clearedApproachId || aircraft.intent.lateral?.type === "VISUAL_FINAL") {
+    const isIls = aircraft.intent.clearedApproachId
+      ? isIlsApproach(aircraft.intent.clearedApproachId, opts)
+      : false;
     return {
       ok: false,
       reason: "ALTITUDE",

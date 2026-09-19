@@ -48,7 +48,7 @@ describe("unified aircraft profiles dataset contract", () => {
       expect(typeof override).toBe("object");
 
       if (override.source) {
-        expect(override.source).toBe("openap");
+        expect(["openap", "manufacturer-specs"]).toContain(override.source);
       }
 
       if (override.limits) {
@@ -80,6 +80,23 @@ describe("unified aircraft profiles dataset contract", () => {
         }
       }
     }
+  });
+
+  test("generalAviation object holds only GA types with manufacturer specs", () => {
+    const gaKeys = Object.keys(dataset.generalAviation ?? {});
+    expect(gaKeys).toEqual(["BE36", "C172", "C182", "C208", "DA40", "PA28", "SR22"]);
+    expect(gaKeys.every((k) => !(k in dataset.aircraft))).toBe(true);
+
+    for (const icao of gaKeys) {
+      const override = dataset.generalAviation![icao]!;
+      expect(override.source).toBe("manufacturer-specs");
+      expect(override.limits?.serviceCeilingFt).toBeGreaterThan(0);
+      expect(override.limits!.serviceCeilingFt).toBeLessThanOrEqual(25000);
+    }
+    // GA ceilings come from the GA object, never the 41000 ft jet default.
+    expect(performanceRegistry.getProfile("C172").limits?.serviceCeilingFt).toBe(14000);
+    expect(performanceRegistry.getProfile("C208").limits?.serviceCeilingFt).toBe(25000);
+    expect(performanceRegistry.listGeneralAviationTypes()).toEqual(gaKeys);
   });
 });
 

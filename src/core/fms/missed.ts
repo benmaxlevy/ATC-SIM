@@ -74,6 +74,9 @@ export function missedApproachId(ac: Aircraft): string | null {
   if (vertical?.type === "GS") {
     return vertical.approachId;
   }
+  if (lateral?.type === "VISUAL_FINAL") {
+    return `VISUAL_${lateral.runwayId}`;
+  }
   return null;
 }
 
@@ -82,6 +85,13 @@ export function missedSpecFor(
   catalog?: MissedCatalog | null,
 ): MissedApproachSpec {
   const want = approachId.trim().toUpperCase();
+  if (want.startsWith("VISUAL")) {
+    return {
+      headingDeg: DEFAULT_MISSED_HEADING_DEG,
+      climbToFt: DEFAULT_MISSED_CLIMB_FT,
+      daFt: DEFAULT_DA_FT,
+    };
+  }
   const approach = catalog?.approaches?.find((item) => item.id.trim().toUpperCase() === want);
   return {
     headingDeg: approach?.missed?.headingDeg ?? DEFAULT_MISSED_HEADING_DEG,
@@ -104,7 +114,9 @@ export function beginMissedApproach(
   if (isLandingInhibited(ac) || isOnMissed(ac)) {
     return false;
   }
-  ac.intent.assignedHeadingDeg = spec.headingDeg;
+  const headingDeg =
+    ac.intent.lateral?.type === "VISUAL_FINAL" ? ac.intent.lateral.headingDeg : spec.headingDeg;
+  ac.intent.assignedHeadingDeg = headingDeg;
   ac.intent.turn = "SHORTEST";
   ac.intent.assignedAltitudeFt = spec.climbToFt;
   ac.intent.lateral = { type: "MISSED", approachId };

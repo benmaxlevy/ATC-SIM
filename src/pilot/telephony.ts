@@ -79,13 +79,22 @@ export function speakAlphanumeric(text: string): string {
  * `DAL123` → `Delta 123`. Unknown `XYZ99` → `X-ray Yankee Zulu 99`.
  */
 export function formatCallsignSpeech(callsign: string, options?: { isHeavy?: boolean }): string {
-  const cs = callsign.trim().toUpperCase();
-  if (!cs) {
+  const trimmed = callsign.trim();
+  if (!trimmed) {
     return "";
   }
-  if (/^[A-Z]{3}/.test(cs)) {
+  const gaMatch = trimmed.match(/^([A-Za-z]+)\s+(\d+.*)$/);
+  if (gaMatch) {
+    const makeModel = gaMatch[1].charAt(0).toUpperCase() + gaMatch[1].slice(1).toLowerCase();
+    const tail = speakAlphanumeric(gaMatch[2]);
+    return [makeModel, tail, options?.isHeavy ? "heavy" : ""]
+      .filter((part) => part.length > 0)
+      .join(" ");
+  }
+  const cs = trimmed.toUpperCase();
+  if (/^[A-Z]{3}\s*\d+/.test(cs)) {
     const prefix = cs.slice(0, 3);
-    const rest = cs.slice(3);
+    const rest = cs.slice(3).trimStart();
     const head = AIRLINE_TELEPHONY[prefix] ?? speakAlphanumeric(prefix);
     const tail = speakAlphanumeric(rest);
     return [head, tail, options?.isHeavy ? "heavy" : ""]

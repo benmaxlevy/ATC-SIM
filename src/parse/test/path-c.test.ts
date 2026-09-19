@@ -147,6 +147,23 @@ test("Path C accepts ordered cancellation and rejects approach re-arm", () => {
   ).toBeNull();
 });
 
+test("Path C accepts CLEARED_VISUAL with valid runway and rejects invalid shapes", () => {
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27L" })).toBe(true);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27l" })).toBe(true);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL" })).toBe(false);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "" })).toBe(false);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27L", extra: 1 })).toBe(false);
+
+  // Re-arm approach after cancel in same clearance is rejected
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: null,
+      instructions: [{ type: "CANCEL_APPROACH" }, { type: "CLEARED_VISUAL", runwayId: "27L" }],
+    }),
+  ).toBeNull();
+});
+
 test("Path C rejects a response that drops a supported clause", () => {
   const transcript = "turn right heading two nine zero maintain one ninety knots";
   expect(

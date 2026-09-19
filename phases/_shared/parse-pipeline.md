@@ -34,10 +34,31 @@ An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / 
 `CAPP` and spoken `cancel approach clearance` emit the zero-argument
 `CANCEL_APPROACH` instruction. It must be the first instruction and may occur
 only once. Later ordinary heading/altitude/speed instructions retain source
-order; a later approach expectation, clearance, localizer intercept, or
+order; a later approach expectation, clearance, visual clearance, localizer intercept, or
 `GO_AROUND` is `BAD_CLEARANCE`. `CAPP` never consumes an approach ID, and
 `cancel approach` without `clearance` remains `PARSE_MISS`. Path C uses the
 same closed-union and transcript-evidence rules.
+
+Typed `VIS <rwy>` and spoken `cleared visual approach runway <rwy>` emit
+`CLEARED_VISUAL { runwayId }` (T04-82). Spoken visual clearances require the
+runway designation; a near-miss without a runway remains `PARSE_MISS`.
+
+
+`say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
+flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following` /
+`unable ifr pickup` (`DECLINE_REQUEST` with service `FLIGHT_FOLLOWING` /
+`IFR_PICKUP`), `radar contact` with an optional `<distance> miles
+[direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
+terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
+(`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
+transmissions. A compound transmission combining any of these with another
+instruction is `BAD_CLEARANCE`. A present `RADAR_CONTACT` position is
+all-or-nothing; its fixes/navaids are grounded via the shared catalog
+matcher, airports via the airport namespace, and ungrounded references return
+a parse miss. The pilot answer to `RADAR_CONTACT` is `roger`. Transcripts
+carrying one of these cues (plus `maintain vfr` and visual-runway cues) may
+engage Path C even when identifier retrieval comes back empty; schema,
+completeness, grounding, and identifier-listed guards still decide acceptance.
 
 ## IFR clearance route windows
 
@@ -137,7 +158,7 @@ Optional `context` is prompt grounding, **not** a vector DB, **not** kinematics,
 - `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`). Unchanged on non-identifier misses.
 - `fixes` / `approaches` / `procedures` — **retrieved candidates for this transcript** (tied cluster ∪ next-best), cap **8–16** (`MAX_PATH_C_FIXES = 16`). Never `fixRegistry.ids().slice(0, 64)` file-order padding. Empty retrieve on an identifier miss omits `fixes` (or sends `[]`); do not pad with unrelated catalog ids. A non-identifier miss (`"pizza the runway"`) still runs Path C as T03-14 without dumping file-order 64.
 - `airports` — separately retrieved ICAO/name/alias candidates for an
-  `IFR_CLEARANCE` limit. An airport may ground `limitId`, but is never a
+  `IFR_CLEARANCE` limit (including regional public-use controlled destination airports). An airport may ground `limitId`, but is never a
   `DIRECT`/`CROSS` fix and must not be merged into `fixes`.
 - `routeWindow` — route-only transcript plus `fixMatches`, where each
   transcript span has only its shared-matcher candidate alternatives (`id`,

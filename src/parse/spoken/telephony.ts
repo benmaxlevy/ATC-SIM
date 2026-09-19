@@ -4,7 +4,7 @@
  */
 
 import telephonyTable from "./telephony.json";
-import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../tokens";
+import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../tokens";
 import { singleDigit, TEENS, TENS } from "./numbers";
 
 export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
@@ -92,6 +92,12 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "mile",
   "airport",
   "transition",
+  "stand",
+  "standby",
+  "approve",
+  "unable",
+  "radar",
+  "following",
 ]);
 
 const TABLE = { ...telephonyTable, giant: "GTI" } as Record<string, string>;
@@ -365,7 +371,7 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
   }
 
   const compact = first.toUpperCase();
-  if (FULL_CALLSIGN.test(compact) || SUFFIX_CALLSIGN.test(compact)) {
+  if (FULL_CALLSIGN.test(compact) || GA_CALLSIGN.test(compact) || SUFFIX_CALLSIGN.test(compact)) {
     return { kind: "ok", callsign: compact, next: afterCallsign(i + 1) };
   }
 

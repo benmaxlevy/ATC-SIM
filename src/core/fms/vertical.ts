@@ -338,6 +338,32 @@ export function applyGlidepathFms(
   ctx: GlidepathFmsContext,
 ): number | undefined {
   const lateral = ac.intent.lateral;
+  if (lateral?.type === "VISUAL_FINAL") {
+    const headingRad = (lateral.headingDeg * Math.PI) / 180;
+    const dx = ac.xNm - lateral.threshold.xNm;
+    const dy = ac.yNm - lateral.threshold.yNm;
+    const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+    const crossTrackNm = Math.abs(dx * Math.cos(headingRad) - dy * Math.sin(headingRad));
+    const fieldElevFt = lateral.fieldElevFt ?? 0;
+    if (alongTrackNm <= 0) {
+      if (alongTrackNm >= -0.5 && crossTrackNm <= 0.2) {
+        return fieldElevFt;
+      }
+      return ac.altitudeFt;
+    }
+    const params: GsParams = {
+      gsAngleDeg: 3.0,
+      tchFt: 50,
+      fieldElevFt,
+      gsBeamFullWidthDeg: 1.4,
+    };
+    const targetAlt = Math.max(fieldElevFt, gsAltitudeFt(alongTrackNm, params));
+    if (ac.altitudeFt > targetAlt) {
+      return followGsAltitudeFt(ac.altitudeFt, targetAlt, 3.0, ac.speedKt, dtS, ctx.maxDescentFpm);
+    }
+    // Below glidepath: hold current altitude until intercepting from below.
+    return ac.altitudeFt;
+  }
   if (lateral?.type !== "LOC" && lateral?.type !== "LANDING") {
     gsWasBelow.delete(ac);
     if (ac.intent.vertical?.type === "GS") {

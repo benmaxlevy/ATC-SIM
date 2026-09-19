@@ -74,9 +74,18 @@ export const INSTRUCTION_TYPES = [
   "CROSS",
   "GO_AROUND",
   "DELETE_SPEED_RESTRICTIONS",
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CLEARED_VISUAL",
 ] as const;
 
 export type Instruction =
+  | { type: "ACKNOWLEDGE_IFR_CANCELLATION" }
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }
   | { type: "PRESENT_HEADING" }
@@ -129,4 +138,17 @@ export type Instruction =
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
   | { type: "GO_AROUND" }
-  | { type: "DELETE_SPEED_RESTRICTIONS" };
+  | { type: "DELETE_SPEED_RESTRICTIONS" }
+  | { type: "REQUEST_DETAILS" }
+  | { type: "STANDBY_REQUEST" }
+  | { type: "APPROVE_FLIGHT_FOLLOWING" }
+  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" }
+  | {
+      type: "RADAR_CONTACT";
+      /** Optional informational position reference. All-or-nothing with referenceId/referenceKind. */
+      distanceNm?: number;
+      referenceId?: string;
+      referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
+    }
+  | { type: "TERMINATE_RADAR_SERVICE" }
+  | { type: "CLEARED_VISUAL"; runwayId: string };

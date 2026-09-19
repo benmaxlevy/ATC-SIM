@@ -201,4 +201,43 @@ describe("T05-14 Session Setup component", () => {
     const loaded = loadSessionSetupDefaults();
     expect(loaded.scenarioId).toBe("kdem");
   });
+
+  test("T04-76 AC1 — renders VFR unavailable status when scenario lacks regional data", () => {
+    const html = renderToStaticMarkup(
+      createElement(SessionSetup, {
+        open: true,
+        initial: initialSetup, // kdem has no regional data
+        onCancel: () => {},
+        onApply: () => {},
+      }),
+    );
+
+    expect(html).toContain(
+      "VFR traffic unavailable: selected scenario has no regional airport or airspace data.",
+    );
+  });
+
+  test("T04-76 AC1 — renders validation error when draft violates upstream VFR constraints", () => {
+    const invalidSetup: SessionSetupType = {
+      ...initialSetup,
+      vfrRequests: {
+        flightFollowingPercent: 70,
+        ifrPickupPercent: 40, // 70 + 40 = 110 > 100
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(SessionSetup, {
+        open: true,
+        initial: invalidSetup,
+        onCancel: () => {},
+        onApply: () => {},
+      }),
+    );
+
+    expect(html).toContain(
+      "vfrRequests.flightFollowingPercent + vfrRequests.ifrPickupPercent must be &lt;= 100",
+    );
+    expect(html).toContain('role="alert"');
+  });
 });

@@ -170,3 +170,263 @@ test("invalid instruction after CAPP rejects atomically", async () => {
   expect(aal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "RNAV09" });
   expect(aal.intent.assignedAltitudeFt).toBe(8000);
 });
+
+test("VFR flight following and radio contact command lifecycle (T04-73)", async () => {
+  const dal = sample("DAL123", "ac-dal");
+  const req = {
+    id: "req-dal",
+    aircraftId: dal.id,
+    callsign: dal.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [dal],
+    radioRequests: [req],
+    catalog: {
+      airportId: "KDEM",
+      navaids: [{ id: "DEM" }],
+      fixes: [],
+      stars: [],
+      sids: [],
+      approaches: [],
+    },
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  // 1. say request
+  const r1 = await handleRadioText(world, "DAL123 say request", log);
+  expect(r1.accepted).toBe(true);
+  expect(r1.readback).toBe("DAL123, type unknown, request flight following at 8000");
+  expect(req.status).toBe("PENDING");
+
+  // 2. stand by
+  const r2 = await handleRadioText(world, "DAL123 stand by", log);
+  expect(r2.accepted).toBe(true);
+  expect(r2.readback).toBe("Delta 123 standby");
+  expect(req.status).toBe("STANDBY");
+
+  // Premature approve should reject
+  const rPremature = await handleRadioText(world, "DAL123 approve flight following", log);
+  expect(rPremature.accepted).toBe(false);
+  expect(rPremature.detail).toBe("REQUEST: radar identification required");
+
+  // 3. radar contact
+  const r3 = await handleRadioText(world, "DAL123 radar contact 5 miles from DEM", log);
+  expect(r3.accepted).toBe(true);
+  expect(r3.readback).toBe("Delta 123 roger");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(dal.radarContact?.distanceNm).toBe(5);
+  expect(dal.radarContact?.referenceId).toBe("DEM");
+
+  // 4. approve flight following
+  const r4 = await handleRadioText(world, "DAL123 approve flight following", log);
+  expect(r4.accepted).toBe(true);
+  expect(r4.readback).toBe("Delta 123 flight following approved");
+  expect(req.status).toBe("APPROVED");
+  expect(dal.flightFollowing?.active).toBe(true);
+
+  // Decline after approval must fail
+  const rDeclineAfter = await handleRadioText(world, "DAL123 unable flight following", log);
+  expect(rDeclineAfter.accepted).toBe(false);
+  expect(rDeclineAfter.detail).toBe("REQUEST: active service must be terminated");
+
+  // 5. radar service terminated
+  const r5 = await handleRadioText(world, "DAL123 radar service terminated", log);
+  expect(r5.accepted).toBe(true);
+  expect(r5.readback).toBe("Delta 123 radar service terminated");
+  expect(dal.flightFollowing?.active).toBe(false);
+  expect(req.status).toBe("TERMINATED");
+
+  // Terminate again must fail
+  const rTermAgain = await handleRadioText(world, "DAL123 radar service terminated", log);
+  expect(rTermAgain.accepted).toBe(false);
+  expect(rTermAgain.detail).toBe("REQUEST: radar service is not active");
+});
+
+test("bare radar contact identifies with no position report and answers roger", async () => {
+  const dal = sample("DAL123", "ac-dal-bare");
+  const req = {
+    id: "req-dal-bare",
+    aircraftId: dal.id,
+    callsign: dal.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [dal],
+    radioRequests: [req],
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  const result = await handleRadioText(world, "DAL123 radar contact", log);
+  expect(result.accepted).toBe(true);
+  expect(result.readback).toBe("Delta 123 roger");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(dal.radarContact?.distanceNm).toBeUndefined();
+  expect(dal.radarContact?.referenceId).toBeUndefined();
+});
+
+test("spoken of-form with airport reference identifies and answers roger (field report)", async () => {
+  const nNumber = sample("N7214L", "ac-n7214l");
+  const req = {
+    id: "req-n7214l",
+    aircraftId: nNumber.id,
+    callsign: nNumber.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  const world = createWorld({
+    aircraft: [nNumber],
+    radioRequests: [req],
+    catalog: {
+      airportId: "KATL",
+      name: "Atlanta International",
+      navaids: [],
+      fixes: [],
+      stars: [],
+      sids: [],
+      approaches: [],
+    },
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+
+  const result = await handleRadioText(
+    world,
+    "november seven two one four lima radar contact two eight miles southeast of atlanta international airport",
+    log,
+    0,
+    { source: "voice" },
+  );
+  expect(result.accepted).toBe(true);
+  expect(result.readback).toBe("November 7214 Lima roger");
+  expect(req.status).toBe("IDENTIFIED");
+  expect(nNumber.radarContact).toMatchObject({
+    distanceNm: 28,
+    referenceId: "KATL",
+    referenceKind: "AIRPORT",
+  });
+});
+
+test("say request returns pilot's full request details directly for FLIGHT_FOLLOWING", async () => {
+  const ac = createAircraft({
+    id: "ac-skyhawk",
+    callsign: "N172SP",
+    xNm: 0,
+    yNm: 15,
+    headingDeg: 180,
+    altitudeFt: 4500,
+    speedKt: 110,
+    aircraftType: "C172",
+  });
+  const req = {
+    id: "req-ff",
+    aircraftId: ac.id,
+    callsign: ac.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {
+      aircraftType: "C172",
+      destinationAirportId: "KFTY",
+      requestedAltitudeFt: 4500,
+    },
+  };
+  const world = createWorld({
+    aircraft: [ac],
+    radioRequests: [req],
+    regional: {
+      facilityId: "A80",
+      airports: [
+        {
+          icao: "KPDK",
+          arpNm: { xNm: 0, yNm: 0 },
+        },
+      ],
+      airspaces: [],
+    } as unknown as import("../../scenario/regional").RegionalFacility,
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+  const res = await handleRadioText(world, "N172SP say request", log);
+  expect(res.accepted).toBe(true);
+  expect(res.readback).toBe(
+    "N172SP, 15 miles north of KPDK, C172, request flight following to KFTY at 4500",
+  );
+  expect(res.readback).not.toContain("say request");
+  expect(req.status).toBe("PENDING");
+  expect(log.byType("vfr.request.details_reported")).toHaveLength(1);
+});
+
+test("say request returns pilot's full request details directly for IFR_PICKUP", async () => {
+  const ac = createAircraft({
+    id: "ac-ifr",
+    callsign: "N210AB",
+    xNm: 10,
+    yNm: 0,
+    headingDeg: 270,
+    altitudeFt: 5000,
+    speedKt: 140,
+    aircraftType: "C210",
+  });
+  const req = {
+    id: "req-ifr",
+    aircraftId: ac.id,
+    callsign: ac.callsign,
+    kind: "IFR_PICKUP" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {
+      aircraftType: "C210",
+      destinationAirportId: "KATL",
+      requestedAltitudeFt: 5000,
+    },
+  };
+  const world = createWorld({
+    aircraft: [ac],
+    radioRequests: [req],
+    regional: {
+      facilityId: "A80",
+      airports: [
+        {
+          icao: "KPDK",
+          arpNm: { xNm: 0, yNm: 0 },
+        },
+      ],
+      airspaces: [],
+    } as unknown as import("../../scenario/regional").RegionalFacility,
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+  const res = await handleRadioText(world, "N210AB say request", log);
+  expect(res.accepted).toBe(true);
+  expect(res.readback).toBe(
+    "N210AB, 10 miles east of KPDK, C210, request IFR to KATL, requested altitude 5000",
+  );
+  expect(res.readback).not.toContain("say request");
+  expect(req.status).toBe("PENDING");
+  expect(log.byType("vfr.request.details_reported")).toHaveLength(1);
+});
+
+test("say request rejects cleanly when no open request exists", async () => {
+  const ac = sample("N172SP", "ac-no-req");
+  const world = createWorld({
+    aircraft: [ac],
+    radioRequests: [],
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+  const res = await handleRadioText(world, "N172SP say request", log);
+  expect(res.accepted).toBe(false);
+  expect(res.reason).toBe("REQUEST");
+  expect(res.readback).toBe("November 172 Sierra Papa unable request");
+});

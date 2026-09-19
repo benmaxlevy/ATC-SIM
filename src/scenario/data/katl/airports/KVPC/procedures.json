@@ -1,0 +1,370 @@
+{
+  "airportId": "KVPC",
+  "stars": [
+    {
+      "id": "BOKRT3",
+      "name": "BOKRT3",
+      "transitions": [
+        {
+          "id": "KEEPS",
+          "name": "KEEPS",
+          "legs": [
+            {
+              "fixId": "KEEPS"
+            },
+            {
+              "fixId": "BOKRT"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "BOKRT"
+        },
+        {
+          "fixId": "PINGG"
+        },
+        {
+          "fixId": "PONGG"
+        },
+        {
+          "fixId": "BRTEN"
+        },
+        {
+          "fixId": "BAPPY"
+        },
+        {
+          "fixId": "KENZI"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "BUKHD3",
+      "name": "BUKHD3",
+      "transitions": [
+        {
+          "id": "RIZZZ",
+          "name": "RIZZZ",
+          "legs": [
+            {
+              "fixId": "RIZZZ"
+            },
+            {
+              "fixId": "MDTWN"
+            },
+            {
+              "fixId": "HLNDS"
+            }
+          ]
+        },
+        {
+          "id": "WUDYA",
+          "name": "WUDYA",
+          "legs": [
+            {
+              "fixId": "WUDYA"
+            },
+            {
+              "fixId": "HAVVE"
+            },
+            {
+              "fixId": "HLNDS"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "HLNDS"
+        },
+        {
+          "fixId": "BUKHD"
+        },
+        {
+          "fixId": "DRINC"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "DEHAN3",
+      "name": "DEHAN3",
+      "transitions": [
+        {
+          "id": "APPLS",
+          "name": "APPLS",
+          "legs": [
+            {
+              "fixId": "APPLS"
+            },
+            {
+              "fixId": "HIGGI"
+            },
+            {
+              "fixId": "HELNN"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "MILBY",
+          "name": "MILBY",
+          "legs": [
+            {
+              "fixId": "MILBY"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "SCNRY",
+          "name": "SCNRY",
+          "legs": [
+            {
+              "fixId": "SCNRY"
+            },
+            {
+              "fixId": "TRALZ"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "VIEWS",
+          "name": "VIEWS",
+          "legs": [
+            {
+              "fixId": "VIEWS"
+            },
+            {
+              "fixId": "TARAA"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "AWSON"
+        },
+        {
+          "fixId": "DEHAN"
+        },
+        {
+          "fixId": "TFALS"
+        },
+        {
+          "fixId": "SPIKR"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "SWTEE2",
+      "name": "SWTEE2",
+      "transitions": [
+        {
+          "id": "BIZKT",
+          "name": "BIZKT",
+          "legs": [
+            {
+              "fixId": "BIZKT"
+            },
+            {
+              "fixId": "SWTEE"
+            }
+          ]
+        },
+        {
+          "id": "LPTON",
+          "name": "LPTON",
+          "legs": [
+            {
+              "fixId": "LPTON"
+            },
+            {
+              "fixId": "OKRAA"
+            },
+            {
+              "fixId": "BIZKT"
+            },
+            {
+              "fixId": "SWTEE"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "SWTEE"
+        },
+        {
+          "fixId": "LACCE"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "WRGNZ3",
+      "name": "WRGNZ3",
+      "transitions": [
+        {
+          "id": "DBOLT",
+          "name": "DBOLT",
+          "legs": [
+            {
+              "fixId": "DBOLT"
+            },
+            {
+              "fixId": "LUKIE"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "KISTN",
+          "name": "KISTN",
+          "legs": [
+            {
+              "fixId": "KISTN"
+            },
+            {
+              "fixId": "LUKIE"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "LUKIE",
+          "name": "LUKIE",
+          "legs": [
+            {
+              "fixId": "LUKIE"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "MMMOE",
+          "name": "MMMOE",
+          "legs": [
+            {
+              "fixId": "MMMOE"
+            },
+            {
+              "fixId": "MUARY"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "NOKIE",
+          "name": "NOKIE",
+          "legs": [
+            {
+              "fixId": "NOKIE"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "SHRLT",
+          "name": "SHRLT",
+          "legs": [
+            {
+              "fixId": "SHRLT"
+            },
+            {
+              "fixId": "MUARY"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        },
+        {
+          "id": "WOGOM",
+          "name": "WOGOM",
+          "legs": [
+            {
+              "fixId": "WOGOM"
+            },
+            {
+              "fixId": "WRGNZ"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "WRGNZ"
+        },
+        {
+          "fixId": "SKYME"
+        },
+        {
+          "fixId": "CADUR"
+        },
+        {
+          "fixId": "LOGEN"
+        },
+        {
+          "fixId": "LOGEC"
+        },
+        {
+          "fixId": "BAPPY"
+        },
+        {
+          "fixId": "DECLN"
+        }
+      ],
+      "termination": "VECTORS"
+    }
+  ],
+  "approaches": [
+    {
+      "id": "R01",
+      "type": "RNAV",
+      "runway": "01",
+      "name": "RNAV RWY 01",
+      "thresholdFixId": "RW01",
+      "courseDeg": 7.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1159
+    },
+    {
+      "id": "R19",
+      "type": "RNAV",
+      "runway": "19",
+      "name": "RNAV RWY 19",
+      "thresholdFixId": "RW19",
+      "courseDeg": 187.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1008
+    }
+  ]
+}

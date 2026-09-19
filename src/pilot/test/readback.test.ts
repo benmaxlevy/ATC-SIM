@@ -24,6 +24,25 @@ test("compact CIFP ILS identifiers read back as ILS", () => {
   );
 });
 
+test("T04-82: CLEARED_VISUAL readback", () => {
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "27L" }])).toBe(
+    "Delta 123 cleared visual approach runway 27L",
+  );
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "21L" }])).toBe(
+    "Delta 123 cleared visual approach runway 21L",
+  );
+  expect(readback([{ type: "CLEARED_VISUAL", runwayId: "08" }])).toBe(
+    "Delta 123 cleared visual approach runway 08",
+  );
+});
+
+test("T04-82: RUNWAY reject readback", () => {
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "RUNWAY" })).toBe(
+    "Delta 123 unable runway",
+  );
+  expect(formatRejectReadback({ reason: "RUNWAY" })).toBe("Unable runway");
+});
+
 test("ambiguous callsign reject", () => {
   expect(formatRejectReadback({ reason: "AMBIGUOUS_CALLSIGN" })).toMatch(/ambiguous callsign/i);
 });
@@ -191,4 +210,36 @@ test("formatRejectReadback formats approach and speed boundary unable details", 
       detail: "unable. cleared for the ILS already.",
     }),
   ).toBe("Unable. cleared for the ILS already.");
+});
+
+test("VFR flight following and radio contact readbacks (T04-73)", () => {
+  expect(readback([{ type: "REQUEST_DETAILS" }])).toBe("Delta 123");
+  expect(readback([{ type: "STANDBY_REQUEST" }])).toBe("Delta 123 standby");
+  expect(readback([{ type: "APPROVE_FLIGHT_FOLLOWING" }])).toBe(
+    "Delta 123 flight following approved",
+  );
+  expect(readback([{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }])).toBe(
+    "Delta 123 unable flight following",
+  );
+  expect(
+    readback([
+      {
+        type: "RADAR_CONTACT",
+        distanceNm: 5,
+        referenceId: "DEM",
+        referenceKind: "NAVAID",
+      },
+    ]),
+  ).toBe("Delta 123 roger");
+  expect(readback([{ type: "RADAR_CONTACT" }])).toBe("Delta 123 roger");
+  expect(readback([{ type: "TERMINATE_RADAR_SERVICE" }])).toBe(
+    "Delta 123 radar service terminated",
+  );
+
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "REQUEST" })).toBe(
+    "Delta 123 unable request",
+  );
+  expect(formatRejectReadback({ callsign: "DAL123", reason: "RADAR_CONTACT" })).toBe(
+    "Delta 123 unable radar contact",
+  );
 });

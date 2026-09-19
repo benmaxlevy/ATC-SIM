@@ -1,0 +1,104 @@
+{
+  "airportId": "KIIY",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": -25.447504,
+      "yNm": 10.139833,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "ALD",
+      "kind": "VOR",
+      "name": "ALLENDALE",
+      "xNm": 75.917634,
+      "yNm": -45.966167,
+      "latDeg": 33.01249444444444,
+      "lonDeg": -81.29223333333333,
+      "freqMhz": 116.7,
+      "class": "L"
+    },
+    {
+      "id": "CAE",
+      "kind": "VORDME",
+      "name": "COLUMBIA",
+      "xNm": 87.803544,
+      "yNm": 4.719167,
+      "latDeg": 33.85725,
+      "lonDeg": -81.05390277777778,
+      "freqMhz": 114.7,
+      "class": "T"
+    },
+    {
+      "id": "DBN",
+      "kind": "VORDME",
+      "name": "DUBLIN",
+      "xNm": -0.775364,
+      "yNm": -72.908167,
+      "latDeg": 32.56346111111111,
+      "lonDeg": -82.83004444444444,
+      "freqMhz": 113.1,
+      "class": "T"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 1.486864,
+      "yNm": 38.435333,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "IRQ",
+      "kind": "VORDME",
+      "name": "COLLIERS",
+      "xNm": 32.53785,
+      "yNm": -4.274667,
+      "latDeg": 33.70735277777778,
+      "lonDeg": -82.1620638888889,
+      "freqMhz": 113.9,
+      "class": "T"
+    },
+    {
+      "id": "ODF",
+      "kind": "VORDME",
+      "name": "FOOTHILLS",
+      "xNm": -24.096124,
+      "yNm": 55.0365,
+      "latDeg": 34.69587222222222,
+      "lonDeg": -83.29766111111111,
+      "freqMhz": 113.4,
+      "class": "H"
+    },
+    {
+      "id": "SPA",
+      "kind": "VORDME",
+      "name": "SPARTANBURG",
+      "xNm": 44.260293,
+      "yNm": 75.301667,
+      "latDeg": 35.033625,
+      "lonDeg": -81.92701111111111,
+      "freqMhz": 115.7,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": -38.704188,
+      "yNm": -68.255833,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

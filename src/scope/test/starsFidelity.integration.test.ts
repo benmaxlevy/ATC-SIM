@@ -191,16 +191,16 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       td.unassociated = true;
       td.squawk = "1200";
 
-      // Initial state: beacon on line 1, Mode C hundreds on line 2 (1200 / 045)
+      // Initial state: Mode C hundreds on line 1 (045), beacon code hidden by default per STARS Fig. 6-9
       const initial = createMockCtx();
       renderScope(initial.ctx, world, view, 800, 800);
-      expect(initial.fillTexts.some((t) => t.text === "1200")).toBe(true);
       expect(initial.fillTexts.some((t) => t.text === "045")).toBe(true);
+      expect(initial.fillTexts.some((t) => t.text === "1200")).toBe(false);
 
-      // Click to query ground speed
+      // Click to query ground speed (reveals beacon code on line 1 and Mode C + GS on line 2 per Fig. 6-9)
       handleTrackClick(view.tracks, world, ac.id);
 
-      // Queried state: Mode C hundreds + speed in tens on line 2 (045 18)
+      // Queried state: beacon code on line 1, Mode C hundreds + speed in tens on line 2 (1200 / 045 18)
       const queried = createMockCtx();
       renderScope(queried.ctx, world, view, 800, 800);
       expect(queried.fillTexts.some((t) => t.text === "1200")).toBe(true);
@@ -212,13 +212,13 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       renderScope(stillQueried.ctx, world, view, 800, 800);
       expect(stillQueried.fillTexts.some((t) => t.text === "045 18")).toBe(true);
 
-      // An off-target slew clears the persistent query.
+      // An off-target slew clears the persistent query, returning to nominal Mode C only.
       handlePpiLeftClick(view, world, 0, 0, 800, 800);
       const cleared = createMockCtx();
       renderScope(cleared.ctx, world, view, 800, 800);
       expect(cleared.fillTexts.some((t) => t.text === "045 18")).toBe(false);
-      expect(cleared.fillTexts.some((t) => t.text === "1200")).toBe(true);
       expect(cleared.fillTexts.some((t) => t.text === "045")).toBe(true);
+      expect(cleared.fillTexts.some((t) => t.text === "1200")).toBe(false);
     });
 
     test("PDB renders Line 2 only for unowned associated track, and clicking toggles to Green FDB", () => {
@@ -286,6 +286,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
             id: "ac-fdb-test-plan",
             status: "active",
             acid: "AAL777",
+            aircraftType: "A321",
             assignedBeacon: "4324",
             assignedAltitudeFt: 4000,
             fixes: [],
@@ -675,7 +676,7 @@ describe("STARS CRC Scope Visual & Interactive Fidelity Acceptance (T02-38)", ()
       expect(ldbTd.highlighted).toBe(true);
       const ldbHlCtx = createMockCtx();
       renderScope(ldbHlCtx.ctx, world, view, 800, 800);
-      const ldbText = ldbHlCtx.fillTexts.find((t) => t.text === "1200");
+      const ldbText = [...ldbHlCtx.fillTexts].reverse().find((t) => t.text === "030");
       expect(ldbText?.fillStyle).toBe(PALETTE.highlight); // Cyan #00FFFF
 
       // Toggle LDB highlight off

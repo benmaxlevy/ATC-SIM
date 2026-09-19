@@ -171,3 +171,83 @@ test("AC7: DSR and SPEED intent application and via reset", () => {
   expect(ac.intent.speedUntil).toEqual({ type: "FAF" });
   expect(ac.intent.speedRestrictionsDeleted).toBeUndefined();
 });
+
+test("T04-82: CLEARED_VISUAL sets VISUAL_FINAL lateral and GLIDEPATH vertical guidance", () => {
+  const ac = jet();
+  ac.intent.expectedApproachId = "ILS27";
+  const regional = {
+    airports: [
+      {
+        icao: "KDEM",
+        fieldElevFt: 15,
+        runways: [
+          {
+            id: "27",
+            headingMagDeg: 270,
+            thresholdNm: { xNm: 0, yNm: 0 },
+            headingTrueDeg: 270,
+            lengthFt: 8000,
+            threshold: { lat: 0, lon: 0 },
+          },
+        ],
+      },
+    ],
+  };
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, {
+    regional: regional as unknown as import("../../scenario/regional").RegionalFacility,
+    destinationIcao: "KDEM",
+  });
+
+  expect(ac.intent.clearedApproachId).toBe("VISUAL 27");
+  expect(ac.intent.expectedApproachId).toBeNull();
+  expect(ac.intent.assignedAltitudeFt).toBe(15);
+  expect(ac.intent.lateral).toEqual({
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+    fieldElevFt: 15,
+  });
+  expect(ac.intent.vertical).toEqual({
+    type: "GLIDEPATH",
+    approachId: "VISUAL 27",
+  });
+});
+
+test("T04-82: FLY_HEADING or CANCEL_APPROACH breaks out of VISUAL_FINAL", () => {
+  const ac1 = jet();
+  ac1.headingDeg = 265;
+  ac1.intent.clearedApproachId = "VISUAL_27";
+  ac1.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  ac1.intent.vertical = { type: "GLIDEPATH", approachId: "VISUAL_27" };
+
+  // Breakout via FLY_HEADING
+  applyIntent(ac1, [{ type: "FLY_HEADING", headingDeg: 250, turn: "LEFT" }], 0);
+  expect(ac1.intent.clearedApproachId).toBeNull();
+  expect(ac1.intent.lateral).toEqual({ type: "HEADING", headingDeg: 250 });
+  expect(ac1.intent.vertical).toEqual({ type: "ASSIGNED" });
+
+  // Breakout via CANCEL_APPROACH
+  const ac2 = jet();
+  ac2.headingDeg = 268;
+  ac2.intent.clearedApproachId = "VISUAL_27";
+  ac2.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  ac2.intent.vertical = { type: "GLIDEPATH", approachId: "VISUAL_27" };
+
+  applyIntent(ac2, [{ type: "CANCEL_APPROACH" }], 0);
+  expect(ac2.intent.clearedApproachId).toBeNull();
+  expect(ac2.intent.assignedHeadingDeg).toBe(268);
+  expect(ac2.intent.lateral).toEqual({ type: "HEADING", headingDeg: 268 });
+  expect(ac2.intent.vertical).toEqual({ type: "ASSIGNED" });
+});

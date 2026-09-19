@@ -1,0 +1,106 @@
+{
+  "airportId": "KMCN",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I05",
+      "type": "ILS",
+      "runway": "05",
+      "name": "ILS RWY 05",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 54,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 800,
+      "missed": {
+        "headingDeg": 54,
+        "climbToFt": 387,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "L05",
+      "type": "LOC",
+      "runway": "05",
+      "name": "LOC RWY 05",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 54,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 800,
+      "missed": {
+        "headingDeg": 54,
+        "climbToFt": 387,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "R05",
+      "type": "RNAV",
+      "runway": "05",
+      "name": "RNAV RWY 05",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 53.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 544
+    },
+    {
+      "id": "R14",
+      "type": "RNAV",
+      "runway": "14",
+      "name": "RNAV RWY 14",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW14",
+      "courseDeg": 136,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 652
+    },
+    {
+      "id": "R23",
+      "type": "RNAV",
+      "runway": "23",
+      "name": "RNAV RWY 23",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW23",
+      "courseDeg": 234.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 635
+    },
+    {
+      "id": "R32",
+      "type": "RNAV",
+      "runway": "32",
+      "name": "RNAV RWY 32",
+      "locNavaidId": "IMCN",
+      "gsNavaidId": "IMCNGS",
+      "thresholdFixId": "RW32",
+      "courseDeg": 316.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77,
+      "tchFt": 56,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 680
+    }
+  ]
+}

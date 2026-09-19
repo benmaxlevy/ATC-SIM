@@ -208,6 +208,7 @@ export type {
   IfrClearanceWorld,
 } from "./ifrClearance";
 export { applyIfrClearance } from "./ifrClearance";
+export { applyIfrCancellation, type IfrCancellationResult } from "./ifrCancellation";
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
@@ -215,6 +216,8 @@ export type {
   ActiveIfrClearance,
   Aircraft,
   AircraftInit,
+  AmbientVfrMission,
+  AmbientVfrState,
   ClearanceAccess,
   CwtWakeCategory,
   CrossConstraint,
@@ -320,6 +323,7 @@ export type {
   MsawAlert,
   MsawInhibitGeom,
   MsawSeverity,
+  MsawThresholdOverride,
 } from "./alerts/msaw";
 export {
   DEFAULT_MSAW_INHIBIT,
@@ -358,6 +362,13 @@ export {
   locShouldBreakout,
   locShouldCapture,
 } from "./nav/localizer";
+export type { ApproachContext } from "./nav/approachContext";
+export {
+  clearApproachContextCache,
+  regionalSatelliteIlsApproaches,
+  resolveApproachContext,
+  resolveDestinationAirportIcao,
+} from "./nav/approachContext";
 export type { GsCatalog, GsCatalogApproach, GsDeviation, GsParams } from "./nav/glidepath";
 export {
   FT_PER_NM,
@@ -441,3 +452,53 @@ export {
   targetAltitudeFt,
   targetSpeedKt,
 } from "./fms/vertical";
+export type {
+  AvoidanceMargin,
+  NavStepResult,
+  PlannedVfrRoute,
+  Point2D,
+  Point3D,
+  RoutePlanningOptions,
+  VfrNavWaypoint,
+  VfrTrainingBox,
+} from "./vfrNavigation";
+export {
+  CLASS_B_HORIZONTAL_MARGIN_NM,
+  CLASS_B_VERTICAL_MARGIN_FT,
+  MAX_PLANNER_ATTEMPTS,
+  VFR_ARC_TESSELLATION_STEP_DEG,
+  VFR_AVOIDANCE_PROBE_NM,
+  VFR_AVOIDANCE_TURN_OFFSETS_DEG,
+  VFR_CIRCLE_TESSELLATION_POINTS,
+  VFR_TRACON_EXIT_RADIUS_NM,
+  VFR_TRAINING_BOX_ID,
+  VFR_TRAINING_HALF_EXTENT_NM,
+  bearingDegNm,
+  buildGroupedAvoidanceVolumes,
+  checkSweptSegmentVolumeCollision,
+  distPointToSegment,
+  distSegmentToSegment,
+  extractVolumePolygonNm,
+  isAircraftInsideClassB,
+  isDegenerateAvoidanceVolume,
+  isPointInside3dVolume,
+  isPointInsideAvoidanceVolumes,
+  isRouteSafeFromAvoidance,
+  isSafeVfrContinuationAvailable,
+  isSegmentUnsafeFromAvoidance,
+  isVfrAvoidanceVolume,
+  planSafeVfrRoute,
+  pointInPolygon2D,
+  samplePointInBox,
+  samplePointInDisc,
+  segmentsIntersect2D,
+  stepVfrAircraftNavigation,
+} from "./vfrNavigation";
+export type {
+  IfrCancellationCandidate,
+  IfrCancellationState,
+  VfrPilotRequest,
+  VfrPilotRequestKind,
+  VfrPilotRequestState,
+} from "./vfrRequest";
+export * from "./radio";

@@ -1,4 +1,5 @@
 import type { Command, IfrClearanceAccess } from "../command/types";
+import type { VfrPilotRequest, VfrPilotRequestKind } from "../vfrRequest";
 
 /**
  * Append-only session events.
@@ -347,6 +348,90 @@ export type SessionEvent =
       atSimMs: number;
       atWallMs: number;
       callsign: string;
+    }
+  | {
+      type: "vfr.spawned";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      mission: string;
+      zoneId: string;
+    }
+  | {
+      type: "vfr.spawn.skipped";
+      atSimMs: number;
+      atWallMs: number;
+      reason: string;
+    }
+  | {
+      type: "vfr.exit";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      mission: string;
+      reason: "DWELL_EXPIRED" | "BOUNDARY_EXIT";
+    }
+  | {
+      type: "vfr.tower.handoff";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      destinationAirportId?: string;
+    }
+  | {
+      type: "vfr.request.transmitted";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      kind: VfrPilotRequestKind;
+      request: VfrPilotRequest;
+    }
+  | {
+      type: "vfr.request.withdrawn";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      requestId: string;
+      reason: string;
+    }
+  | {
+      type: "vfr.request.details_reported";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      requestId: string;
+      text: string;
+    }
+  | {
+      type: "pilot.cancel_ifr.scheduled";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      aircraftId: string;
+      dueSimMs: number;
+    }
+  | {
+      type: "pilot.cancel_ifr.reported";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      aircraftId: string;
+      text?: string;
+    }
+  | {
+      type: "pilot.cancel_ifr.withdrawn";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      aircraftId: string;
+      reason: string;
+    }
+  | {
+      type: "pilot.cancel_ifr.acknowledged";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      aircraftId: string;
     };
 
 /**

@@ -52,6 +52,7 @@ import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   schemaCheckPathC,
+  pathCHasSelfContainedCue,
   pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
@@ -101,6 +102,7 @@ const IDENT_TRIGGERS = new Set([
   "direct",
   "cross",
   "from",
+  "of",
   "via",
   "cleared",
   "clear",
@@ -902,10 +904,12 @@ function pathCContext(
   const fixes = pathCFixIds(catalog, queryTokens, retrieved);
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
-  const pathAirports = (route ? clearanceAirports : airports)
+  const candidateAirports = route ? clearanceAirports : airports;
+  const pathAirports = candidateAirports
     .filter(
       (airport) =>
         route !== undefined ||
+        candidateAirports.length <= MAX_PATH_C_FIXES ||
         queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
     )
     .slice(0, MAX_PATH_C_FIXES)
@@ -1219,6 +1223,17 @@ function pathCIdentifierListed(
         return false;
       }
     }
+    if (inst.type === "RADAR_CONTACT" && inst.referenceId !== undefined) {
+      if (inst.referenceKind === "AIRPORT") {
+        if (!airports.has(inst.referenceId)) {
+          return false;
+        }
+      } else {
+        if (airports.has(inst.referenceId) || !fixes.has(inst.referenceId)) {
+          return false;
+        }
+      }
+    }
   }
   return true;
 }
@@ -1268,7 +1283,7 @@ export async function parseCommand(
 
   const typed = tryGroundedLocal(
     groundLocalCallsign(
-      parseRadioText(normalized, { fixes: catalog, procedures }),
+      parseRadioText(normalized, { fixes: catalog, procedures, airports }),
       normalized,
       roster,
       selected,
@@ -1292,6 +1307,7 @@ export async function parseCommand(
     catalog,
     procedures,
     clearanceLimitIds,
+    airports,
   );
   const pathA = tryGroundedLocal(
     groundLocalCallsign(spoken, normalized, roster, selected),
@@ -1311,7 +1327,7 @@ export async function parseCommand(
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
       groundLocalCallsign(
-        parseRadioText(rewritten, { fixes: catalog, procedures }),
+        parseRadioText(rewritten, { fixes: catalog, procedures, airports }),
         normalized,
         roster,
         selected,
@@ -1337,6 +1353,7 @@ export async function parseCommand(
     procedures,
     approaches,
     clearanceLimitIds,
+    airports,
   );
   const island = tryGroundedLocal(
     groundLocalCallsign(islandParsed, normalized, roster, selected),
@@ -1374,7 +1391,9 @@ export async function parseCommand(
 
   if (
     opts.pathC &&
-    (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
+    (routeFallbackHasEvidence ||
+      !emptyIdentifierRetrieve ||
+      pathCHasSelfContainedCue(normalized)) &&
     (!ifrCandidate ||
       routeFallbackHasEvidence ||
       localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds))

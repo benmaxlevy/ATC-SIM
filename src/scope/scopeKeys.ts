@@ -2,7 +2,7 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE is a spinner
- * that steps the same 8 presets. Esc closes a DCB submenu / disarms a spinner
+ * that steps the same 17 presets (5–512 NM). Esc closes a DCB submenu / disarms a spinner
  * (`preventDefault` so it does not type into the command line). Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
@@ -88,7 +88,16 @@ import {
 } from "./previewArea";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
-import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
+import {
+  applyDcbShift,
+  armDcbSpinner,
+  backspaceDcbSpinner,
+  cancelDcbSpinner,
+  commitDcbSpinner,
+  handleDcbEscape,
+  inputDcbSpinnerKey,
+  openDcbMenu,
+} from "./dcb/dcbMenu";
 
 function vfrCreationPool(world: World): readonly string[] {
   return beaconPoolFor(world.beaconPools, "vfr");
@@ -212,11 +221,17 @@ export interface ScopeKeyUi {
 }
 
 function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
-  return (
-    typeof HTMLElement !== "undefined" &&
-    target instanceof HTMLElement &&
-    target.closest('[role="dialog"][aria-modal="true"]') !== null
-  );
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target.isContentEditable
+  ) {
+    return true;
+  }
+  return target.closest('[role="dialog"][aria-modal="true"]') !== null;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -956,6 +971,46 @@ export function handleScopeKeyDown(
     view.helpOpen = false;
     ui?.onHandled?.();
     return true;
+  }
+
+  if (view.dcbSpinner.armed) {
+    if (event.key === "Escape" || event.code === "Escape" || event.key === "Clear") {
+      consume(event);
+      cancelDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      commitDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace" || event.code === "Backspace") {
+      consume(event);
+      backspaceDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (
+      !event.ctrlKey &&
+      !event.altKey &&
+      (/^[0-9]$/.test(event.key) ||
+        event.key === "." ||
+        /^Numpad[0-9]$/.test(event.code ?? "") ||
+        event.code === "NumpadDecimal")
+    ) {
+      consume(event);
+      const ch =
+        event.key === "." || event.code === "NumpadDecimal"
+          ? "."
+          : /^Numpad[0-9]$/.test(event.code ?? "")
+            ? event.code!.slice(6)
+            : event.key;
+      inputDcbSpinnerKey(view, ch);
+      ui?.onHandled?.();
+      return true;
+    }
   }
 
   // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11

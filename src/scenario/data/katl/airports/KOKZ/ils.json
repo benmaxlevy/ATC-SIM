@@ -1,0 +1,60 @@
+{
+  "airportId": "KOKZ",
+  "components": [
+    {
+      "id": "AMG",
+      "kind": "DME",
+      "name": "ALMA",
+      "xNm": 16.581799,
+      "yNm": -85.789167,
+      "latDeg": 31.53655555555556,
+      "lonDeg": -82.50808888888889,
+      "freqMhz": 115.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": -50.886145,
+      "yNm": 39.891,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "GRD",
+      "kind": "DME",
+      "name": "GREENWOOD",
+      "xNm": 34.398872,
+      "yNm": 77.1115,
+      "latDeg": 34.25156666666667,
+      "lonDeg": -82.15415,
+      "freqMhz": 115.5,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -79.269458,
+      "yNm": 40.031333,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": -40.759535,
+      "yNm": -16.511333,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    }
+  ]
+}

@@ -4882,4 +4882,430 @@ next wave.
 No push is authorized. Workers implement exactly one ticket, never merge or
 spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-62.
 
+## Satellite traffic swarm planned - 2026-09-15
+
+The user approved the Atlanta VFR/satellite traffic plan, requested the branch
+`feature/sattelite-traffic`, and selected `gpt-5.6-luna` with `xhigh` reasoning
+for planning subagents. The same available model/effort is configured for this
+proposed execution. Planning subagents only author tickets; this section does
+not start implementation or authorize a push. Previous configurations and
+completion history remain unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Generate regional FAA airport/airspace data and add configurable VFR roaming, flight following, airborne IFR pickup/cancellation, and satellite arrivals. |
+| Phase | `phases/04-procedures/`, post-exit addendum. |
+| Include | T04-69, T04-70, T04-71, T04-72, T04-73, T04-74, T04-75, T04-76. |
+| Merge target | `feature/sattelite-traffic` (user-specified spelling). |
+| Worker limit | 1 implementation worker at a time; sequential waves A through H. |
+| Worker model/effort | `gpt-5.6-luna`, `xhigh`; unavailable model means blocked, not silent substitution. |
+| Merge lock | Captain is the only merger. Hold one merge lock for squash merge plus post-merge gates; release only when green. Workers never merge or spawn. |
+| Stop | T04-76, final target-branch `npm run ci`, speech mock pytest, generated-data provenance review, and recorded Atlanta manual acceptance. |
+| Push | No push authorized. |
+| Current status | Planning only; execution requires a later explicit `run-swarm` request. |
+
+### Product law
+
+- Official airport, runway, procedure, tower/public-use eligibility, and Bravo
+  data must come through the generator/importer from documented FAA inputs.
+  Reuse existing generated KATL data and extend the importer for gaps. Never
+  hand-fill data obtainable from those sources or substitute video-map lines
+  for three-dimensional airspace volumes. Synthetic tests and clearly labeled
+  trainer zone weights/policies are not official FAA data.
+- Add existing-shape airports by JSON; regional loading, identifiers, magnetic
+  frames, coordinate projection, procedure ownership, and destination arrivals
+  stay generic. Preserve both existing KATL configurations and KDEM defaults.
+- Initial population, soft target replenishment, independent new entries/hour,
+  and maximum population are distinct. Named zones control relative geographic
+  distribution. Use simulation time and independent seeded random streams;
+  changing VFR settings must not perturb existing IFR traffic streams.
+- Autonomous VFR motion avoids the complete Atlanta Bravo volume, including
+  swept turns and altitude changes. Other airspace is permitted under the
+  approved assumption of off-frequency tower coordination. No VFR Bravo-entry
+  clearance ships. KATL remains an IFR destination; VFR may not land through
+  its surface Bravo. Do not generate cancellation inside Bravo.
+- Request percentages plus a cap govern new flight-following/IFR requests.
+  Initial categories are exclusive; their sum cannot exceed 100 percent.
+  Replies and pilot cancellation reports are not suppressed by that cap.
+- Flight rules, on-frequency status, radar identification, service state, and
+  STARS plan/track association are separate. Radio requests and radar contact
+  never auto-initiate scope tracks. Manual plan fields retain their established
+  independence from clearance execution.
+- New radio commands use full phrases in typed and spoken input. Existing
+  shortcuts such as `SQ`, `I`, and `CLR` remain. Radar-contact distance/fix
+  information is informational and never changes navigation. New grammar and
+  instruction types require browser and self-hosted Path C parity in the same
+  ticket, including prompt, GBNF, validator, tests, and live eval corpus.
+- IFR pickup validates before changing operational state. IFR cancellation is
+  pilot initiated, acknowledged by the controller, and distinct from approach
+  cancellation or radar-service termination. Generated cancellations assume
+  VMC and a valid VFR continuation. Never silently transition from IFR guidance
+  into invalid autonomous flight.
+- Tower-managed completion is a documented local trainer stub using the
+  destination airport's geometry, not a tower cab or primary-airport fallback.
+- Preserve self-hosted speech, synthetic generic tests, thin-module boundaries,
+  and existing parser grounding rules. Record only actual in-scope unfinished
+  visible/callable behavior in the existing later-implementation backlog.
+
+This explicit follow-on lifts historical Phase 04 exclusions only for regional
+FAA airport/airspace import, satellite catalog/arrival support, and the VFR/IFR
+service transitions specified here. It does not reopen completed phase exits,
+introduce a multi-controller NAS, or authorize unrelated navigation modes.
+
+### Waves and ownership
+
+| Wave | Ticket | Ownership | Prerequisites |
+| --- | --- | --- | --- |
+| A | T04-69 | FAA source adapters, regional airport/Bravo output, diagnostics, reproducibility | Existing T04-34 generator |
+| B | T04-70 | Regional runtime catalogs, eligible destinations, satellite arrival completion | T04-69 |
+| C | T04-71 | VFR configuration, GA movement, population, Bravo avoidance | T04-70 |
+| D | T04-72 | Seeded pilot request selection, radio scheduling, request lifecycle | T04-71 |
+| E | T04-73 | Flight-following dialogue, radar contact, service commands, parser parity | T04-72 |
+| F | T04-74 | Airborne IFR pickup, atomic clearance transition, parser/consumer consistency | T04-70, T04-73 |
+| G | T04-75 | Pilot cancellation, acknowledgment, VFR continuation, service separation | T04-74 |
+| H | T04-76 | Session controls, persistence, Help/docs, whole-feature acceptance | T04-69 through T04-75 |
+
+### Ticket paths and branches
+
+All ticket paths are under `phases/04-procedures/tickets/`.
+
+| Ticket file | Isolated worker branch |
+| --- | --- |
+| `T04-69-faa-regional-airport-and-airspace-import.md` | `ticket/T04-69-faa-regional-airport-and-airspace-import` |
+| `T04-70-regional-catalog-and-satellite-arrivals.md` | `ticket/T04-70-regional-catalog-and-satellite-arrivals` |
+| `T04-71-vfr-population-and-autonomous-navigation.md` | `ticket/T04-71-vfr-population-and-autonomous-navigation` |
+| `T04-72-vfr-pilot-request-scheduling.md` | `ticket/T04-72-vfr-pilot-request-scheduling` |
+| `T04-73-vfr-flight-following-and-radio-contact.md` | `ticket/T04-73-vfr-flight-following-and-radio-contact` |
+| `T04-74-airborne-ifr-pickup.md` | `ticket/T04-74-airborne-ifr-pickup` |
+| `T04-75-pilot-ifr-cancellation.md` | `ticket/T04-75-pilot-ifr-cancellation` |
+| `T04-76-satellite-traffic-settings-and-acceptance.md` | `ticket/T04-76-satellite-traffic-settings-and-acceptance` |
+
+### Execution gates and skips
+
+Before execution, the captain reads this configuration and tickets, appends and
+commits its start/configuration record, then verifies target ancestry and
+prerequisites. That future execution start is not part of ticket authoring.
+Each worker starts from the latest target in an isolated worktree and implements
+exactly one ticket with progressive gated commits. Wait for its terminal
+`READY TO MERGE` or `BLOCKED` result. Squash each ticket onto the configured
+feature branch, not `master`; run required post-merge gates before the next wave.
+Stop on conflicts. Stop new waves on failed gates and use one narrowly scoped
+correction worker. Never force, skip hooks, reset, or clean unrelated work.
+
+Skip ground clearance requests, VFR Bravo clearance, weather emergencies and
+below-minimum-altitude pickup dialogue, military/private-airport destination
+expansion, drawing zones on scope, ground movement, tower cab, live multi-sector
+coordination, paid/cloud speech, and unrelated future phases. No complete FAA
+source cycle or national intermediate may be committed. Missing required source
+data is a reported blocker, never permission to fabricate replacement records.
+
+Required final evidence: generator command/source cycle/provenance, synthetic
+contract and geometry tests, browser/Path C parity and speech mock tests, and
+manual KATL sessions covering both runway configurations and each service
+transition. Cite FAA document edition and printed paragraphs in the manual
+record. Record unavailable live speech and performance checks honestly; never
+claim tests were run from acceptance-criterion text alone. Append completion
+history to STATUS only during execution; do not alter STATUS during planning.
+
+### Captain return
+
+```text
+PHASE EXIT GREEN
+Phase: Atlanta satellite traffic T04-69 through T04-76
+Merge target: feature/sattelite-traffic
+Merged: T04-69, T04-70, T04-71, T04-72, T04-73, T04-74, T04-75, T04-76
+Tests: npm run ci; speech-api mock pytest; generated-data and manual acceptance
+Notes: source provenance and any manual leftovers; no push
+```
+
+If blocked, return `PHASE EXIT BLOCKED` with the exact failed gate, source-data
+gap, dependency, or conflict and preserved work location. Stop at this boundary;
+no later phase is authorized by this configuration.
+
+## Satellite traffic swarm started — 2026-09-15
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-69 through
+T04-76 sequentially with one isolated worker at a time using Gemini 3.8 Flash
+(`flash`) subagents as requested. Every squash merge onto `feature/sattelite-traffic`
+requires `npm run ci` before the next wave.
+
+No push is authorized. Workers implement exactly one ticket, never merge or
+spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-76.
+
+## Satellite traffic swarm resumed — T04-76 completion (2026-09-16)
+
+Captain resumes `feature/sattelite-traffic` for T04-76 only. T04-69 through
+T04-75 remain merged as `0175275`, `df18fe0`, `1b61136`, `f7457a3`, `3ba6a45`,
+`51502d3`, `b758f7b`. Planning commit `9ab2ab8` unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Session controls, persistence, Help/docs, whole-feature acceptance. |
+| Include | T04-76 only. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit | 1 worker, sequential. |
+| Worker model | `muse-spark-1.3` free, medium reasoning (user override; replaces `gpt-5.6-luna` `xhigh` for this resume). |
+| Stop | T04-76 squash merge, `npm run ci`, speech mock pytest if speech changed, provenance review, recorded manual leftovers. |
+| Push | No push. |
+| Manual | KATL both runway configs recorded as leftovers if live run unavailable; cite FAA edition/paragraphs honestly. |
+
+Worker owns `ticket/T04-76-satellite-traffic-settings-and-acceptance` worktree only,
+progressive gated commits, never merges/spawns/pushes, returns exactly
+`READY TO MERGE` or `BLOCKED`. Captain owns merge lock, post-merge `npm run ci`,
+STATUS append, phase handoff. Untracked `.agents/rules/`, `.worktrees/`,
+`GEMINI.md`, `audit.diff` stay untouched.
+
+## VFR simplification swarm planned — training box and density presets (2026-09-16)
+
+User approved replacing named VFR zones with uniform box distribution plus
+density presets (Off/Light/Moderate/Busy) and a `<details>` tune dropdown
+mirroring help subsections. Planning only; execution requires explicit
+`run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Delete zone logic from VFR pipeline; uniform box spawn; preset + tune session controls; fixed 60/20/20 movement mix. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-77 → T04-78. |
+| Merge target | `feature/sattelite-traffic`. |
+| Worker limit | 1 sequential worker. |
+| Worker model | `muse-spark-1.3` free, medium reasoning (standing user preference). |
+| Stop | T04-78 squash merge, `npm run ci`, speech mock pytest only if speech changed, KATL manual both configs. |
+| Push | No push. |
+
+**Product law:** one fixed ARP-centered training box replaces all zone
+weighting; seeded streams keep legacy IFR identity; Bravo avoidance stays a
+hard guard with existing skip events; presets are UI mappings over persisted
+numbers; movement mix fixed 60/20/20 (airport-bound folds to local without
+eligible destinations); no speech/Command IR/palette changes.
+
+**Skip:** new missions, Bravo clearance, tower behavior, live mid-session
+editing, session-setup restyle beyond tune disclosure, phase 5.
+
+**Waves:**
+- Wave A: T04-77 — core box spawn, zone deletion, rewritten unit tests.
+- Wave B: T04-78 — presets, tune dropdown, fixed mix, docs, acceptance.
+  Starts only after T04-77 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-77-vfr-training-box-replaces-zones` → `phases/04-procedures/tickets/T04-77-vfr-training-box-replaces-zones.md`
+- `ticket/T04-78-vfr-density-presets-and-tune-dropdown` → `phases/04-procedures/tickets/T04-78-vfr-density-presets-and-tune-dropdown.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: VFR simplification T04-77–78
+Merge target: feature/sattelite-traffic
+Merged: T04-77, T04-78
+Tests: npm run ci; KATL manual both configs
+Notes: no push; uniform box; presets + tune disclosure
+```
+
+## Satellite VFR departures swarm planned — post-login entries take off from satellites (2026-09-16)
+
+User approved routing post-login VFR entries through scenario-derived
+satellite departures: login-time disc population stays airborne as today;
+every `step()`-driven entry lifts off near a satellite airport (never the
+center airport) and flies a near-straight line with slight seeded movement
+to a boundary exit. No command, parser, speech, or UI change. Planning only;
+execution requires explicit `run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Satellite-origin continuous VFR entries with liftoff pose, wobble-bounded line corridor, hard Bravo avoidance, and acceptance/docs. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-79 → T04-80. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-80 squash merge, `npm run ci`, speech mock pytest only if speech changed, KATL conditional acceptance or recorded skip. |
+| Push | No push. |
+
+**Product law:** initial population remains disc-spawned airborne at login;
+every post-login entry departs a programmatically selected satellite airport
+with no hardcoded ICAO and never the center airport; liftoff is
+airborne-at-liftoff with no ground/tower simulation; en-route legs are
+persistent waypoints forming a ≤3 NM-wobble line to boundary exit; Bravo
+avoidance stays a hard guard with structured skip events (`NO_SAFE_ROUTE`,
+`NO_DEPARTURE_AIRPORT`); seeded streams keep legacy IFR identity; no
+IR/parser/speech/UI changes.
+
+**Skip:** ground roll, tower cab, Bravo clearance, satellite landings by
+departures, new commands, new session controls, live FAA fetch, phase 5.
+
+**Waves:**
+- Wave A: T04-79 — origin selection, liftoff pose, spawn-path split, unit tests.
+- Wave B: T04-80 — line corridor, avoidance/exits, integrated acceptance, docs.
+  Starts only after T04-79 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-79-satellite-origin-continuous-vfr-entries` → `phases/04-procedures/tickets/T04-79-satellite-origin-continuous-vfr-entries.md`
+- `ticket/T04-80-departure-line-navigation-and-acceptance` → `phases/04-procedures/tickets/T04-80-departure-line-navigation-and-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: satellite VFR departures T04-79–80
+Merge target: feature/sattelite-traffic
+Merged: T04-79, T04-80
+Tests: npm run ci; KATL conditional acceptance or recorded skip
+Notes: no push; login disc population preserved; continuous entries satellite-origin
+```
+
+## Satellite VFR departures swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-79
+then T04-80 sequentially with one isolated worker at a time. Each ticket gets
+focused tests and `npm run ci` before the next ticket. Worker model resolves
+to `inherit` (session-default general subagent; no named model requested).
+
+Workers implement exactly one ticket, never merge or spawn children, and
+return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked
+artifacts (`.worktrees/`, `speech-api/:memory:.ses`) and stale worktrees from
+other phases remain untouched. No push is authorized. Stop after T04-80.
+
+## Arrival-airport approaches, visual clearances, and VFR auto-land swarm planned — 2026-09-16
+
+User approved arrival-airport-first approach resolution (satellite ILS), `CLEARED_VISUAL`
+clearance, and autonomous VFR touchdown; ILS behavior unchanged; RNAV/VOR/NDB fails closed.
+Planning only; execution requires explicit `run-swarm`. Prior sections unchanged.
+
+| Key | Value |
+| --- | --- |
+| Goal | Approaches resolve at arrival airport; satellite ILS captured with center-projected thresholds; visual clearances flyable to touchdown; airport-bound VFR auto-lands; RNAV fails closed. |
+| Phase | `phases/04-procedures/`, satellite addendum. |
+| Include | T04-81 → T04-82 → T04-83. |
+| Merge target | `feature/sattelite-traffic` (user spelling). |
+| Worker limit/model | 1 sequential worker; `inherit`. |
+| Stop | T04-83 squash merge, `npm run ci`, speech mock pytest, KATL manual watch. |
+| Push | No push. |
+
+**Product law:** one shared arrival-airport-first resolver feeds validation, localizer/glidepath
+geometry, speed gates, and landings; center behavior byte-identical; satellite fix coordinates
+projected to center ARP; visuals are straight-in + touchdown with per-aircraft MSAW inhibition;
+only airport-bound VFR auto-lands; non-ILS approaches fail closed during validation; no tower cab,
+spacing, strips, or filed plans.
+
+**Skip:** RNAV execution, contact/circling approaches, EXPECT/INTERCEPT for visuals, departures
+landing elsewhere, center VFR arrivals, phase 5.
+
+**Waves:**
+- Wave A: T04-81 — resolver, satellite ILS, center-ARP projection, fail-closed RNAV guard, unit/regression tests.
+- Wave B: T04-82 — `CLEARED_VISUAL` IR, typed/spoken parsers, Path-C sync, visual guidance, touchdown, 3 NM MSAW inhibit. Starts after T04-81 squash merge and `npm run ci`.
+- Wave C: T04-83 — ambient VFR destination runway seeding, visual final join, auto-land touchdown, acceptance suite. Starts after T04-82 squash merge and `npm run ci`.
+
+**Ticket paths/branches:**
+- `ticket/T04-81-arrival-airport-approach-context` → `phases/04-procedures/tickets/T04-81-arrival-airport-approach-context.md`
+- `ticket/T04-82-visual-approach-clearance` → `phases/04-procedures/tickets/T04-82-visual-approach-clearance.md`
+- `ticket/T04-83-vfr-auto-land` → `phases/04-procedures/tickets/T04-83-vfr-auto-land.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: arrival-airport approaches, visual clearances, and VFR auto-land T04-81–83
+Merge target: feature/sattelite-traffic
+Merged: T04-81, T04-82, T04-83
+Tests: npm run ci; speech-api mock pytest; KATL manual watch
+Notes: no push; satellite ILS + visual approach parity; VFR auto-land
+```
+
+## Arrival-airport approaches, visual clearances, and VFR auto-land swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-81,
+then T04-82, then T04-83 sequentially with one isolated worker at a time. Each
+ticket gets focused tests and `npm run ci` before the next ticket. Worker model
+resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts
+(`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized.
+Stop after T04-83.
+
+## DCB numeric keyboard entry swarm — 2026-09-16
+
+| Key | Value |
+| --- | --- |
+| Phase | `phases/02-scope/` addendum |
+| Include | T02-200 → T02-201 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Stop | T02-201 squash merge, `npm run ci`, speech mock pytest |
+| Push | No push |
+
+**Product law:** Selecting a DCB adjustment/spinner button arms numeric keyboard capture; typed digits buffer locally; Enter commits valid values; Escape/Clear reverts to initial value; mouse wheel stepping preserved; out-of-scope keys ignored or routed.
+
+**Waves:**
+- Wave A: T02-200 — DCB spinner numeric buffer, scopeKeys keyboard routing, digit capture, Enter commit, and Escape revert.
+- Wave B: T02-201 — DCB button live typing display, rejection handling, and acceptance test suite. Starts after T02-200 squash merge.
+
+**Ticket paths/branches:**
+- `ticket/T02-200-dcb-spinner-numeric-keyboard-entry` → `phases/02-scope/tickets/T02-200-dcb-spinner-numeric-keyboard-entry.md`
+- `ticket/T02-201-dcb-spinner-live-digit-render-and-acceptance` → `phases/02-scope/tickets/T02-201-dcb-spinner-live-digit-render-and-acceptance.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: DCB numeric keyboard entry T02-200–201
+Merge target: feature/sattelite-traffic
+Merged: T02-200, T02-201
+Tests: npm run ci; speech-api mock pytest
+Notes: no push; STARS §2.6 DCB adjustment numeric entry parity
+```
+
+## DCB numeric keyboard entry swarm started — 2026-09-16
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T02-200, then T02-201 sequentially with one isolated worker at a time. Each ticket gets focused tests and `npm run ci` before the next ticket. Worker model resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized. Stop after T02-201.
+
+## Seventy-third swarm planned — authentic radio check-in and say-request direct response (2026-09-18)
+
+| Key | Value |
+| --- | --- |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-84 → T04-85 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Stop | T04-85 squash merge, `npm run ci`, speech mock pytest |
+| Push | Push `feature/sattelite-traffic` after green phase exit |
+
+**Product law:** Initial airborne radio check-in is exclusively facility identification and aircraft callsign; detailed requests (VFR flight following and airborne IFR pickups with destination and requested altitude) are transmitted directly in response to ATC "say request"; pilots never parrot "say request" in readback; standby retains standard readback; audio plays once without duplicate poll queues.
+
+**Skip:** New Command IR instructions, cloud inference, new FMS modes, non-radar procedures.
+
+**Waves:**
+- Wave A: T04-84 — cold call initial check-in formatting and enriched IFR pickup request schema.
+- Wave B: T04-85 — direct request response to REQUEST_DETAILS, eliminate parroted readback, and lifecycle integration suite. Starts after T04-84 squash merge.
+
+**Ticket ownership:**
+- T04-84 owns `vfrRequestQueue.ts` initial check-in generation, `formatIfrPickupRequest`, and unit tests.
+- T04-85 owns `handleRadioText.ts`, `readback.ts`, direct response wiring, and full lifecycle acceptance.
+
+**Ticket paths/branches:**
+- `ticket/T04-84-cold-call-checkin-and-ifr-pickup-schema` → `phases/04-procedures/tickets/T04-84-cold-call-checkin-and-ifr-pickup-schema.md`
+- `ticket/T04-85-say-request-direct-response-and-lifecycle` → `phases/04-procedures/tickets/T04-85-say-request-direct-response-and-lifecycle.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: authentic radio check-in and say-request direct response T04-84–85
+Merge target: feature/sattelite-traffic
+Merged: T04-84, T04-85
+Tests: npm run ci; speech-api mock pytest; lifecycle integration tests
+Notes: cold call check-in parity; direct say-request response; push to feature/sattelite-traffic
+```
+
+## Seventy-third swarm started — authentic radio check-in and say-request direct response (2026-09-18)
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-84, then T04-85 sequentially with one isolated worker at a time. Each ticket gets focused tests and `npm run ci` before the next ticket. Worker model resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. Push `feature/sattelite-traffic` authorized after green phase exit. Stop after T04-85.
+
+
+
+
 

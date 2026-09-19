@@ -1,0 +1,139 @@
+{
+  "airportId": "KPDK",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -35.647296,
+      "yNm": -75.645,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 22.599983,
+      "yNm": -14.686667,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -10.225999,
+      "yNm": 2.319,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GQO",
+      "kind": "DME",
+      "name": "CHOO CHOO",
+      "xNm": -42.409233,
+      "yNm": 65.116333,
+      "latDeg": 34.961275,
+      "lonDeg": -85.15336944444445,
+      "freqMhz": 115.8,
+      "class": "H"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -5.48751,
+      "yNm": -14.546333,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "HRS",
+      "kind": "DME",
+      "name": "HARRIS",
+      "xNm": 19.246205,
+      "yNm": 64.019667,
+      "latDeg": 34.94299722222222,
+      "lonDeg": -83.91567500000001,
+      "freqMhz": 109.8,
+      "class": "T"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 32.62105,
+      "yNm": -71.089,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 0.160237,
+      "yNm": -0.022333,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": -86.710319,
+      "yNm": -18.051,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "IPDKDME",
+      "kind": "DME",
+      "name": "DEKALB-PEACHTREE",
+      "xNm": -0.177396,
+      "yNm": -0.5285,
+      "latDeg": 33.86719444444444,
+      "lonDeg": -84.30559166666666,
+      "freqMhz": 111.1,
+      "class": "T"
+    },
+    {
+      "id": "IPDKGS",
+      "kind": "GS",
+      "name": "IPDK GS",
+      "xNm": 0.15152,
+      "yNm": 0.166,
+      "latDeg": 33.878769444444444,
+      "lonDeg": -84.29898888888889,
+      "gsAngleDeg": 3,
+      "tchFt": 58
+    },
+    {
+      "id": "IPDK",
+      "kind": "LOC",
+      "name": "IPDK",
+      "xNm": -0.133808,
+      "yNm": -0.541667,
+      "latDeg": 33.866975000000004,
+      "lonDeg": -84.30471666666666,
+      "freqMhz": 111.1,
+      "courseDeg": 205.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3
+    }
+  ]
+}

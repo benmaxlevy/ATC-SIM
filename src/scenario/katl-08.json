@@ -2,6 +2,7 @@
   "id": "katl-08",
   "name": "Hartsfield-Jackson Atlanta Intl (RWY 08L)",
   "icao": "KATL",
+  "regionalPack": "katl",
   "magVarDeg": -5,
   "fieldElevFt": 1026,
   "arp": {

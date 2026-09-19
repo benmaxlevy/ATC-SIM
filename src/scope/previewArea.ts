@@ -28,6 +28,7 @@ import {
 } from "./trackDisplay";
 import {
   FULL_CALLSIGN,
+  GA_CALLSIGN,
   SQUAWK_CODE,
   SUFFIX_CALLSIGN,
   isTrackingSlewAction,
@@ -135,7 +136,7 @@ export function resolveScopeFlid(token: string, world: World, view?: ScopeView):
     }
   }
   const ids = new Set<string>();
-  if (FULL_CALLSIGN.test(normalized)) {
+  if (FULL_CALLSIGN.test(normalized) || GA_CALLSIGN.test(normalized)) {
     for (const ac of world.aircraft) {
       if (ac.callsign === normalized || flightPlanForAircraft(world, ac.id)?.acid === normalized) {
         ids.add(ac.id);

@@ -7,9 +7,13 @@
 
 import {
   ARINC_COL,
+  ARINC_COL_UC,
+  ARINC_COL_UR,
   ARINC_RECORD_LENGTH,
   isPrimaryRecord,
   padRecord,
+  parseAirspaceAltitude,
+  parseBoundaryVia,
   parseFeet,
   parseFreqKhz,
   parseFreqMhz,
@@ -26,11 +30,15 @@ import {
 import {
   isSupportedPathTerminator,
   isUnsupportedPathTerminator,
+  type AirspaceClass,
   type CifpDiagnostic,
   type CifpRecordIdentity,
+  type NormalizedAirspace,
+  type NormalizedAirspaceAltitude,
   type NormalizedAirport,
   type NormalizedApproach,
   type NormalizedApproachType,
+  type NormalizedBoundarySegment,
   type NormalizedCifpSource,
   type NormalizedFix,
   type NormalizedFixKind,
@@ -43,6 +51,7 @@ import {
   type NormalizedAltConstraint,
   type NormalizedSpeedConstraint,
   type SourceLatLon,
+  type SpecialUseAirspaceKind,
   SID_COMMON_ROUTE_TYPES,
   SID_ENROUTE_ROUTE_TYPES,
   SID_QUALIFIED_ROUTE_TYPES,
@@ -87,6 +96,24 @@ interface SidAcc {
   common: NormalizedProcedureLeg[];
   enrouteLegs: Map<string, NormalizedProcedureLeg[]>;
   initialClimbFt?: number;
+}
+
+interface AirspaceAcc {
+  identity: CifpRecordIdentity;
+  type: "CONTROLLED" | "SPECIAL_USE";
+  class?: AirspaceClass;
+  specialUseKind?: SpecialUseAirspaceKind;
+  designation?: string;
+  name: string;
+  centerAirportId?: string;
+  icaoRegion?: string;
+  multipleCode?: string;
+  lowerLimit?: NormalizedAirspaceAltitude;
+  upperLimit?: NormalizedAirspaceAltitude;
+  segments: NormalizedBoundarySegment[];
+  cycle?: string;
+  sourceLineNo: number;
+  hasUnsupportedGeometry: boolean;
 }
 
 export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
@@ -134,6 +161,8 @@ export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
   const stars = new Map<string, StarAcc>();
   const sids = new Map<string, SidAcc>();
   const approaches = new Map<string, ApproachAcc>();
+  const controlledAirspaces = new Map<string, AirspaceAcc>();
+  const restrictiveAirspaces = new Map<string, AirspaceAcc>();
 
   const remember = (
     identity: CifpRecordIdentity,
@@ -296,6 +325,22 @@ export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
           ingestSidLeg(row, sids, diagnostics, skippedByType);
           break;
         }
+        case "UC": {
+          if (!isPrimaryRecord(row.line, ARINC_COL_UC.CONTINUATION)) {
+            bumpSkip("UC-CONT", row.lineNo);
+            break;
+          }
+          ingestControlledAirspace(row, controlledAirspaces, diagnostics, skippedByType);
+          break;
+        }
+        case "UR": {
+          if (!isPrimaryRecord(row.line, ARINC_COL_UR.CONTINUATION)) {
+            bumpSkip("UR-CONT", row.lineNo);
+            break;
+          }
+          ingestRestrictiveAirspace(row, restrictiveAirspaces, diagnostics, skippedByType);
+          break;
+        }
         default:
           bumpSkip(row.section.trim().length > 0 ? row.section : "GARBAGE", row.lineNo);
           break;
@@ -321,7 +366,8 @@ export function parseFixedWidthCifp(text: string): NormalizedCifpSource {
     fixes,
     stars: finalizeStars(stars),
     sids: finalizeSids(sids),
-    approaches: finalizeApproaches(approaches),
+    approaches: finalizeApproaches(approaches, diagnostics),
+    airspaces: finalizeAirspaces(controlledAirspaces, restrictiveAirspaces, diagnostics),
     diagnostics,
     skippedByType,
   };
@@ -680,8 +726,16 @@ function ingestApproachLeg(
     acc.type = mapped;
     acc.name = `${mapped} RWY ${acc.runway}`;
   }
+  // recNav (col 51) is the localizer only on ILS/LOC final rows. VOR/RNAV/NDB
+  // approaches carry a VOR/NDB/fix there; must not become locNavaidId (closure
+  // expects LOC kind and national VORs like RMG would otherwise miss).
   const recNav = readTrim(row.line, 51, 4);
-  if (recNav.length >= 2 && acc.locNavaidId === undefined && ID_RE.test(recNav.toUpperCase())) {
+  if (
+    (mapped === "ILS" || mapped === "LOC") &&
+    recNav.length >= 2 &&
+    acc.locNavaidId === undefined &&
+    ID_RE.test(recNav.toUpperCase())
+  ) {
     acc.locNavaidId = recNav.toUpperCase();
   }
   const leg = parseProcedureLeg(row, ctx);
@@ -850,9 +904,25 @@ function finalizeSids(sids: Map<string, SidAcc>): NormalizedSid[] {
   return out;
 }
 
-function finalizeApproaches(approaches: Map<string, ApproachAcc>): NormalizedApproach[] {
+function finalizeApproaches(
+  approaches: Map<string, ApproachAcc>,
+  diagnostics: CifpDiagnostic[],
+): NormalizedApproach[] {
   const out: NormalizedApproach[] = [];
   for (const acc of approaches.values()) {
+    // Circling approaches (RNV-A, VOR-A: no numeric runway) have no straight-in
+    // runway geometry for the runway-based trainer catalog. Skip with an
+    // explicit diagnostic; never emit a bogus RW*-A runway that fails closure.
+    if (!/\d/.test(acc.runway)) {
+      diagnostics.push({
+        severity: "skip",
+        code: "SKIPPED_APPROACH_ROUTE",
+        message: `skipped circling approach ${acc.id} with no numeric runway (not emitted)`,
+        airportId: acc.airportId,
+        section: "PF",
+      });
+      continue;
+    }
     acc.legs.sort(bySeq);
     const faf = acc.legs.find((leg) => leg.fixId !== undefined && !leg.missed && isFafish(leg));
     const recNavLegs = acc.legs.filter((leg) => leg.courseDeg !== undefined && !leg.missed);
@@ -892,6 +962,442 @@ function finalizeApproaches(approaches: Map<string, ApproachAcc>): NormalizedApp
   }
   out.sort((a, b) => a.identity.key.localeCompare(b.identity.key));
   return out;
+}
+
+function ingestControlledAirspace(
+  row: RawLine,
+  airspaces: Map<string, AirspaceAcc>,
+  diagnostics: CifpDiagnostic[],
+  _skippedByType: Record<string, number>,
+): void {
+  const ctx = lineCtx(row);
+  const icao = readTrim(row.line, ARINC_COL_UC.ICAO_CODE, 2);
+  const airspaceCenter = readTrim(row.line, ARINC_COL_UC.AIRSPACE_CENTER, 5);
+  const airspaceClass = readTrim(row.line, ARINC_COL_UC.AIRSPACE_CLASS, 1);
+  const multipleCode = readTrim(row.line, ARINC_COL_UC.MULTIPLE_CODE, 1);
+  const seqText = readTrim(row.line, ARINC_COL_UC.SEQUENCE, 4);
+  const boundaryVia = readTrim(row.line, ARINC_COL_UC.BOUNDARY_VIA, 2);
+  const name =
+    readTrim(row.line, ARINC_COL_UC.AIRSPACE_NAME, 30) ||
+    `${airspaceCenter} CLASS ${airspaceClass}`;
+  const lowerLimitText = readTrim(row.line, ARINC_COL_UC.LOWER_LIMIT, 5);
+  const lowerLimitUnit = readField(row.line, ARINC_COL_UC.LOWER_LIMIT_UNIT, 1);
+  const upperLimitText = readTrim(row.line, ARINC_COL_UC.UPPER_LIMIT, 5);
+  const upperLimitUnit = readField(row.line, ARINC_COL_UC.UPPER_LIMIT_UNIT, 1);
+  const cycle = readTrim(row.line, ARINC_COL_UC.CYCLE, 4);
+
+  if (airspaceCenter.length === 0 || airspaceClass.length === 0) {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: missing airspace center or class in UC record (skipped, never fabricated)`,
+      lineNo: row.lineNo,
+      section: "UC",
+      airportId: airspaceCenter || undefined,
+    });
+    return;
+  }
+
+  if (airspaceClass !== "B" && airspaceClass !== "C" && airspaceClass !== "D") {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: out-of-scope controlled airspace class '${airspaceClass}' for ${airspaceCenter} (supported: B/C/D)`,
+      lineNo: row.lineNo,
+      section: "UC",
+      airportId: airspaceCenter,
+    });
+    return;
+  }
+
+  const seq = Number(seqText);
+  if (!Number.isFinite(seq)) {
+    diagnostics.push({
+      severity: "error",
+      code: "MALFORMED_AIRSPACE_RECORD",
+      message: `${ctx}: invalid sequence number ${seqText}`,
+      lineNo: row.lineNo,
+      section: "UC",
+      airportId: airspaceCenter,
+    });
+    return;
+  }
+
+  const viaType = parseBoundaryVia(boundaryVia);
+  if (viaType === "UNSUPPORTED") {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: unsupported boundary via '${boundaryVia}' for ${airspaceCenter} Class ${airspaceClass}`,
+      lineNo: row.lineNo,
+      section: "UC",
+      airportId: airspaceCenter,
+    });
+  }
+
+  let position: SourceLatLon;
+  try {
+    position = requireAirspacePosition(
+      row.line,
+      ARINC_COL_UC.LAT,
+      ARINC_COL_UC.LON,
+      ARINC_COL_UC.ARC_ORIGIN_LAT,
+      ARINC_COL_UC.ARC_ORIGIN_LON,
+      viaType,
+      ctx,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("missing coordinate")) {
+      diagnostics.push({
+        severity: "skip",
+        code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+        message: `${ctx}: ${msg} (skipped, never fabricated)`,
+        lineNo: row.lineNo,
+        section: "UC",
+        airportId: airspaceCenter,
+      });
+      return;
+    }
+    diagnostics.push({
+      severity: "error",
+      code: "MALFORMED_AIRSPACE_RECORD",
+      message: `${ctx}: ${msg}`,
+      lineNo: row.lineNo,
+      section: "UC",
+      airportId: airspaceCenter,
+    });
+    return;
+  }
+
+  let arcOrigin: SourceLatLon | undefined;
+  const arcOriginCoords = readPackedLatLon(
+    row.line,
+    ARINC_COL_UC.ARC_ORIGIN_LAT,
+    ARINC_COL_UC.ARC_ORIGIN_LON,
+  );
+  if (arcOriginCoords !== undefined) {
+    try {
+      arcOrigin = {
+        latDeg: parsePackedLat(arcOriginCoords.lat, ctx),
+        lonDeg: parsePackedLon(arcOriginCoords.lon, ctx),
+      };
+    } catch {
+      // ignore
+    }
+  }
+
+  const arcDistText = readTrim(row.line, ARINC_COL_UC.ARC_DISTANCE, 4);
+  const arcBearingText = readTrim(row.line, ARINC_COL_UC.ARC_BEARING, 4);
+  const arcDistanceNm =
+    arcDistText.length > 0 && /^\d+$/.test(arcDistText) ? Number(arcDistText) / 10 : undefined;
+  const arcBearingDeg =
+    arcBearingText.length > 0 && /^\d+$/.test(arcBearingText)
+      ? Number(arcBearingText) / 10
+      : undefined;
+
+  const shelfKey =
+    multipleCode.length > 0
+      ? multipleCode
+      : lowerLimitText || upperLimitText
+        ? `${lowerLimitText}-${upperLimitText}`
+        : "_";
+  const volumeKey = `UC:${icao}:${airspaceCenter}:${airspaceClass}:${shelfKey}:${name}`;
+
+  let acc = airspaces.get(volumeKey);
+  if (acc === undefined) {
+    acc = {
+      identity: ident("UC", airspaceCenter, `${airspaceClass}-${shelfKey}`),
+      type: "CONTROLLED",
+      class: airspaceClass as AirspaceClass,
+      name,
+      centerAirportId: airspaceCenter,
+      icaoRegion: icao || undefined,
+      multipleCode: multipleCode || undefined,
+      segments: [],
+      cycle: cycle || undefined,
+      sourceLineNo: row.lineNo,
+      hasUnsupportedGeometry: false,
+    };
+    airspaces.set(volumeKey, acc);
+  }
+
+  if (lowerLimitText.length > 0 || acc.lowerLimit === undefined) {
+    const parsedLower = parseAirspaceAltitude(lowerLimitText, lowerLimitUnit, ctx);
+    if (parsedLower.unit !== "NOT_SPECIFIED") {
+      acc.lowerLimit = parsedLower;
+    }
+  }
+  if (upperLimitText.length > 0 || acc.upperLimit === undefined) {
+    const parsedUpper = parseAirspaceAltitude(upperLimitText, upperLimitUnit, ctx);
+    if (parsedUpper.unit !== "NOT_SPECIFIED") {
+      acc.upperLimit = parsedUpper;
+    }
+  }
+
+  if (viaType === "UNSUPPORTED") {
+    acc.hasUnsupportedGeometry = true;
+  }
+
+  acc.segments.push({
+    sequence: seq,
+    boundaryVia,
+    boundaryViaType: viaType,
+    position,
+    arcOrigin,
+    arcDistanceNm,
+    arcBearingDeg,
+    lineNo: row.lineNo,
+  });
+}
+
+function ingestRestrictiveAirspace(
+  row: RawLine,
+  airspaces: Map<string, AirspaceAcc>,
+  diagnostics: CifpDiagnostic[],
+  _skippedByType: Record<string, number>,
+): void {
+  const ctx = lineCtx(row);
+  const icao = readTrim(row.line, ARINC_COL_UR.ICAO_CODE, 2);
+  const restrictionType = readTrim(row.line, ARINC_COL_UR.RESTRICTION_TYPE, 1);
+  const designation = readTrim(row.line, ARINC_COL_UR.DESIGNATION, 10);
+  const multipleCode = readTrim(row.line, ARINC_COL_UR.MULTIPLE_CODE, 1);
+  const seqText = readTrim(row.line, ARINC_COL_UR.SEQUENCE, 4);
+  const boundaryVia = readTrim(row.line, ARINC_COL_UR.BOUNDARY_VIA, 2);
+  const name = readTrim(row.line, ARINC_COL_UR.RESTRICTED_NAME, 30) || designation;
+  const lowerLimitText = readTrim(row.line, ARINC_COL_UR.LOWER_LIMIT, 5);
+  const lowerLimitUnit = readField(row.line, ARINC_COL_UR.LOWER_LIMIT_UNIT, 1);
+  const upperLimitText = readTrim(row.line, ARINC_COL_UR.UPPER_LIMIT, 5);
+  const upperLimitUnit = readField(row.line, ARINC_COL_UR.UPPER_LIMIT_UNIT, 1);
+  const cycle = readTrim(row.line, ARINC_COL_UR.CYCLE, 4);
+
+  if (restrictionType.length === 0 || designation.length === 0) {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: missing restriction type or designation in UR record (skipped, never fabricated)`,
+      lineNo: row.lineNo,
+      section: "UR",
+    });
+    return;
+  }
+
+  if (
+    restrictionType !== "R" &&
+    restrictionType !== "P" &&
+    restrictionType !== "W" &&
+    restrictionType !== "A" &&
+    restrictionType !== "M" &&
+    restrictionType !== "U"
+  ) {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: out-of-scope restrictive airspace type '${restrictionType}' for ${designation} (supported: R/P/W/A/M/U)`,
+      lineNo: row.lineNo,
+      section: "UR",
+    });
+    return;
+  }
+
+  const seq = Number(seqText);
+  if (!Number.isFinite(seq)) {
+    diagnostics.push({
+      severity: "error",
+      code: "MALFORMED_AIRSPACE_RECORD",
+      message: `${ctx}: invalid sequence number ${seqText}`,
+      lineNo: row.lineNo,
+      section: "UR",
+    });
+    return;
+  }
+
+  const viaType = parseBoundaryVia(boundaryVia);
+  if (viaType === "UNSUPPORTED") {
+    diagnostics.push({
+      severity: "skip",
+      code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+      message: `${ctx}: unsupported boundary via '${boundaryVia}' for ${designation}`,
+      lineNo: row.lineNo,
+      section: "UR",
+    });
+  }
+
+  let position: SourceLatLon;
+  try {
+    position = requireAirspacePosition(
+      row.line,
+      ARINC_COL_UR.LAT,
+      ARINC_COL_UR.LON,
+      ARINC_COL_UR.ARC_ORIGIN_LAT,
+      ARINC_COL_UR.ARC_ORIGIN_LON,
+      viaType,
+      ctx,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("missing coordinate")) {
+      diagnostics.push({
+        severity: "skip",
+        code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+        message: `${ctx}: ${msg} (skipped, never fabricated)`,
+        lineNo: row.lineNo,
+        section: "UR",
+      });
+      return;
+    }
+    diagnostics.push({
+      severity: "error",
+      code: "MALFORMED_AIRSPACE_RECORD",
+      message: `${ctx}: ${msg}`,
+      lineNo: row.lineNo,
+      section: "UR",
+    });
+    return;
+  }
+
+  let arcOrigin: SourceLatLon | undefined;
+  const arcOriginCoords = readPackedLatLon(
+    row.line,
+    ARINC_COL_UR.ARC_ORIGIN_LAT,
+    ARINC_COL_UR.ARC_ORIGIN_LON,
+  );
+  if (arcOriginCoords !== undefined) {
+    try {
+      arcOrigin = {
+        latDeg: parsePackedLat(arcOriginCoords.lat, ctx),
+        lonDeg: parsePackedLon(arcOriginCoords.lon, ctx),
+      };
+    } catch {
+      // ignore
+    }
+  }
+
+  const arcDistText = readTrim(row.line, ARINC_COL_UR.ARC_DISTANCE, 4);
+  const arcBearingText = readTrim(row.line, ARINC_COL_UR.ARC_BEARING, 4);
+  const arcDistanceNm =
+    arcDistText.length > 0 && /^\d+$/.test(arcDistText) ? Number(arcDistText) / 10 : undefined;
+  const arcBearingDeg =
+    arcBearingText.length > 0 && /^\d+$/.test(arcBearingText)
+      ? Number(arcBearingText) / 10
+      : undefined;
+
+  let specialUseKind: SpecialUseAirspaceKind = "OTHER";
+  if (restrictionType === "R") specialUseKind = "RESTRICTED";
+  else if (restrictionType === "P") specialUseKind = "PROHIBITED";
+  else if (restrictionType === "W") specialUseKind = "WARNING";
+  else if (restrictionType === "A") specialUseKind = "ALERT";
+  else if (restrictionType === "M") specialUseKind = "MOA";
+  else if (restrictionType === "U") specialUseKind = "SATR";
+
+  const volumeKey = `UR:${icao}:${restrictionType}:${designation}:${multipleCode || "_"}`;
+
+  let acc = airspaces.get(volumeKey);
+  if (acc === undefined) {
+    acc = {
+      identity: ident(
+        "UR",
+        undefined,
+        `${restrictionType}-${designation}${multipleCode.length > 0 ? `-${multipleCode}` : ""}`,
+      ),
+      type: "SPECIAL_USE",
+      specialUseKind,
+      designation,
+      name,
+      icaoRegion: icao || undefined,
+      multipleCode: multipleCode || undefined,
+      segments: [],
+      cycle: cycle || undefined,
+      sourceLineNo: row.lineNo,
+      hasUnsupportedGeometry: false,
+    };
+    airspaces.set(volumeKey, acc);
+  }
+
+  if (lowerLimitText.length > 0 || acc.lowerLimit === undefined) {
+    const parsedLower = parseAirspaceAltitude(lowerLimitText, lowerLimitUnit, ctx);
+    if (parsedLower.unit !== "NOT_SPECIFIED") {
+      acc.lowerLimit = parsedLower;
+    }
+  }
+  if (upperLimitText.length > 0 || acc.upperLimit === undefined) {
+    const parsedUpper = parseAirspaceAltitude(upperLimitText, upperLimitUnit, ctx);
+    if (parsedUpper.unit !== "NOT_SPECIFIED") {
+      acc.upperLimit = parsedUpper;
+    }
+  }
+
+  if (viaType === "UNSUPPORTED") {
+    acc.hasUnsupportedGeometry = true;
+  }
+
+  acc.segments.push({
+    sequence: seq,
+    boundaryVia,
+    boundaryViaType: viaType,
+    position,
+    arcOrigin,
+    arcDistanceNm,
+    arcBearingDeg,
+    lineNo: row.lineNo,
+  });
+}
+
+function finalizeAirspaces(
+  controlled: Map<string, AirspaceAcc>,
+  restrictive: Map<string, AirspaceAcc>,
+  diagnostics: CifpDiagnostic[],
+): NormalizedAirspace[] {
+  const result: NormalizedAirspace[] = [];
+  const allAccs = [...controlled.values(), ...restrictive.values()];
+
+  for (const acc of allAccs) {
+    if (acc.hasUnsupportedGeometry) {
+      diagnostics.push({
+        severity: "skip",
+        code: "UNSUPPORTED_AIRSPACE_GEOMETRY",
+        message: `airspace volume ${acc.identity.key} excluded due to unsupported boundary geometry`,
+        lineNo: acc.sourceLineNo,
+        section: acc.identity.section,
+        airportId: acc.centerAirportId,
+      });
+      continue;
+    }
+
+    if (acc.segments.length === 0) {
+      continue;
+    }
+
+    acc.segments.sort((a, b) => a.sequence - b.sequence);
+
+    const defaultLimit: NormalizedAirspaceAltitude = {
+      rawAltitude: "",
+      rawUnit: "",
+      altitudeFt: undefined,
+      unit: "NOT_SPECIFIED",
+      reference: "UNKNOWN",
+    };
+
+    result.push({
+      identity: acc.identity,
+      type: acc.type,
+      class: acc.class,
+      specialUseKind: acc.specialUseKind,
+      designation: acc.designation,
+      name: acc.name,
+      centerAirportId: acc.centerAirportId,
+      icaoRegion: acc.icaoRegion,
+      multipleCode: acc.multipleCode,
+      lowerLimit: acc.lowerLimit ?? defaultLimit,
+      upperLimit: acc.upperLimit ?? defaultLimit,
+      segments: acc.segments,
+      cycle: acc.cycle,
+      sourceLineNo: acc.sourceLineNo,
+    });
+  }
+
+  result.sort((a, b) => a.identity.key.localeCompare(b.identity.key));
+  return result;
 }
 
 function isFafish(leg: NormalizedProcedureLeg): boolean {
@@ -1023,6 +1529,40 @@ function requireLatLon(
   };
 }
 
+/**
+ * Airspace boundary position. National UC/UR circle (`C`/`CE`) records carry
+ * the circle center in the arc-origin columns while LAT/LON read blank per
+ * FAA CIFP field positions. Use the documented arc-origin coordinate for
+ * circles; anything else with no coordinate is a skip, never fabricated.
+ */
+function requireAirspacePosition(
+  line: string,
+  latStart: number,
+  lonStart: number,
+  arcLatStart: number,
+  arcLonStart: number,
+  viaType: string,
+  ctx: string,
+): SourceLatLon {
+  const packed = readPackedLatLon(line, latStart, lonStart);
+  if (packed !== undefined) {
+    return {
+      latDeg: parsePackedLat(packed.lat, ctx),
+      lonDeg: parsePackedLon(packed.lon, ctx),
+    };
+  }
+  if (viaType === "CIRCLE") {
+    const arc = readPackedLatLon(line, arcLatStart, arcLonStart);
+    if (arc !== undefined) {
+      return {
+        latDeg: parsePackedLat(arc.lat, ctx),
+        lonDeg: parsePackedLon(arc.lon, ctx),
+      };
+    }
+  }
+  throw new Error(`${ctx}: missing coordinate`);
+}
+
 function optionalPointAirport(value: string, ctx: string): string | undefined {
   if (value.length === 0 || value === ENROUTE_REGION) {
     return undefined;
@@ -1080,6 +1620,10 @@ function lineCtx(row: RawLine): string {
 }
 
 function optionalAirport(line: string, section: string): string | undefined {
+  if (section === "UC") {
+    const raw = readTrim(line, ARINC_COL_UC.AIRSPACE_CENTER, 5);
+    return raw.length > 0 ? raw : undefined;
+  }
   if (
     section.startsWith("P") ||
     section.startsWith("H") ||

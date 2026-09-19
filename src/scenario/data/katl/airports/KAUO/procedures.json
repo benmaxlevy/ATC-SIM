@@ -1,0 +1,106 @@
+{
+  "airportId": "KAUO",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I36",
+      "type": "ILS",
+      "runway": "36",
+      "name": "ILS RWY 36",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 73.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 5,
+        "climbToFt": 775,
+        "directFixId": "RW36"
+      }
+    },
+    {
+      "id": "L36",
+      "type": "LOC",
+      "runway": "36",
+      "name": "LOC RWY 36",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 73.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 5,
+        "climbToFt": 775,
+        "directFixId": "RW36"
+      }
+    },
+    {
+      "id": "R11",
+      "type": "RNAV",
+      "runway": "11",
+      "name": "RNAV RWY 11",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW11",
+      "courseDeg": 111.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1300
+    },
+    {
+      "id": "R18",
+      "type": "RNAV",
+      "runway": "18",
+      "name": "RNAV RWY 18",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW18",
+      "courseDeg": 185,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1027
+    },
+    {
+      "id": "R29",
+      "type": "RNAV",
+      "runway": "29",
+      "name": "RNAV RWY 29",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW29",
+      "courseDeg": 291.4,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1300
+    },
+    {
+      "id": "R36",
+      "type": "RNAV",
+      "runway": "36",
+      "name": "RNAV RWY 36",
+      "locNavaidId": "IAUO",
+      "gsNavaidId": "IAUOGS",
+      "thresholdFixId": "RW36",
+      "courseDeg": 5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 44,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 959
+    }
+  ]
+}

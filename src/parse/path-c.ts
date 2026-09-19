@@ -192,9 +192,39 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "SAY_ALTITUDE" ||
     type === "GO_AROUND" ||
     type === "CANCEL_APPROACH" ||
-    type === "MAINTAIN_VFR"
+    type === "MAINTAIN_VFR" ||
+    type === "REQUEST_DETAILS" ||
+    type === "STANDBY_REQUEST" ||
+    type === "APPROVE_FLIGHT_FOLLOWING" ||
+    type === "TERMINATE_RADAR_SERVICE" ||
+    type === "ACKNOWLEDGE_IFR_CANCELLATION"
   ) {
     return keysOk(obj, ["type"]);
+  }
+  if (type === "DECLINE_REQUEST") {
+    return (
+      keysOk(obj, ["type", "service"]) &&
+      typeof obj.service === "string" &&
+      (obj.service === "FLIGHT_FOLLOWING" || obj.service === "IFR_PICKUP")
+    );
+  }
+  if (type === "RADAR_CONTACT") {
+    // Bare `radar contact` (identification, no position report) or the full
+    // all-or-nothing position form. A partial position never validates.
+    if (keysOk(obj, ["type"])) {
+      return true;
+    }
+    return (
+      keysOk(obj, ["type", "distanceNm", "referenceId", "referenceKind"]) &&
+      isFiniteNumber(obj.distanceNm) &&
+      obj.distanceNm > 0 &&
+      typeof obj.referenceId === "string" &&
+      obj.referenceId.length > 0 &&
+      typeof obj.referenceKind === "string" &&
+      (obj.referenceKind === "FIX" ||
+        obj.referenceKind === "NAVAID" ||
+        obj.referenceKind === "AIRPORT")
+    );
   }
   if (type === "ALTITUDE") {
     if (
@@ -229,6 +259,13 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       keysOk(obj, ["type", "approachId"]) &&
       typeof obj.approachId === "string" &&
       obj.approachId.length > 0
+    );
+  }
+  if (type === "CLEARED_VISUAL") {
+    return (
+      keysOk(obj, ["type", "runwayId"]) &&
+      typeof obj.runwayId === "string" &&
+      /^\d{1,2}[LRC]?$/i.test(obj.runwayId)
     );
   }
   if (type === "ASSIGN_SQUAWK") {
@@ -576,14 +613,43 @@ function requestHasContext(context: PathCContext | undefined): boolean {
 }
 
 /**
+ * Unambiguous cues for self-contained commands: instructions whose acceptance
+ * needs no catalog retrieval (bare request-control types, `roger`-answer
+ * radar contact, visual runway). A transcript carrying one may engage Path C
+ * even when identifier retrieval comes back empty, so a noisy miss on these
+ * forms still reaches the model. Engagement is not acceptance: schema,
+ * completeness, grounding, and identifier-listed guards still apply.
+ */
+const SELF_CONTAINED_CUES: RegExp[] = [
+  /\bradar\s+contact\b/,
+  /\bsay\s+request\b/,
+  /\bstand\s*by\b/,
+  /\bapprove\s+flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/,
+  /\bradar\s+service\s+terminated\b/,
+  /\bifr\s+cancellation\s+received\b/,
+  /\bmaintain\s+vfr\b/,
+  /\b(?:cleared|clear)\s+visual\b/,
+];
+
+export function pathCHasSelfContainedCue(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return SELF_CONTAINED_CUES.some((pattern) => pattern.test(normalized));
+}
+
+/**
  * Reject a model result that silently drops an independent supported clause.
  * This is intentionally conservative: it only requires an instruction when
  * the transcript contains an unambiguous command cue for that instruction.
  */
-export function pathCResultIsComplete(text: string, instructions: readonly Instruction[]): boolean {
-  const normalized = text.toLowerCase();
-  const has = (pattern: RegExp): boolean => pattern.test(normalized);
-  const hasType = (...types: Instruction["type"][]): boolean =>
+export function pathCResultIsComplete(
+  sourceText: string,
+  instructions: readonly Instruction[],
+): boolean {
+  const text = sourceText.toLowerCase();
+  const has = (pattern: RegExp) => pattern.test(text);
+  const hasType = (...types: string[]) =>
     instructions.some((instruction) => types.includes(instruction.type));
   if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
     return false;
@@ -606,14 +672,83 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   if (
     has(/\b(?:approach|localizer|ils|cleared\s+(?:the\s+)?runway)\b/) &&
     !has(/\bcancel\s+approach\s+clearance\b/) &&
-    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER")
+    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "CLEARED_VISUAL")
   ) {
+    return false;
+  }
+  if (has(/\b(?:cleared|clear)\s+visual\b/) && !hasType("CLEARED_VISUAL")) {
     return false;
   }
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {
     return false;
   }
+  if (has(/\b(?:ident|iden)\b/) && !hasType("IDENT")) {
+    return false;
+  }
+  if (has(/\bsay\s+heading\b/) && !hasType("SAY_HEADING")) {
+    return false;
+  }
+  if (has(/\bsay\s+altitude\b/) && !hasType("SAY_ALTITUDE")) {
+    return false;
+  }
   if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
+    return false;
+  }
+  if (has(/\bsay\s+request\b/) && !hasType("REQUEST_DETAILS")) {
+    return false;
+  }
+  if (has(/\bstand\s*by\b/) && !hasType("STANDBY_REQUEST")) {
+    return false;
+  }
+  if (has(/\bapprove\s+flight\s+following\b/) && !hasType("APPROVE_FLIGHT_FOLLOWING")) {
+    return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "FLIGHT_FOLLOWING") return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "IFR_PICKUP") return false;
+  }
+  if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
+    return false;
+  }
+  const radarContact = instructions.find(
+    (instruction): instruction is Extract<Instruction, { type: "RADAR_CONTACT" }> =>
+      instruction.type === "RADAR_CONTACT",
+  );
+  // Position-report radar contact (`radar contact <N> miles [direction]
+  // from|of <reference>`); bare `radar contact` needs only its cue. Either
+  // form still requires the cue above.
+  const hasRadarPositionCue = has(
+    /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b/,
+  );
+  if (radarContact) {
+    const hasPositionFields =
+      radarContact.distanceNm !== undefined ||
+      radarContact.referenceId !== undefined ||
+      radarContact.referenceKind !== undefined;
+    if (hasPositionFields && !hasRadarPositionCue) {
+      return false;
+    }
+    if (
+      hasRadarPositionCue &&
+      (radarContact.distanceNm === undefined || radarContact.referenceId === undefined)
+    ) {
+      return false;
+    }
+  }
+  if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {
+    return false;
+  }
+  if (has(/\bifr\s+cancellation\s+received\b/) && !hasType("ACKNOWLEDGE_IFR_CANCELLATION")) {
     return false;
   }
   return instructions.length > 0;

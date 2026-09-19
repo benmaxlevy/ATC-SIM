@@ -147,7 +147,12 @@ export interface VoiceLoop {
   handlePttEvent(event: PttCaptureEvent): Promise<void>;
   readonly lastUtteranceMetrics: VoiceUtteranceMetrics | null;
   readonly inFlight: boolean;
-  /** True while capture, transcribe, parse, or playback holds the transmit gate. */
+  /**
+   * True while capture, transcribe, parse, committed TTS synthesis, or
+   * playback holds the transmit gate. Pilot queues gate on this before
+   * replacing the command-line text, so a callup stays visible (and its
+   * audio un-overlapped) for the full TTS stream.
+   */
   readonly busy: boolean;
   readonly latency: VoiceLatencyTracker;
   readonly readbackPlayer: ReadbackPlayer;
@@ -259,6 +264,17 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: (callsign?: string) => string;
   private readonly gate = new TransmitGate();
+  /**
+   * Committed TTS streams (synthesis through playback end). Incremented
+   * synchronously on `playReadback` so `busy` covers the synthesis gap
+   * before `play-started` locks the gate; otherwise a second pilot queue
+   * drain could start mid-synthesis and replace the visible callup text.
+   */
+  private speakActive = 0;
+  /** Latest committed TTS stream; a stale stream never clears newer text. */
+  private speakSeq = 0;
+  /** Serialized audio playback queue to avoid overlapping playPcm rejections. */
+  private playbackQueue: Promise<void> = Promise.resolve();
   private readonly latencyTracker: VoiceLatencyTracker;
   private readonly dispatchedCommandIds = new Set<string>();
   readonly readbackPlayer: ReadbackPlayer;
@@ -297,7 +313,7 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   get busy(): boolean {
-    return this.inFlightValue || this.gate.locked;
+    return this.inFlightValue || this.gate.locked || this.speakActive > 0;
   }
 
   get latency(): VoiceLatencyTracker {
@@ -345,7 +361,7 @@ class VoiceLoopImpl implements VoiceLoop {
 
   private syncLock(event: TransmitGateEvent): void {
     this.gate.apply(event);
-    this.setTransmitLocked(this.gate.locked);
+    this.setTransmitLocked(this.gate.locked || this.busy);
   }
 
   private emitStatus(event: VoiceStatusEvent | null): void {
@@ -382,7 +398,7 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   private onPttDown(): void {
-    if (this.inFlightValue || this.gate.current === "playing") {
+    if (this.inFlightValue || this.gate.current === "playing" || this.busy) {
       this.emitStatus({ code: "ptt_locked" });
       return;
     }
@@ -523,6 +539,9 @@ class VoiceLoopImpl implements VoiceLoop {
     if (this.disposed || text === "") {
       return;
     }
+    this.speakActive += 1;
+    this.speakSeq += 1;
+    this.setTransmitLocked(true);
 
     const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
@@ -554,16 +573,27 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.disposed) {
         return;
       }
-      this.syncLock("play-started");
-      const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
-      if (!outcome.ok) {
-        this.emitStatus({ code: "tts_failed" });
-      }
+      const playTask = async (): Promise<void> => {
+        if (this.disposed) return;
+        this.syncLock("play-started");
+        const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
+        if (!outcome.ok) {
+          this.emitStatus({ code: "tts_failed" });
+        }
+      };
+      const currentPlayback = this.playbackQueue.then(playTask, playTask);
+      this.playbackQueue = currentPlayback;
+      await currentPlayback;
     } catch {
       this.emitStatus({ code: "tts_failed" });
     } finally {
-      this.syncLock("play-ended");
-      this.emitStatus(null);
+      this.speakActive -= 1;
+      if (this.speakActive === 0) {
+        this.playbackQueue = Promise.resolve();
+        this.syncLock("play-ended");
+        this.emitStatus(null);
+      }
+      this.setTransmitLocked(this.gate.locked || this.busy);
     }
   }
 

@@ -1,0 +1,95 @@
+{
+  "airportId": "KMCN",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -69.097229,
+      "yNm": -4.654833,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": -10.054898,
+      "yNm": 56.3035,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -43.328942,
+      "yNm": 73.309167,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -38.525774,
+      "yNm": 56.443833,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 0.102953,
+      "yNm": -0.098833,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -32.800937,
+      "yNm": 70.967833,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "IMCNGS",
+      "kind": "GS",
+      "name": "IMCN GS",
+      "xNm": -0.414758,
+      "yNm": -0.354667,
+      "latDeg": 32.68692222222222,
+      "lonDeg": -83.65743611111111,
+      "gsAngleDeg": 3,
+      "tchFt": 56
+    },
+    {
+      "id": "IMCN",
+      "kind": "LOC",
+      "name": "IMCN",
+      "xNm": 0.304932,
+      "yNm": 0.389667,
+      "latDeg": 32.699327777777775,
+      "lonDeg": -83.64318333333334,
+      "freqMhz": 109.5,
+      "courseDeg": 54,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.77
+    }
+  ]
+}

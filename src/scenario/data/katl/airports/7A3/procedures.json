@@ -1,0 +1,30 @@
+{
+  "airportId": "7A3",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R06",
+      "type": "RNAV",
+      "runway": "06",
+      "name": "RNAV RWY 06",
+      "thresholdFixId": "RW06",
+      "courseDeg": 57.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 974
+    },
+    {
+      "id": "R24",
+      "type": "RNAV",
+      "runway": "24",
+      "name": "RNAV RWY 24",
+      "thresholdFixId": "RW24",
+      "courseDeg": 237.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1031
+    }
+  ]
+}

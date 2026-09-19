@@ -10,7 +10,7 @@ error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | cleared-visual | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service | acknowledge-ifr-cancellation
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -20,6 +20,7 @@ speed ::= "{" ws "\"type\"" ws ":" ws "\"SPEED\"" ws "," ws "\"speedKt\"" ws ":"
 direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
 expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
+cleared-visual ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_VISUAL\"" ws "," ws "\"runwayId\"" ws ":" ws runway-string ws "}"
 intercept-localizer ::= "{" ws "\"type\"" ws ":" ws "\"INTERCEPT_LOCALIZER\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cancel-approach ::= "{" ws "\"type\"" ws ":" ws "\"CANCEL_APPROACH\"" ws "}"
 assign-squawk ::= "{" ws "\"type\"" ws ":" ws "\"ASSIGN_SQUAWK\"" ws "," ws "\"code\"" ws ":" ws octal-code ws "," ws "\"source\"" ws ":" ws squawk-source ws "}"
@@ -45,6 +46,15 @@ join-procedure ::= "{" ws "\"type\"" ws ":" ws "\"JOIN_PROCEDURE\"" ws "," ws "\
 cross ::= "{" ws "\"type\"" ws ":" ws "\"CROSS\"" ws "," ws "\"fixId\"" ws ":" ws string ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"restriction\"" ws ":" ws cross-restriction ws "}"
 go-around ::= "{" ws "\"type\"" ws ":" ws "\"GO_AROUND\"" ws "}"
 delete-speed-restrictions ::= "{" ws "\"type\"" ws ":" ws "\"DELETE_SPEED_RESTRICTIONS\"" ws "}"
+request-details ::= "{" ws "\"type\"" ws ":" ws "\"REQUEST_DETAILS\"" ws "}"
+standby-request ::= "{" ws "\"type\"" ws ":" ws "\"STANDBY_REQUEST\"" ws "}"
+approve-flight-following ::= "{" ws "\"type\"" ws ":" ws "\"APPROVE_FLIGHT_FOLLOWING\"" ws "}"
+decline-request ::= "{" ws "\"type\"" ws ":" ws "\"DECLINE_REQUEST\"" ws "," ws "\"service\"" ws ":" ws decline-service ws "}"
+decline-service ::= "\"FLIGHT_FOLLOWING\"" | "\"IFR_PICKUP\""
+radar-contact ::= "{" ws "\"type\"" ws ":" ws "\"RADAR_CONTACT\"" (ws "," ws "\"distanceNm\"" ws ":" ws number ws "," ws "\"referenceId\"" ws ":" ws string ws "," ws "\"referenceKind\"" ws ":" ws ref-kind)? ws "}"
+ref-kind ::= "\"FIX\"" | "\"NAVAID\"" | "\"AIRPORT\""
+terminate-radar-service ::= "{" ws "\"type\"" ws ":" ws "\"TERMINATE_RADAR_SERVICE\"" ws "}"
+acknowledge-ifr-cancellation ::= "{" ws "\"type\"" ws ":" ws "\"ACKNOWLEDGE_IFR_CANCELLATION\"" ws "}"
 
 speed-until ::= speed-until-faf | speed-until-fix | speed-until-dme
 speed-until-faf ::= "{" ws "\"type\"" ws ":" ws "\"FAF\"" ws "}"
@@ -59,6 +69,7 @@ cross-restriction ::= "\"AT\"" | "\"AT_OR_ABOVE\"" | "\"AT_OR_BELOW\""
 squawk-source ::= "\"DISCRETE\"" | "\"VFR\""
 octal-code ::= "\"" octal-digit octal-digit octal-digit octal-digit "\""
 octal-digit ::= [0-7]
+runway-string ::= "\"" [0-9] [0-9]? [LRC]? "\""
 boolean ::= "true" | "false"
 
 number ::= "-"? [0-9]+ ("." [0-9]+)?

@@ -4,6 +4,25 @@ export type { CwtWakeCategory } from "@core";
 import type { MvaChart } from "./mva";
 import type { ProcedureCatalog } from "./procedures/types";
 import type { LoadedVideoMap, VideoMapGroupSet } from "./loadVideoMaps";
+import type {
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
+} from "./regional";
+
+export type {
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
+};
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
 export interface Runway {
@@ -244,4 +263,49 @@ export interface Scenario {
    * “no surveillance”). This ticket does not sample or paint.
    */
   radarSites: RadarSite[];
+  /** Optional validated regional facility containing satellite airports and controlled airspace. */
+  regional?: RegionalFacility;
+  /** Optional regional pack identifier (e.g. "katl") declared in scenario JSON. */
+  regionalPack?: string;
+  /** Optional generic ambient VFR population and navigation configuration (T04-71). */
+  vfrTraffic?: VfrTrafficConfig;
+  /** Optional unsolicited airborne VFR pilot request scheduling (T04-72). */
+  vfrRequests?: VfrRequestConfig;
+}
+
+export interface VfrAircraftMixRow {
+  aircraftType: string;
+  weight: number;
+  callsignPrefix: string;
+  performanceSource: "PROFILE_REGISTRY" | "TRAINER_DEFAULT";
+}
+
+export interface VfrAltitudeMixRow {
+  minAltitudeFt: number;
+  maxAltitudeFt: number;
+  weight: number;
+}
+
+export interface VfrMovementMix {
+  localPercent?: number;
+  transitPercent?: number;
+  airportBoundPercent?: number;
+}
+
+export interface VfrTrafficConfig {
+  initialCount?: number;
+  targetCount?: number;
+  entriesPerHour?: number;
+  maxPopulation?: number;
+  seed?: number;
+  aircraftMix?: VfrAircraftMixRow[];
+  altitudeMix?: VfrAltitudeMixRow[];
+  movementMix?: VfrMovementMix;
+}
+
+export interface VfrRequestConfig {
+  flightFollowingPercent?: number;
+  ifrPickupPercent?: number;
+  requestCapPerHour?: number;
+  ifrCancellationPercent?: number;
 }

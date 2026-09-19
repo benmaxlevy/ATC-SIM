@@ -228,6 +228,65 @@ CASES: list[dict[str, Any]] = [
         "text": "maintain vfr",
         "expect": {"instructions": [{"type": "MAINTAIN_VFR"}]},
     },
+    {
+        "id": "radar-contact-bare",
+        "text": "radar contact",
+        "expect": {"instructions": [{"type": "RADAR_CONTACT"}]},
+    },
+    {
+        "id": "radar-contact-position",
+        "text": "radar contact five miles from CEDAR",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "CEDAR", "referenceKind": "FIX"}
+            ]
+        },
+    },
+    {
+        "id": "radar-contact-airport",
+        "text": "radar contact two five miles southeast of atlanta airport",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 25, "referenceId": "KATL", "referenceKind": "AIRPORT"}
+            ]
+        },
+    },
+    # --- Request-control commands ---
+    {
+        "id": "say-request",
+        "text": "say request",
+        "expect": {"instructions": [{"type": "REQUEST_DETAILS"}]},
+    },
+    {
+        "id": "standby",
+        "text": "stand by",
+        "expect": {"instructions": [{"type": "STANDBY_REQUEST"}]},
+    },
+    {
+        "id": "approve-flight-following",
+        "text": "approve flight following",
+        "expect": {"instructions": [{"type": "APPROVE_FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-flight-following",
+        "text": "unable flight following",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-ifr-pickup",
+        "text": "unable ifr pickup",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}]},
+    },
+    {
+        "id": "terminate-radar-service",
+        "text": "radar service terminated",
+        "expect": {"instructions": [{"type": "TERMINATE_RADAR_SERVICE"}]},
+    },
+    {
+        "id": "acknowledge-ifr-cancellation",
+        "text": "ifr cancellation received",
+        "expect": {"instructions": [{"type": "ACKNOWLEDGE_IFR_CANCELLATION"}]},
+    },
     # --- IFR clearance forms ---
     {
         "id": "clearance-as-filed-airport-alias",
@@ -424,6 +483,16 @@ CASES: list[dict[str, Any]] = [
         "id": "app-rnav-clean",
         "text": "cleared RNAV runway one eight approach",
         "expect": {"instructions": [{"type": "CLEARED_APPROACH", "approachId": "RNAV18"}]},
+    },
+    {
+        "id": "app-visual-clean",
+        "text": "cleared visual approach runway zero niner",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "09"}]},
+    },
+    {
+        "id": "app-visual-rwy",
+        "text": "cleared visual runway one eight",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "18"}]},
     },
     {
         "id": "loc-clean",

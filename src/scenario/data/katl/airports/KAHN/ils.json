@@ -1,0 +1,106 @@
+{
+  "airportId": "KAHN",
+  "components": [
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": -26.002852,
+      "yNm": -19.045,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -58.800868,
+      "yNm": -2.039333,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GRD",
+      "kind": "DME",
+      "name": "GREENWOOD",
+      "xNm": 58.321394,
+      "yNm": 18.1755,
+      "latDeg": 34.25156666666667,
+      "lonDeg": -82.15415,
+      "freqMhz": 115.5,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -54.066415,
+      "yNm": -18.904667,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "HRS",
+      "kind": "DME",
+      "name": "HARRIS",
+      "xNm": -29.353772,
+      "yNm": 59.661333,
+      "latDeg": 34.94299722222222,
+      "lonDeg": -83.91567500000001,
+      "freqMhz": 109.8,
+      "class": "T"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": -15.990322,
+      "yNm": -75.447333,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -48.423479,
+      "yNm": -4.380667,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "IAHNGS",
+      "kind": "GS",
+      "name": "IAHN GS",
+      "xNm": 0.231303,
+      "yNm": -0.0085,
+      "latDeg": 33.948499999999996,
+      "lonDeg": -83.32126666666666,
+      "gsAngleDeg": 3,
+      "tchFt": 40
+    },
+    {
+      "id": "IAHN",
+      "kind": "LOC",
+      "name": "IAHN",
+      "xNm": -0.785573,
+      "yNm": 0.011,
+      "latDeg": 33.948825,
+      "lonDeg": -83.34169722222222,
+      "freqMhz": 110.95,
+      "courseDeg": 274.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79
+    }
+  ]
+}

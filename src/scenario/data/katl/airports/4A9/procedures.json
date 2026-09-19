@@ -1,0 +1,42 @@
+{
+  "airportId": "4A9",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R04",
+      "type": "RNAV",
+      "runway": "04",
+      "name": "RNAV RWY 04",
+      "thresholdFixId": "RW04",
+      "courseDeg": 43.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1234
+    },
+    {
+      "id": "R22-Y",
+      "type": "RNAV",
+      "runway": "22",
+      "name": "RNAV RWY 22",
+      "thresholdFixId": "RW22",
+      "courseDeg": 214.4,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1277
+    },
+    {
+      "id": "R22-Z",
+      "type": "RNAV",
+      "runway": "22",
+      "name": "RNAV RWY 22",
+      "thresholdFixId": "RW22",
+      "courseDeg": 223.7,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1214
+    }
+  ]
+}

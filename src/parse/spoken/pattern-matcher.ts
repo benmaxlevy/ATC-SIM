@@ -9,20 +9,38 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+
+function isRequestControlInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "REQUEST_DETAILS" ||
+    instruction.type === "STANDBY_REQUEST" ||
+    instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    instruction.type === "DECLINE_REQUEST" ||
+    instruction.type === "RADAR_CONTACT" ||
+    instruction.type === "TERMINATE_RADAR_SERVICE" ||
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
+  );
+}
 import {
   parseAltitudeFt,
   parseHeadingDeg,
+  parseDistanceNmValue,
   parseSpeedKt,
   parseTurnDegreesValue,
   singleDigit,
   squawkDigit,
 } from "./numbers";
 import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundAirportToCatalog,
   groundApproachToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
+  groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogApproach,
   type CatalogProcedure,
@@ -54,6 +72,12 @@ const COMMAND_TRIGGERS = new Set([
   "iden",
   "say",
   "cancel",
+  "stand",
+  "standby",
+  "approve",
+  "unable",
+  "radar",
+  "visual",
 ]);
 
 function runwaySide(tok: string | undefined): string | null {
@@ -325,6 +349,28 @@ function matchClearedApproach(
     j += 2;
   } else if (tokens[j] === "for" || tokens[j] === "to") {
     j += 1;
+  }
+
+  if (tokens[j] === "visual") {
+    let vj = j + 1;
+    if (tokens[vj] === "approach") {
+      vj += 1;
+    }
+    const rwy = matchRunway(tokens, vj, false);
+    if (rwy) {
+      let rj = rwy.next;
+      if (tokens[rj] === "approach") {
+        rj += 1;
+      }
+      return {
+        instruction: {
+          type: "CLEARED_VISUAL",
+          runwayId: rwy.id,
+        },
+        next: rj,
+      };
+    }
+    return null;
   }
 
   if (tokens[j] === "ils") {
@@ -883,6 +929,231 @@ function matchMaintainVfr(
   return { instruction: { type: "MAINTAIN_VFR" }, next: i + 2 };
 }
 
+function matchRequestDetails(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "say" && tokens[i + 1] === "request") {
+    return { instruction: { type: "REQUEST_DETAILS" }, next: i + 2 };
+  }
+  return null;
+}
+
+function matchStandby(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "stand" && tokens[i + 1] === "by") {
+    return { instruction: { type: "STANDBY_REQUEST" }, next: i + 2 };
+  }
+  if (tokens[i] === "standby") {
+    return { instruction: { type: "STANDBY_REQUEST" }, next: i + 1 };
+  }
+  return null;
+}
+
+function matchApproveFlightFollowing(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "approve" && tokens[i + 1] === "flight" && tokens[i + 2] === "following") {
+    return { instruction: { type: "APPROVE_FLIGHT_FOLLOWING" }, next: i + 3 };
+  }
+  return null;
+}
+
+function matchDeclineRequest(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "unable") {
+    if (tokens[i + 1] === "flight" && tokens[i + 2] === "following") {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        next: i + 3,
+      };
+    }
+    if (
+      tokens[i + 1] === "to" &&
+      tokens[i + 2] === "provide" &&
+      tokens[i + 3] === "flight" &&
+      tokens[i + 4] === "following"
+    ) {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        next: i + 5,
+      };
+    }
+    if (tokens[i + 1] === "ifr" && tokens[i + 2] === "pickup") {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        next: i + 3,
+      };
+    }
+    if (
+      tokens[i + 1] === "to" &&
+      tokens[i + 2] === "provide" &&
+      tokens[i + 3] === "ifr" &&
+      tokens[i + 4] === "pickup"
+    ) {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        next: i + 5,
+      };
+    }
+  }
+  return null;
+}
+
+function matchRadarServiceTerminated(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "radar" && tokens[i + 1] === "service" && tokens[i + 2] === "terminated") {
+    return { instruction: { type: "TERMINATE_RADAR_SERVICE" }, next: i + 3 };
+  }
+  return null;
+}
+
+function matchAcknowledgeIfrCancellation(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] === "ifr" && tokens[i + 1] === "cancellation" && tokens[i + 2] === "received") {
+    return { instruction: { type: "ACKNOWLEDGE_IFR_CANCELLATION" }, next: i + 3 };
+  }
+  return null;
+}
+
+function matchRadarContact(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+  airports: readonly CatalogAirport[] = [],
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "radar" || tokens[i + 1] !== "contact") {
+    return null;
+  }
+  const dist = parseDistanceNmValue(tokens, i + 2);
+  if (!dist) {
+    // Bare `radar contact`: identification with no position report.
+    return { instruction: { type: "RADAR_CONTACT" }, next: i + 2 };
+  }
+  if (dist.value <= 0) {
+    return null;
+  }
+  let j = dist.next;
+  if (tokens[j] !== "miles" && tokens[j] !== "mile") {
+    return null;
+  }
+  j += 1;
+  // Optional direction (`25 miles southeast of KATL`, split `south east`
+  // included); the stored reference is position only.
+  if (tokens[j] === "north" || tokens[j] === "south") {
+    j += 1;
+    if (tokens[j] === "east" || tokens[j] === "west") {
+      j += 1;
+    }
+  } else if (tokens[j] !== undefined && EIGHT_POINT_CARDINALS.has(tokens[j]!)) {
+    j += 1;
+  }
+  if (tokens[j] !== "from" && tokens[j] !== "of") {
+    return null;
+  }
+  j += 1;
+
+  let end = j;
+  while (end < tokens.length && !COMMAND_TRIGGERS.has(tokens[end] ?? "")) {
+    end += 1;
+  }
+  if (end <= j) {
+    return null;
+  }
+  const refTokens = tokens.slice(j, end);
+  const rawRef = refTokens.join(" ");
+  // Spoken references arrive as NATO runs (`delta echo mike`); translate to
+  // the id before grounding, mirroring parseFixIdFrom. Falls through to
+  // phrase grounding for catalog aliases when the run does not resolve.
+  const phonetics: string[] = [];
+  let phoneticEnd = j;
+  while (
+    phonetics.length < 5 &&
+    tokens[phoneticEnd] !== undefined &&
+    tokens[phoneticEnd]! in PHONETIC_TO_LETTER
+  ) {
+    phonetics.push(PHONETIC_TO_LETTER[tokens[phoneticEnd]!]!);
+    phoneticEnd += 1;
+  }
+  if (phonetics.length >= 2) {
+    const phoneticId = phonetics.join("");
+    const phoneticGrounded = groundReferenceToCatalog(phoneticId, catalog);
+    if (phoneticGrounded) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: phoneticGrounded.referenceId,
+          referenceKind: phoneticGrounded.referenceKind,
+        },
+        next: phoneticEnd,
+      };
+    }
+    const phoneticAirport = groundAirportToCatalog(phoneticId, airports);
+    if (phoneticAirport) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: phoneticAirport,
+          referenceKind: "AIRPORT",
+        },
+        next: phoneticEnd,
+      };
+    }
+  }
+  const grounded = groundReferenceToCatalog(rawRef, catalog);
+  if (grounded) {
+    return {
+      instruction: {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: grounded.referenceId,
+        referenceKind: grounded.referenceKind,
+      },
+      next: end,
+    };
+  }
+  for (let k = end; k > j; k -= 1) {
+    const subRef = tokens.slice(j, k).join(" ");
+    const subGrounded = groundReferenceToCatalog(subRef, catalog);
+    if (subGrounded) {
+      return {
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist.value,
+          referenceId: subGrounded.referenceId,
+          referenceKind: subGrounded.referenceKind,
+        },
+        next: k,
+      };
+    }
+  }
+  // Airport names and aliases (`atlanta international airport` → KATL).
+  const airportHit = groundAirportPhraseToCatalog(tokens.slice(j, end).join(" "), airports);
+  if (airportHit) {
+    return {
+      instruction: {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: airportHit.icao,
+        referenceKind: "AIRPORT",
+      },
+      next: j + airportHit.length,
+    };
+  }
+  return null;
+}
+
 function matchTurnDegrees(
   tokens: readonly string[],
   i: number,
@@ -1377,6 +1648,7 @@ export function matchSpokenPatterns(
   catalogProcedures?: readonly CatalogProcedure[],
   catalogApproaches?: readonly CatalogApproach[],
   clearanceLimitIds?: ReadonlySet<string>,
+  catalogAirports?: readonly CatalogAirport[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1386,6 +1658,7 @@ export function matchSpokenPatterns(
   const catalog = catalogFixes ?? [];
   const procedures = catalogProcedures ?? [];
   const approaches = catalogApproaches ?? [];
+  const airports = catalogAirports ?? [];
 
   const claimed = new Array(tokens.length).fill(false);
   const collectedInstructions: Array<{ start: number; instruction: Instruction }> = [];
@@ -1411,6 +1684,13 @@ export function matchSpokenPatterns(
       matchDirect(tokens, i, catalog) ??
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??
+      matchRequestDetails(tokens, i) ??
+      matchStandby(tokens, i) ??
+      matchApproveFlightFollowing(tokens, i) ??
+      matchDeclineRequest(tokens, i) ??
+      matchRadarServiceTerminated(tokens, i) ??
+      matchAcknowledgeIfrCancellation(tokens, i) ??
+      matchRadarContact(tokens, i, catalog, airports) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??
       matchAltitude(tokens, i) ??
@@ -1468,7 +1748,12 @@ export function matchSpokenPatterns(
   // If there are unconsumed command triggers, a command in the utterance failed to parse
   let hasUnparsedCommandTrigger = false;
   for (let i = 0; i < tokens.length; i += 1) {
-    if (!claimed[i] && COMMAND_TRIGGERS.has(tokens[i]!)) {
+    if (
+      !claimed[i] &&
+      (COMMAND_TRIGGERS.has(tokens[i]!) ||
+        /^[hlrcdas]\d+$/i.test(tokens[i]!) ||
+        /^t\d+[lr]?$/i.test(tokens[i]!))
+    ) {
       hasUnparsedCommandTrigger = true;
       break;
     }
@@ -1488,6 +1773,16 @@ export function matchSpokenPatterns(
 
   collectedInstructions.sort((a, b) => a.start - b.start);
   const instructions = collectedInstructions.map((item) => item.instruction);
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
+    return {
+      ok: false,
+      error: formatParseError(
+        PARSE_ERROR.BAD_CLEARANCE,
+        "request instruction must be the only instruction",
+      ),
+      sourceText,
+    };
+  }
   const cancellationError = cancelApproachSequenceError(instructions);
   if (cancellationError !== null) {
     return {

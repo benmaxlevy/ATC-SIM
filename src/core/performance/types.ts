@@ -82,4 +82,10 @@ export interface AircraftProfileOverride {
 export interface AircraftProfileDataset {
   readonly defaults: AircraftProfileDefaults;
   readonly aircraft: Readonly<Record<string, AircraftProfileOverride>>;
+  /**
+   * General-aviation catalog, separate from airliner `aircraft` so IFR arrival
+   * fleet selection (which walks airline lists, never profile keys) cannot
+   * spawn GA types. VFR traffic mixes reference this object only.
+   */
+  readonly generalAviation?: Readonly<Record<string, AircraftProfileOverride>>;
 }

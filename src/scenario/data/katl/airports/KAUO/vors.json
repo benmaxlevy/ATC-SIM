@@ -1,0 +1,115 @@
+{
+  "airportId": "KAUO",
+  "vors": [
+    {
+      "id": "EDN",
+      "kind": "VORDME",
+      "name": "ENTERPRISE",
+      "xNm": -23.689275,
+      "yNm": -79.124333,
+      "latDeg": 31.296372222222224,
+      "lonDeg": -85.90273611111111,
+      "freqMhz": 116.6,
+      "class": "T"
+    },
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": 15.339453,
+      "yNm": -39.891667,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -32.827779,
+      "yNm": 81.6775,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "HEY",
+      "kind": "VORDME",
+      "name": "HANCHEY",
+      "xNm": -11.056726,
+      "yNm": -74.4585,
+      "latDeg": 31.374136111111113,
+      "lonDeg": -85.65277777777779,
+      "freqMhz": 110.6,
+      "class": "T"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": 11.511574,
+      "yNm": 26.0405,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": 22.281634,
+      "yNm": -16.969,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "MGM",
+      "kind": "VORDME",
+      "name": "MONTGOMERY",
+      "xNm": -44.763456,
+      "yNm": -23.569833,
+      "latDeg": 32.22228055555556,
+      "lonDeg": -86.31972777777777,
+      "freqMhz": 112.1,
+      "class": "T"
+    },
+    {
+      "id": "OZR",
+      "kind": "VORDME",
+      "name": "CAIRNS",
+      "xNm": -14.772999,
+      "yNm": -80.769833,
+      "latDeg": 31.26894722222222,
+      "lonDeg": -85.72631111111112,
+      "freqMhz": 111.2,
+      "class": "L"
+    },
+    {
+      "id": "PZD",
+      "kind": "VORDME",
+      "name": "PECAN",
+      "xNm": 57.659507,
+      "yNm": -57.594333,
+      "latDeg": 31.655205555555554,
+      "lonDeg": -84.2931,
+      "freqMhz": 116.1,
+      "class": "H"
+    },
+    {
+      "id": "RRS",
+      "kind": "VORDME",
+      "name": "WIREGRASS",
+      "xNm": 0.140947,
+      "yNm": -79.8315,
+      "latDeg": 31.284586111111114,
+      "lonDeg": -85.43121111111111,
+      "freqMhz": 111.6,
+      "class": "T"
+    }
+  ]
+}

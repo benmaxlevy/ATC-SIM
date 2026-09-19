@@ -9,9 +9,22 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+
+function isRequestControlInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "REQUEST_DETAILS" ||
+    instruction.type === "STANDBY_REQUEST" ||
+    instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    instruction.type === "DECLINE_REQUEST" ||
+    instruction.type === "RADAR_CONTACT" ||
+    instruction.type === "TERMINATE_RADAR_SERVICE" ||
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
+  );
+}
 import {
   ONES,
   parseAltitudeFt,
+  parseDistanceNmValue,
   parseHeadingDeg,
   parseSpeedKt,
   parseTurnDegreesValue,
@@ -21,10 +34,15 @@ import {
   TENS,
 } from "./numbers";
 import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundAirportToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
+  groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
@@ -39,6 +57,8 @@ interface Cursor {
   catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
   clearanceLimitIds?: ReadonlySet<string>;
+  /** Separate airport namespace for position references; never fix grounding. */
+  airports?: readonly CatalogAirport[];
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -188,6 +208,203 @@ function tryMaintainVfr(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "maintain") && take(c, "vfr")) {
     return { type: "MAINTAIN_VFR" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRequestDetails(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "say") && take(c, "request")) {
+    return { type: "REQUEST_DETAILS" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryStandby(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "stand") && take(c, "by")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  if (take(c, "standby")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryApproveFlightFollowing(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "approve") && take(c, "flight") && take(c, "following")) {
+    return { type: "APPROVE_FLIGHT_FOLLOWING" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryDeclineRequest(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "unable")) {
+    if (take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+    if (take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRadarServiceTerminated(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "radar") && take(c, "service") && take(c, "terminated")) {
+    return { type: "TERMINATE_RADAR_SERVICE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryAcknowledgeIfrCancellation(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "ifr") && take(c, "cancellation") && take(c, "received")) {
+    return { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRadarContact(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "radar") || !take(c, "contact")) {
+    c.i = start;
+    return null;
+  }
+  const dist = parseDistanceNmValue(c.tokens, c.i);
+  if (!dist) {
+    // Bare `radar contact`: identification with no position report.
+    return { type: "RADAR_CONTACT" };
+  }
+  if (dist.value <= 0) {
+    c.i = start;
+    return null;
+  }
+  c.i = dist.next;
+  if (!take(c, "miles") && !take(c, "mile")) {
+    c.i = start;
+    return null;
+  }
+  // Optional direction (`25 miles southeast of KATL`, split `south east`
+  // included); the stored reference is position only.
+  if (peek(c) === "north" || peek(c) === "south") {
+    c.i += 1;
+    if (peek(c) === "east" || peek(c) === "west") {
+      c.i += 1;
+    }
+  } else if (peek(c) !== undefined && EIGHT_POINT_CARDINALS.has(peek(c)!)) {
+    c.i += 1;
+  }
+  if (!take(c, "from") && !take(c, "of")) {
+    c.i = start;
+    return null;
+  }
+  const refStart = c.i;
+  let refEnd = refStart;
+  while (refEnd < c.tokens.length && !RESERVED_SPOKEN.has(c.tokens[refEnd] ?? "")) {
+    refEnd += 1;
+  }
+  // Keep a trailing airport type word in the span so `atlanta international
+  // airport` grounds as one airport reference instead of stranding `airport`.
+  while (
+    refEnd < c.tokens.length &&
+    (c.tokens[refEnd] === "airport" || c.tokens[refEnd] === "field")
+  ) {
+    refEnd += 1;
+  }
+  if (refEnd <= refStart) {
+    c.i = start;
+    return null;
+  }
+  const rawRef = c.tokens.slice(refStart, refEnd).join(" ");
+  // Spoken references arrive as NATO runs (`delta echo mike`); translate to
+  // the id before grounding, mirroring parseFixId. Falls through to phrase
+  // grounding for catalog aliases when the run does not resolve.
+  const phonetics: string[] = [];
+  let phoneticEnd = refStart;
+  while (
+    phonetics.length < 5 &&
+    c.tokens[phoneticEnd] !== undefined &&
+    c.tokens[phoneticEnd]! in PHONETIC_TO_LETTER
+  ) {
+    phonetics.push(PHONETIC_TO_LETTER[c.tokens[phoneticEnd]!]!);
+    phoneticEnd += 1;
+  }
+  if (phonetics.length >= 2) {
+    const phoneticId = phonetics.join("");
+    const phoneticGrounded = c.catalog ? groundReferenceToCatalog(phoneticId, c.catalog) : null;
+    if (phoneticGrounded) {
+      c.i = phoneticEnd;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: phoneticGrounded.referenceId,
+        referenceKind: phoneticGrounded.referenceKind,
+      };
+    }
+    const phoneticAirport = groundAirportToCatalog(phoneticId, c.airports ?? []);
+    if (phoneticAirport) {
+      c.i = phoneticEnd;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: phoneticAirport,
+        referenceKind: "AIRPORT",
+      };
+    }
+  }
+  const grounded = c.catalog ? groundReferenceToCatalog(rawRef, c.catalog) : null;
+  if (grounded) {
+    c.i = refEnd;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: grounded.referenceId,
+      referenceKind: grounded.referenceKind,
+    };
+  }
+  for (let k = refEnd; k > refStart; k -= 1) {
+    const subRef = c.tokens.slice(refStart, k).join(" ");
+    const subGrounded = c.catalog ? groundReferenceToCatalog(subRef, c.catalog) : null;
+    if (subGrounded) {
+      c.i = k;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: subGrounded.referenceId,
+        referenceKind: subGrounded.referenceKind,
+      };
+    }
+  }
+  // Airport names and aliases (`atlanta international airport` → KATL).
+  const airportHit = groundAirportPhraseToCatalog(
+    c.tokens.slice(refStart, refEnd).join(" "),
+    c.airports ?? [],
+  );
+  if (airportHit) {
+    c.i = refStart + airportHit.length;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: airportHit.icao,
+      referenceKind: "AIRPORT",
+    };
   }
   c.i = start;
   return null;
@@ -786,7 +1003,24 @@ function ilsApproachIdFromRunway(rwy: string): string {
 
 function tryCleared(c: Cursor): Instruction | null {
   const start = c.i;
-  if ((!take(c, "clear") && !take(c, "cleared")) || !take(c, "ils")) {
+  if (!take(c, "clear") && !take(c, "cleared")) {
+    c.i = start;
+    return null;
+  }
+  take(c, "for");
+  take(c, "the");
+  take(c, "to");
+  if (take(c, "visual")) {
+    take(c, "approach");
+    const rwy = runwayId(c);
+    if (rwy === null) {
+      c.i = start;
+      return null;
+    }
+    take(c, "approach");
+    return { type: "CLEARED_VISUAL", runwayId: rwy };
+  }
+  if (!take(c, "ils")) {
     c.i = start;
     return null;
   }
@@ -956,6 +1190,13 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
     tryMaintainVfr(c) ??
+    tryRequestDetails(c) ??
+    tryStandby(c) ??
+    tryApproveFlightFollowing(c) ??
+    tryDeclineRequest(c) ??
+    tryRadarServiceTerminated(c) ??
+    tryAcknowledgeIfrCancellation(c) ??
+    tryRadarContact(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??
@@ -1007,6 +1248,7 @@ export function parseSpokenGrammar(
   catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   clearanceLimitIds?: ReadonlySet<string>,
+  catalogAirports?: readonly CatalogAirport[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1019,6 +1261,7 @@ export function parseSpokenGrammar(
     catalog: catalogFixes ?? [],
     procedures: catalogProcedures ?? [],
     clearanceLimitIds,
+    airports: catalogAirports ?? [],
   };
   const callsignAttempt = parseSpokenCallsign(tokens, 0);
   let callsignToken: string | null = null;
@@ -1069,6 +1312,9 @@ export function parseSpokenGrammar(
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
   const cancellationError = cancelApproachSequenceError(instructions);

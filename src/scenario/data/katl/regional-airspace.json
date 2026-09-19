@@ -1,0 +1,4450 @@
+{
+  "schemaVersion": 1,
+  "airspaces": [
+    {
+      "id": "UC:KAHN:D-A",
+      "name": "ATHENS",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KAHN",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3300,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03300",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 33.94863888888889,
+            "lonDeg": -83.32591388888889
+          },
+          "arcOrigin": {
+            "latDeg": 33.94863888888889,
+            "lonDeg": -83.32591388888889
+          },
+          "arcDistanceNm": 4.6
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-A",
+      "name": "ATLANTA AREA A",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.71649166666667,
+            "lonDeg": -84.49361111111111
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-B",
+      "name": "ATLANTA AREA A",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 3300,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03300",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 60,
+          "boundaryVia": "R",
+          "boundaryViaType": "CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.71649166666667,
+            "lonDeg": -84.49361111111111
+          },
+          "arcOrigin": {
+            "latDeg": 33.779125,
+            "lonDeg": -84.52136388888889
+          },
+          "arcDistanceNm": 4,
+          "arcBearingDeg": 159.7
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-C",
+      "name": "ATLANTA AREA B",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 2500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02500",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 90,
+          "boundaryVia": "R",
+          "boundaryViaType": "CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.71641944444445,
+            "lonDeg": -84.21926944444445
+          },
+          "arcOrigin": {
+            "latDeg": 33.62916666666667,
+            "lonDeg": -84.435
+          },
+          "arcDistanceNm": 12,
+          "arcBearingDeg": 64.1
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-D",
+      "name": "ATLANTA AREA B",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 2500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02500",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 130,
+          "boundaryVia": "L",
+          "boundaryViaType": "COUNTER_CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.71643055555556,
+            "lonDeg": -84.548925
+          },
+          "arcOrigin": {
+            "latDeg": 33.779125,
+            "lonDeg": -84.52136388888889
+          },
+          "arcDistanceNm": 4,
+          "arcBearingDeg": 200.2
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-E",
+      "name": "ATLANTA AREA B",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 3300,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03300",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 180,
+          "boundaryVia": "L",
+          "boundaryViaType": "COUNTER_CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.716455555555555,
+            "lonDeg": -84.52796111111111
+          },
+          "arcOrigin": {
+            "latDeg": 33.62916666666667,
+            "lonDeg": -84.435
+          },
+          "arcDistanceNm": 7,
+          "arcBearingDeg": 318.3
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-F",
+      "name": "ATLANTA AREA C",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 3000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.71595277777778,
+            "lonDeg": -84.00888888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-G",
+      "name": "ATLANTA AREA D",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 3500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03500",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 310,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.78242222222222,
+            "lonDeg": -84.86055555555555
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-H",
+      "name": "ATLANTA AREA E",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 4000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "04000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 410,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.782741666666666,
+            "lonDeg": -84.00888888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-I",
+      "name": "ATLANTA AREA F",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 5000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "05000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 510,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.84878333333334,
+            "lonDeg": -84.96138888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-J",
+      "name": "ATLANTA AREA G",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 6000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "06000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 590,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.420049999999996,
+            "lonDeg": -84.27654166666666
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-K",
+      "name": "ATLANTA AREA H",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 5000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "05000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 640,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.420049999999996,
+            "lonDeg": -84.27654166666666
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-L",
+      "name": "ATLANTA AREA H",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 5000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "05000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 680,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.41999722222222,
+            "lonDeg": -84.5637611111111
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-M",
+      "name": "ATLANTA AREA I",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 7000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "07000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 730,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.85006388888889,
+            "lonDeg": -84.27703611111112
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-N",
+      "name": "ATLANTA AREA J",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 6000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "06000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 770,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.85006388888889,
+            "lonDeg": -84.27703611111112
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KATL:B-O",
+      "name": "ATLANTA AREA J",
+      "type": "CONTROLLED",
+      "class": "B",
+      "centerAirportId": "KATL",
+      "lowerLimit": {
+        "altitudeFt": 6000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "06000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 12500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "12500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 810,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.84998055555556,
+            "lonDeg": -84.57088333333333
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KAUO:D-A",
+      "name": "AUBURN",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KAUO",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 2500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 32.61511111111111,
+            "lonDeg": -85.434
+          },
+          "arcOrigin": {
+            "latDeg": 32.61511111111111,
+            "lonDeg": -85.434
+          },
+          "arcDistanceNm": 4.4
+        }
+      ]
+    },
+    {
+      "id": "UC:KCHA:C-A",
+      "name": "CHATTANOOGA, LOVELL FIELD",
+      "type": "CONTROLLED",
+      "class": "C",
+      "centerAirportId": "KCHA",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 4700,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "04700",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 35.03527777777778,
+            "lonDeg": -85.2038888888889
+          },
+          "arcOrigin": {
+            "latDeg": 35.03527777777778,
+            "lonDeg": -85.2038888888889
+          },
+          "arcDistanceNm": 5
+        }
+      ]
+    },
+    {
+      "id": "UC:KCSG:D-A",
+      "name": "COLUMBUS ARPT AND LAWSON AAF",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KCSG",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 2900,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02900",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 32.516333333333336,
+            "lonDeg": -84.93886111111111
+          },
+          "arcOrigin": {
+            "latDeg": 32.516333333333336,
+            "lonDeg": -84.93886111111111
+          },
+          "arcDistanceNm": 4.4
+        }
+      ]
+    },
+    {
+      "id": "UC:KCSG:D-B",
+      "name": "COLUMBUS ARPT AND LAWSON AAF",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KCSG",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 2700,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02700",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24829722222222,
+            "lonDeg": -84.89440277777778
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KFTY:D-A",
+      "name": "ATLANTA FULTON CO EXEC/BROWN",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KFTY",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3300,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03300",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "R",
+          "boundaryViaType": "CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.83034444444445,
+            "lonDeg": -84.47001944444445
+          },
+          "arcOrigin": {
+            "latDeg": 33.779125,
+            "lonDeg": -84.52136388888889
+          },
+          "arcDistanceNm": 4,
+          "arcBearingDeg": 39.9
+        }
+      ]
+    },
+    {
+      "id": "UC:KLZU:D-A",
+      "name": "LAWRENCEVILLE",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KLZU",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3600,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03600",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.92279444444444,
+            "lonDeg": -84.05259166666666
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KMCN:D-A",
+      "name": "MACON",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KMCN",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 2900,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02900",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "L",
+          "boundaryViaType": "COUNTER_CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 32.63983611111111,
+            "lonDeg": -83.700475
+          },
+          "arcOrigin": {
+            "latDeg": 32.640169444444446,
+            "lonDeg": -83.59191944444444
+          },
+          "arcDistanceNm": 5.5,
+          "arcBearingDeg": 269.8
+        }
+      ]
+    },
+    {
+      "id": "UC:KMGE:D-A",
+      "name": "MARIETTA DOBBINS ARB",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KMGE",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3600,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03600",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.92502777777778,
+            "lonDeg": -84.65600277777779
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KPDK:D-A",
+      "name": "ATLANTA DEKALB-PEACHTREE ARPT",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KPDK",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.90368888888889,
+            "lonDeg": -84.372525
+          }
+        }
+      ]
+    },
+    {
+      "id": "UC:KRYY:D-A",
+      "name": "MARIETTA COBB COUNTY-MCCOLLUM",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KRYY",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 3500,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "03500",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "R",
+          "boundaryViaType": "CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.94840277777777,
+            "lonDeg": -84.61660277777777
+          },
+          "arcOrigin": {
+            "latDeg": 34.01316666666666,
+            "lonDeg": -84.59702777777777
+          },
+          "arcDistanceNm": 4,
+          "arcBearingDeg": 194.1
+        }
+      ]
+    },
+    {
+      "id": "UC:KWRB:D-A",
+      "name": "WARNER ROBINS",
+      "type": "CONTROLLED",
+      "class": "D",
+      "centerAirportId": "KWRB",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 2900,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "02900",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "R",
+          "boundaryViaType": "CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 32.731675,
+            "lonDeg": -83.58252499999999
+          },
+          "arcOrigin": {
+            "latDeg": 32.640169444444446,
+            "lonDeg": -83.59191944444444
+          },
+          "arcDistanceNm": 5.5,
+          "arcBearingDeg": 5
+        }
+      ]
+    },
+    {
+      "id": "UR:_:A-685-A",
+      "name": "A-685",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "ALERT",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 700,
+        "unit": "AGL",
+        "reference": "AGL",
+        "rawAltitude": "00700",
+        "rawUnit": "A"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 34.715,
+            "lonDeg": -84.11777777777777
+          },
+          "arcOrigin": {
+            "latDeg": 34.715,
+            "lonDeg": -84.11777777777777
+          },
+          "arcDistanceNm": 12.5
+        }
+      ]
+    },
+    {
+      "id": "UR:_:M-BULLDOG A-A",
+      "name": "BULLDOG A MOA",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "MOA",
+      "lowerLimit": {
+        "altitudeFt": 500,
+        "unit": "AGL",
+        "reference": "AGL",
+        "rawAltitude": "00500",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 9999,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "09999",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.85,
+            "lonDeg": -82.81361111111111
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.966944444444444,
+            "lonDeg": -82.77055555555556
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.05444444444444,
+            "lonDeg": -82.81027777777777
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.22166666666667,
+            "lonDeg": -82.52055555555556
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "L",
+          "boundaryViaType": "COUNTER_CLOCKWISE_ARC",
+          "position": {
+            "latDeg": 33.16611111111111,
+            "lonDeg": -82.42
+          },
+          "arcOrigin": {
+            "latDeg": 33.20722222222223,
+            "lonDeg": -82.38583333333334
+          },
+          "arcDistanceNm": 3,
+          "arcBearingDeg": 215
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.20444444444445,
+            "lonDeg": -82.3261111111111
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.216944444444444,
+            "lonDeg": -82.14972222222222
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.096111111111114,
+            "lonDeg": -82.07472222222222
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.83361111111111,
+            "lonDeg": -82.01638888888888
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.722500000000004,
+            "lonDeg": -82.4088888888889
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.73694444444445,
+            "lonDeg": -82.77194444444444
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:M-BULLDOG A-C",
+      "name": "BULLDOG A MOA",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "MOA",
+      "lowerLimit": {
+        "altitudeFt": 1501,
+        "unit": "AGL",
+        "reference": "AGL",
+        "rawAltitude": "01501",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 9999,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "09999",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.01694444444444,
+            "lonDeg": -82.875
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.05444444444444,
+            "lonDeg": -82.81027777777777
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.966944444444444,
+            "lonDeg": -82.77055555555556
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.85,
+            "lonDeg": -82.81361111111111
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:M-BULLDOG B-A",
+      "name": "BULLDOG B MOA",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "MOA",
+      "lowerLimit": {
+        "altitudeFt": 10000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "10000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 17999,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "17999",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.23361111111111,
+            "lonDeg": -82.49972222222222
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.20027777777778,
+            "lonDeg": -82.38305555555554
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 33.216944444444444,
+            "lonDeg": -82.14972222222222
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.216944444444444,
+            "lonDeg": -81.98305555555555
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.900277777777774,
+            "lonDeg": -81.84138888888889
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.566944444444445,
+            "lonDeg": -81.93305555555555
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.562777777777775,
+            "lonDeg": -81.96361111111112
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54611111111111,
+            "lonDeg": -82.06222222222222
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.57527777777778,
+            "lonDeg": -82.42472222222223
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.630833333333335,
+            "lonDeg": -82.73305555555555
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.01694444444444,
+            "lonDeg": -82.875
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.223888888888894,
+            "lonDeg": -82.52472222222222
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:M-MOORE-A",
+      "name": "MOORE MOA",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "MOA",
+      "lowerLimit": {
+        "altitudeFt": 500,
+        "unit": "AGL",
+        "reference": "AGL",
+        "rawAltitude": "00500",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 32.55027777777777,
+            "lonDeg": -84.65694444444445
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.55027777777777,
+            "lonDeg": -84.5
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36694444444444,
+            "lonDeg": -84.5
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.28361111111111,
+            "lonDeg": -84.65694444444445
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30972222222222,
+            "lonDeg": -84.65833333333335
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.486111111111114,
+            "lonDeg": -84.65694444444445
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-2101-A",
+      "name": "R-2101",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 5000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "05000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -86.00833333333334
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -85.98333333333333
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.675,
+            "lonDeg": -85.98333333333333
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.66111111111111,
+            "lonDeg": -85.99722222222222
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.66111111111111,
+            "lonDeg": -86.00833333333334
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-2102A-A",
+      "name": "R-2102A",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.89861111111112
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.89333333333335
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68444444444444,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.670833333333334,
+            "lonDeg": -85.9
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -85.92500000000001
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.731944444444444,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73638888888889,
+            "lonDeg": -86.015
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -86.0125
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75555555555555,
+            "lonDeg": -86.00861111111111
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -86.00444444444445
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.9213888888889
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.9213888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-2102B-A",
+      "name": "R-2102B",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.89861111111112
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.89333333333335
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68444444444444,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.670833333333334,
+            "lonDeg": -85.9
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -85.92500000000001
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.731944444444444,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73638888888889,
+            "lonDeg": -86.015
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -86.0125
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75555555555555,
+            "lonDeg": -86.00861111111111
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -86.00444444444445
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.9213888888889
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.9213888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-2102C-A",
+      "name": "R-2102C",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 24000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "24000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.89861111111112
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.89333333333335
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73527777777778,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68444444444444,
+            "lonDeg": -85.88194444444444
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.670833333333334,
+            "lonDeg": -85.9
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -85.92500000000001
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.68888888888888,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.731944444444444,
+            "lonDeg": -86.01861111111111
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.73638888888889,
+            "lonDeg": -86.015
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -86.0125
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75555555555555,
+            "lonDeg": -86.00861111111111
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -86.00444444444445
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.7575,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.99055555555556
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75388888888889,
+            "lonDeg": -85.9213888888889
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 33.75,
+            "lonDeg": -85.9213888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002A-A",
+      "name": "R-3002A",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 4000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "04000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.31916666666667,
+            "lonDeg": -84.7075
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32055555555556,
+            "lonDeg": -84.71444444444445
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.323055555555555,
+            "lonDeg": -84.72166666666666
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32638888888889,
+            "lonDeg": -84.73027777777779
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.328611111111115,
+            "lonDeg": -84.74138888888889
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.331944444444446,
+            "lonDeg": -84.75166666666667
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.33694444444445,
+            "lonDeg": -84.765
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34166666666667,
+            "lonDeg": -84.77555555555556
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.78194444444445
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34861111111111,
+            "lonDeg": -84.79388888888889
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25694444444444,
+            "lonDeg": -84.79222222222222
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.257222222222225,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81333333333333
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.81888888888888
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24666666666667,
+            "lonDeg": -84.82388888888889
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24388888888889,
+            "lonDeg": -84.83138888888888
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.242222222222225,
+            "lonDeg": -84.83749999999999
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.84166666666667
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.236666666666665,
+            "lonDeg": -84.84333333333333
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.87277777777777
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25194444444445,
+            "lonDeg": -84.87249999999999
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.87722222222222
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.259166666666665,
+            "lonDeg": -84.87694444444443
+          }
+        },
+        {
+          "sequence": 270,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25944444444445,
+            "lonDeg": -84.8863888888889
+          }
+        },
+        {
+          "sequence": 280,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.337500000000006,
+            "lonDeg": -84.97666666666667
+          }
+        },
+        {
+          "sequence": 290,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.343333333333334,
+            "lonDeg": -84.97083333333333
+          }
+        },
+        {
+          "sequence": 300,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.96527777777779
+          }
+        },
+        {
+          "sequence": 310,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.350833333333334,
+            "lonDeg": -84.96111111111111
+          }
+        },
+        {
+          "sequence": 320,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35305555555556,
+            "lonDeg": -84.95666666666666
+          }
+        },
+        {
+          "sequence": 330,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.352222222222224,
+            "lonDeg": -84.94861111111112
+          }
+        },
+        {
+          "sequence": 340,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.353611111111114,
+            "lonDeg": -84.93444444444445
+          }
+        },
+        {
+          "sequence": 350,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35916666666667,
+            "lonDeg": -84.9263888888889
+          }
+        },
+        {
+          "sequence": 360,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36388888888889,
+            "lonDeg": -84.92111111111112
+          }
+        },
+        {
+          "sequence": 370,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36472222222223,
+            "lonDeg": -84.91666666666667
+          }
+        },
+        {
+          "sequence": 380,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36833333333333,
+            "lonDeg": -84.9113888888889
+          }
+        },
+        {
+          "sequence": 390,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.38361111111111,
+            "lonDeg": -84.92888888888889
+          }
+        },
+        {
+          "sequence": 400,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.413333333333334,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 410,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.42666666666666,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 420,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.428888888888885,
+            "lonDeg": -84.89166666666668
+          }
+        },
+        {
+          "sequence": 430,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43861111111111,
+            "lonDeg": -84.89194444444445
+          }
+        },
+        {
+          "sequence": 440,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43888888888888,
+            "lonDeg": -84.89833333333334
+          }
+        },
+        {
+          "sequence": 450,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45527777777778,
+            "lonDeg": -84.89805555555556
+          }
+        },
+        {
+          "sequence": 460,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45472222222222,
+            "lonDeg": -84.86944444444444
+          }
+        },
+        {
+          "sequence": 470,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47944444444445,
+            "lonDeg": -84.86888888888888
+          }
+        },
+        {
+          "sequence": 480,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47888888888889,
+            "lonDeg": -84.84638888888888
+          }
+        },
+        {
+          "sequence": 490,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.49527777777778,
+            "lonDeg": -84.84972222222221
+          }
+        },
+        {
+          "sequence": 500,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.50972222222222,
+            "lonDeg": -84.84722222222221
+          }
+        },
+        {
+          "sequence": 510,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51083333333333,
+            "lonDeg": -84.83972222222222
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002B-A",
+      "name": "R-3002B",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 4000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "04000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.31916666666667,
+            "lonDeg": -84.7075
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32055555555556,
+            "lonDeg": -84.71444444444445
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.323055555555555,
+            "lonDeg": -84.72166666666666
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32638888888889,
+            "lonDeg": -84.73027777777779
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.328611111111115,
+            "lonDeg": -84.74138888888889
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.331944444444446,
+            "lonDeg": -84.75166666666667
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.33694444444445,
+            "lonDeg": -84.765
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34166666666667,
+            "lonDeg": -84.77555555555556
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.78194444444445
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34861111111111,
+            "lonDeg": -84.79388888888889
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25694444444444,
+            "lonDeg": -84.79222222222222
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.257222222222225,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81333333333333
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.81888888888888
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24666666666667,
+            "lonDeg": -84.82388888888889
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24388888888889,
+            "lonDeg": -84.83138888888888
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.242222222222225,
+            "lonDeg": -84.83749999999999
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.84166666666667
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.236666666666665,
+            "lonDeg": -84.84333333333333
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.87277777777777
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25194444444445,
+            "lonDeg": -84.87249999999999
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.87722222222222
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.259166666666665,
+            "lonDeg": -84.87694444444443
+          }
+        },
+        {
+          "sequence": 270,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25944444444445,
+            "lonDeg": -84.8863888888889
+          }
+        },
+        {
+          "sequence": 280,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.337500000000006,
+            "lonDeg": -84.97666666666667
+          }
+        },
+        {
+          "sequence": 290,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.343333333333334,
+            "lonDeg": -84.97083333333333
+          }
+        },
+        {
+          "sequence": 300,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.96527777777779
+          }
+        },
+        {
+          "sequence": 310,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.350833333333334,
+            "lonDeg": -84.96111111111111
+          }
+        },
+        {
+          "sequence": 320,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35305555555556,
+            "lonDeg": -84.95666666666666
+          }
+        },
+        {
+          "sequence": 330,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.352222222222224,
+            "lonDeg": -84.94861111111112
+          }
+        },
+        {
+          "sequence": 340,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.353611111111114,
+            "lonDeg": -84.93444444444445
+          }
+        },
+        {
+          "sequence": 350,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35916666666667,
+            "lonDeg": -84.9263888888889
+          }
+        },
+        {
+          "sequence": 360,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36388888888889,
+            "lonDeg": -84.92111111111112
+          }
+        },
+        {
+          "sequence": 370,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36472222222223,
+            "lonDeg": -84.91666666666667
+          }
+        },
+        {
+          "sequence": 380,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36833333333333,
+            "lonDeg": -84.9113888888889
+          }
+        },
+        {
+          "sequence": 390,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.38361111111111,
+            "lonDeg": -84.92888888888889
+          }
+        },
+        {
+          "sequence": 400,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.413333333333334,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 410,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.42666666666666,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 420,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.428888888888885,
+            "lonDeg": -84.89166666666668
+          }
+        },
+        {
+          "sequence": 430,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43861111111111,
+            "lonDeg": -84.89194444444445
+          }
+        },
+        {
+          "sequence": 440,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43888888888888,
+            "lonDeg": -84.89833333333334
+          }
+        },
+        {
+          "sequence": 450,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45527777777778,
+            "lonDeg": -84.89805555555556
+          }
+        },
+        {
+          "sequence": 460,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45472222222222,
+            "lonDeg": -84.86944444444444
+          }
+        },
+        {
+          "sequence": 470,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47944444444445,
+            "lonDeg": -84.86888888888888
+          }
+        },
+        {
+          "sequence": 480,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47888888888889,
+            "lonDeg": -84.84638888888888
+          }
+        },
+        {
+          "sequence": 490,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.49527777777778,
+            "lonDeg": -84.84972222222221
+          }
+        },
+        {
+          "sequence": 500,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.50972222222222,
+            "lonDeg": -84.84722222222221
+          }
+        },
+        {
+          "sequence": 510,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51083333333333,
+            "lonDeg": -84.83972222222222
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002C-A",
+      "name": "R-3002C",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.31916666666667,
+            "lonDeg": -84.7075
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32055555555556,
+            "lonDeg": -84.71444444444445
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.323055555555555,
+            "lonDeg": -84.72166666666666
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32638888888889,
+            "lonDeg": -84.73027777777779
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.328611111111115,
+            "lonDeg": -84.74138888888889
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.331944444444446,
+            "lonDeg": -84.75166666666667
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.33694444444445,
+            "lonDeg": -84.765
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34166666666667,
+            "lonDeg": -84.77555555555556
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.78194444444445
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34861111111111,
+            "lonDeg": -84.79388888888889
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25694444444444,
+            "lonDeg": -84.79222222222222
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.257222222222225,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81027777777777
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25472222222222,
+            "lonDeg": -84.81333333333333
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.81888888888888
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24666666666667,
+            "lonDeg": -84.82388888888889
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24388888888889,
+            "lonDeg": -84.83138888888888
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.242222222222225,
+            "lonDeg": -84.83749999999999
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.84166666666667
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.236666666666665,
+            "lonDeg": -84.84333333333333
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.239444444444445,
+            "lonDeg": -84.87277777777777
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25194444444445,
+            "lonDeg": -84.87249999999999
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.251666666666665,
+            "lonDeg": -84.87722222222222
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.259166666666665,
+            "lonDeg": -84.87694444444443
+          }
+        },
+        {
+          "sequence": 270,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25944444444445,
+            "lonDeg": -84.8863888888889
+          }
+        },
+        {
+          "sequence": 280,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.337500000000006,
+            "lonDeg": -84.97666666666667
+          }
+        },
+        {
+          "sequence": 290,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.343333333333334,
+            "lonDeg": -84.97083333333333
+          }
+        },
+        {
+          "sequence": 300,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.96527777777779
+          }
+        },
+        {
+          "sequence": 310,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.350833333333334,
+            "lonDeg": -84.96111111111111
+          }
+        },
+        {
+          "sequence": 320,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35305555555556,
+            "lonDeg": -84.95666666666666
+          }
+        },
+        {
+          "sequence": 330,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.352222222222224,
+            "lonDeg": -84.94861111111112
+          }
+        },
+        {
+          "sequence": 340,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.353611111111114,
+            "lonDeg": -84.93444444444445
+          }
+        },
+        {
+          "sequence": 350,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.35916666666667,
+            "lonDeg": -84.9263888888889
+          }
+        },
+        {
+          "sequence": 360,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36388888888889,
+            "lonDeg": -84.92111111111112
+          }
+        },
+        {
+          "sequence": 370,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36472222222223,
+            "lonDeg": -84.91666666666667
+          }
+        },
+        {
+          "sequence": 380,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.36833333333333,
+            "lonDeg": -84.9113888888889
+          }
+        },
+        {
+          "sequence": 390,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.38361111111111,
+            "lonDeg": -84.92888888888889
+          }
+        },
+        {
+          "sequence": 400,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.413333333333334,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 410,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.42666666666666,
+            "lonDeg": -84.88111111111111
+          }
+        },
+        {
+          "sequence": 420,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.428888888888885,
+            "lonDeg": -84.89166666666668
+          }
+        },
+        {
+          "sequence": 430,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43861111111111,
+            "lonDeg": -84.89194444444445
+          }
+        },
+        {
+          "sequence": 440,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.43888888888888,
+            "lonDeg": -84.89833333333334
+          }
+        },
+        {
+          "sequence": 450,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45527777777778,
+            "lonDeg": -84.89805555555556
+          }
+        },
+        {
+          "sequence": 460,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45472222222222,
+            "lonDeg": -84.86944444444444
+          }
+        },
+        {
+          "sequence": 470,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47944444444445,
+            "lonDeg": -84.86888888888888
+          }
+        },
+        {
+          "sequence": 480,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47888888888889,
+            "lonDeg": -84.84638888888888
+          }
+        },
+        {
+          "sequence": 490,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.49527777777778,
+            "lonDeg": -84.84972222222221
+          }
+        },
+        {
+          "sequence": 500,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.50972222222222,
+            "lonDeg": -84.84722222222221
+          }
+        },
+        {
+          "sequence": 510,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51083333333333,
+            "lonDeg": -84.83972222222222
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002D-A",
+      "name": "R-3002D",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53111111111111,
+            "lonDeg": -84.84027777777777
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.55138888888889,
+            "lonDeg": -84.7575
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.547777777777775,
+            "lonDeg": -84.75
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54527777777778,
+            "lonDeg": -84.73555555555555
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54277777777778,
+            "lonDeg": -84.72777777777777
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53944444444444,
+            "lonDeg": -84.72027777777778
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538333333333334,
+            "lonDeg": -84.71472222222222
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.71055555555556
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53472222222222,
+            "lonDeg": -84.70722222222223
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53638888888889,
+            "lonDeg": -84.70333333333333
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.536944444444444,
+            "lonDeg": -84.69833333333334
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53611111111111,
+            "lonDeg": -84.69388888888889
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535,
+            "lonDeg": -84.69027777777778
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.68805555555556
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.5375,
+            "lonDeg": -84.68361111111112
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538888888888884,
+            "lonDeg": -84.68222222222222
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53527777777778,
+            "lonDeg": -84.67888888888889
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51833333333333,
+            "lonDeg": -84.69527777777778
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51777777777777,
+            "lonDeg": -84.68166666666667
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53444444444444,
+            "lonDeg": -84.63777777777779
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.48777777777778,
+            "lonDeg": -84.63805555555557
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.486111111111114,
+            "lonDeg": -84.65694444444445
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30972222222222,
+            "lonDeg": -84.65833333333335
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30638888888888,
+            "lonDeg": -84.68583333333333
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002E-A",
+      "name": "R-3002E",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 8000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "08000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53111111111111,
+            "lonDeg": -84.84027777777777
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.55138888888889,
+            "lonDeg": -84.7575
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.547777777777775,
+            "lonDeg": -84.75
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54527777777778,
+            "lonDeg": -84.73555555555555
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54277777777778,
+            "lonDeg": -84.72777777777777
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53944444444444,
+            "lonDeg": -84.72027777777778
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538333333333334,
+            "lonDeg": -84.71472222222222
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.71055555555556
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53472222222222,
+            "lonDeg": -84.70722222222223
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53638888888889,
+            "lonDeg": -84.70333333333333
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.536944444444444,
+            "lonDeg": -84.69833333333334
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53611111111111,
+            "lonDeg": -84.69388888888889
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535,
+            "lonDeg": -84.69027777777778
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.68805555555556
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.5375,
+            "lonDeg": -84.68361111111112
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538888888888884,
+            "lonDeg": -84.68222222222222
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53527777777778,
+            "lonDeg": -84.67888888888889
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51833333333333,
+            "lonDeg": -84.69527777777778
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51777777777777,
+            "lonDeg": -84.68166666666667
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53444444444444,
+            "lonDeg": -84.63777777777779
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.48777777777778,
+            "lonDeg": -84.63805555555557
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.486111111111114,
+            "lonDeg": -84.65694444444445
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30972222222222,
+            "lonDeg": -84.65833333333335
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30638888888888,
+            "lonDeg": -84.68583333333333
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002F-A",
+      "name": "R-3002F",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "upperLimit": {
+        "altitudeFt": 25000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "FL250",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.45472222222222,
+            "lonDeg": -84.86944444444444
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47944444444445,
+            "lonDeg": -84.86888888888888
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.47888888888889,
+            "lonDeg": -84.84638888888888
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.49527777777778,
+            "lonDeg": -84.84972222222221
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.50972222222222,
+            "lonDeg": -84.84722222222221
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51083333333333,
+            "lonDeg": -84.83972222222222
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.519999999999996,
+            "lonDeg": -84.83638888888889
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53111111111111,
+            "lonDeg": -84.84027777777777
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.55138888888889,
+            "lonDeg": -84.7575
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.547777777777775,
+            "lonDeg": -84.75
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54527777777778,
+            "lonDeg": -84.73555555555555
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.54277777777778,
+            "lonDeg": -84.72777777777777
+          }
+        },
+        {
+          "sequence": 130,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53944444444444,
+            "lonDeg": -84.72027777777778
+          }
+        },
+        {
+          "sequence": 140,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538333333333334,
+            "lonDeg": -84.71472222222222
+          }
+        },
+        {
+          "sequence": 150,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.71055555555556
+          }
+        },
+        {
+          "sequence": 160,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53472222222222,
+            "lonDeg": -84.70722222222223
+          }
+        },
+        {
+          "sequence": 170,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53638888888889,
+            "lonDeg": -84.70333333333333
+          }
+        },
+        {
+          "sequence": 180,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.536944444444444,
+            "lonDeg": -84.69833333333334
+          }
+        },
+        {
+          "sequence": 190,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53611111111111,
+            "lonDeg": -84.69388888888889
+          }
+        },
+        {
+          "sequence": 200,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535,
+            "lonDeg": -84.69027777777778
+          }
+        },
+        {
+          "sequence": 210,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.535555555555554,
+            "lonDeg": -84.68805555555556
+          }
+        },
+        {
+          "sequence": 220,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.5375,
+            "lonDeg": -84.68361111111112
+          }
+        },
+        {
+          "sequence": 230,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.538888888888884,
+            "lonDeg": -84.68222222222222
+          }
+        },
+        {
+          "sequence": 240,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53527777777778,
+            "lonDeg": -84.67888888888889
+          }
+        },
+        {
+          "sequence": 250,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51833333333333,
+            "lonDeg": -84.69527777777778
+          }
+        },
+        {
+          "sequence": 260,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.51777777777777,
+            "lonDeg": -84.68166666666667
+          }
+        },
+        {
+          "sequence": 270,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.53444444444444,
+            "lonDeg": -84.63777777777779
+          }
+        },
+        {
+          "sequence": 280,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.48777777777778,
+            "lonDeg": -84.63805555555557
+          }
+        },
+        {
+          "sequence": 290,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.486111111111114,
+            "lonDeg": -84.65694444444445
+          }
+        },
+        {
+          "sequence": 300,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30972222222222,
+            "lonDeg": -84.65833333333335
+          }
+        },
+        {
+          "sequence": 310,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.30638888888888,
+            "lonDeg": -84.68583333333333
+          }
+        },
+        {
+          "sequence": 320,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.3175,
+            "lonDeg": -84.69500000000001
+          }
+        },
+        {
+          "sequence": 330,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.31916666666667,
+            "lonDeg": -84.7075
+          }
+        },
+        {
+          "sequence": 340,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32055555555556,
+            "lonDeg": -84.71444444444445
+          }
+        },
+        {
+          "sequence": 350,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.323055555555555,
+            "lonDeg": -84.72166666666666
+          }
+        },
+        {
+          "sequence": 360,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.32638888888889,
+            "lonDeg": -84.73027777777779
+          }
+        },
+        {
+          "sequence": 370,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.328611111111115,
+            "lonDeg": -84.74138888888889
+          }
+        },
+        {
+          "sequence": 380,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.331944444444446,
+            "lonDeg": -84.75166666666667
+          }
+        },
+        {
+          "sequence": 390,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.33694444444445,
+            "lonDeg": -84.765
+          }
+        },
+        {
+          "sequence": 400,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34166666666667,
+            "lonDeg": -84.77555555555556
+          }
+        },
+        {
+          "sequence": 410,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34805555555556,
+            "lonDeg": -84.78194444444445
+          }
+        },
+        {
+          "sequence": 420,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.34861111111111,
+            "lonDeg": -84.79388888888889
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:R-3002G-A",
+      "name": "R-3002G",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "RESTRICTED",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 14000,
+        "unit": "MSL",
+        "reference": "MSL",
+        "rawAltitude": "14000",
+        "rawUnit": "M"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.337500000000006,
+            "lonDeg": -84.97666666666667
+          }
+        },
+        {
+          "sequence": 20,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25944444444445,
+            "lonDeg": -84.8863888888889
+          }
+        },
+        {
+          "sequence": 30,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25888888888889,
+            "lonDeg": -84.90055555555556
+          }
+        },
+        {
+          "sequence": 40,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.25111111111111,
+            "lonDeg": -84.92333333333333
+          }
+        },
+        {
+          "sequence": 50,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.240833333333335,
+            "lonDeg": -84.91388888888889
+          }
+        },
+        {
+          "sequence": 60,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24027777777778,
+            "lonDeg": -84.94805555555556
+          }
+        },
+        {
+          "sequence": 70,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24333333333333,
+            "lonDeg": -84.94805555555556
+          }
+        },
+        {
+          "sequence": 80,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.24388888888889,
+            "lonDeg": -84.96555555555555
+          }
+        },
+        {
+          "sequence": 90,
+          "boundaryVia": "H",
+          "boundaryViaType": "RHUMB_LINE",
+          "position": {
+            "latDeg": 32.276666666666664,
+            "lonDeg": -84.96611111111112
+          }
+        },
+        {
+          "sequence": 100,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.276666666666664,
+            "lonDeg": -84.97638888888889
+          }
+        },
+        {
+          "sequence": 110,
+          "boundaryVia": "G",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.29416666666666,
+            "lonDeg": -84.97638888888889
+          }
+        },
+        {
+          "sequence": 120,
+          "boundaryVia": "GE",
+          "boundaryViaType": "GREAT_CIRCLE",
+          "position": {
+            "latDeg": 32.294444444444444,
+            "lonDeg": -84.98166666666667
+          }
+        }
+      ]
+    },
+    {
+      "id": "UR:_:U-ANNISTON-A",
+      "name": "ANNISTON",
+      "type": "SPECIAL_USE",
+      "specialUseKind": "SATR",
+      "lowerLimit": {
+        "altitudeFt": 0,
+        "unit": "GND",
+        "reference": "SURFACE",
+        "rawAltitude": "GND",
+        "rawUnit": "A"
+      },
+      "upperLimit": {
+        "altitudeFt": 5000,
+        "unit": "AGL",
+        "reference": "AGL",
+        "rawAltitude": "05000",
+        "rawUnit": "A"
+      },
+      "segments": [
+        {
+          "sequence": 10,
+          "boundaryVia": "CE",
+          "boundaryViaType": "CIRCLE",
+          "position": {
+            "latDeg": 33.674166666666665,
+            "lonDeg": -85.96833333333333
+          },
+          "arcOrigin": {
+            "latDeg": 33.674166666666665,
+            "lonDeg": -85.96833333333333
+          },
+          "arcDistanceNm": 3
+        }
+      ]
+    }
+  ]
+}

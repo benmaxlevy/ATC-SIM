@@ -231,6 +231,61 @@ export function activeRingRadiiNm(
   return radii;
 }
 
+export interface RangeRingClipInput {
+  camera: ScopeCamera;
+  viewSize: ScopeViewSize;
+  ringOriginNm: NmPoint;
+  intervalNm: number;
+}
+
+/**
+ * Computes radii for range rings: concentric circles expand infinitely until crossing
+ * all four viewport edges (left, right, top, bottom). Rings continue until all four
+ * sides are clipped and visible corners are covered, stopping after clipping the viewport.
+ */
+export function computeClippedRingRadiiNm(input: RangeRingClipInput): number[] {
+  const { camera, viewSize, ringOriginNm, intervalNm } = input;
+  if (!(intervalNm > 0)) {
+    return [];
+  }
+  const scale = pxPerNm(camera, viewSize);
+  if (scale <= 0) {
+    return [];
+  }
+  const originScreen = nmToScreen(ringOriginNm.eastNm, ringOriginNm.northNm, camera, viewSize);
+  const W = viewSize.widthPx;
+  const H = viewSize.heightPx;
+
+  // Distances to four viewport boundary lines
+  const dLeftPx = Math.abs(originScreen.x);
+  const dRightPx = Math.abs(W - originScreen.x);
+  const dTopPx = Math.abs(originScreen.y);
+  const dBottomPx = Math.abs(H - originScreen.y);
+  const dAllSidesPx = Math.max(dLeftPx, dRightPx, dTopPx, dBottomPx);
+  const dAllSidesNm = dAllSidesPx / scale;
+
+  // Distances to four viewport corners
+  const dCornerTL = Math.hypot(originScreen.x, originScreen.y);
+  const dCornerTR = Math.hypot(W - originScreen.x, originScreen.y);
+  const dCornerBR = Math.hypot(W - originScreen.x, H - originScreen.y);
+  const dCornerBL = Math.hypot(originScreen.x, H - originScreen.y);
+  const dMaxCornerPx = Math.max(dCornerTL, dCornerTR, dCornerBR, dCornerBL);
+  const dMaxCornerNm = dMaxCornerPx / scale;
+
+  // Stop after the ring that crosses all four sides, ensuring visible corners are covered
+  const maxRadiusNm = Math.max(
+    (Math.floor((dAllSidesNm + 1e-6) / intervalNm) + 1) * intervalNm,
+    Math.floor((dMaxCornerNm + 1e-6) / intervalNm) * intervalNm,
+  );
+
+  const MAX_RINGS = 500;
+  const radii: number[] = [];
+  for (let r = intervalNm; r <= maxRadiusNm + 1e-9 && radii.length < MAX_RINGS; r += intervalNm) {
+    radii.push(r);
+  }
+  return radii;
+}
+
 export function buildRunwayCorners(runway: DigitalMapRunway): [NmPoint, NmPoint, NmPoint, NmPoint] {
   const half = runway.widthNm / 2;
   const alongFar = headingOffsetNm(
@@ -630,13 +685,16 @@ export function buildMapCache(
 ): MapCache {
   mapCacheBuildCount += 1;
   const { digitalMap, camera, viewSize, layers, airportEastNm, airportNorthNm } = input;
-  const rings = {
-    intervalNm: input.ringIntervalNm,
-    maxNm: digitalMap.rangeRings.maxNm,
-  };
-  const ringRadiiNm = layers.showRings ? activeRingRadiiNm(rings) : [];
   const ringEastNm = input.rangeRingEastNm ?? airportEastNm;
   const ringNorthNm = input.rangeRingNorthNm ?? airportNorthNm;
+  const ringRadiiNm = layers.showRings
+    ? computeClippedRingRadiiNm({
+        camera,
+        viewSize,
+        ringOriginNm: { eastNm: ringEastNm, northNm: ringNorthNm },
+        intervalNm: input.ringIntervalNm,
+      })
+    : [];
   const ringOriginScreen = nmToScreen(ringEastNm, ringNorthNm, camera, viewSize);
   const scale = pxPerNm(camera, viewSize);
   const ringCircles = ringRadiiNm.map((radiusNm) => ({

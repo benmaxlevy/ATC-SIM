@@ -1,0 +1,128 @@
+{
+  "airportId": "KRYY",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -20.918349,
+      "yNm": -83.874833,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 37.235147,
+      "yNm": -22.9165,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": 4.462017,
+      "yNm": -5.910833,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GQO",
+      "kind": "DME",
+      "name": "CHOO CHOO",
+      "xNm": -27.669398,
+      "yNm": 56.8865,
+      "latDeg": 34.961275,
+      "lonDeg": -85.15336944444445,
+      "freqMhz": 115.8,
+      "class": "H"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 9.192878,
+      "yNm": -22.776167,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "HRS",
+      "kind": "DME",
+      "name": "HARRIS",
+      "xNm": 33.886769,
+      "yNm": 55.789833,
+      "latDeg": 34.94299722222222,
+      "lonDeg": -83.91567500000001,
+      "freqMhz": 109.8,
+      "class": "T"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 14.831531,
+      "yNm": -8.252167,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": -71.899156,
+      "yNm": -26.280833,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "IRYYDME",
+      "kind": "DME",
+      "name": "COBB COUNTY INTL/MCCOLLU",
+      "xNm": -0.539758,
+      "yNm": 0.033833,
+      "latDeg": 34.013730555555554,
+      "lonDeg": -84.60788055555555,
+      "freqMhz": 111.9,
+      "class": "T"
+    },
+    {
+      "id": "IRYYGS",
+      "kind": "GS",
+      "name": "IRYY GS",
+      "xNm": 0.364582,
+      "yNm": -0.036333,
+      "latDeg": 34.01256111111111,
+      "lonDeg": -84.58969722222221,
+      "gsAngleDeg": 3,
+      "tchFt": 46
+    },
+    {
+      "id": "IRYY",
+      "kind": "LOC",
+      "name": "IRYY",
+      "xNm": -0.536719,
+      "yNm": -0.012333,
+      "latDeg": 34.01296111111111,
+      "lonDeg": -84.60781944444444,
+      "freqMhz": 111.9,
+      "courseDeg": 272.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.665
+    }
+  ]
+}

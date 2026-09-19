@@ -12,7 +12,7 @@ import {
   type ScheduledDeparture,
   type World,
 } from "@core";
-import type { ArrivalSpawn, Scenario } from "./types";
+import type { ArrivalSpawn, Scenario, VfrRequestConfig, VfrTrafficConfig } from "./types";
 import { assignStarRoutes, authoredStarToFixIndex, starRouteFixIds } from "./starSpawn";
 import { DEFAULT_SPAWN_SEED, type DepartureOptions } from "./trafficQuery";
 import {
@@ -34,6 +34,7 @@ import {
 } from "./callsigns";
 import { createScenarioIfrFlightPlan, spawnScenarioIfrAircraft } from "./ifrFlightPlan";
 import { usedSquawks } from "./spawnAircraft";
+import { VfrTrafficManager } from "./vfrTraffic";
 
 export { starRouteFixIds };
 
@@ -289,7 +290,7 @@ function msawInhibitFromScenario(scenario: Scenario): MsawInhibitGeom | null {
 }
 
 function worldFromScenario(scenario: Scenario): World {
-  return createWorld({
+  const world = createWorld({
     catalog: scenario.catalog,
     activeRunwayId: scenario.activeRunwayId,
     beaconPools: scenario.beaconPools ?? DEFAULT_BEACON_POOL_CONFIG,
@@ -297,6 +298,8 @@ function worldFromScenario(scenario: Scenario): World {
     msawInhibit: msawInhibitFromScenario(scenario),
     sessionLog: new SessionLog(),
   });
+  world.regional = scenario.regional;
+  return world;
 }
 
 function initDepartures(
@@ -392,6 +395,33 @@ function initDepartures(
   }
 }
 
+function initVfrTraffic(
+  world: World,
+  scenario: Scenario,
+  seed: number,
+  vfrTrafficConfig?: VfrTrafficConfig | null,
+): void {
+  const config =
+    vfrTrafficConfig !== undefined ? (vfrTrafficConfig ?? undefined) : scenario.vfrTraffic;
+  if (!config) {
+    return;
+  }
+  const isEnabled =
+    (config.initialCount ?? 0) > 0 ||
+    (config.targetCount ?? 0) > 0 ||
+    (config.entriesPerHour ?? 0) > 0;
+  if (!isEnabled) {
+    return;
+  }
+  const manager = new VfrTrafficManager({
+    config,
+    scenario,
+    seed: config.seed ?? seed,
+  });
+  world.vfrTrafficManager = manager;
+  manager.spawnInitialPopulation(world);
+}
+
 /**
  * Build a World from the scenario. `random` uses `assignStarRoutes`
  * (seeded catalog pose). `authored` copies JSON xy (ils27 / T01-04 fixture).
@@ -413,6 +443,7 @@ export function createWorldFromScenario(
     null,
     world.aircraft.map((a) => a.callsign),
   );
+  initVfrTraffic(world, scenario, seed);
   return world;
 }
 
@@ -427,6 +458,10 @@ export function createWorldForSession(
   seed: number = DEFAULT_SPAWN_SEED,
   departureOptions?: DepartureOptions | null,
   arrivalTraffic?: ArrivalTrafficConfig,
+  vfrOptions?: {
+    traffic?: VfrTrafficConfig | null;
+    requests?: VfrRequestConfig | null;
+  } | null,
 ): World {
   const world = worldFromScenario(scenario);
   let arrivalScheduler: ArrivalScheduler | undefined;
@@ -468,5 +503,8 @@ export function createWorldForSession(
   }
 
   initDepartures(world, scenario, seed, departureOptions, activeCallsigns);
+  initVfrTraffic(world, scenario, seed, vfrOptions?.traffic);
+  world.vfrRequestConfig =
+    vfrOptions?.requests !== undefined ? vfrOptions.requests : scenario.vfrRequests;
   return world;
 }

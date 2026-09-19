@@ -242,6 +242,105 @@ test("CLEARED_APPROACH needs a known approachId when catalog is present", () => 
   expect(validateInstructions(jet(), [{ type: "IDENT" }]).ok).toBe(true);
 });
 
+test("T04-82: CLEARED_VISUAL validation", () => {
+  // Empty runway
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "" }])).toEqual({
+    ok: false,
+    reason: "EMPTY",
+  });
+  // Invalid runway format
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "XYZ" }])).toEqual({
+    ok: false,
+    reason: "RUNWAY",
+  });
+  // Valid runway without explicit runwayIds in opts passes
+  expect(validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }]).ok).toBe(true);
+
+  // With explicit runwayIds:
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "27L" }], {
+      runwayIds: ["27L", "27R"],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(jet(), [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      runwayIds: ["27L", "27R"],
+    }),
+  ).toEqual({ ok: false, reason: "RUNWAY" });
+
+  // Regional airport validation:
+  const mockRegional = {
+    getAirport: (icao: string) => {
+      if (icao === "KPDK") {
+        return {
+          icao: "KPDK",
+          runways: [{ id: "21L" }, { id: "03R" }],
+        };
+      }
+      if (icao === "KATL") {
+        return {
+          icao: "KATL",
+          runways: [{ id: "27L" }, { id: "27R" }, { id: "08L" }],
+        };
+      }
+      return undefined;
+    },
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+
+  const pdkAc = { ...jet(), destination: "KPDK" };
+  // KPDK has 21L -> ok
+  expect(
+    validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      regional: mockRegional,
+    }).ok,
+  ).toBe(true);
+  // KPDK does not have 27L (KATL runway) -> rejected with RUNWAY
+  expect(
+    validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "27L" }], {
+      regional: mockRegional,
+    }),
+  ).toEqual({ ok: false, reason: "RUNWAY" });
+
+  // On visual final, altitude assignment is rejected
+  const visualAc = {
+    ...jet(),
+    intent: {
+      ...jet().intent,
+      lateral: {
+        type: "VISUAL_FINAL" as const,
+        runwayId: "27L",
+        threshold: { xNm: 0, yNm: 0 },
+        headingDeg: 270,
+      },
+    },
+  };
+  expect(
+    validateInstructions(visualAc, [{ type: "ALTITUDE", altitudeFt: 3000, verb: "MAINTAIN" }]),
+  ).toEqual({
+    ok: false,
+    reason: "ALTITUDE",
+    detail: "unable. cleared for the approach already.",
+  });
+
+  // On visual final, GO_AROUND is accepted
+  expect(validateInstructions(visualAc, [{ type: "GO_AROUND" }]).ok).toBe(true);
+
+  // On visual final, CANCEL_APPROACH is accepted
+  expect(validateInstructions(visualAc, [{ type: "CANCEL_APPROACH" }]).ok).toBe(true);
+
+  // CANCEL_APPROACH cannot be followed by CLEARED_VISUAL in same transmission
+  expect(
+    validateInstructions(visualAc, [
+      { type: "CANCEL_APPROACH" },
+      { type: "CLEARED_VISUAL", runwayId: "27L" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CANCEL_APPROACH cannot be followed by approach or go-around instructions",
+  });
+});
+
 test("DIRECT unknown fix is UNKNOWN_FIX; known catalog id passes", () => {
   const registry = {
     has: (id: string) => id.toUpperCase() === "NEMAX",
@@ -767,4 +866,256 @@ test("AC6: speed until validation rejects gates inside boundary", () => {
 
 test("DELETE_SPEED_RESTRICTIONS validates successfully", () => {
   expect(validateInstructions(jet(), [{ type: "DELETE_SPEED_RESTRICTIONS" }]).ok).toBe(true);
+});
+
+test("VFR flight following and radio contact instruction validation (T04-73)", () => {
+  const ac = jet();
+  const catalog = {
+    airportId: "KDEM",
+    navaids: [{ id: "DEM" }],
+    fixes: [{ id: "NEMAX" }],
+  };
+
+  // Single instruction check
+  expect(
+    validateInstructions(ac, [
+      { type: "REQUEST_DETAILS" },
+      { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "request control instruction must be the only instruction",
+  });
+
+  // REQUEST_DETAILS
+  expect(validateInstructions(ac, [{ type: "REQUEST_DETAILS" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  const openReq = {
+    id: "req-1",
+    aircraftId: ac.id,
+    callsign: ac.callsign,
+    kind: "FLIGHT_FOLLOWING" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: {},
+  };
+  expect(
+    validateInstructions(ac, [{ type: "REQUEST_DETAILS" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  const approvedReq = { ...openReq, status: "APPROVED" as const };
+  expect(
+    validateInstructions(ac, [{ type: "REQUEST_DETAILS" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: request is already resolved",
+  });
+
+  // STANDBY_REQUEST
+  expect(validateInstructions(ac, [{ type: "STANDBY_REQUEST" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "STANDBY_REQUEST" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "STANDBY_REQUEST" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: request is already resolved",
+  });
+
+  // APPROVE_FLIGHT_FOLLOWING
+  expect(validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }], {
+      radioRequests: [openReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: radar identification required",
+  });
+  const identifiedReq = { ...openReq, status: "IDENTIFIED" as const };
+  expect(
+    validateInstructions(ac, [{ type: "APPROVE_FLIGHT_FOLLOWING" }], {
+      radioRequests: [identifiedReq],
+    }).ok,
+  ).toBe(true);
+
+  // DECLINE_REQUEST
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }]),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }], {
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(ac, [{ type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" }], {
+      radioRequests: [approvedReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: active service must be terminated",
+  });
+
+  // RADAR_CONTACT
+  expect(
+    validateInstructions(ac, [
+      {
+        type: "RADAR_CONTACT",
+        distanceNm: 0,
+        referenceId: "DEM",
+        referenceKind: "NAVAID",
+      },
+    ]),
+  ).toEqual({
+    ok: false,
+    reason: "RADAR_CONTACT",
+    detail: "RADAR_CONTACT: distance must be positive",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "UNKNOWN",
+          referenceKind: "FIX",
+        },
+      ],
+      { catalog },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "DEM",
+          referenceKind: "NAVAID",
+        },
+      ],
+      { catalog },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 5,
+          referenceId: "DEM",
+          referenceKind: "NAVAID",
+        },
+      ],
+      { catalog, radioRequests: [openReq] },
+    ).ok,
+  ).toBe(true);
+  // Bare `radar contact` (no position report) identifies with an open request.
+  expect(validateInstructions(ac, [{ type: "RADAR_CONTACT" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: no pending radio request",
+  });
+  expect(
+    validateInstructions(ac, [{ type: "RADAR_CONTACT" }], {
+      catalog,
+      radioRequests: [openReq],
+    }).ok,
+  ).toBe(true);
+  // A partial position never validates.
+  expect(
+    validateInstructions(ac, [{ type: "RADAR_CONTACT", distanceNm: 5 } as unknown as Instruction], {
+      catalog,
+      radioRequests: [openReq],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
+  // Airport references validate against regional airports, not fixes.
+  const katlRegion = {
+    airports: [{ icao: "KATL", name: "Atlanta International" }],
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 25,
+          referenceId: "KATL",
+          referenceKind: "AIRPORT",
+        },
+      ],
+      { catalog, radioRequests: [openReq], regional: katlRegion },
+    ).ok,
+  ).toBe(true);
+  expect(
+    validateInstructions(
+      ac,
+      [
+        {
+          type: "RADAR_CONTACT",
+          distanceNm: 25,
+          referenceId: "KUNK",
+          referenceKind: "AIRPORT",
+        },
+      ],
+      { catalog, radioRequests: [openReq], regional: katlRegion },
+    ),
+  ).toEqual({
+    ok: false,
+    reason: "UNKNOWN_FIX",
+    detail: "UNKNOWN_FIX",
+  });
+
+  // TERMINATE_RADAR_SERVICE
+  expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }])).toEqual({
+    ok: false,
+    reason: "REQUEST",
+    detail: "REQUEST: radar service is not active",
+  });
+  ac.flightFollowing = { active: true, approvedAtSimMs: 1000 };
+  expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }]).ok).toBe(true);
 });

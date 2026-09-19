@@ -42,7 +42,10 @@ export type RejectReason =
   | "NOT_ON_APPROACH"
   | "SQUAWK"
   | "CLEARANCE"
-  | "UNABLE_ROUTE";
+  | "UNABLE_ROUTE"
+  | "REQUEST"
+  | "RADAR_CONTACT"
+  | "RUNWAY";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -67,6 +70,10 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   SQUAWK: "unable squawk",
   CLEARANCE: "unable clearance",
   UNABLE_ROUTE: "unable route",
+  REQUEST: "unable request",
+  RADAR_CONTACT: "unable radar contact",
+  CANCELLATION: "unable cancellation",
+  RUNWAY: "unable runway",
 };
 
 function capitalizeFirst(text: string): string {
@@ -184,6 +191,8 @@ function formatInstructionClause(
       return formatAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
+    case "CLEARED_VISUAL":
+      return `cleared visual approach runway ${instruction.runwayId.replace(/^RW/i, "").toUpperCase()}`;
     case "INTERCEPT_LOCALIZER":
       return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
     case "CANCEL_APPROACH":
@@ -213,6 +222,22 @@ function formatInstructionClause(
       return "going around";
     case "DELETE_SPEED_RESTRICTIONS":
       return "delete speed restrictions";
+    case "REQUEST_DETAILS":
+      return "";
+    case "STANDBY_REQUEST":
+      return "standby";
+    case "APPROVE_FLIGHT_FOLLOWING":
+      return "flight following approved";
+    case "DECLINE_REQUEST":
+      return instruction.service === "FLIGHT_FOLLOWING"
+        ? "unable flight following"
+        : "unable IFR pickup";
+    case "RADAR_CONTACT":
+      return "roger";
+    case "TERMINATE_RADAR_SERVICE":
+      return "radar service terminated";
+    case "ACKNOWLEDGE_IFR_CANCELLATION":
+      return "IFR cancellation received";
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
@@ -278,9 +303,9 @@ export function formatReadback(args: {
   const callsignSpeech = formatCallsignSpeech(args.callsign, {
     isHeavy: args.aircraft.wakeCategory === "H",
   });
-  const clauses = args.instructions.map((instruction) =>
-    formatInstructionClause(instruction, args.aircraft, args.procedureNames),
-  );
+  const clauses = args.instructions
+    .map((instruction) => formatInstructionClause(instruction, args.aircraft, args.procedureNames))
+    .filter((clause) => clause.length > 0);
   if (clauses.length === 0) {
     return callsignSpeech;
   }

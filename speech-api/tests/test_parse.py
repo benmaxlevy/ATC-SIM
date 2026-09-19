@@ -549,6 +549,118 @@ def test_path_c_validates_delete_speed_restrictions_and_speed_until() -> None:
     assert validate_instruction({"type": "SPEED", "speedKt": 210, "verb": "MAINTAIN", "until": {"type": "UNKNOWN"}}) is None
 
 
+def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() -> None:
+    from parse_engine import guard_catalog_ids, guard_instruction_semantics
+
+    req_details = {"type": "REQUEST_DETAILS"}
+    assert validate_instruction(req_details) == req_details
+    assert validate_instruction({"type": "REQUEST_DETAILS", "extra": 1}) is None
+
+    standby = {"type": "STANDBY_REQUEST"}
+    assert validate_instruction(standby) == standby
+    assert validate_instruction({"type": "STANDBY_REQUEST", "extra": 1}) is None
+
+    approve_ff = {"type": "APPROVE_FLIGHT_FOLLOWING"}
+    assert validate_instruction(approve_ff) == approve_ff
+    assert validate_instruction({"type": "APPROVE_FLIGHT_FOLLOWING", "extra": 1}) is None
+
+    decline_ff = {"type": "DECLINE_REQUEST", "service": "FLIGHT_FOLLOWING"}
+    assert validate_instruction(decline_ff) == decline_ff
+    decline_ifr = {"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}
+    assert validate_instruction(decline_ifr) == decline_ifr
+    assert validate_instruction({"type": "DECLINE_REQUEST", "service": "INVALID"}) is None
+    assert validate_instruction({"type": "DECLINE_REQUEST"}) is None
+
+    radar_contact = {
+        "type": "RADAR_CONTACT",
+        "distanceNm": 5,
+        "referenceId": "DEM",
+        "referenceKind": "NAVAID",
+    }
+    assert validate_instruction(radar_contact) == radar_contact
+    bare_radar_contact = {"type": "RADAR_CONTACT"}
+    assert validate_instruction(bare_radar_contact) == bare_radar_contact
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": -5, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 0, "referenceId": "DEM", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "", "referenceKind": "NAVAID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "DEM", "referenceKind": "INVALID"}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5}) is None
+    assert validate_instruction({"type": "RADAR_CONTACT", "referenceId": "DEM"}) is None
+    airport_contact = {
+        "type": "RADAR_CONTACT",
+        "distanceNm": 25,
+        "referenceId": "KATL",
+        "referenceKind": "AIRPORT",
+    }
+    assert validate_instruction(airport_contact) == airport_contact
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "dem", "referenceKind": "FIX"}) == {
+        "type": "RADAR_CONTACT",
+        "distanceNm": 5,
+        "referenceId": "DEM",
+        "referenceKind": "FIX",
+    }
+    assert validate_instruction({"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "KATL", "referenceKind": "WRONG"}) is None
+
+    term_radar = {"type": "TERMINATE_RADAR_SERVICE"}
+    assert validate_instruction(term_radar) == term_radar
+    assert validate_instruction({"type": "TERMINATE_RADAR_SERVICE", "extra": True}) is None
+
+    ack_cancellation = {"type": "ACKNOWLEDGE_IFR_CANCELLATION"}
+    assert validate_instruction(ack_cancellation) == ack_cancellation
+    assert validate_instruction({"type": "ACKNOWLEDGE_IFR_CANCELLATION", "extra": True}) is None
+
+    # Compound request control rejection
+    from parse_engine import validate_parse_json
+    assert validate_parse_json({"ok": True, "instructions": [req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}]}).error == "BAD_CLEARANCE"
+    assert validate_parse_json({"ok": True, "instructions": [bare_radar_contact, {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "CLIMB"}]}).error == "BAD_CLEARANCE"
+    assert guard_instruction_semantics("say request turn left heading 270", ParseOutcome(ok=True, instructions=[req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}])).error == "BAD_CLEARANCE"
+
+    # Semantics guards
+    assert guard_instruction_semantics("say request", ParseOutcome(ok=True, instructions=[req_details])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[req_details])).ok
+
+    assert guard_instruction_semantics("stand by", ParseOutcome(ok=True, instructions=[standby])).ok
+    assert guard_instruction_semantics("standby", ParseOutcome(ok=True, instructions=[standby])).ok
+
+    assert guard_instruction_semantics("approve flight following", ParseOutcome(ok=True, instructions=[approve_ff])).ok
+    assert guard_instruction_semantics("unable flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert guard_instruction_semantics("unable to provide flight following", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert guard_instruction_semantics("unable ifr pickup", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert guard_instruction_semantics("unable to provide ifr pickup", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert not guard_instruction_semantics("unable flight following", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+    assert not guard_instruction_semantics("unable ifr pickup", ParseOutcome(ok=True, instructions=[decline_ff])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
+
+    assert guard_instruction_semantics("radar contact 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert guard_instruction_semantics("radar contact 25 miles southeast of KATL", ParseOutcome(ok=True, instructions=[airport_contact])).ok
+    assert guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[bare_radar_contact])).ok
+    assert not guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert not guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[airport_contact])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[bare_radar_contact])).ok
+    assert guard_instruction_semantics("radar service terminated", ParseOutcome(ok=True, instructions=[term_radar])).ok
+    assert guard_instruction_semantics("ifr cancellation received", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
+    assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
+
+    # Catalog guards for RADAR_CONTACT
+    rc_outcome = ParseOutcome(ok=True, instructions=[radar_contact])
+    assert guard_catalog_ids("radar contact 5 miles from DEM", {"fixes": ["DEM"]}, rc_outcome).ok
+    assert not guard_catalog_ids("radar contact 5 miles from UNK", {"fixes": ["DEM"]}, ParseOutcome(ok=True, instructions=[{"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "UNK", "referenceKind": "FIX"}])).ok
+    bare_outcome = ParseOutcome(ok=True, instructions=[bare_radar_contact])
+    assert guard_catalog_ids("radar contact", {"fixes": ["DEM"]}, bare_outcome).ok
+    airport_outcome = ParseOutcome(ok=True, instructions=[airport_contact])
+    assert guard_catalog_ids(
+        "radar contact 25 miles southeast of atlanta airport",
+        {"fixes": ["DEM"], "airports": [{"icao": "KATL", "name": "Atlanta International"}]},
+        airport_outcome,
+    ).ok
+    assert not guard_catalog_ids(
+        "radar contact 25 miles southeast of nowhere airport",
+        {"fixes": ["DEM"], "airports": [{"icao": "KATL", "name": "Atlanta International"}]},
+        ParseOutcome(ok=True, instructions=[{"type": "RADAR_CONTACT", "distanceNm": 25, "referenceId": "KUNK", "referenceKind": "AIRPORT"}]),
+    ).ok
+
+
+
 def test_path_c_semantic_guard_distinguishes_tactical_direct_from_clearance() -> None:
     from parse_engine import guard_instruction_semantics
 
@@ -884,6 +996,10 @@ def test_semantic_guard_requires_evidence_for_every_instruction_type() -> None:
         ("join DEM1", {"type": "JOIN_PROCEDURE", "procedureId": "DEM1"}),
         ("cross SEMAX at 4000", {"type": "CROSS", "fixId": "SEMAX", "altitudeFt": 4000, "restriction": "AT"}),
         ("go around", {"type": "GO_AROUND"}),
+        ("cleared visual approach runway 27L", {"type": "CLEARED_VISUAL", "runwayId": "27L"}),
+        ("squawk 2222", {"type": "ASSIGN_SQUAWK", "code": "2222", "source": "DISCRETE"}),
+        ("squawk four two one zero", {"type": "ASSIGN_SQUAWK", "code": "4210", "source": "DISCRETE"}),
+        ("squawk vfr", {"type": "ASSIGN_SQUAWK", "code": "1200", "source": "VFR"}),
     ]
     for transcript, instruction in cases:
         outcome = ParseOutcome(ok=True, instructions=[instruction])
@@ -1163,3 +1279,27 @@ def test_catalog_guard_rejects_callsign_in_slots() -> None:
         instructions=[{"type": "CLEARED_APPROACH", "approachId": "EDV9255"}],
     )
     assert guard_catalog_ids("cleared approach two six right", ctx, bad_approach).error == "PARSE_MISS"
+
+
+def test_cleared_visual_semantic_guard_and_canonicalization() -> None:
+    from parse_engine import guard_instruction_semantics, validate_instruction
+
+    # Canonicalization
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": "27l"}) == {
+        "type": "CLEARED_VISUAL",
+        "runwayId": "27L",
+    }
+    assert validate_instruction({"type": "CLEARED_VISUAL"}) is None
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": ""}) is None
+    assert validate_instruction({"type": "CLEARED_VISUAL", "runwayId": "27L", "extra": 1}) is None
+
+    # Semantic guard with valid runway
+    outcome = ParseOutcome(ok=True, instructions=[{"type": "CLEARED_VISUAL", "runwayId": "27L"}])
+    assert guard_instruction_semantics("cleared visual approach runway 27L", outcome).ok
+    assert guard_instruction_semantics("cleared visual approach runway two seven left", outcome).ok
+
+    # Near-miss without runway rejected
+    assert not guard_instruction_semantics("cleared visual approach", outcome).ok
+    assert not guard_instruction_semantics("Delta 123 radio check", outcome).ok
+    assert not guard_instruction_semantics("cleared visual approach runway two seven", outcome).ok
+

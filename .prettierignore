@@ -13,3 +13,4 @@ tsconfig.node.json
 eslint.config.js
 .gitignore
 .prettierignore
+.worktrees/

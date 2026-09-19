@@ -1,0 +1,40 @@
+{
+  "airportId": "KTOC",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R03",
+      "type": "RNAV",
+      "runway": "03",
+      "name": "RNAV RWY 03",
+      "thresholdFixId": "RW03",
+      "courseDeg": 26.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1392,
+      "missed": {
+        "headingDeg": 26.8,
+        "climbToFt": 1036,
+        "directFixId": "RW03"
+      }
+    },
+    {
+      "id": "R21",
+      "type": "RNAV",
+      "runway": "21",
+      "name": "RNAV RWY 21",
+      "thresholdFixId": "RW21",
+      "courseDeg": 206.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1230,
+      "missed": {
+        "headingDeg": 206.9,
+        "climbToFt": 1001,
+        "directFixId": "RW21"
+      }
+    }
+  ]
+}
