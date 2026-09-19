@@ -5261,5 +5261,51 @@ Execution authorized on `feature/sattelite-traffic`. The captain runs T02-200, t
 
 Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. No push is authorized. Stop after T02-201.
 
+## Seventy-third swarm planned — authentic radio check-in and say-request direct response (2026-09-18)
+
+| Key | Value |
+| --- | --- |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-84 → T04-85 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Stop | T04-85 squash merge, `npm run ci`, speech mock pytest |
+| Push | Push `feature/sattelite-traffic` after green phase exit |
+
+**Product law:** Initial airborne radio check-in is exclusively facility identification and aircraft callsign; detailed requests (VFR flight following and airborne IFR pickups with destination and requested altitude) are transmitted directly in response to ATC "say request"; pilots never parrot "say request" in readback; standby retains standard readback; audio plays once without duplicate poll queues.
+
+**Skip:** New Command IR instructions, cloud inference, new FMS modes, non-radar procedures.
+
+**Waves:**
+- Wave A: T04-84 — cold call initial check-in formatting and enriched IFR pickup request schema.
+- Wave B: T04-85 — direct request response to REQUEST_DETAILS, eliminate parroted readback, and lifecycle integration suite. Starts after T04-84 squash merge.
+
+**Ticket ownership:**
+- T04-84 owns `vfrRequestQueue.ts` initial check-in generation, `formatIfrPickupRequest`, and unit tests.
+- T04-85 owns `handleRadioText.ts`, `readback.ts`, direct response wiring, and full lifecycle acceptance.
+
+**Ticket paths/branches:**
+- `ticket/T04-84-cold-call-checkin-and-ifr-pickup-schema` → `phases/04-procedures/tickets/T04-84-cold-call-checkin-and-ifr-pickup-schema.md`
+- `ticket/T04-85-say-request-direct-response-and-lifecycle` → `phases/04-procedures/tickets/T04-85-say-request-direct-response-and-lifecycle.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: authentic radio check-in and say-request direct response T04-84–85
+Merge target: feature/sattelite-traffic
+Merged: T04-84, T04-85
+Tests: npm run ci; speech-api mock pytest; lifecycle integration tests
+Notes: cold call check-in parity; direct say-request response; push to feature/sattelite-traffic
+```
+
+## Seventy-third swarm started — authentic radio check-in and say-request direct response (2026-09-18)
+
+Execution authorized on `feature/sattelite-traffic`. The captain runs T04-84, then T04-85 sequentially with one isolated worker at a time. Each ticket gets focused tests and `npm run ci` before the next ticket. Worker model resolves to `inherit`.
+
+Workers implement exactly one ticket, never merge or spawn children, and return exactly `READY TO MERGE` or `BLOCKED`. Existing unrelated untracked artifacts (`.worktrees/`, `speech-api/:memory:.ses`) remain untouched. Push `feature/sattelite-traffic` authorized after green phase exit. Stop after T04-85.
+
+
+
 
 
