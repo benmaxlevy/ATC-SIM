@@ -153,7 +153,7 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `unable flight following` / `unable to provide flight following` | `DAL123 unable flight following` | Decline flight following request |
 | | `radar contact <distance> miles from <fix>` | `DAL123 radar contact 5 miles from MERGE` | Establish radar identification with informational position report |
 | | `radar service terminated` | `DAL123 radar service terminated` | Terminate radar advisory service (transponder squawk is not automatically reset to 1200) |
-| **Pilot IFR Cancellation** | `IFR cancellation received` | `DAL123 IFR cancellation received` | Acknowledge pilot-initiated IFR cancellation outside Class B airspace; operational rules revert to VFR and autonomous navigation resumes |
+| **Pilot IFR Cancellation** | `IFR cancellation received` | `DAL123 IFR cancellation received` | Acknowledge pilot-initiated IFR cancellation outside Class B airspace; operational rules revert to VFR and autonomous navigation resumes, with unsafe continuation replanned around Bravo |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -399,7 +399,8 @@ PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
    `N123AB CLR TO KPDK VIA RADAR VECTORS ALT 50`, becoming operational IFR to
    an eligible satellite airport. A later pilot `cancel IFR` report is
    answered with `N123AB IFR cancellation received`, reverting to VFR outside
-   Class B with autonomous navigation resumed.
+   Class B with autonomous navigation resumed; if the old VFR suffix would
+   enter Bravo, it is deterministically replanned around the modeled volume.
 7. Airport-bound arrivals complete at their satellite destination: entering
    the terminal phase (~3–5 NM along the extended runway centerline), they
    smoothly transition onto the visual final approach path, emit a simulated
@@ -416,7 +417,8 @@ PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
 
 Service versus flight rules: flight following is a radar advisory *service*
 on a VFR aircraft, not an IFR clearance. Pickup changes operational flight
-rules to IFR; cancellation reverts them to VFR. There are no VFR arrivals to
+rules to IFR; cancellation reverts them to VFR and repairs the autonomous
+continuation around modeled Class B when needed. There are no VFR arrivals to
 the primary airport through Class B: airport-bound traffic flies only to
 eligible towered satellite destinations, swept-path Bravo avoidance is
 enforced on every planned route, and the trainer issues no VFR Bravo
@@ -424,8 +426,10 @@ clearance. Other-airspace and tower coordination is assumed, not simulated.
 
 Trainer limitations: deterministic virtual pilots with configurable workload,
 not observed traffic statistics; VMC assumed for generated IFR cancellation;
-Class B entry approval is not supported; the trainer only rejects unsafe
-continuations and routes generated VFR traffic around modeled Class B volumes.
+Class B entry approval is not supported; cancellation inside Bravo is rejected,
+while outside-Bravo cancellation replans unsafe autonomous continuations around
+modeled Class B volumes. Controller-issued VFR clearances through or into Bravo
+remain deferred.
 There is no tower cab, ground traffic, emergencies, scoring, or certification.
 Visual approaches use simplified straight-in guidance and touchdown. Regional
 airspace and runway data are deterministic training approximations, not

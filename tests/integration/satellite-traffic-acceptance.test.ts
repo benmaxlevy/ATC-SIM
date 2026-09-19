@@ -559,6 +559,154 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
     );
   });
 
+  test("IFR cancellation replans outside Bravo and rejects unsafe state atomically", async () => {
+    const scenario = buildSyntheticScenario();
+    const regional = scenario.regional!;
+    const kpdK = regional.airports.find((airport) => airport.icao === "KPDK");
+    expect(kpdK).toBeDefined();
+    kpdK!.arpNm = { xNm: 15, yNm: 20 };
+
+    const makeIfrAircraft = (id: string, xNm = 20, yNm = 20) =>
+      createAircraft({
+        id,
+        callsign: id === "ac-replan" ? "N735RP" : id === "ac-no-route" ? "N736NR" : "N737IB",
+        xNm,
+        yNm,
+        headingDeg: 270,
+        altitudeFt: 4500,
+        speedKt: 120,
+        squawk: "4722",
+        assignedSquawk: "4722",
+        flightRules: "VFR",
+        aircraftType: "C172",
+        radarContact: true,
+        flightFollowing: { active: true, approvedAtSimMs: 1000, requestId: `${id}-ff` },
+        flightPlan: { destination: "KPDK", rules: "IFR", departure: "KDEM", route: "VECTORS KPDK" },
+        fp: { destination: "KPDK", rules: "IFR", route: "VECTORS KPDK" },
+        ambientVfr: {
+          mission: "TRANSIT",
+          zoneId: "north",
+          destinationAirportId: "KPDK",
+          spawnedAtSimMs: 0,
+          alertEligibility: "CONTROLLED",
+          waypoints: [
+            { xNm: 0, yNm: 0, altitudeFt: 4500, speedKt: 120 },
+            { xNm: 20, yNm: 20, altitudeFt: 4500, speedKt: 120 },
+          ],
+          waypointIndex: 0,
+        },
+      });
+
+    const issuePickup = async (aircraft: ReturnType<typeof makeIfrAircraft>) => {
+      const world = createWorld({
+        aircraft: [aircraft],
+        simTimeMs: 10_000,
+        catalog: scenario.catalog,
+      });
+      world.regional = regional;
+      world.sessionLog = new SessionLog();
+      world.radioRequests = [
+        {
+          id: `${aircraft.id}-pickup`,
+          aircraftId: aircraft.id,
+          callsign: aircraft.callsign,
+          kind: "IFR_PICKUP",
+          status: "IDENTIFIED",
+          requestedAtSimMs: 10_000,
+          details: { destinationAirportId: "KPDK" },
+        },
+      ];
+      const clearance = await handleRadioText(
+        world,
+        `${aircraft.callsign} CLR TO KPDK VIA RADAR VECTORS ALT 50`,
+        world.sessionLog!,
+      );
+      expect(clearance.accepted).toBe(true);
+      aircraft.cancellationPending = true;
+      return world;
+    };
+
+    const replanningAircraft = makeIfrAircraft("ac-replan");
+    const replanningWorld = await issuePickup(replanningAircraft);
+    const originalRoute = structuredClone(replanningAircraft.ambientVfr!.waypoints);
+    const originalPlan = structuredClone(replanningAircraft.flightPlan);
+    const originalFp = structuredClone(replanningAircraft.fp);
+    const originalService = structuredClone(replanningAircraft.flightFollowing);
+    const cancelLog = replanningWorld.sessionLog!;
+    cancelLog.append({
+      type: "pilot.cancel_ifr.reported",
+      atSimMs: replanningWorld.simTimeMs,
+      atWallMs: 0,
+      callsign: replanningAircraft.callsign,
+      aircraftId: replanningAircraft.id,
+      text: `${replanningAircraft.callsign} cancel IFR`,
+    });
+    const accepted = await handleRadioText(
+      replanningWorld,
+      `${replanningAircraft.callsign} IFR cancellation received`,
+      cancelLog,
+    );
+    expect(accepted.accepted).toBe(true);
+    expect(replanningAircraft.flightRules).toBe("VFR");
+    expect(replanningAircraft.ambientVfr!.waypoints).not.toEqual(originalRoute);
+    expect(replanningAircraft.ambientVfr!.waypointIndex).toBe(0);
+    const replanningVfr = replanningAircraft.ambientVfr;
+    expect(replanningVfr).toBeDefined();
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          {
+            xNm: replanningAircraft.xNm,
+            yNm: replanningAircraft.yNm,
+            altitudeFt: replanningAircraft.altitudeFt,
+          },
+          ...(replanningVfr!.waypoints ?? []).map((waypoint) => ({
+            xNm: waypoint.xNm,
+            yNm: waypoint.yNm,
+            altitudeFt: waypoint.altitudeFt ?? replanningAircraft.altitudeFt,
+          })),
+        ],
+        regional.airspaces.filter(isVfrAvoidanceVolume),
+      ),
+    ).toBe(true);
+    expect(replanningAircraft.activeClearance).toBeUndefined();
+    expect(replanningAircraft.assignedSquawk).toBe("4722");
+    expect(replanningAircraft.flightFollowing).toEqual(originalService);
+    expect(replanningAircraft.flightPlan).toEqual(originalPlan);
+    expect(replanningAircraft.fp).toEqual(originalFp);
+    expect(cancelLog.byType("pilot.cancel_ifr.reported")).toHaveLength(1);
+    expect(accepted.readback).toContain("IFR cancellation received");
+
+    const noRouteAircraft = makeIfrAircraft("ac-no-route");
+    noRouteAircraft.ambientVfr!.waypoints = [{ xNm: 0, yNm: 0, altitudeFt: 4500 }];
+    const noRouteWorld = await issuePickup(noRouteAircraft);
+    noRouteAircraft.ambientVfr!.destinationAirportId = undefined;
+    noRouteAircraft.destination = undefined;
+    noRouteAircraft.destinationAirport = undefined;
+    const noRouteBefore = structuredClone(noRouteAircraft);
+    const rejectedNoRoute = await handleRadioText(
+      noRouteWorld,
+      `${noRouteAircraft.callsign} IFR cancellation received`,
+      noRouteWorld.sessionLog!,
+    );
+    expect(rejectedNoRoute.accepted).toBe(false);
+    expect(rejectedNoRoute.detail).toBe("CANCELLATION: unable to establish safe VFR continuation");
+    expect(noRouteAircraft).toEqual(noRouteBefore);
+
+    const insideAircraft = makeIfrAircraft("ac-inside-bravo", 0, 0);
+    const insideWorld = await issuePickup(insideAircraft);
+    const insideBefore = structuredClone(insideAircraft);
+    const rejectedInside = await handleRadioText(
+      insideWorld,
+      `${insideAircraft.callsign} IFR cancellation received`,
+      insideWorld.sessionLog!,
+    );
+    expect(rejectedInside.accepted).toBe(false);
+    expect(rejectedInside.detail).toBe("CANCELLATION: cannot cancel IFR inside Class B airspace");
+    expect(insideAircraft).toEqual(insideBefore);
+    expect(insideAircraft.flightRules).toBe("IFR");
+  });
+
   test("Rejections: unable flight following, malformed clearance, zero cap, and radio busy", async () => {
     const scenario = buildSyntheticScenario();
     const ac = createAircraft({
