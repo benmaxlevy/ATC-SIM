@@ -1,5 +1,26 @@
 # Swarm status
 
+## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM COMPLETE — Cold Call Check-in, Enriched IFR Pickup Schema & Say-Request Direct Details (T04-84–T04-85, 2026-09-18)
+
+Ran on `feature/sattelite-traffic` across two sequential waves:
+- T04-84 (Wave A): Replaced initial unsolicited check-in info dump with authentic cold call (`"Atlanta Approach, <callsign>"` or `"Approach, <callsign>"`). Preserved complete flight details in `RadioRequestDetails` under `PENDING` status. Implemented and exported `formatIfrPickupRequest` supporting callsign, position report, aircraft type, destination, and requested altitude per FAA AIM §5-1-14.
+- T04-85 (Wave B): Eliminated parroted `"say request"` in readback. When ATC issues `REQUEST_DETAILS` (`"<callsign>, say request"`), pilot immediately responds with full request details (VFR flight following or airborne IFR pickup). Removed redundant delayed `AWAITING_DETAILS` polling in `vfrRequestQueue.ts` to prevent duplicate speech playback. Preserved `"standby"` readback on `STANDBY_REQUEST` with clean recovery on subsequent `say request`. Added multi-turn conversational sequence integration tests covering check-in, say request, standby, and decline flows.
+
+Captain squash commits: `2ddfa7b` (T04-84), `59e47f2` (T04-85). Planning commit: `9cba3b4`.
+
+Final `npm run ci`: **240 files, 2569 passed, 4 skipped**.
+Speech-api pytest: **94 passed**.
+Manual gates: no STARS manual supplied; non-interfering with core display.
+Worktrees cleaned up and local branches deleted.
+
+## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM EXIT — PHASE EXIT GREEN
+
+Phase: authentic radio check-in and say-request direct response T04-84–85
+Merge target: `feature/sattelite-traffic`
+Merged: T04-84, T04-85
+Tests: final `npm run ci` green (2569 passed, 4 skipped); speech-api pytest green (94 passed)
+Notes: push authorized; cold call check-in parity; direct say-request response; multi-turn lifecycle verified
+
 ## SATELLITE APPROACH & VISUAL AUTO-LAND SWARM COMPLETE — Arrival-Airport Approach Resolution, Satellite ILS, Visual Clearance & Autonomous VFR Auto-Land (T04-81–T04-83, 2026-09-16)
 
 Ran on `feature/sattelite-traffic` across three sequential waves:
