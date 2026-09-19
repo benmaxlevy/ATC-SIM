@@ -299,6 +299,7 @@ export class VfrRequestQueue {
   private cancellationCounter = 0;
   private playInFlight = false;
   private lastUtteranceEndSimMs: number | null = null;
+  private worldRef: World | null = null;
 
   constructor(options?: VfrRequestQueueOptions) {
     const validated = options?.config ? validateVfrRequestConfig(options.config) : undefined;
@@ -352,6 +353,7 @@ export class VfrRequestQueue {
     this.cancellationCounter = 0;
     this.playInFlight = false;
     this.lastUtteranceEndSimMs = null;
+    this.worldRef = null;
   }
 
   /**
@@ -584,6 +586,7 @@ export class VfrRequestQueue {
    */
   public drain(args: DrainVfrRequestsArgs): void {
     const { world, log, radio, setStatus, nowWallMs } = args;
+    this.worldRef = world;
     const nowWall = nowWallMs ? nowWallMs() : 0;
     this.scheduleFromWorld(world, world.simTimeMs);
 
@@ -886,17 +889,17 @@ export class VfrRequestQueue {
       if (result !== undefined && typeof result.then === "function") {
         void result.then(
           () => {
-            this.onPlayEnded(simTimeMs);
+            this.onPlayEnded(this.worldRef?.simTimeMs ?? simTimeMs);
           },
           () => {
-            this.onPlayEnded(simTimeMs);
+            this.onPlayEnded(this.worldRef?.simTimeMs ?? simTimeMs);
           },
         );
         return;
       }
-      this.onPlayEnded(simTimeMs);
+      this.onPlayEnded(this.worldRef?.simTimeMs ?? simTimeMs);
     } catch {
-      this.onPlayEnded(simTimeMs);
+      this.onPlayEnded(this.worldRef?.simTimeMs ?? simTimeMs);
     }
   }
 

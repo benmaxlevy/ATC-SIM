@@ -995,4 +995,54 @@ describe("formatIfrPickupRequest (T04-84)", () => {
       }),
     ).toBe("Skyhawk 172SP, request IFR");
   });
+
+  it("preserves 500ms post-utterance quiet gap when radio.play is asynchronous", async () => {
+    const queue = createVfrRequestQueue({
+      config: { flightFollowingPercent: 100, requestCapPerHour: 3600 },
+      seed: 1,
+      initialSlotOffsetMs: 0,
+    });
+    const world = createWorld();
+    world.simTimeMs = 1000;
+    const ac1 = createSyntheticVfrAircraft({ id: "ac-1", callsign: "N111" });
+    const ac2 = createSyntheticVfrAircraft({ id: "ac-2", callsign: "N222" });
+    world.aircraft = [ac1, ac2];
+    const log = new SessionLog();
+
+    let resolvePlay: () => void = () => {};
+    const playCalls: string[] = [];
+    let busy = false;
+    const radio = {
+      isBusy: () => busy,
+      play: (text: string) => {
+        playCalls.push(text);
+        busy = true;
+        return new Promise<void>((resolve) => {
+          resolvePlay = () => {
+            busy = false;
+            resolve();
+          };
+        });
+      },
+    };
+
+    queue.scheduleFromWorld(world, 1000);
+    queue.drain({ world, log, radio });
+    expect(playCalls).toHaveLength(1);
+
+    // Simulate playback completing at simTimeMs = 3000
+    world.simTimeMs = 3000;
+    resolvePlay();
+    await Promise.resolve();
+
+    // Within the 500ms quiet gap (e.g., simTimeMs = 3300)
+    world.simTimeMs = 3300;
+    queue.drain({ world, log, radio });
+    expect(playCalls).toHaveLength(1);
+
+    // After the 500ms quiet gap (e.g., simTimeMs = 3500)
+    world.simTimeMs = 3500;
+    queue.drain({ world, log, radio });
+    expect(playCalls).toHaveLength(2);
+  });
 });
