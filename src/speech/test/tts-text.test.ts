@@ -108,6 +108,11 @@ test("airport, fix, and navaid codes speak as phonetics in identifier positions"
     "Delta one twenty three direct November Echo Mike Alfa X-ray",
   );
   expect(readbackForTts("Delta 123 squawk VFR")).toBe("Delta one twenty three squawk V F R");
+  expect(readbackForTts("Skyhawk 172SP, 15 miles north of KPDK, C172, request IFR to KFTY")).toBe(
+    "Skyhawk one seventy two Sierra Papa, fifteen miles north of Kilo Papa Delta Kilo, " +
+      "C one seven two, request I F R to Kilo Foxtrot Tango Yankee",
+  );
+  expect(readbackForTts("Skyhawk 172SP")).toBe("Skyhawk one seventy two Sierra Papa");
 });
 
 test("procedure names are never phoneticized", () => {

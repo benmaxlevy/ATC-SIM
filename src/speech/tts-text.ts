@@ -163,9 +163,9 @@ function expandTtsCallsignsAndIdentifiers(text: string): string {
     /\b(north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west) of ([A-Z]{3,4})\b/gi,
     (_, dir: string, token: string) => `${dir} of ${speakIdentifier(token)}`,
   );
-  // Clearance limit / flight-following destination (`cleared to KATL`, `following to KFTY`).
+  // Clearance limit / flight-following destination (`cleared to KATL`, `following to KFTY`, `request IFR to KFTY`).
   out = out.replace(
-    /\b(cleared|following) to ([A-Z]{3,4})\b/g,
+    /\b(cleared|following|request IFR) to ([A-Z]{3,4})\b/gi,
     (_, keyword: string, token: string) => `${keyword} to ${speakIdentifier(token)}`,
   );
   // Tactical fix references (`direct NEMAX`, `cross MERGE`, `until NEMAX`).
@@ -174,10 +174,17 @@ function expandTtsCallsignsAndIdentifiers(text: string): string {
     (match, keyword: string, token: string) =>
       hasLetter(token) ? `${keyword} ${speakIdentifier(token)}` : match,
   );
-  // VFR aircraft type in the flight-following callup (`, C172, request flight
-  // following`). Letter-spelled, never phonetic (`SR22` → `S R 2 2`).
-  out = out.replace(/, ([A-Z][A-Z0-9]{1,5}), request flight following/g, (_, token: string) =>
-    hasLetter(token) ? `, ${spellAircraftType(token)}, request flight following` : _,
+  // VFR/IFR aircraft type in the callup (`, C172, request flight following`, `, C172, request IFR`).
+  // Letter-spelled, never phonetic (`SR22` → `S R 2 2`).
+  out = out.replace(
+    /, ([A-Z][A-Z0-9]{1,5}), request (flight following|IFR)/gi,
+    (match, token: string, requestKind: string) =>
+      hasLetter(token) ? `, ${spellAircraftType(token)}, request ${requestKind}` : match,
+  );
+  // Tail numbers with trailing letter suffixes (e.g. `172SP` -> `172 Sierra Papa`).
+  out = out.replace(
+    /\b(\d{1,5})([A-Z]{1,2})\b/g,
+    (_, digits: string, letters: string) => `${digits} ${speakIdentifier(letters)}`,
   );
   return out;
 }
