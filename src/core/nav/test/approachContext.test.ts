@@ -13,6 +13,8 @@ import {
   regionalSatelliteIlsApproaches,
   resolveApproachContext,
   resolveDestinationAirportIcao,
+  resolveRegionalRunwayGeometry,
+  resolveRunwayGeometry,
 } from "../approachContext";
 
 function makeTestAircraft(init: Partial<AircraftInit> & { callsign: string }): Aircraft {
@@ -297,6 +299,90 @@ describe("T04-81 approachContext resolver", () => {
       expect(ctx.catalog).toBeNull();
       expect(ctx.fixRegistry).toBeNull();
     });
+  });
+
+  it("resolves visual runway from world flightPlans without aircraft-local destination", () => {
+    const world = createWorld({
+      catalog: { airportId: "KATL", approaches: [], navaids: [], fixes: [], sids: [], stars: [] },
+    });
+    world.regional = regional;
+    const planResult = createFlightPlan({
+      id: "fp-visual",
+      acid: "N123AB",
+      airportId: "KPDK",
+      fixes: [],
+      assignedBeacon: "4203",
+      scratchpads: [],
+    });
+    expect(planResult.ok).toBe(true);
+    if (!planResult.ok) return;
+    world.flightPlans = [planResult.value];
+    const aircraft = makeTestAircraft({
+      id: "ac-visual",
+      callsign: "N123AB",
+      squawk: "4203",
+      reportedSquawk: "4203",
+    });
+    world.aircraft = [aircraft];
+
+    const runway = regional.getAirport("KPDK")!.runways[0]!;
+    expect(resolveRunwayGeometry(aircraft, runway.id, world)).toMatchObject({
+      runwayId: runway.id,
+      headingDeg: runway.headingMagDeg,
+    });
+  });
+
+  it.each([0, 359.999])("accepts catalog heading at boundary %s", (headingDeg) => {
+    const world = createWorld({
+      catalog: {
+        airportId: "KATL",
+        fieldElevFt: 1000,
+        approaches: [{ id: "I27", runway: "27", thresholdFixId: "RW27", courseDeg: headingDeg }],
+        navaids: [],
+        fixes: [{ id: "RW27", xNm: 1, yNm: 2 }],
+        sids: [],
+        stars: [],
+      },
+    });
+    const aircraft = makeTestAircraft({ id: "ac-catalog", callsign: "DAL27", destination: "KATL" });
+    expect(resolveRunwayGeometry(aircraft, "27", world)?.headingDeg).toBe(headingDeg);
+  });
+
+  it.each([-0.001, 360, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects catalog heading %s",
+    (headingDeg) => {
+      const world = createWorld({
+        catalog: {
+          airportId: "KATL",
+          fieldElevFt: 1000,
+          approaches: [{ id: "I27", runway: "27", thresholdFixId: "RW27", courseDeg: headingDeg }],
+          navaids: [],
+          fixes: [{ id: "RW27", xNm: 1, yNm: 2 }],
+          sids: [],
+          stars: [],
+        },
+      });
+      const aircraft = makeTestAircraft({
+        id: "ac-catalog",
+        callsign: "DAL27",
+        destination: "KATL",
+      });
+      expect(resolveRunwayGeometry(aircraft, "27", world)).toBeNull();
+    },
+  );
+
+  it("fails closed when regional airport runways are missing or not an array", () => {
+    const airport = {
+      fieldElevFt: 1000,
+      runways: undefined,
+    } as unknown as Pick<RegionalFacility["airports"][number], "fieldElevFt" | "runways">;
+    expect(resolveRegionalRunwayGeometry(airport, "27")).toBeNull();
+
+    const malformed = {
+      fieldElevFt: 1000,
+      runways: {},
+    } as unknown as Pick<RegionalFacility["airports"][number], "fieldElevFt" | "runways">;
+    expect(resolveRegionalRunwayGeometry(malformed, "27")).toBeNull();
   });
 
   describe("regionalSatelliteIlsApproaches", () => {

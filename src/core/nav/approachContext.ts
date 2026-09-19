@@ -14,7 +14,7 @@ import { buildFixRegistry, type FixRegistry } from "./fixRegistry";
 import { latLonToNm, type LatLon } from "./geometry";
 import type { Navaid, NavFix, ProcedureCatalog } from "../../scenario/procedures/types";
 import { loadRegionalAirportCatalog } from "../../scenario/regionalCatalogs";
-import type { RegionalFacility } from "../../scenario/regional";
+import type { RegionalAirport, RegionalFacility } from "../../scenario/regional";
 import type { CatalogApproach } from "../../parse/spoken/catalog-ground";
 
 export interface ApproachContext {
@@ -316,6 +316,112 @@ export function matchesRunway(a: string, b: string): boolean {
   return normalizeRunwayId(a) === normalizeRunwayId(b);
 }
 
+/** Resolve only complete regional runway geometry used by visual application/validation. */
+export function resolveRegionalRunwayGeometry(
+  airport: Pick<RegionalAirport, "fieldElevFt" | "runways">,
+  runwayId: string,
+): VisualRunwayGeometry | null {
+  if (!Array.isArray(airport.runways)) return null;
+  const rwy = airport.runways.find((candidate) => matchesRunway(candidate.id, runwayId));
+  if (
+    !rwy ||
+    !Number.isFinite(rwy.thresholdNm?.xNm) ||
+    !Number.isFinite(rwy.thresholdNm?.yNm) ||
+    !Number.isFinite(rwy.headingMagDeg) ||
+    rwy.headingMagDeg < 0 ||
+    rwy.headingMagDeg >= 360 ||
+    !Number.isFinite(rwy.lengthFt) ||
+    rwy.lengthFt <= 0 ||
+    !Number.isFinite(airport.fieldElevFt)
+  ) {
+    return null;
+  }
+  return {
+    runwayId: rwy.id,
+    threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
+    headingDeg: rwy.headingMagDeg,
+    fieldElevFt: airport.fieldElevFt,
+    lengthFt: rwy.lengthFt,
+  };
+}
+
+function regionalAirportForDestination(
+  regional: RegionalFacility,
+  destinationIcao: string,
+): RegionalAirport | undefined {
+  return typeof regional.getAirport === "function"
+    ? regional.getAirport(destinationIcao)
+    : regional.airports?.find((airport) => airport?.icao?.toUpperCase() === destinationIcao);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+export function resolveRegionalRunwayGeometryForAircraft(
+  aircraft: Aircraft,
+  runwayId: string,
+  regional: RegionalFacility,
+  destinationIcao?: string | null,
+): VisualRunwayGeometry | null {
+  const knownAirport = (icao: string) =>
+    typeof regional.hasAirport === "function"
+      ? regional.hasAirport(icao)
+      : Boolean(regionalAirportForDestination(regional, icao));
+  const activeLimit = aircraft.activeClearance?.limitId?.trim().toUpperCase();
+  const flightPlanDestination =
+    (aircraft.flightPlan as { airportId?: string; destination?: string } | undefined)?.airportId ??
+    aircraft.flightPlan?.destination ??
+    (aircraft.fp as { airportId?: string; destination?: string } | undefined)?.airportId ??
+    aircraft.fp?.destination;
+  const destination =
+    (activeLimit && knownAirport(activeLimit) ? activeLimit : undefined) ??
+    flightPlanDestination?.trim().toUpperCase() ??
+    aircraft.ambientVfr?.destinationAirportId?.trim().toUpperCase() ??
+    destinationIcao?.trim().toUpperCase() ??
+    aircraft.destination?.trim().toUpperCase() ??
+    aircraft.destinationAirport?.trim().toUpperCase();
+  if (!destination) return null;
+  const airport = regionalAirportForDestination(regional, destination);
+  return airport ? resolveRegionalRunwayGeometry(airport, runwayId) : null;
+}
+
+type CatalogRunwaySource = {
+  fieldElevFt?: number;
+  approaches?: ReadonlyArray<{
+    id: string;
+    runway?: string;
+    thresholdFixId?: string;
+    publishedCourseMagneticDeg?: number;
+    courseDeg?: number;
+  }>;
+  fixes?: ReadonlyArray<{ id: string; xNm?: number; yNm?: number }>;
+};
+
+function resolveCatalogRunwayGeometry(
+  cat: CatalogRunwaySource,
+  runwayId: string,
+): VisualRunwayGeometry | null {
+  const fieldElevFt = cat.fieldElevFt;
+  const app = cat.approaches?.find((a) => matchesRunway(a.runway ?? a.id, runwayId));
+  if (!isFiniteNumber(fieldElevFt) || !app?.thresholdFixId) return null;
+  const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
+  const xNm = fix?.xNm;
+  const yNm = fix?.yNm;
+  const headingCandidate = app.publishedCourseMagneticDeg ?? app.courseDeg;
+  if (!isFiniteNumber(xNm) || !isFiniteNumber(yNm) || !isFiniteNumber(headingCandidate)) {
+    return null;
+  }
+  if (headingCandidate < 0 || headingCandidate >= 360) return null;
+  const headingDeg = headingCandidate;
+  return {
+    runwayId: app.runway ?? runwayId.replace(/^RW/i, "").toUpperCase(),
+    threshold: { xNm, yNm },
+    headingDeg,
+    fieldElevFt,
+  };
+}
+
 /**
  * Resolve visual runway geometry (threshold, heading, field elevation)
  * against the aircraft's resolved arrival airport.
@@ -329,52 +435,22 @@ export function resolveRunwayGeometry(
   const regional = world.regional as RegionalFacility | undefined;
 
   if (regional) {
-    const satAirport =
-      typeof regional.getAirport === "function"
-        ? regional.getAirport(destIcao)
-        : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao.toUpperCase());
-    if (satAirport && Array.isArray(satAirport.runways)) {
-      const rwy = satAirport.runways.find((r) => matchesRunway(r.id, runwayId));
-      if (
-        rwy &&
-        Number.isFinite(rwy.thresholdNm?.xNm) &&
-        Number.isFinite(rwy.thresholdNm?.yNm) &&
-        Number.isFinite(rwy.headingMagDeg)
-      ) {
-        return {
-          runwayId: rwy.id,
-          threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
-          headingDeg: rwy.headingMagDeg,
-          fieldElevFt: satAirport.fieldElevFt ?? 0,
-          lengthFt: rwy.lengthFt,
-        };
-      }
-    }
+    const geometry = resolveRegionalRunwayGeometryForAircraft(
+      aircraft,
+      runwayId,
+      regional,
+      destIcao,
+    );
+    if (geometry) return geometry;
+    if (destIcao !== (world.catalog?.airportId?.trim().toUpperCase() ?? "")) return null;
   }
 
   const appCtx = resolveApproachContext(aircraft, world);
-  const cat = appCtx.catalog ?? world.catalog;
+  const centerIcao = world.catalog?.airportId?.trim().toUpperCase() ?? "";
+  const cat = appCtx.catalog ?? (destIcao === centerIcao ? world.catalog : undefined);
   if (cat) {
-    const fieldElevFt = cat.fieldElevFt ?? 0;
-    if (cat.approaches) {
-      const app = cat.approaches.find((a) => matchesRunway(a.runway ?? a.id, runwayId));
-      if (app && app.thresholdFixId) {
-        const fix = cat.fixes?.find((f) => f.id === app.thresholdFixId);
-        if (
-          fix &&
-          typeof fix.xNm === "number" &&
-          typeof fix.yNm === "number" &&
-          Number.isFinite(app.publishedCourseMagneticDeg ?? app.courseDeg)
-        ) {
-          return {
-            runwayId: app.runway ?? runwayId.replace(/^RW/i, "").toUpperCase(),
-            threshold: { xNm: fix.xNm, yNm: fix.yNm },
-            headingDeg: app.publishedCourseMagneticDeg ?? app.courseDeg ?? 0,
-            fieldElevFt,
-          };
-        }
-      }
-    }
+    const geometry = resolveCatalogRunwayGeometry(cat, runwayId);
+    if (geometry) return geometry;
   }
 
   return null;

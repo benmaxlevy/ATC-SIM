@@ -294,12 +294,14 @@ test("T04-82: CLEARED_VISUAL validation", () => {
       if (icao === "KPDK") {
         return {
           icao: "KPDK",
+          fieldElevFt: 1000,
           runways: [{ id: "21L" }, { id: "03R" }],
         };
       }
       if (icao === "KATL") {
         return {
           icao: "KATL",
+          fieldElevFt: 1000,
           runways: [{ id: "27L" }, { id: "27R" }, { id: "08L" }],
         };
       }
@@ -308,10 +310,41 @@ test("T04-82: CLEARED_VISUAL validation", () => {
   } as unknown as import("../../scenario/regional").RegionalFacility;
 
   const pdkAc = { ...jet(), destination: "KPDK" };
-  // KPDK has 21L -> ok
+  // Runway ID alone is not enough; missing regional geometry is rejected.
   expect(
     validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
       regional: mockRegional,
+    }).ok,
+  ).toBe(false);
+
+  const validRegional = {
+    getAirport: (icao: string) =>
+      icao === "KPDK"
+        ? {
+            icao: "KPDK",
+            fieldElevFt: 1000,
+            runways: [
+              {
+                id: "21L",
+                thresholdNm: { xNm: 1, yNm: 2 },
+                headingMagDeg: 210,
+                lengthFt: 6000,
+              },
+            ],
+          }
+        : undefined,
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+  expect(
+    validateInstructions(pdkAc, [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      regional: validRegional,
+    }).ok,
+  ).toBe(true);
+
+  const planDestinationAc = { ...pdkAc, destination: "KATL", flightPlan: { destination: "KPDK" } };
+  expect(
+    validateInstructions(planDestinationAc, [{ type: "CLEARED_VISUAL", runwayId: "21L" }], {
+      regional: validRegional,
+      destinationIcao: "KATL",
     }).ok,
   ).toBe(true);
   // KPDK does not have 27L (KATL runway) -> rejected with RUNWAY

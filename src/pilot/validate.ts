@@ -23,8 +23,11 @@ import {
   performanceRegistry,
 } from "@core";
 import { isValidBeaconCode } from "@core";
-import { normalizeRunwayId } from "../core/nav/approachContext";
-import { resolveRunwayGeometry } from "../core/nav/approachContext";
+import {
+  normalizeRunwayId,
+  resolveRegionalRunwayGeometryForAircraft,
+  resolveRunwayGeometry,
+} from "../core/nav/approachContext";
 import type { World } from "../core/world";
 import type { RegionalFacility } from "../scenario/regional";
 
@@ -623,32 +626,15 @@ function validateClearedVisual(
     }
   }
 
-  const destIcao = (
-    opts?.destinationIcao ??
-    aircraft.activeClearance?.limitId ??
-    (aircraft.flightPlan as { airportId?: string; destination?: string } | undefined)?.airportId ??
-    aircraft.flightPlan?.destination ??
-    aircraft.destination ??
-    aircraft.destinationAirport ??
-    opts?.catalog?.airportId ??
-    ""
-  )
-    .trim()
-    .toUpperCase();
-
   if (opts?.regional) {
-    const regional = opts.regional;
-    const airport =
-      typeof regional.getAirport === "function"
-        ? regional.getAirport(destIcao)
-        : regional.airports?.find((a) => a?.icao?.toUpperCase() === destIcao);
-    if (airport && Array.isArray(airport.runways) && airport.runways.length > 0) {
-      const exists = airport.runways.some((r) => normalizeRunwayId(r.id) === norm);
-      if (!exists) {
-        return { ok: false, reason: "RUNWAY" };
-      }
-      return { ok: true };
-    }
+    return resolveRegionalRunwayGeometryForAircraft(
+      aircraft,
+      norm,
+      opts.regional,
+      opts.destinationIcao,
+    )
+      ? { ok: true }
+      : { ok: false, reason: "RUNWAY" };
   }
 
   if (opts?.catalog) {

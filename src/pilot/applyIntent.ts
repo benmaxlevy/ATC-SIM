@@ -25,8 +25,8 @@ import {
   transitionRequestToIdentifying,
 } from "@core";
 import {
+  resolveRegionalRunwayGeometryForAircraft,
   resolveRunwayGeometry,
-  matchesRunway,
   type VisualRunwayGeometry,
 } from "../core/nav/approachContext";
 import type { World } from "../core/world";
@@ -332,24 +332,12 @@ function applyClearedVisual(
     geom = resolveRunwayGeometry(aircraft, clean, opts.world);
     if (!geom) return;
   } else if (opts?.regional) {
-    const destIcao = (opts.destinationIcao ?? aircraft.destination ?? "").toUpperCase();
-    const satAirport = opts.regional.airports?.find((a) => a.icao?.toUpperCase() === destIcao);
-    if (satAirport && Array.isArray(satAirport.runways)) {
-      const rwy = satAirport.runways.find((r) => matchesRunway(r.id, clean));
-      if (
-        rwy &&
-        Number.isFinite(rwy.thresholdNm?.xNm) &&
-        Number.isFinite(rwy.thresholdNm?.yNm) &&
-        Number.isFinite(rwy.headingMagDeg)
-      ) {
-        geom = {
-          runwayId: rwy.id,
-          threshold: { xNm: rwy.thresholdNm.xNm, yNm: rwy.thresholdNm.yNm },
-          headingDeg: rwy.headingMagDeg,
-          fieldElevFt: satAirport.fieldElevFt ?? 0,
-        };
-      }
-    }
+    geom = resolveRegionalRunwayGeometryForAircraft(
+      aircraft,
+      clean,
+      opts.regional,
+      opts.destinationIcao,
+    );
   }
   if (!geom) return;
 
