@@ -429,14 +429,17 @@ export function assessClassBAccessRequest(
   let operation: ClassBRequestOperation;
   switch (mission) {
     case "AIRPORT_BOUND":
-      intent = endpointInside ? "ARRIVAL" : "TRANSITION";
-      operation = endpointInside ? "TO_ENTER" : "THROUGH";
+      intent = "ARRIVAL";
+      operation = "TO_ENTER";
       break;
     case "SATELLITE_DEPARTURE":
       intent = "DEPARTURE";
       operation = endpointInside ? "TO_ENTER" : "THROUGH";
       break;
     case "TRANSIT":
+      intent = "TRANSITION";
+      operation = "THROUGH";
+      break;
     case "LOCAL":
       intent = "TRANSITION";
       operation = endpointInside ? "TO_ENTER" : "THROUGH";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAircraft,
+  buildFixRegistry,
   createWorld,
   SessionLog,
   type ActiveIfrClearance,
@@ -336,9 +337,12 @@ describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
       xNm: -15,
       yNm: 0,
       ambientVfr: {
-        mission,
-        waypoints: [{ xNm: 0, yNm: 0, fixId: "FIX1", altitudeFt: 4500 }],
         ...(ambient ?? {}),
+        mission,
+        zoneId: ambient?.zoneId ?? "synthetic",
+        spawnedAtSimMs: ambient?.spawnedAtSimMs ?? 0,
+        alertEligibility: ambient?.alertEligibility ?? "AMBIENT_SUPPRESSED",
+        waypoints: ambient?.waypoints ?? [{ xNm: 0, yNm: 0, fixId: "FIX1", altitudeFt: 4500 }],
       },
     });
   }

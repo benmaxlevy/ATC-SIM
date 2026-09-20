@@ -38,6 +38,7 @@ import { formatReadback, formatRejectReadback } from "./readback";
 import { validateInstructions } from "./validate";
 import {
   formatIfrPickupRequest,
+  formatVfrClassBRequest,
   formatVfrFlightFollowingRequest,
   formatVfrPositionReport,
 } from "./vfrRequestQueue";
@@ -472,7 +473,20 @@ export function handleRadioCommand(
           regionalFacility,
         );
         const detailText =
-          req.kind === "FLIGHT_FOLLOWING"
+          req.kind === "CLASS_B_ACCESS"
+            ? formatVfrClassBRequest({
+                callsign: req.callsign,
+                positionPhrase: detailPosition,
+                aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
+                altitudeFt: req.details.altitudeFt ?? aircraft.altitudeFt,
+                headingDeg: aircraft.headingDeg,
+                classBIntent: req.details.classBIntent ?? "TRANSITION",
+                classBOperation: req.details.classBOperation ?? "THROUGH",
+                originAirportId: req.details.originAirportId,
+                destinationAirportId: req.details.destinationAirportId,
+                route: req.details.route,
+              })
+            : req.kind === "FLIGHT_FOLLOWING"
             ? formatVfrFlightFollowingRequest({
                 callsign: req.callsign,
                 positionPhrase: detailPosition,
