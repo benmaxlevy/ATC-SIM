@@ -59,18 +59,24 @@ Class B clearance is not implemented.
 
 ## Acceptance criteria
 
-- [ ] One integrated acceptance file proves successful outside-Bravo route
+- [x] One integrated acceptance file proves successful outside-Bravo route
   replacement and autonomous VFR continuation.
-- [ ] The same file proves no-safe-route and inside-Bravo atomic rejection.
-- [ ] Existing command/parser/readback behavior remains covered and unchanged.
-- [ ] `docs/USER.md`, `phases/04-procedures/README.md`, and relevant ticket
+- [x] The same file proves no-safe-route and inside-Bravo atomic rejection.
+- [x] Existing command/parser/readback behavior remains covered and unchanged.
+- [x] `docs/USER.md`, `phases/04-procedures/README.md`, and relevant ticket
   notes distinguish route repair from Class B clearance.
-- [ ] The backlog keeps controller VFR clearances through/into Class B as
+- [x] The backlog keeps controller VFR clearances through/into Class B as
   deferred and names explicit authorization, parser parity, execution, and
   conformance as future work.
-- [ ] `npm run ci` and `git diff --check` pass.
-- [ ] Manual KATL/browser evidence is either recorded with seed/callsign or
+- [x] `npm run ci` and `git diff --check` pass.
+- [x] Manual KATL/browser evidence is either recorded with seed/callsign or
   explicitly marked unavailable; no automated test is presented as live proof.
+
+## Closure evidence
+
+- Automated integration, cancellation, navigation, and full CI gates pass.
+- Manual KATL/browser evidence is unavailable in this worker run; no automated
+  test is presented as live proof.
 
 ## Test plan
 

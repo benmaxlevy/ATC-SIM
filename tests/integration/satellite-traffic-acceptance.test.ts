@@ -693,6 +693,39 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
       expectedHeading < 0 ? expectedHeading + 360 : expectedHeading,
       8,
     );
+    const positionAfterPlanning = {
+      xNm: replanningAircraft.xNm,
+      yNm: replanningAircraft.yNm,
+    };
+    for (let i = 0; i < 5; i += 1) {
+      stepWorld(replanningWorld, 1);
+    }
+    expect(replanningWorld.simTimeMs).toBe(15_000);
+    expect(
+      Math.hypot(
+        replanningAircraft.xNm - positionAfterPlanning.xNm,
+        replanningAircraft.yNm - positionAfterPlanning.yNm,
+      ),
+    ).toBeGreaterThan(0);
+    expect(
+      isRouteSafeFromAvoidance(
+        [
+          {
+            xNm: replanningAircraft.xNm,
+            yNm: replanningAircraft.yNm,
+            altitudeFt: replanningAircraft.altitudeFt,
+          },
+          ...(replanningVfr!.waypoints ?? [])
+            .slice(replanningVfr!.waypointIndex ?? 0)
+            .map((waypoint) => ({
+              xNm: waypoint.xNm,
+              yNm: waypoint.yNm,
+              altitudeFt: waypoint.altitudeFt ?? replanningAircraft.altitudeFt,
+            })),
+        ],
+        regional.airspaces.filter(isVfrAvoidanceVolume),
+      ),
+    ).toBe(true);
     expect(replanningAircraft.activeClearance).toBeUndefined();
     expect(replanningAircraft.assignedSquawk).toBe("4722");
     expect(replanningAircraft.flightFollowing).toEqual(originalService);
