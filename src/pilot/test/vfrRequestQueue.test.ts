@@ -299,6 +299,11 @@ describe("VfrRequestQueue eligibility (T04-72)", () => {
     expect(isAirborneVfrEligible(ac)).toBe(false);
   });
 
+  it("rejects explicitly grounded aircraft even with positive altitude", () => {
+    const ac = createSyntheticVfrAircraft({ altitudeFt: 4500, airborne: false });
+    expect(isAirborneVfrEligible(ac)).toBe(false);
+  });
+
   it("rejects exiting or handed-off ambient VFR aircraft", () => {
     const ac1 = createSyntheticVfrAircraft();
     ac1.ambientVfr!.phase = "EXITING";
@@ -350,7 +355,7 @@ describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
   }
 
   it.each([
-    ["AIRPORT_BOUND", "TO_ENTER", "ARRIVAL"],
+    ["AIRPORT_BOUND", "THROUGH", "ARRIVAL"],
     ["TRANSIT", "THROUGH", "TRANSITION"],
     ["SATELLITE_DEPARTURE", "TO_ENTER", "DEPARTURE"],
   ] as const)("schedules generic %s Class B request", (mission, operation, intent) => {
@@ -378,6 +383,28 @@ describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
     expect(queue.getRequests()[0]!.route).toEqual([{ type: "DIRECT", fixId: "FIX1" }]);
     expect(aircraft.flightRules).toBe("VFR");
     expect(aircraft.classBClearance).toBeUndefined();
+  });
+
+  it("keeps an AIRPORT_BOUND request TO_ENTER when its projected endpoint is inside Bravo", () => {
+    const { regional, world } = makeClassBWorld();
+    const destination = regional.getAirport("KPDK")!;
+    destination.arpNm = { xNm: 0, yNm: 0 };
+    const aircraft = makeCrossingAircraft("AIRPORT_BOUND", {
+      destinationAirportId: "KPDK",
+    });
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()[0]).toMatchObject({
+      classBOperation: "TO_ENTER",
+      classBIntent: "ARRIVAL",
+    });
   });
 
   it("schedules a THROUGH request for an underlying-airport departure that exits Bravo", () => {
@@ -486,6 +513,49 @@ describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
 
     expect(queue.getRequests()[1]!.state).toBe("PENDING");
     expect(queue.getRequests()[1]!.dueAtSimMs).toBe(1000);
+  });
+
+  it("withdraws and refreshes a changed Class B plan before transmission", () => {
+    const { regional, world } = makeClassBWorld();
+    const aircraft = makeCrossingAircraft("TRANSIT");
+    world.aircraft = [aircraft];
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 1 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    aircraft.ambientVfr!.mission = "AIRPORT_BOUND";
+    aircraft.ambientVfr!.originAirportId = "KFTY";
+    aircraft.ambientVfr!.destinationAirportId = "KPDK";
+    aircraft.ambientVfr!.waypoints = [{ xNm: 10, yNm: 0, fixId: "FIX2", altitudeFt: 5000 }];
+    aircraft.requestedAltitudeFt = 5000;
+
+    const log = new SessionLog();
+    queue.drain({ world, log });
+
+    const requests = queue.getRequests();
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({
+      state: "WITHDRAWN",
+      withdrawnReason: "CLASS_B_PLAN_CHANGED",
+    });
+    expect(requests[1]).toMatchObject({
+      state: "TRANSMITTED",
+      classBOperation: "THROUGH",
+      classBIntent: "ARRIVAL",
+      originAirportId: "KFTY",
+      destinationAirportId: "KPDK",
+      requestedAltitudeFt: 5000,
+      route: [{ type: "DIRECT", fixId: "FIX2" }],
+    });
+    expect(log.byType("vfr.request.transmitted")).toHaveLength(1);
+    expect(log.byType("vfr.request.transmitted")[0]!.request).toMatchObject({
+      classBIntent: "ARRIVAL",
+      destinationAirportId: "KPDK",
+      route: [{ type: "DIRECT", fixId: "FIX2" }],
+    });
   });
 });
 

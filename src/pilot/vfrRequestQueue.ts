@@ -259,6 +259,9 @@ export function isAirborneVfrEligible(aircraft: Aircraft): boolean {
   if (aircraft.flightRules !== "VFR") {
     return false;
   }
+  if (aircraft.airborne === false) {
+    return false;
+  }
   if (aircraft.activeClearance) {
     return false;
   }
@@ -290,6 +293,35 @@ export interface ClassBAccessRequestPlan {
 }
 
 type ClassBAccessAssessment = { plan: ClassBAccessRequestPlan } | { blocked: true } | null;
+
+function sameClassBRoute(
+  left: readonly ClassBRequestRouteLeg[] | undefined,
+  right: readonly ClassBRequestRouteLeg[] | undefined,
+): boolean {
+  const leftRoute = left ?? [];
+  const rightRoute = right ?? [];
+  return (
+    leftRoute.length === rightRoute.length &&
+    leftRoute.every(
+      (leg, index) =>
+        leg.type === rightRoute[index]?.type && leg.fixId === rightRoute[index]?.fixId,
+    )
+  );
+}
+
+function classBRequestMatchesPlan(
+  request: VfrPilotRequest,
+  plan: ClassBAccessRequestPlan,
+): boolean {
+  return (
+    request.classBOperation === plan.operation &&
+    request.classBIntent === plan.intent &&
+    request.originAirportId === plan.originAirportId &&
+    request.destinationAirportId === plan.destinationAirportId &&
+    request.requestedAltitudeFt === plan.requestedAltitudeFt &&
+    sameClassBRoute(request.route, plan.route)
+  );
+}
 
 function sameNmPoint(
   left: { xNm: number; yNm: number },
@@ -430,7 +462,7 @@ export function assessClassBAccessRequest(
   switch (mission) {
     case "AIRPORT_BOUND":
       intent = "ARRIVAL";
-      operation = "TO_ENTER";
+      operation = endpointInside ? "TO_ENTER" : "THROUGH";
       break;
     case "SATELLITE_DEPARTURE":
       intent = "DEPARTURE";
@@ -1011,6 +1043,8 @@ export class VfrRequestQueue {
 
       if (
         aircraft.flightRules !== "VFR" ||
+        aircraft.airborne === false ||
+        aircraft.altitudeFt <= 0 ||
         aircraft.activeClearance ||
         aircraft.classBClearance?.active
       ) {
@@ -1042,6 +1076,22 @@ export class VfrRequestQueue {
             requestId: next.id,
             reason: next.withdrawnReason,
           });
+          continue;
+        }
+        if (!classBRequestMatchesPlan(next, classBAssessment.plan)) {
+          this.releaseAdmission(next);
+          next.state = "WITHDRAWN";
+          next.withdrawnReason = "CLASS_B_PLAN_CHANGED";
+          log.append({
+            type: "vfr.request.withdrawn",
+            atSimMs: world.simTimeMs,
+            atWallMs: nowWall,
+            callsign: next.callsign,
+            requestId: next.id,
+            reason: next.withdrawnReason,
+          });
+          this.evaluatedAircraftIds.delete(aircraft.id);
+          this.evaluateAircraft(aircraft, world, world.simTimeMs);
           continue;
         }
       }
