@@ -17,6 +17,7 @@ from engines import SttEngine, TtsEngine, build_stt, build_tts, sanitize_stt_fix
 from logconfig import configure_logging
 from normalizer import normalize_stt_text
 from parse_engine import PARSE_CONTRACT_VERSION, ParseEngine, build_parse
+from trace_db import TraceBatchPayload, get_db_connection, init_db, insert_trace_batch
 from wavutil import is_wave
 
 configure_logging()
@@ -71,6 +72,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         app.state.settings = cfg
         log.info("speech-api starting mock=%s", cfg.mock)
+        try:
+            init_db(cfg.trace_db_path)
+        except Exception:
+            log.exception("failed to initialize trace db at %s", cfg.trace_db_path)
         app.state.stt = build_stt(cfg)
         app.state.tts = build_tts(cfg)
         parse_engine = build_parse(cfg)
@@ -175,6 +180,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 content={"ok": False, "error": "PARSE_MISS"},
             )
         return JSONResponse(status_code=outcome.http_status, content=outcome.body())
+
+    @app.post("/debug/traces")
+    def debug_traces(payload: TraceBatchPayload, request: Request) -> dict:
+        cfg: Settings = getattr(request.app.state, "settings", None) or Settings.load()
+        conn = get_db_connection(cfg.trace_db_path)
+        try:
+            inserted = insert_trace_batch(conn, payload)
+        finally:
+            conn.close()
+        return {"ok": True, "inserted": inserted}
 
     return app
 
