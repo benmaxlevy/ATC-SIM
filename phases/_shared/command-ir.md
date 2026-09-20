@@ -88,6 +88,15 @@ export type Instruction =
       frequency?: string;
       squawk?: string;
     }
+
+Class B instructions are VFR-only. `CLASS_B_CLEARANCE` authorizes exactly one
+of `THROUGH`, `TO_ENTER`, or `OUT_OF`; its optional route is an ordered list of
+catalog-grounded direct fix legs and its optional altitude is temporary while
+in Bravo. `REMAIN_OUTSIDE_BRAVO` and
+`RESUME_APPROPRIATE_VFR_ALTITUDES` have no arguments. The pilot agent validates
+the active Class B volume, VFR status, route geometry, and altitude floor before
+mutating intent. None of these instructions creates an IFR clearance, changes
+flight-plan, service, or beacon state, or authorizes entry implicitly.
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }

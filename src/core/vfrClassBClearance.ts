@@ -266,7 +266,7 @@ export function handleClassBBoundary(
       altitudeFt: prior,
     });
   }
-  if (aircraft.classBClearance?.operation === "OUT_OF") {
+  if (aircraft.classBClearance) {
     aircraft.classBClearance.active = false;
   }
 }

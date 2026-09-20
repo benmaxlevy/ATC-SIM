@@ -121,7 +121,11 @@ airspace`, `cleared out of Bravo airspace`, `remain outside Bravo airspace`, and
 `resume appropriate VFR altitudes`. `VIA ... THEN ...` route legs must be
 catalog-grounded and precede `maintain ... while in Bravo airspace`. These are
 VFR-only forms; `cleared into Bravo` without `airspace`, fuzzy paraphrases, and
-aliases for THROUGH/OUT OF are rejected.
+aliases for THROUGH/OUT OF are rejected. Accepted clearances preserve VFR
+flight rules, flight-following state, and squawk state. Crossing out of Bravo
+logs `LEAVING (name) BRAVO AIRSPACE`; it does not automatically terminate radar
+service or reset the squawk. A Class B-specific altitude is temporary and is
+restored by the explicit resume command or on exit.
 
 ### Typed command syntax
 
@@ -430,14 +434,17 @@ continuation around modeled Class B when needed. There are no VFR arrivals to
 the primary airport through Class B: airport-bound traffic flies only to
 eligible towered satellite destinations, swept-path Bravo avoidance is
 enforced on every planned route, and the trainer issues no VFR Bravo
-clearance. Other-airspace and tower coordination is assumed, not simulated.
+clearance without explicit authorization. A controller-issued Class B clearance
+authorizes the named VFR operation only; it does not create an IFR clearance or
+alter flight-plan, service, or beacon state. Other-airspace and tower
+coordination is assumed, not simulated.
 
 Trainer limitations: deterministic virtual pilots with configurable workload,
 not observed traffic statistics; VMC assumed for generated IFR cancellation;
-Class B entry approval is not supported; cancellation inside Bravo is rejected,
-while outside-Bravo cancellation replans unsafe autonomous continuations around
-modeled Class B volumes. Controller-issued VFR clearances through or into Bravo
-remain deferred.
+cancellation inside Bravo is rejected, while outside-Bravo cancellation replans
+unsafe autonomous continuations around modeled Class B volumes. Class B
+geometry, MVA floors, and clearance execution are deterministic training
+approximations, not operational or certified data.
 There is no tower cab, ground traffic, emergencies, scoring, or certification.
 Visual approaches use simplified straight-in guidance and touchdown. Regional
 airspace and runway data are deterministic training approximations, not

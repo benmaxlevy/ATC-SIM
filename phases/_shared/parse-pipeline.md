@@ -122,7 +122,13 @@ AIRSPACE`; `THROUGH` and `OUT OF` remain canonical-only. Optional route and
 altitude fields occur only as `VIA ... THEN ...` followed by `MAINTAIN ...
 WHILE IN BRAVO AIRSPACE`. `REMAIN OUTSIDE BRAVO AIRSPACE` and `RESUME
 APPROPRIATE VFR ALTITUDES` are exact zero-argument forms. These instructions
-are VFR-only and require no IFR, flight-plan, beacon, or service mutation.
+are VFR-only and require no IFR, flight-plan, beacon, or service mutation. The
+eight supported `TO_ENTER` aliases normalize to the same instruction: `cleared
+to enter/into bravo airspace`, with optional `the` and `class` before `bravo`.
+The grammar intentionally does not add aliases for `THROUGH` or `OUT OF`.
+Typed, Path A/B, Path C, and PTT inputs must preserve this closed-union result;
+bare `CLEARED INTO BRAVO`, missing `AIRSPACE`, fuzzy paraphrases, and
+ungrounded route legs remain parse misses.
 
 Typed `DCT NOPE` (a catalog-shaped token the student typed) with `pathC: false` remains an **ok-parse**. The pilot still returns `UNKNOWN_FIX` (`src/pilot/direct.test.ts`). Same idea for typed `VIA NOPE` / `X ZZZZ` / `APP ILS99`. Do not turn that into a parse miss.
 

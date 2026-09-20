@@ -828,17 +828,16 @@ Constraints later work must keep:
 Visible now: Ambient VFR traffic and post-cancellation autonomous navigation are guarded by
 the modeled three-dimensional Class B volumes. Outside-Bravo IFR cancellation deterministically
 replans an unsafe autonomous VFR suffix around Class B before the atomic IFR-to-VFR transition;
-cancellation inside Class B remains rejected. Flight following, radar contact, and
-`MAINTAIN_VFR` are advisory/radio states only; none authorizes Class B entry.
+cancellation inside Class B remains rejected. Controller-issued VFR `TO_ENTER`, `THROUGH`, and
+`OUT_OF` clearances now have active state, catalog-grounded 3D route validation, temporary
+altitude handling, boundary events, exact exit notification, and explicit
+`REMAIN_OUTSIDE_BRAVO` / `RESUME_APPROPRIATE_VFR_ALTITUDES` behavior. Flight following, radar
+contact, and `MAINTAIN_VFR` remain advisory/radio states only; none authorizes Class B entry.
 
-Deliberately missing:
-
-- Controller-issued VFR route and altitude clearances through or into Class B, including
-  explicit authorization state and pilot readback.
-- Route-grounded typed, spoken, and Path C grammar for `CLEARED THROUGH/TO ENTER/OUT OF
-  BRAVO AIRSPACE`, optional route, and altitude instructions.
-- Active VFR-clearance state, 3D swept-route validation, execution, route conformance, and
-  issued/accepted/rejected/entered/exited audit events.
+This slice deliberately does not add VFR-on-top, SVFR, Class C/D authorization, tower cab
+coordination, visual landmarks/corridors, certified separation, or implicit route repair from
+unrelated commands. Manual controller review of FAA phraseology and operational suitability
+remains outside automated acceptance.
 
 Constraints later work must keep:
 
@@ -847,8 +846,8 @@ Constraints later work must keep:
   §7-9-2 specifies clearance to enter/through/out of Bravo, with route and altitude as
   applicable.
 - IFR cancellation outside Class B must continue to produce and validate a deterministic safe
-  VFR continuation; cancellation inside Class B remains rejected until this clearance workflow
-  exists.
+  VFR continuation; cancellation inside Class B remains rejected and never implies Class B entry
+  authorization.
 - Validate complete 3D swept segments against grouped Class B geometry, and keep rejected
   commands atomic. Preserve flight following, beacon state, and the editable flight plan
   unless a later clearance contract explicitly changes them.

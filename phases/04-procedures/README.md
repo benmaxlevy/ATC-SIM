@@ -658,7 +658,8 @@ airspace awareness.
 - T04-73 implements the VFR flight-following and radio-contact lifecycle (request state machine,
   controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
 - T04-74 implements airborne VFR-to-IFR pickup (atomic transition to operational IFR, clearance limit validation against regional controlled destination airports, unchanged manual flight plan, and datablock/strip/list operational status).
-- T04-75 and T04-92 implement pilot-initiated IFR cancellation and autonomous VFR continuation (atomic reversion to VFR, deterministic replanning around modeled 3D Class B airspace when the aircraft is outside Bravo, autonomous navigation recovery, intact flight plan/service/beacon state, and multi-channel command parity). Cancellation inside modeled Class B remains rejected because controller-issued VFR Class B clearance is not implemented.
+- T04-75 and T04-92 implement pilot-initiated IFR cancellation and autonomous VFR continuation (atomic reversion to VFR, deterministic replanning around modeled 3D Class B airspace when the aircraft is outside Bravo, autonomous navigation recovery, intact flight plan/service/beacon state, and multi-channel command parity). Cancellation inside modeled Class B remains rejected; it is not an implicit VFR Class B authorization.
+- T04-94–96 implement the controller-issued VFR Class B workflow. The closed Command IR accepts eight `TO_ENTER` wording variants, canonical `THROUGH`/`OUT OF`, catalog-grounded route legs, temporary Class B altitude assignments, `REMAIN_OUTSIDE_BRAVO`, and explicit VFR-altitude resume. Accepted commands preserve VFR, service, and beacon state; boundary exit logs the required `LEAVING (name) BRAVO AIRSPACE` notice without automatic radar-service termination or squawk reset. Synthetic acceptance coverage proves route/altitude validation, boundary events, and no-entry behavior.
 - The VFR fleet lives in the separate `generalAviation` object in
   `src/core/performance/aircraft-profiles.json` (`BE36`, `C172`, `C182`,
   `C208`, `DA40`, `PA28`, `SR22` with manufacturer-spec limits; OpenAP has no
@@ -699,11 +700,10 @@ CIFP-only and missing-status rows never qualify.
 Trainer limitations: The regional pack provides physical and procedural geometry
 as a training approximation. It does not model a certified tower cab or claim
 operational airspace accuracy. Simulated tower handoff, landing clearances, and
-aircraft despawn are trainer behaviors supplied by downstream tickets. Class B
-entry approval is not supported: the trainer rejects IFR cancellation inside
-modeled Class B and deterministically replans outside-Bravo autonomous VFR
-routes around modeled volumes; it does not issue, simulate, or imply a Class B
-clearance.
+aircraft despawn are trainer behaviors supplied by downstream tickets. The
+Class B workflow is deterministic training behavior over modeled volumes and
+MVA floors; IFR cancellation inside Bravo remains rejected, and autonomous VFR
+traffic still cannot enter without an explicit accepted Class B clearance.
 
 ### Post-exit addendum (T04-91 audit closure)
 
@@ -713,7 +713,8 @@ state recovery with Class B no-entry protection, and DCB coupled-state behavior.
 These checks prove existing remediation contracts together; they add no runtime
 behavior. Manual KATL live-source, STARS-manual, speech-latency, and performance
 evidence remains an explicit handoff item when the required local data and
-browser session are unavailable. Class B entry approval is not supported.
+browser session are unavailable. The Class B acceptance tests do not claim
+certification or replace controller review of the cited FAA phraseology.
 
 ### Post-exit addendum (T04-77–78 VFR setup simplification)
 

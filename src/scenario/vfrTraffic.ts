@@ -891,7 +891,7 @@ export class VfrTrafficManager {
     // 1. Step waypoint navigation for all active ambient VFR aircraft
     const remainingAircraft: Aircraft[] = [];
     for (const ac of world.aircraft) {
-      if (ac.ambientVfr) {
+      if (ac.ambientVfr && !ac.classBClearance?.active) {
         const navResult = stepVfrAircraftNavigation(
           ac,
           world.simTimeMs,
