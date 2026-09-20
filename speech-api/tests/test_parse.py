@@ -568,8 +568,14 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert validate_instruction(decline_ff) == decline_ff
     decline_ifr = {"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}
     assert validate_instruction(decline_ifr) == decline_ifr
+    decline_class_b = {"type": "DECLINE_REQUEST", "service": "CLASS_B_ACCESS"}
+    assert validate_instruction(decline_class_b) == decline_class_b
     assert validate_instruction({"type": "DECLINE_REQUEST", "service": "INVALID"}) is None
     assert validate_instruction({"type": "DECLINE_REQUEST"}) is None
+
+    cleared_as_requested = {"type": "CLASS_B_CLEARANCE_AS_REQUESTED"}
+    assert validate_instruction(cleared_as_requested) == cleared_as_requested
+    assert validate_instruction({"type": "CLASS_B_CLEARANCE_AS_REQUESTED", "route": []}) is None
 
     radar_contact = {
         "type": "RADAR_CONTACT",

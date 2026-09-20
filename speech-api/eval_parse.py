@@ -239,6 +239,16 @@ CASES: list[dict[str, Any]] = [
         "expect": {"instructions": [{"type": "RESUME_APPROPRIATE_VFR_ALTITUDES"}]},
     },
     {
+        "id": "class-b-cleared-as-requested",
+        "text": "cleared as requested",
+        "expect": {"instructions": [{"type": "CLASS_B_CLEARANCE_AS_REQUESTED"}]},
+    },
+    {
+        "id": "class-b-unable",
+        "text": "unable class b clearance",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "CLASS_B_ACCESS"}]},
+    },
+    {
         "id": "radar-contact-bare",
         "text": "radar contact",
         "expect": {"instructions": [{"type": "RADAR_CONTACT"}]},

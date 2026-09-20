@@ -69,6 +69,7 @@ export type Instruction =
       altitudeFt?: number;
     }
   | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "CLASS_B_CLEARANCE_AS_REQUESTED" }
   | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
   | {
       type: "IFR_CLEARANCE";
@@ -97,6 +98,9 @@ in Bravo. `REMAIN_OUTSIDE_BRAVO` and
 the active Class B volume, VFR status, route geometry, and altitude floor before
 mutating intent. None of these instructions creates an IFR clearance, changes
 flight-plan, service, or beacon state, or authorizes entry implicitly.
+`CLASS_B_CLEARANCE_AS_REQUESTED` is a single-instruction controller response;
+it obtains operation, route, and requested altitude only from the pending VFR
+`CLASS_B_ACCESS` request. It has no route or altitude fields of its own.
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -114,7 +118,7 @@ flight-plan, service, or beacon state, or authorizes entry implicitly.
   | { type: "REQUEST_DETAILS" }
   | { type: "STANDBY_REQUEST" }
   | { type: "APPROVE_FLIGHT_FOLLOWING" }
-  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" }
+  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS" }
   | {
       type: "RADAR_CONTACT";
       distanceNm?: number;
@@ -203,6 +207,8 @@ direct fixes.
 | `approve flight following` | `APPROVE_FLIGHT_FOLLOWING` (T04-73; activate advisory flight following for radar-identified aircraft) |
 | `unable flight following` / `unable to provide flight following` | `DECLINE_REQUEST { service: "FLIGHT_FOLLOWING" }` (T04-73; decline flight following request) |
 | `unable ifr pickup` / `unable to provide ifr pickup` | `DECLINE_REQUEST { service: "IFR_PICKUP" }` (decline airborne VFR-to-IFR pickup request) |
+| `cleared as requested` | `CLASS_B_CLEARANCE_AS_REQUESTED` (resolve pending VFR Class B request; no modifiers) |
+| `unable class b clearance` / `unable to provide class b clearance` | `DECLINE_REQUEST { service: "CLASS_B_ACCESS" }` (decline pending VFR Class B request) |
 | `radar contact [<distance> miles [direction] from\|of <fix/navaid/airport>]` | `RADAR_CONTACT` with optional all-or-nothing `{ distanceNm, referenceId, referenceKind }` (`referenceKind` is `FIX`, `NAVAID`, or `AIRPORT`; T04-73; radar identification; pilot answers `roger`) |
 | `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
 | `IFR cancellation received` | `ACKNOWLEDGE_IFR_CANCELLATION` (T04-75; acknowledge pilot IFR cancellation outside Class B and revert to VFR) |

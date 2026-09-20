@@ -189,6 +189,8 @@ function formatInstructionClause(
           : `, maintain ${formatAltitude(instruction.altitudeFt)} while in Bravo airspace`;
       return `cleared ${operation} Bravo airspace${route}${altitude}`;
     }
+    case "CLASS_B_CLEARANCE_AS_REQUESTED":
+      return "cleared as requested";
     case "REMAIN_OUTSIDE_BRAVO":
       return "remain outside Bravo airspace";
     case "RESUME_APPROPRIATE_VFR_ALTITUDES":
@@ -249,9 +251,9 @@ function formatInstructionClause(
     case "APPROVE_FLIGHT_FOLLOWING":
       return "flight following approved";
     case "DECLINE_REQUEST":
-      return instruction.service === "FLIGHT_FOLLOWING"
-        ? "unable flight following"
-        : "unable IFR pickup";
+      if (instruction.service === "FLIGHT_FOLLOWING") return "unable flight following";
+      if (instruction.service === "IFR_PICKUP") return "unable IFR pickup";
+      return "unable class B clearance";
     case "RADAR_CONTACT":
       return "roger";
     case "TERMINATE_RADAR_SERVICE":

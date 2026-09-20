@@ -46,8 +46,9 @@ runway designation; a near-miss without a runway remains `PARSE_MISS`.
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
 flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following` /
-`unable ifr pickup` (`DECLINE_REQUEST` with service `FLIGHT_FOLLOWING` /
-`IFR_PICKUP`), `radar contact` with an optional `<distance> miles
+`unable ifr pickup`, or `unable class b clearance` (`DECLINE_REQUEST` with
+service `FLIGHT_FOLLOWING`, `IFR_PICKUP`, or `CLASS_B_ACCESS`), `cleared as requested`
+(`CLASS_B_CLEARANCE_AS_REQUESTED`), `radar contact` with an optional `<distance> miles
 [direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
 terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
 (`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction

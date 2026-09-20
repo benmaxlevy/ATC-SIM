@@ -45,6 +45,11 @@ describe("request-control Path C fallback (mocked model)", () => {
       instructions: [{ type: "DECLINE_REQUEST", service: "IFR_PICKUP" }],
     },
     {
+      name: "unable class b clearance",
+      text: "dal123 unable class b clearance squawk",
+      instructions: [{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }],
+    },
+    {
       name: "radar service terminated",
       text: "dal123 radar service terminated squawk",
       instructions: [{ type: "TERMINATE_RADAR_SERVICE" }],
@@ -133,5 +138,45 @@ describe("DECLINE_REQUEST IFR_PICKUP parity", () => {
     }
     expect(pathCHasSelfContainedCue("dal123 turn left heading 270")).toBe(false);
     expect(pathCHasSelfContainedCue("pizza the runway")).toBe(false);
+  });
+});
+
+describe("Class B request-response parity", () => {
+  it.each(["DAL123 CLEARED AS REQUESTED", "DAL123 cleared as requested"])(
+    "parses exact approval: %s",
+    (text) => {
+      const typed = parseRadioText(text);
+      expect(typed.ok).toBe(true);
+      if (typed.ok) expect(typed.instructions).toEqual([{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }]);
+      const raw = "Delta 123 cleared as requested";
+      const a = parseSpokenGrammar("delta one two three cleared as requested", undefined, raw);
+      expect(a.ok).toBe(true);
+      if (a.ok) expect(a.instructions).toEqual([{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }]);
+      const b = matchSpokenPatterns("delta one two three cleared as requested", undefined, raw);
+      expect(b.ok).toBe(true);
+      if (b.ok) expect(b.instructions).toEqual([{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }]);
+    },
+  );
+
+  it.each(["unable class b clearance", "unable to provide class b clearance"])(
+    "parses exact denial: %s",
+    (phrase) => {
+      const res = parseRadioText(`DAL123 ${phrase}`);
+      expect(res.ok).toBe(true);
+      if (res.ok) expect(res.instructions).toEqual([{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }]);
+      expect(pathCResultIsComplete(`DAL123 ${phrase}`, [{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }])).toBe(true);
+    },
+  );
+
+  it("rejects approval modifiers and fuzzy denial", async () => {
+    for (const phrase of [
+      "cleared as requested via DEM",
+      "cleared as requested maintain 3000",
+      "unable transition through bravo",
+    ]) {
+      await expect(parseCommand(`DAL123 ${phrase}`, { source: "voice", pathC: false })).resolves.toMatchObject({ ok: false });
+    }
+    expect(isLegalInstruction({ type: "CLASS_B_CLEARANCE_AS_REQUESTED" })).toBe(true);
+    expect(isLegalInstruction({ type: "CLASS_B_CLEARANCE_AS_REQUESTED", route: [] } as never)).toBe(false);
   });
 });

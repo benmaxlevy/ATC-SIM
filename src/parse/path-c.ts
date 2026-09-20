@@ -197,7 +197,8 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "STANDBY_REQUEST" ||
     type === "APPROVE_FLIGHT_FOLLOWING" ||
     type === "TERMINATE_RADAR_SERVICE" ||
-    type === "ACKNOWLEDGE_IFR_CANCELLATION"
+    type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    type === "CLASS_B_CLEARANCE_AS_REQUESTED"
   ) {
     return keysOk(obj, ["type"]);
   }
@@ -208,7 +209,9 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     return (
       keysOk(obj, ["type", "service"]) &&
       typeof obj.service === "string" &&
-      (obj.service === "FLIGHT_FOLLOWING" || obj.service === "IFR_PICKUP")
+      (obj.service === "FLIGHT_FOLLOWING" ||
+        obj.service === "IFR_PICKUP" ||
+        obj.service === "CLASS_B_ACCESS")
     );
   }
   if (type === "RADAR_CONTACT") {
@@ -655,6 +658,8 @@ const SELF_CONTAINED_CUES: RegExp[] = [
   /\bapprove\s+flight\s+following\b/,
   /\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/,
   /\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/,
+  /\bcleared\s+as\s+requested\b/,
+  /\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b/,
   /\bradar\s+service\s+terminated\b/,
   /\bifr\s+cancellation\s+received\b/,
   /\bmaintain\s+vfr\b/,
@@ -733,6 +738,12 @@ export function pathCResultIsComplete(
   ) {
     return false;
   }
+  if (
+    has(/\bcleared\s+as\s+requested\b/) &&
+    !hasType("CLASS_B_CLEARANCE_AS_REQUESTED")
+  ) {
+    return false;
+  }
   if (has(/\bremain\s+outside\s+bravo\s+airspace\b/) && !hasType("REMAIN_OUTSIDE_BRAVO")) {
     return false;
   }
@@ -764,6 +775,13 @@ export function pathCResultIsComplete(
         instruction.type === "DECLINE_REQUEST",
     );
     if (!dec || dec.service !== "IFR_PICKUP") return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "CLASS_B_ACCESS") return false;
   }
   if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
     return false;

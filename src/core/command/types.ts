@@ -67,6 +67,7 @@ export const INSTRUCTION_TYPES = [
   "CLASS_B_CLEARANCE",
   "REMAIN_OUTSIDE_BRAVO",
   "RESUME_APPROPRIATE_VFR_ALTITUDES",
+  "CLASS_B_CLEARANCE_AS_REQUESTED",
   "IFR_CLEARANCE",
   "IDENT",
   "SAY_HEADING",
@@ -125,6 +126,7 @@ export type Instruction =
       altitudeFt?: number;
     }
   | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "CLASS_B_CLEARANCE_AS_REQUESTED" }
   | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
   | {
       type: "IFR_CLEARANCE";
@@ -153,7 +155,10 @@ export type Instruction =
   | { type: "REQUEST_DETAILS" }
   | { type: "STANDBY_REQUEST" }
   | { type: "APPROVE_FLIGHT_FOLLOWING" }
-  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" }
+  | {
+      type: "DECLINE_REQUEST";
+      service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS";
+    }
   | {
       type: "RADAR_CONTACT";
       /** Optional informational position reference. All-or-nothing with referenceId/referenceKind. */

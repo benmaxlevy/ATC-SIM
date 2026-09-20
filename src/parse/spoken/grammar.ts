@@ -25,6 +25,7 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
 function isClassBInstruction(instruction: Instruction): boolean {
   return (
     instruction.type === "CLASS_B_CLEARANCE" ||
+    instruction.type === "CLASS_B_CLEARANCE_AS_REQUESTED" ||
     instruction.type === "REMAIN_OUTSIDE_BRAVO" ||
     instruction.type === "RESUME_APPROPRIATE_VFR_ALTITUDES"
   );
@@ -352,6 +353,15 @@ function tryRequestDetails(c: Cursor): Instruction | null {
   return null;
 }
 
+function tryClassBClearanceAsRequested(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "cleared") && take(c, "as") && take(c, "requested") && peek(c) === undefined) {
+    return { type: "CLASS_B_CLEARANCE_AS_REQUESTED" };
+  }
+  c.i = start;
+  return null;
+}
+
 function tryStandby(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "stand") && take(c, "by")) {
@@ -387,6 +397,18 @@ function tryDeclineRequest(c: Cursor): Instruction | null {
     }
     if (take(c, "to") && take(c, "provide") && take(c, "ifr") && take(c, "pickup")) {
       return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+    if (take(c, "class") && take(c, "b") && take(c, "clearance")) {
+      return { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" };
+    }
+    if (
+      take(c, "to") &&
+      take(c, "provide") &&
+      take(c, "class") &&
+      take(c, "b") &&
+      take(c, "clearance")
+    ) {
+      return { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" };
     }
   }
   c.i = start;
@@ -1321,6 +1343,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryPresentHeading(c) ??
     tryMaintainVfr(c) ??
     tryRequestDetails(c) ??
+    tryClassBClearanceAsRequested(c) ??
     tryStandby(c) ??
     tryApproveFlightFollowing(c) ??
     tryDeclineRequest(c) ??

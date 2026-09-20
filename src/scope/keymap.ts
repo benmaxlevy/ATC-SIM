@@ -144,7 +144,15 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         command: "say request",
         example: "DAL123 say request",
         input: "Radio",
-        result: "Requests flight following or route details from the pilot.",
+        result: "Requests flight following, Class B access, or route details from the pilot.",
+      },
+      {
+        id: "class-b-request-response",
+        command: "cleared as requested / unable class b clearance",
+        example: "N12345 cleared as requested",
+        input: "Radio",
+        result:
+          "Approves the pending VFR Class B request as filed by the pilot, or declines it. These exact commands do not add route or altitude modifiers.",
       },
       {
         id: "standby-request",

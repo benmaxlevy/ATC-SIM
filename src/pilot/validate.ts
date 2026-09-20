@@ -359,6 +359,11 @@ function validateOne(
       });
       return result.ok ? result : { ok: false, reason: "CLEARANCE", detail: result.detail };
     }
+    case "CLASS_B_CLEARANCE_AS_REQUESTED":
+      if (aircraft.flightRules !== "VFR") {
+        return { ok: false, reason: "CLEARANCE", detail: "CLEARANCE: VFR aircraft required" };
+      }
+      return { ok: true };
     case "IFR_CLEARANCE":
       if (instruction.limitId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };

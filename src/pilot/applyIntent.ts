@@ -510,6 +510,7 @@ function applyOne(
     case "RADAR_CONTACT":
     case "TERMINATE_RADAR_SERVICE":
     case "ACKNOWLEDGE_IFR_CANCELLATION":
+    case "CLASS_B_CLEARANCE_AS_REQUESTED":
       return;
     default: {
       const _exhaustive: never = instruction;

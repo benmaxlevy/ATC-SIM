@@ -109,6 +109,7 @@ export function parseRadioText(
 
 function isRequestControlInstruction(inst: Instruction): boolean {
   return (
+    inst.type === "CLASS_B_CLEARANCE_AS_REQUESTED" ||
     inst.type === "REQUEST_DETAILS" ||
     inst.type === "STANDBY_REQUEST" ||
     inst.type === "APPROVE_FLIGHT_FOLLOWING" ||
@@ -340,6 +341,18 @@ function parseOneInstruction(
       nextIndex: index + 2,
     };
   }
+  if (
+    token === "CLEARED" &&
+    tokens[index + 1] === "AS" &&
+    tokens[index + 2] === "REQUESTED" &&
+    tokens[index + 3] === undefined
+  ) {
+    return {
+      ok: true,
+      instruction: { type: "CLASS_B_CLEARANCE_AS_REQUESTED" },
+      nextIndex: index + 3,
+    };
+  }
   if (token === "STAND" && tokens[index + 1] === "BY") {
     return {
       ok: true,
@@ -382,6 +395,30 @@ function parseOneInstruction(
         ok: true,
         instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
         nextIndex: index + 5,
+      };
+    }
+    if (
+      tokens[index + 1] === "CLASS" &&
+      tokens[index + 2] === "B" &&
+      tokens[index + 3] === "CLEARANCE"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        nextIndex: index + 4,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "CLASS" &&
+      tokens[index + 4] === "B" &&
+      tokens[index + 5] === "CLEARANCE"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        nextIndex: index + 6,
       };
     }
     if (tokens[index + 1] === "IFR" && tokens[index + 2] === "PICKUP") {

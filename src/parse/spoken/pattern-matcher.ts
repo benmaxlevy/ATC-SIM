@@ -25,6 +25,7 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
 function isClassBInstruction(instruction: Instruction): boolean {
   return (
     instruction.type === "CLASS_B_CLEARANCE" ||
+    instruction.type === "CLASS_B_CLEARANCE_AS_REQUESTED" ||
     instruction.type === "REMAIN_OUTSIDE_BRAVO" ||
     instruction.type === "RESUME_APPROPRIATE_VFR_ALTITUDES"
   );
@@ -1102,6 +1103,21 @@ function matchRequestDetails(
   return null;
 }
 
+function matchClassBClearanceAsRequested(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (
+    tokens[i] === "cleared" &&
+    tokens[i + 1] === "as" &&
+    tokens[i + 2] === "requested" &&
+    tokens[i + 3] === undefined
+  ) {
+    return { instruction: { type: "CLASS_B_CLEARANCE_AS_REQUESTED" }, next: i + 3 };
+  }
+  return null;
+}
+
 function matchStandby(
   tokens: readonly string[],
   i: number,
@@ -1145,6 +1161,24 @@ function matchDeclineRequest(
       return {
         instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
         next: i + 5,
+      };
+    }
+    if (tokens[i + 1] === "class" && tokens[i + 2] === "b" && tokens[i + 3] === "clearance") {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        next: i + 4,
+      };
+    }
+    if (
+      tokens[i + 1] === "to" &&
+      tokens[i + 2] === "provide" &&
+      tokens[i + 3] === "class" &&
+      tokens[i + 4] === "b" &&
+      tokens[i + 5] === "clearance"
+    ) {
+      return {
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        next: i + 6,
       };
     }
     if (tokens[i + 1] === "ifr" && tokens[i + 2] === "pickup") {
@@ -1851,6 +1885,7 @@ export function matchSpokenPatterns(
       matchPresentHeading(tokens, i) ??
       matchMaintainVfr(tokens, i) ??
       matchRequestDetails(tokens, i) ??
+      matchClassBClearanceAsRequested(tokens, i) ??
       matchStandby(tokens, i) ??
       matchApproveFlightFollowing(tokens, i) ??
       matchDeclineRequest(tokens, i) ??
