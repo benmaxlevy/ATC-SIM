@@ -64,6 +64,15 @@ import {
   type PathCTranscriptSpan,
   routePathCOutputIsGrounded,
 } from "./path-c";
+import {
+  getTraceCollector,
+  type ParseTraceContext,
+  type StageAttemptStatus,
+  type StageAttemptTrace,
+  type TraceCollector,
+} from "./trace";
+
+export type { ParseTraceContext };
 
 export interface ParseCommandOpts {
   source: "text" | "voice";
@@ -93,6 +102,10 @@ export interface ParseCommandOpts {
   pathC?: boolean;
   /** Injected fetch. Default POSTs to our speech-api `/parse`. */
   parsePathC?: ParsePathCFn;
+  /** Caller-provided diagnostic trace context (utteranceId, source, stt metadata). */
+  traceContext?: ParseTraceContext;
+  /** Optional explicit trace collector override (defaults to getTraceCollector()). */
+  traceCollector?: TraceCollector;
 }
 
 const MAX_ROSTER = 64;
@@ -1232,6 +1245,52 @@ export async function parseCommand(
   sourceText: string,
   opts: ParseCommandOpts,
 ): Promise<ParseResult> {
+  let collector: TraceCollector | null = null;
+  let tracing = false;
+  try {
+    collector = opts.traceCollector ?? getTraceCollector();
+    tracing = Boolean(
+      collector && typeof collector.isEnabled === "function" && collector.isEnabled(),
+    );
+  } catch {
+    tracing = false;
+  }
+
+  const stageAttempts: StageAttemptTrace[] = [];
+
+  const finalizeAndEmit = (winningStage: string | null, winningStatus: string): void => {
+    if (!collector || !tracing) return;
+    try {
+      const utteranceId =
+        opts.traceContext?.utteranceId ??
+        (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `utt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+      const traceSource = opts.traceContext?.source ?? opts.source;
+      const sttJson =
+        opts.traceContext?.sttJson !== undefined
+          ? opts.traceContext.sttJson
+          : opts.traceContext?.stt !== undefined
+            ? opts.traceContext.stt
+            : null;
+      const createdAt = new Date().toISOString();
+      collector.recordUtteranceTrace(
+        {
+          utteranceId,
+          sessionId: opts.traceContext?.sessionId ?? collector.getSession().sessionId,
+          source: traceSource,
+          sttJson,
+          finalStage: winningStage ?? "none",
+          finalStatus: winningStatus,
+          createdAt,
+        },
+        stageAttempts,
+      );
+    } catch {
+      // Tracing failures must NEVER throw into caller or alter parse result.
+    }
+  };
+
   const selected = opts.selectedCallsign ?? null;
   const roster = rosterFromOpts(opts);
   const procedures = sanitizeCatalogProcedures(opts.procedures);
@@ -1266,6 +1325,8 @@ export async function parseCommand(
     return null;
   };
 
+  // Stage 1: typed
+  const tTypedStart = tracing ? performance.now() : 0;
   const typed = tryGroundedLocal(
     groundLocalCallsign(
       parseRadioText(normalized, { fixes: catalog, procedures }),
@@ -1283,8 +1344,87 @@ export async function parseCommand(
     airports,
   );
   const typedResult = acceptLocalStage(typed);
-  if (typedResult !== null) return typedResult;
+  if (tracing) {
+    const elapsed = Math.max(0, performance.now() - tTypedStart);
+    if (typedResult !== null) {
+      if (typedResult.ok) {
+        stageAttempts.push({
+          stage: "typed",
+          status: "hit",
+          reason: null,
+          elapsedMs: elapsed,
+          resultJson: {
+            instructionCount: typedResult.instructions.length,
+            instructionTypes: typedResult.instructions.map((i) => i.type),
+            callsignToken: typedResult.callsignToken ?? null,
+            ...(typedResult.ungroundedFixes
+              ? { ungroundedFixes: typedResult.ungroundedFixes }
+              : {}),
+          },
+        });
+        stageAttempts.push({
+          stage: "spoken_a",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("typed", "hit");
+      } else {
+        stageAttempts.push({
+          stage: "typed",
+          status: "rejected",
+          reason: typedResult.error,
+          elapsedMs: elapsed,
+          resultJson: null,
+        });
+        stageAttempts.push({
+          stage: "spoken_a",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("none", "rejected");
+      }
+      return typedResult;
+    } else {
+      stageAttempts.push({
+        stage: "typed",
+        status: "miss",
+        reason: typed?.kind === "ungrounded" ? "ungrounded_tokens" : "syntax_miss",
+        elapsedMs: elapsed,
+        resultJson: typed?.kind === "ungrounded" ? { ungroundedTokens: typed.tokens } : null,
+      });
+    }
+  } else if (typedResult !== null) {
+    return typedResult;
+  }
 
+  // Stage 2: spoken_a
+  const tPathAStart = tracing ? performance.now() : 0;
   const spoken = parseSpokenGrammar(
     normalized,
     selected,
@@ -1305,11 +1445,85 @@ export async function parseCommand(
     airports,
   );
   const pathAResult = acceptLocalStage(pathA);
-  if (pathAResult !== null) return pathAResult;
+  if (tracing) {
+    const elapsed = Math.max(0, performance.now() - tPathAStart);
+    if (pathAResult !== null) {
+      if (pathAResult.ok) {
+        stageAttempts.push({
+          stage: "spoken_a",
+          status: "hit",
+          reason: null,
+          elapsedMs: elapsed,
+          resultJson: {
+            instructionCount: pathAResult.instructions.length,
+            instructionTypes: pathAResult.instructions.map((i) => i.type),
+            callsignToken: pathAResult.callsignToken ?? null,
+            ...(pathAResult.ungroundedFixes
+              ? { ungroundedFixes: pathAResult.ungroundedFixes }
+              : {}),
+          },
+        });
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("spoken_a", "hit");
+      } else {
+        stageAttempts.push({
+          stage: "spoken_a",
+          status: "rejected",
+          reason: pathAResult.error,
+          elapsedMs: elapsed,
+          resultJson: null,
+        });
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("none", "rejected");
+      }
+      return pathAResult;
+    } else {
+      stageAttempts.push({
+        stage: "spoken_a",
+        status: "miss",
+        reason:
+          pathA?.kind === "ungrounded"
+            ? "ungrounded_tokens"
+            : !spoken.ok
+              ? spoken.error
+              : "syntax_miss",
+        elapsedMs: elapsed,
+        resultJson: pathA?.kind === "ungrounded" ? { ungroundedTokens: pathA.tokens } : null,
+      });
+    }
+  } else if (pathAResult !== null) {
+    return pathAResult;
+  }
 
+  // Stage 3: spoken_b
+  const tPathBStart = tracing ? performance.now() : 0;
+  let pathBResult: ParseResult | null = null;
+  let pathB: ReturnType<typeof tryGroundedLocal> = null;
   const rewritten = rewriteSpokenToTyped(normalized);
   if (rewritten !== null) {
-    const pathB = tryGroundedLocal(
+    pathB = tryGroundedLocal(
       groundLocalCallsign(
         parseRadioText(rewritten, { fixes: catalog, procedures }),
         normalized,
@@ -1325,33 +1539,96 @@ export async function parseCommand(
       approaches,
       airports,
     );
-    const pathBResult = acceptLocalStage(pathB);
-    if (pathBResult !== null) return pathBResult;
+    pathBResult = acceptLocalStage(pathB);
   }
 
-  const islandParsed = matchSpokenPatterns(
-    normalized,
-    selected,
-    sourceText,
-    catalog,
-    procedures,
-    approaches,
-    clearanceLimitIds,
-  );
-  const island = tryGroundedLocal(
-    groundLocalCallsign(islandParsed, normalized, roster, selected),
-    sourceText,
-    "spoken_b",
-    opts.source,
-    selected,
-    catalog,
-    procedures,
-    approaches,
-    airports,
-  );
-  const islandResult = acceptLocalStage(island);
-  if (islandResult !== null) return islandResult;
+  let islandResult: ParseResult | null = null;
+  let island: ReturnType<typeof tryGroundedLocal> = null;
+  let islandParsed: ParseResult | null = null;
+  if (pathBResult === null) {
+    islandParsed = matchSpokenPatterns(
+      normalized,
+      selected,
+      sourceText,
+      catalog,
+      procedures,
+      approaches,
+      clearanceLimitIds,
+    );
+    island = tryGroundedLocal(
+      groundLocalCallsign(islandParsed, normalized, roster, selected),
+      sourceText,
+      "spoken_b",
+      opts.source,
+      selected,
+      catalog,
+      procedures,
+      approaches,
+      airports,
+    );
+    islandResult = acceptLocalStage(island);
+  }
 
+  const hitB = pathBResult ?? islandResult;
+  if (tracing) {
+    const elapsed = Math.max(0, performance.now() - tPathBStart);
+    if (hitB !== null) {
+      if (hitB.ok) {
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "hit",
+          reason: null,
+          elapsedMs: elapsed,
+          resultJson: {
+            instructionCount: hitB.instructions.length,
+            instructionTypes: hitB.instructions.map((i) => i.type),
+            callsignToken: hitB.callsignToken ?? null,
+            ...(hitB.ungroundedFixes ? { ungroundedFixes: hitB.ungroundedFixes } : {}),
+          },
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("spoken_b", "hit");
+      } else {
+        stageAttempts.push({
+          stage: "spoken_b",
+          status: "rejected",
+          reason: hitB.error,
+          elapsedMs: elapsed,
+          resultJson: null,
+        });
+        stageAttempts.push({
+          stage: "llm_c",
+          status: "skipped",
+          reason: "prior_hit",
+          elapsedMs: 0,
+        });
+        finalizeAndEmit("none", "rejected");
+      }
+      return hitB;
+    } else {
+      const hasUngrounded = pathB?.kind === "ungrounded" || island?.kind === "ungrounded";
+      const ungroundedTokens = [
+        ...(pathB?.kind === "ungrounded" ? pathB.tokens : []),
+        ...(island?.kind === "ungrounded" ? island.tokens : []),
+      ];
+      stageAttempts.push({
+        stage: "spoken_b",
+        status: "miss",
+        reason: hasUngrounded ? "ungrounded_tokens" : "syntax_miss",
+        elapsedMs: elapsed,
+        resultJson: hasUngrounded ? { ungroundedTokens } : null,
+      });
+    }
+  } else if (hitB !== null) {
+    return hitB;
+  }
+
+  // Stage 4: llm_c
   const queryTokens = [...identifierSlotTokens(normalized), ...extraTokens];
   const retrievedFixes = mergeRetrievedFixes(queryTokens, catalog);
   const matchedProcedures = matchProceduresForTokens(queryTokens, procedures);
@@ -1372,98 +1649,208 @@ export async function parseCommand(
     (routeEvidence.fixMatches.length > 0 || routeEvidence.procedures.length > 0) &&
     (limitInfo.limits.length > 0 || limitInfo.airportMatches.length > 0);
 
-  if (
-    opts.pathC &&
+  const eligibleForPathC =
+    Boolean(opts.pathC) &&
     (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
     (!ifrCandidate ||
       routeFallbackHasEvidence ||
-      localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds))
-  ) {
-    const run = opts.parsePathC ?? fetchParsePathC;
-    const context = pathCContext(
-      roster,
-      selected,
-      catalog,
-      procedures,
-      approaches,
-      airports,
-      queryTokens,
-      routeEvidence,
-      limitInfo.limits,
-      limitInfo.airportMatches,
-    );
-    try {
-      const hit = await run({
-        text: sourceText,
-        source: opts.source,
-        schemaVersion: PATH_C_SCHEMA_VERSION,
-        context,
+      localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds));
+
+  if (!eligibleForPathC) {
+    if (tracing) {
+      stageAttempts.push({
+        stage: "llm_c",
+        status: "skipped",
+        reason: "not_eligible",
+        elapsedMs: 0,
+        resultJson: {
+          eligible: false,
+          pathC: Boolean(opts.pathC),
+          emptyIdentifierRetrieve,
+          routeFallbackHasEvidence,
+        },
       });
-      const checkedHit =
-        hit === null
-          ? null
-          : schemaCheckPathC({
-              ok: true,
-              callsignToken: hit.callsignToken,
-              instructions: hit.instructions,
-            });
-      if (
-        checkedHit !== null &&
-        checkedHit.instructions.length > 0 &&
-        pathCResultIsComplete(sourceText, checkedHit.instructions)
-      ) {
-        const rawCallsign = checkedHit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
-        const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
-        const callsignSafe =
-          roster.length === 0 ||
-          (grounded !== null && roster.includes(grounded)) ||
-          (rawCallsign === null && selected === null);
-        const pathFixes = [
-          ...(context?.fixes ?? []),
-          ...(context?.routeWindow?.fixMatches.flatMap((match) =>
-            match.candidates.map((candidate) => candidate.id),
-          ) ?? []),
-          ...(context?.clearanceLimits?.map((candidate) => candidate.id) ?? []),
-        ];
-        const pathProcedures = context?.routeWindow?.procedures ?? context?.procedures ?? [];
-        const pathApproaches = context?.approaches ?? [];
-        const pathAirports = context?.airports ?? [];
-        const salvaged = okStage(
-          {
-            ok: true,
-            callsignToken: grounded,
-            instructions: repairHeadingVsTurnDegrees(normalized, checkedHit.instructions),
-            sourceText,
-          },
-          sourceText,
-          "llm_c",
-          opts.source,
-          selected,
-          pathFixes,
-          pathProcedures,
-          pathApproaches,
-          pathAirports,
-        );
-        const ungrounded = salvaged.ungroundedFixes ?? [];
-        if (
-          callsignSafe &&
-          ungrounded.length === 0 &&
-          (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
-          pathCIdentifierListed(salvaged.instructions, context) &&
-          routePathCOutputIsGrounded(salvaged.instructions, context)
-        ) {
-          return salvaged;
-        }
-      }
-    } catch {
-      // Timeout / network / injected throw → miss. Never through the tick.
+      finalizeAndEmit("none", "miss");
     }
+    const error =
+      !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
+        ? spoken.error
+        : islandParsed &&
+            !islandParsed.ok &&
+            islandParsed.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
+          ? islandParsed.error
+          : formatParseError(PARSE_ERROR.PARSE_MISS);
+    return { ok: false, error, sourceText };
+  }
+
+  const run = opts.parsePathC ?? fetchParsePathC;
+  const context = pathCContext(
+    roster,
+    selected,
+    catalog,
+    procedures,
+    approaches,
+    airports,
+    queryTokens,
+    routeEvidence,
+    limitInfo.limits,
+    limitInfo.airportMatches,
+  );
+
+  const fixesCount =
+    context?.fixes?.length ??
+    (context?.routeWindow
+      ? context.routeWindow.fixMatches.reduce((acc, m) => acc + m.candidates.length, 0)
+      : 0);
+  const proceduresCount =
+    context?.procedures?.length ??
+    (context?.routeWindow ? context.routeWindow.procedures.length : 0);
+  const approachesCount = context?.approaches?.length ?? 0;
+  const airportsCount = context?.airports?.length ?? 0;
+  const candidateCounts = {
+    fixesCount,
+    proceduresCount,
+    approachesCount,
+    airportsCount,
+  };
+
+  const tPathCStart = tracing ? performance.now() : 0;
+  let pathCStatus: StageAttemptStatus = "rejected";
+  let pathCReason: string | null = null;
+  let pathCSavedResult: Extract<ParseResult, { ok: true }> | null = null;
+  let pathCErrorObj: unknown = null;
+
+  try {
+    const hit = await run({
+      text: sourceText,
+      source: opts.source,
+      schemaVersion: PATH_C_SCHEMA_VERSION,
+      context,
+    });
+    const checkedHit =
+      hit === null
+        ? null
+        : schemaCheckPathC({
+            ok: true,
+            callsignToken: hit.callsignToken,
+            instructions: hit.instructions,
+          });
+    if (checkedHit === null || checkedHit.instructions.length === 0) {
+      pathCStatus = "rejected";
+      pathCReason = "schema_rejection";
+    } else if (!pathCResultIsComplete(sourceText, checkedHit.instructions)) {
+      pathCStatus = "rejected";
+      pathCReason = "evidence_rejection";
+    } else {
+      const rawCallsign = checkedHit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
+      const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
+      const callsignSafe =
+        roster.length === 0 ||
+        (grounded !== null && roster.includes(grounded)) ||
+        (rawCallsign === null && selected === null);
+      const pathFixes = [
+        ...(context?.fixes ?? []),
+        ...(context?.routeWindow?.fixMatches.flatMap((match) =>
+          match.candidates.map((candidate) => candidate.id),
+        ) ?? []),
+        ...(context?.clearanceLimits?.map((candidate) => candidate.id) ?? []),
+      ];
+      const pathProcedures = context?.routeWindow?.procedures ?? context?.procedures ?? [];
+      const pathApproaches = context?.approaches ?? [];
+      const pathAirports = context?.airports ?? [];
+      const salvaged = okStage(
+        {
+          ok: true,
+          callsignToken: grounded,
+          instructions: repairHeadingVsTurnDegrees(normalized, checkedHit.instructions),
+          sourceText,
+        },
+        sourceText,
+        "llm_c",
+        opts.source,
+        selected,
+        pathFixes,
+        pathProcedures,
+        pathApproaches,
+        pathAirports,
+      );
+      const ungrounded = salvaged.ungroundedFixes ?? [];
+      const catalogGrounded =
+        callsignSafe &&
+        ungrounded.length === 0 &&
+        (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
+        pathCIdentifierListed(salvaged.instructions, context) &&
+        routePathCOutputIsGrounded(salvaged.instructions, context);
+
+      if (catalogGrounded) {
+        pathCStatus = "hit";
+        pathCReason = null;
+        pathCSavedResult = salvaged;
+      } else {
+        pathCStatus = "rejected";
+        pathCReason = "catalog_grounding_rejection";
+      }
+    }
+  } catch (err) {
+    pathCErrorObj = err;
+    const errMsg = String((err as { message?: string })?.message ?? err ?? "").toLowerCase();
+    const errName = String((err as { name?: string })?.name ?? "");
+    const isTimeout =
+      errName === "TimeoutError" ||
+      errName === "AbortError" ||
+      errMsg.includes("timeout") ||
+      errMsg.includes("timed out") ||
+      errMsg.includes("abort");
+    const isUnavailable =
+      errName === "SpeechNotAvailableError" ||
+      errMsg.includes("unavailable") ||
+      errMsg.includes("503") ||
+      errMsg.includes("econnrefused");
+    pathCStatus = "rejected";
+    pathCReason = isUnavailable && !isTimeout ? "unavailable" : "timeout";
+  }
+
+  if (tracing) {
+    const elapsed = Math.max(0, performance.now() - tPathCStart);
+    stageAttempts.push({
+      stage: "llm_c",
+      status: pathCStatus,
+      reason: pathCReason,
+      elapsedMs: elapsed,
+      resultJson: {
+        fixesCount,
+        proceduresCount,
+        approachesCount,
+        airportsCount,
+        candidateCounts,
+        ...(pathCReason ? { reason: pathCReason } : {}),
+        ...(pathCErrorObj ? { error: String(pathCErrorObj) } : {}),
+        ...(pathCSavedResult
+          ? {
+              instructionCount: pathCSavedResult.instructions.length,
+              instructionTypes: pathCSavedResult.instructions.map((i) => i.type),
+              callsignToken: pathCSavedResult.callsignToken ?? null,
+            }
+          : {}),
+      },
+    });
+    if (pathCSavedResult !== null) {
+      finalizeAndEmit("llm_c", "hit");
+    } else {
+      finalizeAndEmit("none", pathCReason === "timeout" ? "timeout" : "rejected");
+    }
+  }
+
+  if (pathCSavedResult !== null) {
+    return pathCSavedResult;
   }
 
   const error =
     !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
       ? spoken.error
-      : !islandParsed.ok && islandParsed.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
+      : islandParsed &&
+          !islandParsed.ok &&
+          islandParsed.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
         ? islandParsed.error
         : formatParseError(PARSE_ERROR.PARSE_MISS);
   return { ok: false, error, sourceText };

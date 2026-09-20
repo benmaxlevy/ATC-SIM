@@ -68,6 +68,8 @@ export type {
 export type { CatalogAirport } from "./spoken/catalog-ground";
 export { DEFAULT_TRACE_URL, TraceCollector, getTraceCollector, setTraceCollector } from "./trace";
 export type {
+  ParseTraceContext,
+  ParseTraceSttContext,
   SessionTrace,
   StageAttemptStatus,
   StageAttemptTrace,

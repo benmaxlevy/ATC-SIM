@@ -170,3 +170,24 @@ test("invalid instruction after CAPP rejects atomically", async () => {
   expect(aal.intent.lateral).toEqual({ type: "INTERCEPT_LOC", approachId: "RNAV09" });
   expect(aal.intent.assignedAltitudeFt).toBe(8000);
 });
+
+test("handleRadioText supplies trace context for typed source to TraceCollector", async () => {
+  const { TraceCollector } = await import("@parse");
+  const collector = new TraceCollector({ enabled: true });
+  const dal = sample("DAL123", "ac-dal");
+  const world = createWorld({ aircraft: [dal], simTimeMs: 400 });
+  const log = new SessionLog();
+
+  const result = await handleRadioText(world, "DAL123 H270", log, 0, {
+    traceCollector: collector,
+  });
+
+  expect(result.accepted).toBe(true);
+  const queue = collector.getQueue();
+  expect(queue).toHaveLength(1);
+  const entry = queue[0]!;
+  expect(entry.utterance.source).toBe("text");
+  expect(entry.utterance.utteranceId).toMatch(/^typed-/);
+  expect(entry.utterance.finalStage).toBe("typed");
+  expect(entry.utterance.finalStatus).toBe("hit");
+});

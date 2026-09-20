@@ -6,6 +6,23 @@
 
 export type StageAttemptStatus = "hit" | "miss" | "rejected" | "skipped";
 
+export interface ParseTraceSttContext {
+  text?: string;
+  latencyMs?: number;
+  audioDurationMs?: number;
+  model?: string;
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface ParseTraceContext {
+  utteranceId?: string;
+  source?: string;
+  sessionId?: string;
+  stt?: ParseTraceSttContext | Record<string, unknown> | null;
+  sttJson?: string | Record<string, unknown> | unknown[] | null;
+}
+
 export interface SessionTrace {
   sessionId: string;
   startedAt: string;

@@ -147,3 +147,60 @@ test("rejected command with callsign and readback synthesizes and plays unable r
   );
   expect(playPcmSpy).toHaveBeenCalledWith(rejectionClip, expect.anything());
 });
+
+test("voice-loop forwards traceContext with STT latency, duration, metadata to parseCommand", async () => {
+  const port: SpeechPort = {
+    id: "fake-stt",
+    async transcribe(): Promise<Transcript> {
+      return {
+        text: "turn left heading 270",
+        latencyMs: 98,
+        metadata: {
+          model: "whisper-test",
+          audioDurationMs: 800,
+          inferenceLatencyMs: 90,
+        },
+      };
+    },
+    async synthesize(): Promise<AudioClip> {
+      return nonEmptyClip();
+    },
+  };
+
+  const parseSpy: ParseCommandFn = vi.fn(async () => ({
+    ok: true as const,
+    callsignToken: "DAL123",
+    instructions: [{ type: "FLY_HEADING" as const, headingDeg: 270, turn: "LEFT" as const }],
+    sourceText: "turn left heading 270",
+  }));
+
+  const loop = createVoiceLoop({
+    speechPort: port,
+    parseCommand: parseSpy,
+    dispatchCommand: () => ({ accepted: true, readback: "Turning left 270" }),
+    getSelectedCallsign: () => "DAL123",
+  });
+
+  await loop.handlePttEvent({ type: "ptt-down" });
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(parseSpy).toHaveBeenCalledOnce();
+  const callOpts = vi.mocked(parseSpy).mock.calls[0]![1];
+  expect(callOpts.traceContext).toBeDefined();
+  expect(callOpts.traceContext?.source).toBe("voice");
+  expect(callOpts.traceContext?.utteranceId).toBeDefined();
+  expect(callOpts.traceContext?.stt).toMatchObject({
+    text: "turn left heading 270",
+    latencyMs: 98,
+    model: "whisper-test",
+    audioDurationMs: expect.any(Number),
+    metadata: {
+      model: "whisper-test",
+      audioDurationMs: 800,
+      inferenceLatencyMs: 90,
+    },
+  });
+});

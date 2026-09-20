@@ -3,6 +3,8 @@
  */
 
 export type {
+  ParseTraceContext,
+  ParseTraceSttContext,
   SessionTrace,
   StageAttemptStatus,
   StageAttemptTrace,

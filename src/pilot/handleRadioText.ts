@@ -16,6 +16,8 @@ import {
   proceduresFromCatalog,
   sanitizeCatalogFixEntries,
   type CatalogFixEntry,
+  type ParseTraceContext,
+  type TraceCollector,
 } from "@parse";
 import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
@@ -88,6 +90,8 @@ export interface HandleRadioOpts {
   source?: "text" | "voice";
   /** Explicit opt-in. Path C runs after typed/A/B miss only. */
   pathC?: boolean;
+  traceContext?: ParseTraceContext;
+  traceCollector?: TraceCollector;
 }
 
 let commandSeq = 0;
@@ -189,6 +193,12 @@ export async function handleRadioText(
 ): Promise<PilotResult> {
   const source = opts?.source ?? "text";
   const fixEntries = catalogFixEntriesFromWorld(world);
+  const utteranceId = opts?.traceContext?.utteranceId ?? `typed-${world.simTimeMs}-${++commandSeq}`;
+  const traceContext: ParseTraceContext = {
+    utteranceId,
+    source,
+    ...(opts?.traceContext ?? {}),
+  };
   const parsed = await parseCommand(sourceText, {
     source,
     selectedCallsign: selectedCallsignFromWorld(world),
@@ -199,6 +209,8 @@ export async function handleRadioText(
     approaches: approachesFromCatalog(world.catalog),
     airports: catalogAirportsFromWorld(world),
     pathC: opts?.pathC ?? false,
+    traceContext,
+    ...(opts?.traceCollector ? { traceCollector: opts.traceCollector } : {}),
   });
   if (!parsed.ok) {
     const normalizedTokens = sourceText.trim().replace(/\s+/g, " ").toUpperCase().split(" ");
