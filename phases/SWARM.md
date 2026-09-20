@@ -5479,3 +5479,98 @@ Workers implement exactly one ticket, never merge or spawn children, and return
 exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock, squash
 merges, post-merge CI, manual review, STATUS handoff, and final phase result.
 Preserve unrelated `.worktrees/` and `speech-api/:memory:.ses` artifacts.
+
+## Seventy-sixth swarm planned — VFR Class B clearance workflow (2026-09-19)
+
+Human approved the VFR Class B clearance plan on the current
+`feature/sattelite-traffic` branch. The slice includes explicit enter/through/out
+clearances plus `REMAIN OUTSIDE BRAVO AIRSPACE`. All supported commands require
+operational VFR and preserve flight-plan, beacon, flight-following, and
+radar-contact state.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add explicit VFR Class B clearance through/into/out of Bravo, explicit remain-outside restriction, parser parity, 3D route execution, conformance, boundary events, and acceptance evidence. |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-94 → T04-95 → T04-96 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Stop | T04-96, focused tests, `npm run ci`, speech mock pytest, `git diff --check`, and manual FAA review |
+| Push | No push unless separately requested |
+
+**Product law:** VFR Class B entry requires accepted `CLASS_B_CLEARANCE`.
+`REMAIN_OUTSIDE_BRAVO` keeps an aircraft outside and may use only the existing
+deterministic safe-continuation planner. Flight following, radar contact,
+`MAINTAIN_VFR`, and IFR cancellation never authorize entry. `TO_ENTER`,
+`THROUGH`, and `OUT_OF` never transition an aircraft to IFR. Rejected commands
+mutate nothing. Valid route/altitude clearances execute against generic grouped
+3D regional geometry. A Class B-specific altitude assignment preserves prior
+VFR altitude behavior and accepts/emits `RESUME APPROPRIATE VFR ALTITUDES` only
+when that assignment is no longer needed. Existing heading/direct commands
+amend the route without changing flight rules. Emit `LEAVING (name) BRAVO
+AIRSPACE` only when required by FAA JO 7110.65 §§7-9-2/3; do not automatically
+terminate radar service or change beacon code. No `CLEARED AS REQUESTED`
+request lifecycle is added.
+
+**Skip:** Class C/D, SVFR, VFR-on-top, visual landmarks, VFR corridors, tower
+cab, multi-position coordination, terrain/weather, certified separation, cloud
+inference, facility branches, and phase 5.
+
+**Waves:**
+
+- Wave A: T04-94 — Command IR, typed/spoken/Path C grammar, readback, resume
+  instruction, and parity.
+- Wave B: T04-95 — VFR-only validation, clearance/restriction state, 3D route
+  execution, conformance, boundary events, altitude snapshot/resume, and
+  atomicity.
+- Wave C: T04-96 — integrated acceptance, docs/backlog update, CI, and manual evidence.
+
+**Ticket ownership:**
+
+- T04-94 owns `CLASS_B_CLEARANCE`, `REMAIN_OUTSIDE_BRAVO`,
+  `RESUME_APPROPRIATE_VFR_ALTITUDES`, parser precedence, route grounding,
+  readback, speech-api parity, and shared contracts.
+- T04-95 owns VFR-only state validation, route/altitude execution, altitude
+  snapshot/resume, existing planner reuse, route amendments, conformance,
+  boundary events, and atomicity.
+- T04-96 owns integrated acceptance, help/user/phase/backlog documentation,
+  final CI, and FAA manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T04-94-vfr-class-b-clearance-command-ir-and-parser-parity` → `phases/04-procedures/tickets/T04-94-vfr-class-b-clearance-command-ir-and-parser-parity.md`
+- `ticket/T04-95-vfr-class-b-clearance-state-and-execution` → `phases/04-procedures/tickets/T04-95-vfr-class-b-clearance-state-and-execution.md`
+- `ticket/T04-96-vfr-class-b-clearance-acceptance-and-docs` → `phases/04-procedures/tickets/T04-96-vfr-class-b-clearance-acceptance-and-docs.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock,
+post-merge gates, STATUS handoff, and final phase result. Preserve unrelated
+`.worktrees/` and `speech-api/:memory:.ses`; do not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: VFR Class B clearance workflow T04-94–T04-96
+Merge target: feature/sattelite-traffic
+Merged: T04-94, T04-95, T04-96
+Tests: focused acceptance; npm run ci; speech-api mock pytest; git diff --check; FAA manual review
+Notes: VFR-only Bravo clearance and remain-outside command; FAA-required exit notice only; no automatic service/squawk changes; no push
+```
+
+## Seventy-seventh swarm started — VFR Class B `TO_ENTER` aliases (2026-09-20)
+
+Execution authorized on the current `feature/sattelite-traffic` branch. This
+start records the approved narrow parser expansion before worker launch:
+`TO_ENTER` accepts controlled `TO ENTER`/`INTO`, optional `THE`, and optional
+`CLASS` variants; `THROUGH` and `OUT OF` remain unchanged and have no aliases.
+The captain runs the existing T04-94 → T04-95 → T04-96 sequence with one
+isolated worker at a time, stopping at the Class B phase boundary. No push is
+authorized.
+
+The planning commit must include only the alias updates to T04-94/T04-96 and
+this start record, plus the already-created Class B planning tickets; preserve
+unrelated `.worktrees/` and `speech-api/:memory:.ses` artifacts. Workers must
+implement the eight exact `TO_ENTER` forms, preserve canonical optional-field
+order, and test rejection of bare `CLEARED INTO BRAVO` and unsupported fuzzy
+paraphrases.
