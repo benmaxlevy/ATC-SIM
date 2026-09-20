@@ -5663,3 +5663,14 @@ Merged: T04-97, T04-98, T04-99, T04-100
 Tests: focused acceptance; npm run ci; speech-api mock pytest; git diff --check; FAA manual review
 Notes: VFR-only TO_ENTER/THROUGH requests; no pilot OUT_OF; full typed/Path A/Path B/Path C/PTT/GBNF parity; no push
 ```
+
+## Seventy-eighth swarm started — VFR Class B pilot requests (2026-09-20)
+
+Execution authorized by the user on `feature/sattelite-traffic` after the
+T04-97–T04-100 planning commit. The captain runs Waves A–D sequentially with
+one isolated worker at a time, performs the merge lock and post-merge gates,
+and stops at the Phase 4 boundary. No push is authorized.
+
+The worker must implement exactly one ticket per wave, preserve unrelated
+`.worktrees/` and `speech-api/:memory:.ses` artifacts, and satisfy the complete
+typed/Path A/Path B/Path C/PTT/speech GBNF contract before handoff.
