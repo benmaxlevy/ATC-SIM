@@ -5692,3 +5692,96 @@ with dependency versions allowed by `requirements-ci.txt`. No push; unrelated
 `.worktrees/` and `speech-api/:memory:.ses` artifacts were preserved.
 
 **PHASE EXIT GREEN**
+
+## Seventy-ninth swarm started — generic communications transfer and landing closure (2026-09-20)
+
+Execution authorized by the user on `feature/sattelite-traffic` after the
+T04-101–T04-103 planning update. The captain runs Waves A–C sequentially with
+one isolated worker at a time, performs the merge lock and post-merge gates,
+and stops at the Phase 4 addendum boundary. No push is authorized by this
+swarm.
+
+Workers implement exactly one ticket, preserve unrelated `.worktrees/` and
+`speech-api/:memory:.ses` artifacts, and return exactly `READY TO MERGE` or
+`BLOCKED`. The captain owns squash merges, CI, speech mock pytest, FAA/manual
+review, STATUS handoff, and final phase result.
+
+## Seventy-ninth swarm planned — generic communications transfer and landing closure (2026-09-20)
+
+Human approved the generic Contact Tower/Center scope on the current
+`feature/sattelite-traffic` branch. This addendum adds controller-issued
+`CONTACT <facility-name> TOWER` and `CONTACT <facility-name> CENTER` commands,
+FAA-shaped transfer gates, generic VFR/IFR landing behavior, and landing-based
+IFR flight-plan closure. It adds no frequency and no Raytheon STARS behavior.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add Contact Tower/Center Command IR, complete parser parity, generic transfer gates, VFR/IFR landing behavior, center transfer, and FAA-grounded flight-plan closure. |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-101 → T04-102 → T04-103 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Merge lock | Captain-only; workers never merge or spawn |
+| Stop | T04-103, focused tests, `npm run ci`, speech mock pytest, `git diff --check`, and FAA manual review |
+| Push | No push unless separately requested |
+
+**Product law:** `CONTACT_TOWER` and `CONTACT_CENTER` are separate IR types.
+Facility names are syntax/readback/log data only; no facility catalog lookup is
+performed. No frequency field exists. Tower transfer requires an eligible
+arrival gate. VFR tower transfer preserves VFR and never authorizes Class B
+entry. Existing generic visual-final/auto-land behavior is reused. Center
+transfer preserves route, flight rules, plan, beacon, and track and never
+auto-lands. Contact transfer is not an approach clearance, radar handoff, IFR
+cancellation, or radar-service termination. At actual `nav.landed`, an active
+IFR plan closes only when its destination is a functioning towered airport.
+Closed plans remain read-only history, leave active operational views, and are
+never reopened; later departures use new plans. VFR/DVFR plans never
+auto-close. IFR plans at non-towered airports remain pilot-cancellation
+dependent. Rejected commands mutate nothing.
+
+**Skip:** frequencies, optional frequencies, individual tower/center entities,
+facility identity validation, tower cab, ground traffic, sequencing, certified
+separation, radar handoff UI, STARS behavior, pilot permission requests, new
+Class B behavior, cloud inference, facility branches, and phase 5.
+
+**Waves:**
+
+- Wave A: T04-101 — Command IR, exact grammar, typed/Path A/Path B/Path C/PTT
+  parser parity, speech GBNF, readback, and shared contracts.
+- Wave B: T04-102 — Tower/center transfer gates, generic landing/center state,
+  VFR preservation, Class B guard reuse, and landing-based IFR plan closure.
+- Wave C: T04-103 — Integrated acceptance, docs/help, CI, and FAA evidence.
+
+**Ticket ownership:**
+
+- T04-101 owns `CONTACT_TOWER`, `CONTACT_CENTER`, exact facility-name grammar,
+  no-frequency rejection, single-instruction routing, readback, speech parity,
+  and shared command contracts.
+- T04-102 owns runtime gates, generic tower/center transfer, existing landing
+  integration, flight-rule/service/beacon/track isolation, plan completion
+  metadata, active-view filtering, and atomic errors.
+- T04-103 owns integrated synthetic acceptance, regression coverage, help/user/
+  phase documentation, final CI, and FAA manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T04-101-contact-tower-center-command-ir` → `phases/04-procedures/tickets/T04-101-contact-tower-center-command-ir-and-parser-parity.md`
+- `ticket/T04-102-contact-tower-center-runtime` → `phases/04-procedures/tickets/T04-102-contact-tower-center-runtime-and-flight-plan-closure.md`
+- `ticket/T04-103-contact-tower-center-acceptance` → `phases/04-procedures/tickets/T04-103-contact-tower-center-acceptance-and-docs.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock,
+progressive ticket merges, focused gates, final CI, STATUS handoff, and phase
+boundary. Preserve unrelated `.worktrees/` and `speech-api/:memory:.ses`; do
+not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: generic communications transfer and landing closure T04-101–T04-103
+Merge target: feature/sattelite-traffic
+Merged: T04-101, T04-102, T04-103
+Tests: focused acceptance; npm run ci; speech-api mock pytest; git diff --check; FAA manual review
+Notes: no-frequency CONTACT TOWER/CENTER; VFR preserved; IFR towered plan closes only at landing; VFR/non-towered IFR plans remain open; no STARS; no push
+```
