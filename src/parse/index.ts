@@ -66,3 +66,13 @@ export type {
   PathCRequest,
 } from "./path-c";
 export type { CatalogAirport } from "./spoken/catalog-ground";
+export { DEFAULT_TRACE_URL, TraceCollector, getTraceCollector, setTraceCollector } from "./trace";
+export type {
+  SessionTrace,
+  StageAttemptStatus,
+  StageAttemptTrace,
+  TraceBatchPayload,
+  TraceCollectorOptions,
+  UtteranceTrace,
+  UtteranceTraceEntry,
+} from "./trace";
