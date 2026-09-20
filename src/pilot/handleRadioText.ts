@@ -17,6 +17,7 @@ import {
   regionalSatelliteIlsApproaches,
   resolveApproachContext,
   transitionRequestToApproved,
+  transitionRequestToCleared,
   transitionRequestToDeclined,
   transitionRequestToIdentified,
   transitionRequestToStandby,
@@ -443,6 +444,61 @@ export function handleRadioCommand(
     return { accepted: true, readback, command: resolvedCommand };
   }
 
+  const classBAsRequested = resolvedCommand.instructions.find(
+    (item) => item.type === "CLASS_B_CLEARANCE_AS_REQUESTED",
+  );
+  if (classBAsRequested) {
+    if (resolvedCommand.instructions.length !== 1) {
+      return reject("CLEARANCE", "clearance must be the only instruction", resolvedCommand);
+    }
+    const request = findOpenRadioRequest(world.radioRequests, aircraft.id, "CLASS_B_ACCESS");
+    if (!request || !request.details.classBOperation) {
+      return reject("REQUEST", "REQUEST: no pending Class B request", resolvedCommand);
+    }
+    const requestedOperation = request.details.classBOperation;
+    const clearance: Extract<Instruction, { type: "CLASS_B_CLEARANCE" }> = {
+      type: "CLASS_B_CLEARANCE",
+      operation: requestedOperation,
+      ...(request.details.route ? { route: request.details.route } : {}),
+      ...(request.details.requestedAltitudeFt === undefined
+        ? {}
+        : { altitudeFt: request.details.requestedAltitudeFt }),
+    };
+    const clearanceValidation = validateInstructions(aircraft, [clearance], {
+      fixRegistry: effectiveFixRegistry,
+      catalog: effectiveCatalog,
+      activeRunwayId: world.activeRunwayId,
+      approachIds: effectiveCatalog?.approaches.map((item) => item.id),
+      radioRequests: world.radioRequests,
+      regional: world.regional as RegionalFacility | undefined,
+      destinationIcao: approachCtx.airportIcao,
+      world,
+    });
+    if (!clearanceValidation.ok) {
+      return reject("CLEARANCE", clearanceValidation.detail, resolvedCommand);
+    }
+    applyIntent(aircraft, [clearance], world.simTimeMs, {
+      catalog: effectiveCatalog,
+      log,
+      fixXy: effectiveFixRegistry ? (id) => effectiveFixRegistry.get(id) : undefined,
+      activeRunwayId: world.activeRunwayId,
+      flightPlan: world.flightPlans.find(
+        (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+      ),
+      radioRequests: world.radioRequests,
+      regional: world.regional as RegionalFacility | undefined,
+      world,
+    });
+    transitionRequestToCleared(request, requestedOperation, world.simTimeMs);
+    const readback = formatReadback({
+      callsign: resolved.callsign,
+      instructions: resolvedCommand.instructions,
+      aircraft,
+    });
+    logAccepted(log, world, atWallMs, resolvedCommand);
+    return { accepted: true, readback, command: resolvedCommand };
+  }
+
   const requestControl = resolvedCommand.instructions.find((item) =>
     [
       "REQUEST_DETAILS",
@@ -487,21 +543,23 @@ export function handleRadioCommand(
                 route: req.details.route,
               })
             : req.kind === "FLIGHT_FOLLOWING"
-            ? formatVfrFlightFollowingRequest({
-                callsign: req.callsign,
-                positionPhrase: detailPosition,
-                aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
-                destinationAirportId: req.details.destinationAirportId,
-                altitudeFt:
-                  req.details.requestedAltitudeFt ?? req.details.altitudeFt ?? aircraft.altitudeFt,
-              })
-            : formatIfrPickupRequest({
-                callsign: req.callsign,
-                positionPhrase: detailPosition,
-                aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
-                destinationAirportId: req.details.destinationAirportId,
-                requestedAltitudeFt: req.details.requestedAltitudeFt ?? req.details.altitudeFt,
-              });
+              ? formatVfrFlightFollowingRequest({
+                  callsign: req.callsign,
+                  positionPhrase: detailPosition,
+                  aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
+                  destinationAirportId: req.details.destinationAirportId,
+                  altitudeFt:
+                    req.details.requestedAltitudeFt ??
+                    req.details.altitudeFt ??
+                    aircraft.altitudeFt,
+                })
+              : formatIfrPickupRequest({
+                  callsign: req.callsign,
+                  positionPhrase: detailPosition,
+                  aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
+                  destinationAirportId: req.details.destinationAirportId,
+                  requestedAltitudeFt: req.details.requestedAltitudeFt ?? req.details.altitudeFt,
+                });
 
         req.status = "PENDING";
         log.append({
@@ -606,6 +664,16 @@ export function handleRadioCommand(
     regional: world.regional as RegionalFacility | undefined,
     world,
   });
+  const classB = resolvedCommand.instructions.find(
+    (item) => item.type === "CLASS_B_CLEARANCE" || item.type === "REMAIN_OUTSIDE_BRAVO",
+  );
+  if (classB?.type === "CLASS_B_CLEARANCE" && classB.operation !== "OUT_OF") {
+    const request = findOpenRadioRequest(world.radioRequests, aircraft.id, "CLASS_B_ACCESS");
+    if (request) transitionRequestToCleared(request, classB.operation, world.simTimeMs);
+  } else if (classB?.type === "REMAIN_OUTSIDE_BRAVO") {
+    const request = findOpenRadioRequest(world.radioRequests, aircraft.id, "CLASS_B_ACCESS");
+    if (request) transitionRequestToDeclined(request, world.simTimeMs);
+  }
   const procedureNames = Object.fromEntries([
     ...(world.catalog?.stars ?? []).map((star) => [star.id, star.name ?? star.id] as const),
     ...(world.catalog?.sids ?? []).map((sid) => [sid.id, sid.name ?? sid.id] as const),

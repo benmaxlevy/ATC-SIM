@@ -147,7 +147,8 @@ describe("Class B request-response parity", () => {
     (text) => {
       const typed = parseRadioText(text);
       expect(typed.ok).toBe(true);
-      if (typed.ok) expect(typed.instructions).toEqual([{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }]);
+      if (typed.ok)
+        expect(typed.instructions).toEqual([{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }]);
       const raw = "Delta 123 cleared as requested";
       const a = parseSpokenGrammar("delta one two three cleared as requested", undefined, raw);
       expect(a.ok).toBe(true);
@@ -163,8 +164,13 @@ describe("Class B request-response parity", () => {
     (phrase) => {
       const res = parseRadioText(`DAL123 ${phrase}`);
       expect(res.ok).toBe(true);
-      if (res.ok) expect(res.instructions).toEqual([{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }]);
-      expect(pathCResultIsComplete(`DAL123 ${phrase}`, [{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }])).toBe(true);
+      if (res.ok)
+        expect(res.instructions).toEqual([{ type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" }]);
+      expect(
+        pathCResultIsComplete(`DAL123 ${phrase}`, [
+          { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        ]),
+      ).toBe(true);
     },
   );
 
@@ -174,9 +180,13 @@ describe("Class B request-response parity", () => {
       "cleared as requested maintain 3000",
       "unable transition through bravo",
     ]) {
-      await expect(parseCommand(`DAL123 ${phrase}`, { source: "voice", pathC: false })).resolves.toMatchObject({ ok: false });
+      await expect(
+        parseCommand(`DAL123 ${phrase}`, { source: "voice", pathC: false }),
+      ).resolves.toMatchObject({ ok: false });
     }
     expect(isLegalInstruction({ type: "CLASS_B_CLEARANCE_AS_REQUESTED" })).toBe(true);
-    expect(isLegalInstruction({ type: "CLASS_B_CLEARANCE_AS_REQUESTED", route: [] } as never)).toBe(false);
+    expect(isLegalInstruction({ type: "CLASS_B_CLEARANCE_AS_REQUESTED", route: [] } as never)).toBe(
+      false,
+    );
   });
 });

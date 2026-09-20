@@ -127,6 +127,19 @@ logs `LEAVING (name) BRAVO AIRSPACE`; it does not automatically terminate radar
 service or reset the squawk. A Class B-specific altitude is temporary and is
 restored by the explicit resume command or on exit.
 
+Ambient VFR pilots may request access before a modeled route enters Bravo. Use
+`say request` to hear the stored request: arrival requests say `request VFR
+arrival into Bravo`, departure requests say `request VFR departure into Bravo`,
+and transitions say `request transition through Bravo`, with available
+destination and catalog-grounded route details. `stand by` leaves the request
+open. Controller responses are exact: `cleared as requested` applies only the
+pending VFR `TO_ENTER`/`THROUGH` request; `unable class b clearance` (or `unable
+to provide class b clearance`) declines it; `remain outside Bravo airspace`
+also declines it when accepted outside. These responses do not change VFR,
+flight plan, service, beacon, or kinematics except for an accepted clearance's
+existing Class B route/altitude behavior. A primary-airport departure does not
+create a pilot `OUT_OF` request; `OUT_OF` remains controller-issued.
+
 ### Typed command syntax
 
 Spaces between command letters and numeric parameters are optional (e.g. `H 240` or `H240`, `C 50` or `C50`).

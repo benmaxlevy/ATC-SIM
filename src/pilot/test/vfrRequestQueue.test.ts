@@ -316,10 +316,12 @@ describe("VfrRequestQueue eligibility (T04-72)", () => {
 });
 
 describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
-  function makeClassBWorld(fixes = [
-    { id: "FIX1", xNm: 0, yNm: 0, kind: "FIX" },
-    { id: "FIX2", xNm: 10, yNm: 0, kind: "FIX" },
-  ]) {
+  function makeClassBWorld(
+    fixes = [
+      { id: "FIX1", xNm: 0, yNm: 0, kind: "FIX" },
+      { id: "FIX2", xNm: 10, yNm: 0, kind: "FIX" },
+    ],
+  ) {
     const regional = createSyntheticRegional();
     const world = createWorld({
       regional,
@@ -474,7 +476,9 @@ describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
     queue.drain({ world, log });
     expect(queue.getRequests()[0]!.state).toBe("WITHDRAWN");
 
-    const second = makeCrossingAircraft("TRANSIT", { waypoints: [{ xNm: 0, yNm: 0, fixId: "FIX1" }] });
+    const second = makeCrossingAircraft("TRANSIT", {
+      waypoints: [{ xNm: 0, yNm: 0, fixId: "FIX1" }],
+    });
     second.id = "ac-second";
     world.aircraft = [second];
     world.simTimeMs = 1000;

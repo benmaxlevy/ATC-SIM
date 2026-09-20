@@ -738,10 +738,7 @@ export function pathCResultIsComplete(
   ) {
     return false;
   }
-  if (
-    has(/\bcleared\s+as\s+requested\b/) &&
-    !hasType("CLASS_B_CLEARANCE_AS_REQUESTED")
-  ) {
+  if (has(/\bcleared\s+as\s+requested\b/) && !hasType("CLASS_B_CLEARANCE_AS_REQUESTED")) {
     return false;
   }
   if (has(/\bremain\s+outside\s+bravo\s+airspace\b/) && !hasType("REMAIN_OUTSIDE_BRAVO")) {

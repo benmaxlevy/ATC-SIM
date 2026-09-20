@@ -289,10 +289,7 @@ export interface ClassBAccessRequestPlan {
   route?: ClassBRequestRouteLeg[];
 }
 
-type ClassBAccessAssessment =
-  | { plan: ClassBAccessRequestPlan }
-  | { blocked: true }
-  | null;
+type ClassBAccessAssessment = { plan: ClassBAccessRequestPlan } | { blocked: true } | null;
 
 function sameNmPoint(
   left: { xNm: number; yNm: number },
@@ -342,7 +339,10 @@ function groundClassBRoute(
   return route;
 }
 
-function projectedClassBRoute(aircraft: Aircraft, regional: RegionalFacility): Array<{
+function projectedClassBRoute(
+  aircraft: Aircraft,
+  regional: RegionalFacility,
+): Array<{
   xNm: number;
   yNm: number;
   altitudeFt: number;
@@ -405,9 +405,9 @@ export function assessClassBAccessRequest(
   const projected = projectedClassBRoute(aircraft, regional);
   if (
     projected.length < 2 ||
-    !projected.slice(1).some((point, index) =>
-      isSegmentUnsafeFromAvoidance(projected[index]!, point, classBVolumes),
-    )
+    !projected
+      .slice(1)
+      .some((point, index) => isSegmentUnsafeFromAvoidance(projected[index]!, point, classBVolumes))
   ) {
     return null;
   }
@@ -457,7 +457,9 @@ export function assessClassBAccessRequest(
   }
 
   const destinationAirportId =
-    aircraft.ambientVfr?.destinationAirportId ?? aircraft.destinationAirport ?? aircraft.destination;
+    aircraft.ambientVfr?.destinationAirportId ??
+    aircraft.destinationAirport ??
+    aircraft.destination;
   const finalWaypointAltitude = waypoints[waypoints.length - 1]?.altitudeFt;
   return {
     plan: {
@@ -701,7 +703,8 @@ export class VfrRequestQueue {
     let route: ClassBRequestRouteLeg[] | undefined;
 
     if (kind === "CLASS_B_ACCESS") {
-      const plan = classBAssessment && "plan" in classBAssessment ? classBAssessment.plan : undefined;
+      const plan =
+        classBAssessment && "plan" in classBAssessment ? classBAssessment.plan : undefined;
       if (!plan) {
         return;
       }
@@ -1006,7 +1009,11 @@ export class VfrRequestQueue {
         continue;
       }
 
-      if (aircraft.flightRules !== "VFR" || aircraft.activeClearance || aircraft.classBClearance?.active) {
+      if (
+        aircraft.flightRules !== "VFR" ||
+        aircraft.activeClearance ||
+        aircraft.classBClearance?.active
+      ) {
         this.releaseAdmission(next);
         next.state = "WITHDRAWN";
         next.withdrawnReason = "INELIGIBLE_FLIGHT_RULES";
@@ -1162,8 +1169,7 @@ export class VfrRequestQueue {
             positionPhrase: detailPosition,
             aircraftType:
               schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
-            altitudeFt:
-              schedReq?.altitudeFt ?? radioReq.details.altitudeFt ?? aircraft?.altitudeFt,
+            altitudeFt: schedReq?.altitudeFt ?? radioReq.details.altitudeFt ?? aircraft?.altitudeFt,
             headingDeg: aircraft?.headingDeg ?? radioReq.details.headingDeg,
             classBIntent: radioReq.details.classBIntent ?? "TRANSITION",
             classBOperation: radioReq.details.classBOperation ?? "THROUGH",
@@ -1173,29 +1179,29 @@ export class VfrRequestQueue {
             route: schedReq?.route ?? radioReq.details.route,
           })
         : radioReq.kind === "FLIGHT_FOLLOWING"
-        ? formatVfrFlightFollowingRequest({
-            callsign: radioReq.callsign,
-            positionPhrase: detailPosition ?? undefined,
-            aircraftType:
-              schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
-            destinationAirportId:
-              schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
-            altitudeFt:
-              schedReq?.requestedAltitudeFt ??
-              radioReq.details.requestedAltitudeFt ??
-              radioReq.details.altitudeFt ??
-              aircraft?.altitudeFt,
-          })
-        : formatIfrPickupRequest({
-            callsign: radioReq.callsign,
-            positionPhrase: detailPosition ?? undefined,
-            aircraftType:
-              schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
-            destinationAirportId:
-              schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
-            requestedAltitudeFt:
-              schedReq?.requestedAltitudeFt ?? radioReq.details.requestedAltitudeFt,
-          });
+          ? formatVfrFlightFollowingRequest({
+              callsign: radioReq.callsign,
+              positionPhrase: detailPosition ?? undefined,
+              aircraftType:
+                schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
+              destinationAirportId:
+                schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
+              altitudeFt:
+                schedReq?.requestedAltitudeFt ??
+                radioReq.details.requestedAltitudeFt ??
+                radioReq.details.altitudeFt ??
+                aircraft?.altitudeFt,
+            })
+          : formatIfrPickupRequest({
+              callsign: radioReq.callsign,
+              positionPhrase: detailPosition ?? undefined,
+              aircraftType:
+                schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
+              destinationAirportId:
+                schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
+              requestedAltitudeFt:
+                schedReq?.requestedAltitudeFt ?? radioReq.details.requestedAltitudeFt,
+            });
     setStatus?.(detailText);
     log?.append({
       type: "vfr.request.details_reported",

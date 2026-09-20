@@ -834,6 +834,14 @@ altitude handling, boundary events, exact exit notification, and explicit
 `REMAIN_OUTSIDE_BRAVO` / `RESUME_APPROPRIATE_VFR_ALTITUDES` behavior. Flight following, radar
 contact, and `MAINTAIN_VFR` remain advisory/radio states only; none authorizes Class B entry.
 
+Pilot-initiated VFR Class B requests are now also implemented: geometry-driven
+ambient traffic requests `TO_ENTER` or `THROUGH` before a projected 3-D Bravo
+crossing, `say request` reports the stored intent, and exact approval/denial/
+standby responses resolve the request without adding a pilot `OUT_OF` path.
+`CLEARED AS REQUESTED` copies only the pending VFR request's operation, route,
+and requested altitude. No Raytheon STARS display/manual behavior is part of
+this slice.
+
 This slice deliberately does not add VFR-on-top, SVFR, Class C/D authorization, tower cab
 coordination, visual landmarks/corridors, certified separation, or implicit route repair from
 unrelated commands. Manual controller review of FAA phraseology and operational suitability

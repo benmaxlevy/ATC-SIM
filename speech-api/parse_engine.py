@@ -933,7 +933,7 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type", "service"}):
             return None
         service = raw["service"]
-        if service not in {"FLIGHT_FOLLOWING", "IFR_PICKUP"}:
+        if service not in {"FLIGHT_FOLLOWING", "IFR_PICKUP", "CLASS_B_ACCESS"}:
             return None
         return {"type": "DECLINE_REQUEST", "service": service}
     if instr_type == "RADAR_CONTACT":
