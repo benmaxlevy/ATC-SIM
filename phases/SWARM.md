@@ -5574,3 +5574,92 @@ unrelated `.worktrees/` and `speech-api/:memory:.ses` artifacts. Workers must
 implement the eight exact `TO_ENTER` forms, preserve canonical optional-field
 order, and test rejection of bare `CLEARED INTO BRAVO` and unsupported fuzzy
 paraphrases.
+
+## Seventy-eighth swarm planned — VFR Class B pilot requests and `say request` details (2026-09-20)
+
+Human approved the VFR Class B pilot-request plan on the current
+`feature/sattelite-traffic` branch. This slice adds generated VFR requests for
+Bravo arrival/transition/underlying-airport departure cases, direct `say
+request` details, request resolution, `CLEARED AS REQUESTED`, explicit Class B
+`UNABLE`, and complete parser/speech parity. It does not add pilot `OUT_OF`
+requests.
+
+| Key | Value |
+| --- | --- |
+| Goal | Model VFR requests to enter/transition Class B, report them through `say request`, and resolve them through FAA-grounded controller responses. |
+| Phase | `phases/04-procedures/` addendum |
+| Include | T04-97 → T04-98; T04-99; T04-100 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Merge lock | Captain-only; workers never merge or spawn |
+| Stop | T04-100, focused tests, `npm run ci`, speech mock pytest, `git diff --check`, and manual FAA review |
+| Push | No push unless separately requested |
+
+**Product law:** Class B pilot requests are VFR-only and informational until
+accepted controller clearance. Requests support only `TO_ENTER` and `THROUGH`;
+they never support `OUT_OF`. Aircraft below a Bravo shelf requests access only
+when its modeled route enters the 3D volume. Primary-airport departures use
+existing departure-clearance behavior and do not create pilot `OUT_OF` requests.
+`REQUEST_DETAILS` reports request details without authorization. `STAND BY` is
+not approval or denial. `UNABLE CLASS B CLEARANCE` and `REMAIN OUTSIDE BRAVO
+AIRSPACE` decline/hold the aircraft outside. `CLEARED AS REQUESTED` requires an
+open Class B request. All accepted Class B operations preserve VFR and do not
+change IFR, flight-plan, service, beacon, or unrelated intent state. Existing
+FAA-required Bravo exit notification remains; no new pilot exit notification is
+added.
+
+**Path law:** Every new or changed Command IR shape is implemented together in
+frontend typed parsing, Path A, Path B, Path C, PTT, speech-api semantic
+validation, prompt, GBNF, mock/contract tests, live eval corpus, readback, and
+parity guards. No cloud parser or unconstrained fuzzy repair.
+
+**Skip:** Class C/D, SVFR, VFR-on-top, visual landmarks, VFR corridors, tower
+cab, multi-position coordination, primary-airport pilot `OUT_OF` requests,
+facility-specific branches, certified separation, and phase 5.
+
+**Waves:**
+
+- Wave A: T04-97 — generic Class B request schema, scheduling, eligibility,
+  lifecycle fields, and no-`OUT_OF` behavior.
+- Wave B: T04-98 — direct `say request` formatter and request-detail lifecycle.
+- Wave C: T04-99 — `CLEARED AS REQUESTED`, Class B `UNABLE`, and full parser/
+  speech/GBNF parity.
+- Wave D: T04-100 — runtime resolution, integrated acceptance, help/docs/
+  backlog, CI, and manual FAA evidence.
+
+**Ticket ownership:**
+
+- T04-97 owns `CLASS_B_ACCESS` records, generic scheduler eligibility, route
+  grounding, terminal `CLEARED` state, and primary/underlying-airport rules.
+- T04-98 owns Class B `say request` response formatting and existing
+  `REQUEST_DETAILS`/`STANDBY_REQUEST` lifecycle behavior.
+- T04-99 owns `CLASS_B_CLEARANCE_AS_REQUESTED`,
+  `DECLINE_REQUEST { service: "CLASS_B_ACCESS" }`, exact grammar/precedence,
+  and browser/Path A/Path B/Path C/PTT/speech GBNF parity.
+- T04-100 owns clearance/request association, approval/denial runtime,
+  integrated acceptance, help/user/phase/shared/backlog documentation, final
+  CI, and FAA manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T04-97-vfr-class-b-pilot-request-schema-and-scheduling` → `phases/04-procedures/tickets/T04-97-vfr-class-b-pilot-request-schema-and-scheduling.md`
+- `ticket/T04-98-vfr-class-b-say-request-response` → `phases/04-procedures/tickets/T04-98-vfr-class-b-say-request-response.md`
+- `ticket/T04-99-vfr-class-b-request-command-parity` → `phases/04-procedures/tickets/T04-99-vfr-class-b-request-command-parity.md`
+- `ticket/T04-100-vfr-class-b-request-runtime-acceptance-and-docs` → `phases/04-procedures/tickets/T04-100-vfr-class-b-request-runtime-acceptance-and-docs.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock,
+progressive ticket merges, focused gates, final CI, STATUS handoff, and phase
+boundary. Preserve unrelated `.worktrees/` and `speech-api/:memory:.ses`; do
+not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: VFR Class B pilot requests and say-request details T04-97–T04-100
+Merge target: feature/sattelite-traffic
+Merged: T04-97, T04-98, T04-99, T04-100
+Tests: focused acceptance; npm run ci; speech-api mock pytest; git diff --check; FAA manual review
+Notes: VFR-only TO_ENTER/THROUGH requests; no pilot OUT_OF; full typed/Path A/Path B/Path C/PTT/GBNF parity; no push
+```
