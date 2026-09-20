@@ -21,6 +21,7 @@ import {
   joinProcedureTransition,
   normalizeHeading,
   performanceRegistry,
+  validateClassBInstruction,
 } from "@core";
 import { isValidBeaconCode } from "@core";
 import {
@@ -350,12 +351,14 @@ function validateOne(
       return { ok: true };
     case "CLASS_B_CLEARANCE":
     case "REMAIN_OUTSIDE_BRAVO":
-    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
-      return {
-        ok: false,
-        reason: "CLEARANCE",
-        detail: "Class B clearance execution is implemented by the downstream ticket",
-      };
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES": {
+      const result = validateClassBInstruction(aircraft, instruction, {
+        regional: opts?.regional,
+        fixRegistry: opts?.fixRegistry,
+        mvaChart: opts?.world?.mvaChart,
+      });
+      return result.ok ? result : { ok: false, reason: "CLEARANCE", detail: result.detail };
+    }
     case "IFR_CLEARANCE":
       if (instruction.limitId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };

@@ -365,6 +365,27 @@ export function handleRadioCommand(
     world,
   });
   if (!validated.ok) {
+    const classB = resolvedCommand.instructions.find(
+      (item) =>
+        item.type === "CLASS_B_CLEARANCE" ||
+        item.type === "REMAIN_OUTSIDE_BRAVO" ||
+        item.type === "RESUME_APPROPRIATE_VFR_ALTITUDES",
+    );
+    if (classB) {
+      log.append({
+        type: "class_b.clearance.rejected",
+        atSimMs: world.simTimeMs,
+        atWallMs,
+        callsign: resolved.callsign,
+        operation:
+          classB.type === "CLASS_B_CLEARANCE"
+            ? classB.operation
+            : classB.type === "REMAIN_OUTSIDE_BRAVO"
+              ? "REMAIN_OUTSIDE"
+              : "RESUME",
+        detail: validated.detail,
+      });
+    }
     return reject(
       validated.reason,
       validated.detail,

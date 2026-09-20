@@ -57,6 +57,47 @@ export type SessionEvent =
       routeText: string;
     }
   | {
+      type:
+        "class_b.clearance.issued" | "class_b.clearance.accepted" | "class_b.clearance.rejected";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF" | "REMAIN_OUTSIDE" | "RESUME";
+      routeFixIds?: string[];
+      altitudeFt?: number;
+      detail?: string;
+    }
+  | {
+      type: "class_b.entered";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+    }
+  | {
+      type: "class_b.exited";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      operation?: "THROUGH" | "TO_ENTER" | "OUT_OF";
+      notification: string;
+    }
+  | {
+      type: "class_b.route_deviation";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+    }
+  | {
+      type: "class_b.altitude.resumed";
+      atSimMs: number;
+      atWallMs: number;
+      callsign: string;
+      source: "COMMAND" | "EXIT";
+      altitudeFt: number;
+    }
+  | {
       type: "voice.latency";
       atSimMs: number;
       atWallMs: number;

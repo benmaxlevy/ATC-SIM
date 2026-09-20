@@ -64,6 +64,8 @@ import {
   type FlightPlan,
 } from "./flightPlan";
 import { DEFAULT_BEACON_POOL_CONFIG, type BeaconPoolConfig } from "./beaconPools";
+import { aircraftInsideClassB, handleClassBBoundary } from "./vfrClassBClearance";
+import type { RegionalFacility } from "../scenario/regional";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -810,6 +812,8 @@ export function stepWorld(world: World, dtS: number): World {
   world.vfrTrafficManager?.step(world, dtS);
   acceptDueOutboundHandoffs(world);
   for (const ac of world.aircraft) {
+    const regionalFacility = world.regional as RegionalFacility | undefined;
+    const wasInsideClassB = aircraftInsideClassB(ac, regionalFacility);
     const previousLateral = ac.intent.lateral;
     const approachCtx = resolveApproachContext(ac, world);
     const effectiveCatalog = approachCtx.catalog ?? world.catalog;
@@ -873,6 +877,10 @@ export function stepWorld(world: World, dtS: number): World {
       profile.limits,
     );
     synchronizeRouteCursor(world, ac, previousLateral);
+    if (ac.classBClearance && ac.intent.lateral?.type === "PROCEDURE") {
+      ac.classBClearance.routeIndex = ac.intent.lateral.toFixIndex;
+    }
+    handleClassBBoundary(world, ac, wasInsideClassB, aircraftInsideClassB(ac, regionalFacility));
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }

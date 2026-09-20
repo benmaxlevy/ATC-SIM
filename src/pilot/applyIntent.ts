@@ -16,6 +16,7 @@ import type {
 } from "@core";
 import {
   beginMissedApproach,
+  applyClassBInstruction,
   findOpenRadioRequest,
   joinNamedProcedure,
   joinProcedureTransition,
@@ -438,8 +439,7 @@ function applyOne(
     case "CLASS_B_CLEARANCE":
     case "REMAIN_OUTSIDE_BRAVO":
     case "RESUME_APPROPRIATE_VFR_ALTITUDES":
-      // T04-95 owns Class B geometry/state execution. Keep Command IR parsing
-      // side-effect free until that ticket supplies the runtime behavior.
+      if (opts?.world) applyClassBInstruction(aircraft, instruction, opts.world, opts.log);
       return;
     case "IFR_CLEARANCE":
       // IFR clearance application is an atomic world transaction, never a

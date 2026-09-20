@@ -19,6 +19,22 @@ export interface ActiveIfrClearance {
   issuedAtSimMs: number;
 }
 
+export interface ClassBClearanceState {
+  operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+  routeFixIds?: string[];
+  routeMode: "CATALOG_ROUTE" | "OWN_NAVIGATION";
+  altitudeFt?: number;
+  priorVfrAltitudeFt?: number;
+  issuedAtSimMs: number;
+  routeIndex: number;
+  active: boolean;
+}
+
+export interface RemainOutsideBravoState {
+  issuedAtSimMs: number;
+  active: boolean;
+}
+
 const CWT_WAKE_CATEGORIES = new Set<CwtWakeCategory>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
 
 /**
@@ -204,6 +220,12 @@ export interface Aircraft {
   clearanceFrequency?: string;
   /** Latest issued IFR clearance, independent of editable flight-plan state. */
   activeClearance?: ActiveIfrClearance;
+  classBClearance?: ClassBClearanceState;
+  remainOutsideBravo?: RemainOutsideBravoState;
+  classBAltitudeSnapshot?: {
+    assignedAltitudeFt: number;
+    priorVfrAltitudeFt: number;
+  };
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -301,6 +323,12 @@ export interface AircraftInit {
   clearanceAccess?: ClearanceAccess;
   clearanceFrequency?: string;
   activeClearance?: ActiveIfrClearance;
+  classBClearance?: ClassBClearanceState;
+  remainOutsideBravo?: RemainOutsideBravoState;
+  classBAltitudeSnapshot?: {
+    assignedAltitudeFt: number;
+    priorVfrAltitudeFt: number;
+  };
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -411,6 +439,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.clearanceAccess ? { clearanceAccess: init.clearanceAccess } : {}),
     ...(init.clearanceFrequency ? { clearanceFrequency: init.clearanceFrequency } : {}),
     ...(init.activeClearance ? { activeClearance: init.activeClearance } : {}),
+    ...(init.classBClearance ? { classBClearance: init.classBClearance } : {}),
+    ...(init.remainOutsideBravo ? { remainOutsideBravo: init.remainOutsideBravo } : {}),
+    ...(init.classBAltitudeSnapshot ? { classBAltitudeSnapshot: init.classBAltitudeSnapshot } : {}),
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),

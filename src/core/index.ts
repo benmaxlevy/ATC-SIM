@@ -212,8 +212,15 @@ export { applyIfrCancellation, type IfrCancellationResult } from "./ifrCancellat
 export * from "./command/fixtures";
 export type { SessionEvent } from "./events/session-log";
 export { SessionLog } from "./events/session-log";
+export {
+  aircraftInsideClassB,
+  applyClassBInstruction,
+  handleClassBBoundary,
+  validateClassBInstruction,
+} from "./vfrClassBClearance";
 export type {
   ActiveIfrClearance,
+  ClassBClearanceState,
   Aircraft,
   AircraftInit,
   AmbientVfrMission,
@@ -225,6 +232,7 @@ export type {
   DirectContinuation,
   Intent,
   LateralMode,
+  RemainOutsideBravoState,
   VerticalMode,
 } from "./aircraft";
 export {
