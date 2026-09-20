@@ -2155,6 +2155,28 @@ push performed.
 
 **PHASE EXIT GREEN**
 
+## SEVENTY-FIFTH SWARM COMPLETE — IFR cancellation VFR continuation replanning (T04-92–T04-93)
+
+Completed sequentially on `feature/sattelite-traffic` with one configured Luna
+medium worker and captain squash merges. T04-92 makes IFR cancellation outside
+Class B preserve a safe VFR suffix or deterministically replan around the 3D
+Class B volume; cancellation remains rejected inside Class B or when no safe
+replacement exists. T04-93 adds integration coverage for atomic rejection,
+route safety, readback, and positive-time VFR movement, plus user, phase, and
+backlog documentation. Controller-issued VFR clearances through or into Class B
+remain deferred; no Class B clearance or Command IR/parser behavior was added.
+
+Captain commits: `c8c7ace`, `52677a3`, `5ab9611`, `f8c2d28`, `584e75b`.
+Final `npm run ci`: **240 files passed, 2,615 passed, 4 skipped, 0 failures**.
+`git diff --check` passed. Independent supplied-manual review passed with no
+FAIL or CONCERN after the positive-time movement correction. Live KATL/browser
+manual evidence was unavailable; the ticket records that limitation explicitly
+and does not present automated coverage as live proof.
+
+No speech API changes. No push performed; stop at configured boundary.
+
+**PHASE EXIT GREEN**
+
 ## SEVENTIETH SWARM COMPLETE — shared fix matching and per-span route evidence (T02-193–T02-196)
 
 Completed sequentially on `feature/clearances` with one configured worker and
