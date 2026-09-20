@@ -39,6 +39,9 @@ INSTRUCTION_TYPES = frozenset(
         "CANCEL_APPROACH",
         "ASSIGN_SQUAWK",
         "MAINTAIN_VFR",
+        "CLASS_B_CLEARANCE",
+        "REMAIN_OUTSIDE_BRAVO",
+        "RESUME_APPROPRIATE_VFR_ALTITUDES",
         "IFR_CLEARANCE",
         "IDENT",
         "SAY_HEADING",
@@ -95,6 +98,8 @@ Position advisories are not commands, but never stop parsing later sentences. �
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; CLEARED_VISUAL requires cleared visual approach plus runway; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
 New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “unable ifr pickup” and “unable to provide ifr pickup” are DECLINE_REQUEST with service IFR_PICKUP. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+
+VFR Class B clearances use CLASS_B_CLEARANCE with operation TO_ENTER, THROUGH, or OUT_OF. TO_ENTER accepts only the controlled variants “cleared to enter/into [the] [class] bravo airspace”; THROUGH and OUT_OF stay canonical. The phrase must include “bravo airspace”. Optional VIA route legs are ordered catalog fixes/navaids, and an optional “maintain <altitude> while in bravo airspace” follows the route. “remain outside bravo airspace” is REMAIN_OUTSIDE_BRAVO. “resume appropriate VFR altitudes” is RESUME_APPROPRIATE_VFR_ALTITUDES. These are VFR instructions only; never emit IFR clearance, flight-plan, beacon, or service state.
 
 Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. In routeWindow, fixMatches groups alternatives by one transcript span. A malformed, ambiguous, unknown, airport, unsupported, or evidence-free segment is PARSE_MISS. DIRECT is an optional marker in an IFR route window; when absent, emit one direct segment per supplied fix/navaid candidate, preserving supplied transcript order and spans. Every route segment selects exactly one candidate from one listed fixMatches row; never use an ID from another span, concatenate tokens into an ID such as SWEPT_KIMMY, or move the clearance-limit airport into a tactical DIRECT. A complete route must cover every non-connector token in order; DIRECT and THEN are connectors. An IFR `clear/cleared to ... via ...` transcript is never tactical DIRECT. transitionId only when that transition is nested under the supplied catalog procedure and has transcript evidence. For an IFR clear/cleared-to/via transcript, never output tactical DIRECT. Never invent a field or segment. source is a hint, not another schema.
 """
@@ -784,6 +789,36 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "MAINTAIN_VFR"}
+    if instr_type == "REMAIN_OUTSIDE_BRAVO" or instr_type == "RESUME_APPROPRIATE_VFR_ALTITUDES":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": instr_type}
+    if instr_type == "CLASS_B_CLEARANCE":
+        if not _exact_keys(raw, {"type", "operation"}, {"route", "altitudeFt"}):
+            return None
+        if raw["operation"] not in {"THROUGH", "TO_ENTER", "OUT_OF"}:
+            return None
+        route = raw.get("route")
+        if route is not None:
+            if not isinstance(route, list) or not route:
+                return None
+            for segment in route:
+                if (
+                    not isinstance(segment, dict)
+                    or not _exact_keys(segment, {"type", "fixId"})
+                    or segment["type"] != "DIRECT"
+                    or not isinstance(segment["fixId"], str)
+                    or not segment["fixId"]
+                ):
+                    return None
+        if "altitudeFt" in raw and not _is_finite_number(raw["altitudeFt"]):
+            return None
+        out: dict[str, Any] = {"type": "CLASS_B_CLEARANCE", "operation": raw["operation"]}
+        if route is not None:
+            out["route"] = route
+        if "altitudeFt" in raw:
+            out["altitudeFt"] = _as_number(raw["altitudeFt"])
+        return out
     if instr_type == "IFR_CLEARANCE":
         optional = {"altitudeFt", "climbVia", "frequency", "squawk"}
         if not _exact_keys(raw, {"type", "limitId", "access"}, optional):
@@ -1177,6 +1212,30 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         )
     if instruction_type == "MAINTAIN_VFR":
         return has(r"\bmaintain\s+vfr\b")
+    if instruction_type == "CLASS_B_CLEARANCE":
+        operation = instruction.get("operation")
+        if operation == "TO_ENTER":
+            if not has(r"\b(?:cleared|clear)\s+(?:to\s+enter|into)(?:\s+the)?(?:\s+class)?\s+bravo\s+airspace\b"):
+                return False
+        elif operation == "THROUGH":
+            if not has(r"\b(?:cleared|clear)\s+through\s+bravo\s+airspace\b"):
+                return False
+        elif operation == "OUT_OF":
+            if not has(r"\b(?:cleared|clear)\s+out\s+of\s+bravo\s+airspace\b"):
+                return False
+        else:
+            return False
+        if instruction.get("route") and not has(r"\bvia\b"):
+            return False
+        if "altitudeFt" in instruction and not has(
+            r"\bmaintain\b[\s\S]*\bwhile\s+in\s+(?:the\s+)?bravo\s+airspace\b"
+        ):
+            return False
+        return True
+    if instruction_type == "REMAIN_OUTSIDE_BRAVO":
+        return has(r"\bremain\s+outside\s+(?:the\s+)?bravo\s+airspace\b")
+    if instruction_type == "RESUME_APPROPRIATE_VFR_ALTITUDES":
+        return has(r"\bresume\s+appropriate\s+vfr\s+altitudes\b")
     if instruction_type == "IFR_CLEARANCE":
         # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
         # IFR clearance has the clearance limit and an explicit access method.
@@ -1632,6 +1691,16 @@ def guard_catalog_ids(
             runway_id = str(instruction.get("runwayId") or "").strip().upper()
             if not runway_id or not _runway_has_transcript_evidence(runway_id, text):
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "CLASS_B_CLEARANCE":
+            route = instruction.get("route")
+            if route is not None:
+                if not isinstance(route, list) or not route:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                if not fixes or any(
+                    not isinstance(segment, dict) or segment.get("fixId") not in fixes
+                    for segment in route
+                ):
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
     if token != outcome.callsign_token:
         return ParseOutcome(
             ok=True,

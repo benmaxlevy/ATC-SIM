@@ -348,6 +348,14 @@ function validateOne(
       return { ok: true };
     case "MAINTAIN_VFR":
       return { ok: true };
+    case "CLASS_B_CLEARANCE":
+    case "REMAIN_OUTSIDE_BRAVO":
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
+      return {
+        ok: false,
+        reason: "CLEARANCE",
+        detail: "Class B clearance execution is implemented by the downstream ticket",
+      };
     case "IFR_CLEARANCE":
       if (instruction.limitId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };

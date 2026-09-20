@@ -135,7 +135,10 @@ function isIfrClearanceCandidate(normalized: string): boolean {
   return (
     tokens.includes("clr") ||
     tokens.some(
-      (token, index) => (token === "cleared" || token === "clear") && tokens[index + 1] === "to",
+      (token, index) =>
+        (token === "cleared" || token === "clear") &&
+        tokens[index + 1] === "to" &&
+        tokens[index + 2] !== "enter",
     )
   );
 }
@@ -1232,6 +1235,11 @@ function pathCIdentifierListed(
         if (airports.has(inst.referenceId) || !fixes.has(inst.referenceId)) {
           return false;
         }
+      }
+    }
+    if (inst.type === "CLASS_B_CLEARANCE" && inst.route !== undefined) {
+      if (fixes.size === 0 || inst.route.some((leg) => !fixes.has(leg.fixId))) {
+        return false;
       }
     }
   }

@@ -10,7 +10,7 @@ error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\
 callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
-instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | expect-approach | cleared-approach | cleared-visual | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service | acknowledge-ifr-cancellation
+instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | class-b-clearance | remain-outside-bravo | resume-appropriate-vfr-altitudes | expect-approach | cleared-approach | cleared-visual | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service | acknowledge-ifr-cancellation
 
 fly-heading ::= "{" ws "\"type\"" ws ":" ws "\"FLY_HEADING\"" ws "," ws "\"headingDeg\"" ws ":" ws number ws "," ws "\"turn\"" ws ":" ws turn-dir ws "}"
 turn-degrees ::= "{" ws "\"type\"" ws ":" ws "\"TURN_DEGREES\"" ws "," ws "\"direction\"" ws ":" ws lr ws "," ws "\"degrees\"" ws ":" ws number ws "}"
@@ -18,6 +18,12 @@ present-heading ::= "{" ws "\"type\"" ws ":" ws "\"PRESENT_HEADING\"" ws "}"
 altitude ::= "{" ws "\"type\"" ws ":" ws "\"ALTITUDE\"" ws "," ws "\"altitudeFt\"" ws ":" ws number ws "," ws "\"verb\"" ws ":" ws alt-verb (ws "," ws "\"expedite\"" ws ":" ws boolean)? (ws "," ws "\"untilEstablished\"" ws ":" ws boolean)? ws "}"
 speed ::= "{" ws "\"type\"" ws ":" ws "\"SPEED\"" ws "," ws "\"speedKt\"" ws ":" ws number ws "," ws "\"verb\"" ws ":" ws speed-verb (ws "," ws "\"until\"" ws ":" ws speed-until)? ws "}"
 direct ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
+class-b-clearance ::= "{" ws "\"type\"" ws ":" ws "\"CLASS_B_CLEARANCE\"" ws "," ws "\"operation\"" ws ":" ws class-b-operation (ws "," ws "\"route\"" ws ":" ws class-b-route)? (ws "," ws "\"altitudeFt\"" ws ":" ws number)? ws "}"
+class-b-operation ::= "\"THROUGH\"" | "\"TO_ENTER\"" | "\"OUT_OF\""
+class-b-route ::= "[" ws class-b-segment (ws "," ws class-b-segment)* ws "]"
+class-b-segment ::= "{" ws "\"type\"" ws ":" ws "\"DIRECT\"" ws "," ws "\"fixId\"" ws ":" ws string ws "}"
+remain-outside-bravo ::= "{" ws "\"type\"" ws ":" ws "\"REMAIN_OUTSIDE_BRAVO\"" ws "}"
+resume-appropriate-vfr-altitudes ::= "{" ws "\"type\"" ws ":" ws "\"RESUME_APPROPRIATE_VFR_ALTITUDES\"" ws "}"
 expect-approach ::= "{" ws "\"type\"" ws ":" ws "\"EXPECT_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-approach ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_APPROACH\"" ws "," ws "\"approachId\"" ws ":" ws string ws "}"
 cleared-visual ::= "{" ws "\"type\"" ws ":" ws "\"CLEARED_VISUAL\"" ws "," ws "\"runwayId\"" ws ":" ws runway-string ws "}"

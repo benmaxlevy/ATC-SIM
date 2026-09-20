@@ -116,6 +116,14 @@ Why this is the smallest design:
 
 ## Typed `DCT` unknown id vs spoken ungrounded miss
 
+Class B clearance English is a closed Path A/B grammar shared by typed and PTT
+input. `TO_ENTER` accepts only `CLEARED TO ENTER/INTO [THE] [CLASS] BRAVO
+AIRSPACE`; `THROUGH` and `OUT OF` remain canonical-only. Optional route and
+altitude fields occur only as `VIA ... THEN ...` followed by `MAINTAIN ...
+WHILE IN BRAVO AIRSPACE`. `REMAIN OUTSIDE BRAVO AIRSPACE` and `RESUME
+APPROPRIATE VFR ALTITUDES` are exact zero-argument forms. These instructions
+are VFR-only and require no IFR, flight-plan, beacon, or service mutation.
+
 Typed `DCT NOPE` (a catalog-shaped token the student typed) with `pathC: false` remains an **ok-parse**. The pilot still returns `UNKNOWN_FIX` (`src/pilot/direct.test.ts`). Same idea for typed `VIA NOPE` / `X ZZZZ` / `APP ILS99`. Do not turn that into a parse miss.
 
 Spoken / island “proceed direct Haynes” with an ungrounded or tied catalog token is a **parse miss** (`PARSE_MISS`) when Path C is off or also misses. Command line and voice share that miss: `handleRadioText` maps it to `formatRejectReadback({ reason: "PARSE" })` (“Unable, say again”). Spoken Haynes is the Path C problem, not `DCT NOPE`.

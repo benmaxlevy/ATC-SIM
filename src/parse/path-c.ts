@@ -201,6 +201,9 @@ export function isLegalInstruction(value: unknown): value is Instruction {
   ) {
     return keysOk(obj, ["type"]);
   }
+  if (type === "REMAIN_OUTSIDE_BRAVO" || type === "RESUME_APPROPRIATE_VFR_ALTITUDES") {
+    return keysOk(obj, ["type"]);
+  }
   if (type === "DECLINE_REQUEST") {
     return (
       keysOk(obj, ["type", "service"]) &&
@@ -253,6 +256,31 @@ export function isLegalInstruction(value: unknown): value is Instruction {
   }
   if (type === "DIRECT") {
     return keysOk(obj, ["type", "fixId"]) && typeof obj.fixId === "string" && obj.fixId.length > 0;
+  }
+  if (type === "CLASS_B_CLEARANCE") {
+    if (
+      !keysOk(obj, ["type", "operation"], ["route", "altitudeFt"]) ||
+      typeof obj.operation !== "string" ||
+      !new Set(["THROUGH", "TO_ENTER", "OUT_OF"]).has(obj.operation)
+    ) {
+      return false;
+    }
+    if (obj.route !== undefined) {
+      if (!Array.isArray(obj.route) || obj.route.length === 0) return false;
+      for (const leg of obj.route) {
+        const row = asRecord(leg);
+        if (
+          row === null ||
+          !keysOk(row, ["type", "fixId"]) ||
+          row.type !== "DIRECT" ||
+          typeof row.fixId !== "string" ||
+          row.fixId.length === 0
+        ) {
+          return false;
+        }
+      }
+    }
+    return obj.altitudeFt === undefined || isFiniteNumber(obj.altitudeFt);
   }
   if (type === "EXPECT_APPROACH" || type === "CLEARED_APPROACH" || type === "INTERCEPT_LOCALIZER") {
     return (
@@ -631,6 +659,9 @@ const SELF_CONTAINED_CUES: RegExp[] = [
   /\bifr\s+cancellation\s+received\b/,
   /\bmaintain\s+vfr\b/,
   /\b(?:cleared|clear)\s+visual\b/,
+  /\b(?:cleared|clear)\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+  /\bremain\s+outside\s+bravo\s+airspace\b/,
+  /\bresume\s+appropriate\s+vfr\s+altitudes\b/,
 ];
 
 export function pathCHasSelfContainedCue(text: string): boolean {
@@ -692,6 +723,23 @@ export function pathCResultIsComplete(
     return false;
   }
   if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
+    return false;
+  }
+  if (
+    has(
+      /\b(?:cleared|clear)\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+    ) &&
+    !hasType("CLASS_B_CLEARANCE")
+  ) {
+    return false;
+  }
+  if (has(/\bremain\s+outside\s+bravo\s+airspace\b/) && !hasType("REMAIN_OUTSIDE_BRAVO")) {
+    return false;
+  }
+  if (
+    has(/\bresume\s+appropriate\s+vfr\s+altitudes\b/) &&
+    !hasType("RESUME_APPROPRIATE_VFR_ALTITUDES")
+  ) {
     return false;
   }
   if (has(/\bsay\s+request\b/) && !hasType("REQUEST_DETAILS")) {

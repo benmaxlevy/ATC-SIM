@@ -63,6 +63,14 @@ export type Instruction =
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
   | {
+      type: "CLASS_B_CLEARANCE";
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+      route?: Array<{ type: "DIRECT"; fixId: string }>;
+      altitudeFt?: number;
+    }
+  | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
+  | {
       type: "IFR_CLEARANCE";
       limitId: string;
       access:

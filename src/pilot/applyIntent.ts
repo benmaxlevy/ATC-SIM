@@ -435,6 +435,12 @@ function applyOne(
       // Radio-only VFR marker for a future pickup path; no plan, route, or intent mutation.
       aircraft.maintainVfr = true;
       return;
+    case "CLASS_B_CLEARANCE":
+    case "REMAIN_OUTSIDE_BRAVO":
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
+      // T04-95 owns Class B geometry/state execution. Keep Command IR parsing
+      // side-effect free until that ticket supplies the runtime behavior.
+      return;
     case "IFR_CLEARANCE":
       // IFR clearance application is an atomic world transaction, never a
       // partial intent-only mutation.

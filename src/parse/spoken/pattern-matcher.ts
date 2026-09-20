@@ -21,6 +21,14 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
   );
 }
+
+function isClassBInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "CLASS_B_CLEARANCE" ||
+    instruction.type === "REMAIN_OUTSIDE_BRAVO" ||
+    instruction.type === "RESUME_APPROPRIATE_VFR_ALTITUDES"
+  );
+}
 import {
   parseAltitudeFt,
   parseHeadingDeg,
@@ -35,6 +43,7 @@ import {
   groundAirportPhraseToCatalog,
   groundAirportToCatalog,
   groundApproachToCatalog,
+  groundFixPhraseToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
   groundReferenceToCatalog,
@@ -78,6 +87,8 @@ const COMMAND_TRIGGERS = new Set([
   "unable",
   "radar",
   "visual",
+  "remain",
+  "resume",
 ]);
 
 function runwaySide(tok: string | undefined): string | null {
@@ -334,6 +345,158 @@ function matchCross(
     },
     next: j,
   };
+}
+
+function matchClassBRoute(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+): { route: Array<{ type: "DIRECT"; fixId: string }>; next: number } | null {
+  if (tokens[i] !== "via" || catalog.length === 0) {
+    return tokens[i] === "via" ? null : { route: [], next: i };
+  }
+  let j = i + 1;
+  const route: Array<{ type: "DIRECT"; fixId: string }> = [];
+  while (true) {
+    let hit: string | null = null;
+    let consumed = 0;
+    for (let n = Math.min(3, tokens.length - j); n >= 1; n -= 1) {
+      const phrase = tokens.slice(j, j + n);
+      if (phrase.includes("then") || phrase.includes("maintain")) {
+        continue;
+      }
+      const candidate = groundFixPhraseToCatalog(phrase, catalog);
+      if (candidate !== null) {
+        hit = candidate;
+        consumed = n;
+        break;
+      }
+    }
+    if (hit === null) {
+      return null;
+    }
+    route.push({ type: "DIRECT", fixId: hit });
+    j += consumed;
+    if (tokens[j] !== "then") {
+      return { route, next: j };
+    }
+    j += 1;
+    if (tokens[j] === undefined || tokens[j] === "maintain") {
+      return null;
+    }
+  }
+}
+
+function matchClassBClearance(
+  tokens: readonly string[],
+  i: number,
+  catalog: readonly CatalogFixInput[],
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "cleared") {
+    return null;
+  }
+  let j = i + 1;
+  let operation: "THROUGH" | "TO_ENTER" | "OUT_OF" | null = null;
+  if (tokens[j] === "through") {
+    operation = "THROUGH";
+    j += 1;
+  } else if (tokens[j] === "out" && tokens[j + 1] === "of") {
+    operation = "OUT_OF";
+    j += 2;
+  } else if (tokens[j] === "into") {
+    operation = "TO_ENTER";
+    j += 1;
+  } else if (tokens[j] === "to" && tokens[j + 1] === "enter") {
+    operation = "TO_ENTER";
+    j += 2;
+  }
+  if (operation === null) {
+    return null;
+  }
+  if (operation === "TO_ENTER") {
+    if (tokens[j] === "the") j += 1;
+    if (tokens[j] === "class") j += 1;
+  }
+  if (tokens[j] !== "bravo" || tokens[j + 1] !== "airspace") {
+    return null;
+  }
+  j += 2;
+  const routeMatch = matchClassBRoute(tokens, j, catalog);
+  if (routeMatch === null) {
+    return null;
+  }
+  j = routeMatch.next;
+  let altitudeFt: number | undefined;
+  if (tokens[j] === "maintain") {
+    const altitude = parseFlightLevel(tokens, j + 1) ?? parseAltitudeAt(tokens, j + 1);
+    if (
+      altitude === null ||
+      tokens[altitude.next] !== "while" ||
+      tokens[altitude.next + 1] !== "in" ||
+      tokens[altitude.next + 2] !== "bravo" ||
+      tokens[altitude.next + 3] !== "airspace"
+    ) {
+      return null;
+    }
+    altitudeFt = altitude.value;
+    j = altitude.next + 4;
+  }
+  const next = tokens[j];
+  if (next !== undefined && next !== "and" && next !== "then" && !COMMAND_TRIGGERS.has(next)) {
+    return null;
+  }
+  return {
+    instruction: {
+      type: "CLASS_B_CLEARANCE",
+      operation,
+      ...(routeMatch.route.length > 0 ? { route: routeMatch.route } : {}),
+      ...(altitudeFt === undefined ? {} : { altitudeFt }),
+    },
+    next: j,
+  };
+}
+
+function parseAltitudeAt(
+  tokens: readonly string[],
+  i: number,
+): { value: number; next: number } | null {
+  const parsed = parseFlightLevel(tokens, i);
+  if (parsed !== null) return parsed;
+  return parseAltitudeFt(tokens, i);
+}
+
+function matchRemainOutsideBravo(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (
+    tokens[i] === "remain" &&
+    tokens[i + 1] === "outside" &&
+    tokens[i + 2] === "bravo" &&
+    tokens[i + 3] === "airspace"
+  ) {
+    return { instruction: { type: "REMAIN_OUTSIDE_BRAVO" }, next: i + 4 };
+  }
+  return null;
+}
+
+function matchResumeAppropriateVfrAltitudes(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (
+    tokens[i] === "resume" &&
+    tokens[i + 1] === "appropriate" &&
+    tokens[i + 2] === "vfr" &&
+    tokens[i + 3] === "altitudes"
+  ) {
+    const next = tokens[i + 4];
+    if (next !== undefined && next !== "and" && next !== "then" && !COMMAND_TRIGGERS.has(next)) {
+      return null;
+    }
+    return { instruction: { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }, next: i + 4 };
+  }
+  return null;
 }
 
 function matchClearedApproach(
@@ -1673,6 +1836,9 @@ export function matchSpokenPatterns(
     // Try instructions first
     const match =
       matchCross(tokens, i, catalog) ??
+      matchClassBClearance(tokens, i, catalog) ??
+      matchRemainOutsideBravo(tokens, i) ??
+      matchResumeAppropriateVfrAltitudes(tokens, i) ??
       matchClearedApproach(tokens, i, approaches) ??
       matchExpectApproach(tokens, i, approaches) ??
       matchInterceptLocalizer(tokens, i, approaches) ??
@@ -1773,6 +1939,13 @@ export function matchSpokenPatterns(
 
   collectedInstructions.sort((a, b) => a.start - b.start);
   const instructions = collectedInstructions.map((item) => item.instruction);
+  if (instructions.some(isClassBInstruction) && instructions.length !== 1) {
+    return {
+      ok: false,
+      error: formatParseError(PARSE_ERROR.BAD_CLEARANCE),
+      sourceText,
+    };
+  }
   if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
     return {
       ok: false,

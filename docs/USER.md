@@ -115,6 +115,14 @@ flight-plan lifecycle, or clearance state. `VFR ON TOP`, SVFR, flight following,
 airspace authorization, and airborne VFR-to-IFR pickup are not accepted by this
 command.
 
+Controller-issued VFR Class B phraseology is also supported by the radio parser:
+`cleared to enter/into [the] [class] Bravo airspace`, `cleared through Bravo
+airspace`, `cleared out of Bravo airspace`, `remain outside Bravo airspace`, and
+`resume appropriate VFR altitudes`. `VIA ... THEN ...` route legs must be
+catalog-grounded and precede `maintain ... while in Bravo airspace`. These are
+VFR-only forms; `cleared into Bravo` without `airspace`, fuzzy paraphrases, and
+aliases for THROUGH/OUT OF are rejected.
+
 ### Typed command syntax
 
 Spaces between command letters and numeric parameters are optional (e.g. `H 240` or `H240`, `C 50` or `C50`).

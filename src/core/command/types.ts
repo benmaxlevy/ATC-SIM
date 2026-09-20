@@ -64,6 +64,9 @@ export const INSTRUCTION_TYPES = [
   "CANCEL_APPROACH",
   "ASSIGN_SQUAWK",
   "MAINTAIN_VFR",
+  "CLASS_B_CLEARANCE",
+  "REMAIN_OUTSIDE_BRAVO",
+  "RESUME_APPROPRIATE_VFR_ALTITUDES",
   "IFR_CLEARANCE",
   "IDENT",
   "SAY_HEADING",
@@ -115,6 +118,14 @@ export type Instruction =
   | { type: "CANCEL_APPROACH" }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
+  | {
+      type: "CLASS_B_CLEARANCE";
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+      route?: Array<{ type: "DIRECT"; fixId: string }>;
+      altitudeFt?: number;
+    }
+  | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
   | {
       type: "IFR_CLEARANCE";
       limitId: string;

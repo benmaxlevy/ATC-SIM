@@ -173,6 +173,26 @@ function formatInstructionClause(
         : `squawk ${speakDigitString(instruction.code)}`;
     case "MAINTAIN_VFR":
       return "maintain VFR";
+    case "CLASS_B_CLEARANCE": {
+      const operation =
+        instruction.operation === "TO_ENTER"
+          ? "to enter"
+          : instruction.operation === "OUT_OF"
+            ? "out of"
+            : "through";
+      const route = instruction.route?.length
+        ? ` via ${instruction.route.map((leg) => leg.fixId).join(" then ")}`
+        : "";
+      const altitude =
+        instruction.altitudeFt === undefined
+          ? ""
+          : `, maintain ${formatAltitude(instruction.altitudeFt)} while in Bravo airspace`;
+      return `cleared ${operation} Bravo airspace${route}${altitude}`;
+    }
+    case "REMAIN_OUTSIDE_BRAVO":
+      return "remain outside Bravo airspace";
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
+      return "resume appropriate VFR altitudes";
     case "IFR_CLEARANCE": {
       const access = formatIfrClearanceAccess(instruction.access);
       const optional = [

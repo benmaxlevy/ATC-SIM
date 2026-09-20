@@ -21,6 +21,14 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
   );
 }
+
+function isClassBInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "CLASS_B_CLEARANCE" ||
+    instruction.type === "REMAIN_OUTSIDE_BRAVO" ||
+    instruction.type === "RESUME_APPROPRIATE_VFR_ALTITUDES"
+  );
+}
 import {
   ONES,
   parseAltitudeFt,
@@ -37,6 +45,7 @@ import {
   EIGHT_POINT_CARDINALS,
   groundAirportPhraseToCatalog,
   groundAirportToCatalog,
+  groundFixPhraseToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
   groundReferenceToCatalog,
@@ -208,6 +217,127 @@ function tryMaintainVfr(c: Cursor): Instruction | null {
   const start = c.i;
   if (take(c, "maintain") && take(c, "vfr")) {
     return { type: "MAINTAIN_VFR" };
+  }
+  c.i = start;
+  return null;
+}
+
+function parseClassBRoute(c: Cursor): Array<{ type: "DIRECT"; fixId: string }> | null {
+  if (!take(c, "via")) {
+    return [];
+  }
+  if ((c.catalog?.length ?? 0) === 0) {
+    return null;
+  }
+  const route: Array<{ type: "DIRECT"; fixId: string }> = [];
+  while (true) {
+    const start = c.i;
+    let fixId: string | null = null;
+    let consumed = 0;
+    for (let n = Math.min(3, c.tokens.length - start); n >= 1; n -= 1) {
+      const candidateTokens = c.tokens.slice(start, start + n);
+      if (candidateTokens.includes("then") || candidateTokens.includes("maintain")) {
+        continue;
+      }
+      const hit = groundFixPhraseToCatalog(candidateTokens, c.catalog ?? []);
+      if (hit !== null) {
+        fixId = hit;
+        consumed = n;
+        break;
+      }
+    }
+    if (fixId === null) {
+      c.i = start;
+      return null;
+    }
+    c.i += consumed;
+    route.push({ type: "DIRECT", fixId });
+    if (!take(c, "then")) {
+      return route;
+    }
+    if (peek(c) === undefined || peek(c) === "maintain") {
+      return null;
+    }
+  }
+}
+
+function tryClassBClearance(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "cleared")) {
+    return null;
+  }
+
+  let operation: "THROUGH" | "TO_ENTER" | "OUT_OF" | null = null;
+  if (take(c, "through")) {
+    operation = "THROUGH";
+  } else if (take(c, "out") && take(c, "of")) {
+    operation = "OUT_OF";
+  } else {
+    const entryStart = c.i;
+    if (take(c, "to") && take(c, "enter")) {
+      operation = "TO_ENTER";
+    } else {
+      c.i = entryStart;
+      if (take(c, "into")) {
+        operation = "TO_ENTER";
+      }
+    }
+  }
+  if (operation === null) {
+    c.i = start;
+    return null;
+  }
+
+  if (operation === "TO_ENTER") {
+    take(c, "the");
+    take(c, "class");
+  }
+  if (!take(c, "bravo") || !take(c, "airspace")) {
+    c.i = start;
+    return null;
+  }
+
+  const route = parseClassBRoute(c);
+  if (route === null) {
+    c.i = start;
+    return null;
+  }
+  let altitudeFt: number | undefined;
+  if (take(c, "maintain")) {
+    const parsed = altitudeAt(c);
+    if (
+      parsed === null ||
+      !take(c, "while") ||
+      !take(c, "in") ||
+      !take(c, "bravo") ||
+      !take(c, "airspace")
+    ) {
+      c.i = start;
+      return null;
+    }
+    altitudeFt = parsed;
+  }
+  return {
+    type: "CLASS_B_CLEARANCE",
+    operation,
+    ...(route.length > 0 ? { route } : {}),
+    ...(altitudeFt === undefined ? {} : { altitudeFt }),
+  };
+}
+
+function tryRemainOutsideBravo(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "remain") && take(c, "outside") && take(c, "bravo") && take(c, "airspace")) {
+    return { type: "REMAIN_OUTSIDE_BRAVO" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryResumeAppropriateVfrAltitudes(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "resume") && take(c, "appropriate") && take(c, "vfr") && take(c, "altitudes")) {
+    return { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" };
   }
   c.i = start;
   return null;
@@ -1197,6 +1327,9 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryRadarServiceTerminated(c) ??
     tryAcknowledgeIfrCancellation(c) ??
     tryRadarContact(c) ??
+    tryClassBClearance(c) ??
+    tryRemainOutsideBravo(c) ??
+    tryResumeAppropriateVfrAltitudes(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??
@@ -1270,7 +1403,9 @@ export function parseSpokenGrammar(
     c.i = callsignAttempt.next;
   } else if (selectedCallsign) {
     const selectedStart = tokens.findIndex(
-      (token, index) => (token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+      (token, index) =>
+        (token === "clear" || token === "cleared") &&
+        ["to", "into", "through", "out"].includes(tokens[index + 1] ?? ""),
     );
     if (selectedStart > 0) {
       // The selected aircraft supplies the callsign when ASR mangles its prefix;
@@ -1312,6 +1447,9 @@ export function parseSpokenGrammar(
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  if (instructions.some(isClassBInstruction) && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
   if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
