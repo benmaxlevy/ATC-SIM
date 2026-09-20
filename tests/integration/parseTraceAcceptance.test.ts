@@ -24,8 +24,6 @@ import os from "node:os";
 import path from "node:path";
 // @ts-expect-error tsconfig has no @types/node
 import process from "node:process";
-// @ts-expect-error tsconfig has no @types/node
-import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { parseCommand } from "../../src/parse/parse-command";
@@ -33,6 +31,17 @@ import { TraceCollector } from "../../src/parse/trace";
 import type { TraceBatchPayload } from "../../src/parse/trace/types";
 import { createVoiceLoop } from "../../src/speech/voice-loop";
 import type { AudioClip, SpeechPort, Transcript } from "../../src/speech";
+
+const pythonCandidates = [
+  process.env.PYTHON,
+  path.join(process.cwd(), "speech-api/.venv/bin/python"),
+  "python3",
+  "python",
+].filter(
+  (p): p is string =>
+    typeof p === "string" && (p === "python3" || p === "python" || fs.existsSync(p)),
+);
+const PYTHON_BIN = pythonCandidates[0] ?? "python3";
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -64,72 +73,86 @@ CREATE TABLE IF NOT EXISTS stage_attempts (
 );
 `;
 
-function initSqliteSink(dbPath: string): DatabaseSync {
-  const db = new DatabaseSync(dbPath);
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-  db.exec(SCHEMA_SQL);
-  return db;
+function initSqliteSink(dbPath: string): void {
+  const pyCode = `
+import sqlite3, sys
+conn = sqlite3.connect(sys.argv[1])
+conn.execute("PRAGMA journal_mode = WAL;")
+conn.execute("PRAGMA foreign_keys = ON;")
+conn.executescript(sys.stdin.read())
+conn.close()
+`;
+  execFileSync(PYTHON_BIN, ["-c", pyCode, dbPath], {
+    input: SCHEMA_SQL,
+    encoding: "utf-8",
+  });
 }
 
-function insertTraceBatch(db: DatabaseSync, payload: TraceBatchPayload): void {
-  db.prepare(
-    `
-    INSERT OR IGNORE INTO sessions (session_id, started_at, app_version)
-    VALUES (?, ?, ?)
-  `,
-  ).run(payload.session.sessionId, payload.session.startedAt, payload.session.appVersion);
+function insertTraceBatch(dbPath: string, payload: TraceBatchPayload): void {
+  const pyCode = `
+import json, sqlite3, sys
+db_path = sys.argv[1]
+payload = json.loads(sys.stdin.read())
+conn = sqlite3.connect(db_path)
+conn.execute("PRAGMA foreign_keys = ON;")
+with conn:
+    session = payload['session']
+    conn.execute(
+        "INSERT OR IGNORE INTO sessions (session_id, started_at, app_version) VALUES (?, ?, ?)",
+        (session['sessionId'], session['startedAt'], session['appVersion'])
+    )
+    for entry in payload.get('utterances', []):
+        u = entry['utterance']
+        session_id = u.get('sessionId') or session['sessionId']
+        stt_json = u.get('sttJson')
+        stt_str = stt_json if isinstance(stt_json, str) else (json.dumps(stt_json) if stt_json is not None else None)
+        conn.execute("""
+            INSERT INTO utterances (
+                utterance_id, session_id, source, stt_json, final_stage, final_status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(utterance_id) DO UPDATE SET
+                session_id=excluded.session_id,
+                source=excluded.source,
+                stt_json=excluded.stt_json,
+                final_stage=excluded.final_stage,
+                final_status=excluded.final_status,
+                created_at=excluded.created_at
+        """, (u['utteranceId'], session_id, u['source'], stt_str, u.get('finalStage'), u['finalStatus'], u['createdAt']))
+        conn.execute("DELETE FROM stage_attempts WHERE utterance_id = ?", (u['utteranceId'],))
+        for sa in entry.get('stageAttempts', []):
+            res_json = sa.get('resultJson')
+            res_str = res_json if isinstance(res_json, str) else (json.dumps(res_json) if res_json is not None else None)
+            conn.execute("""
+                INSERT INTO stage_attempts (
+                    utterance_id, stage, status, reason, elapsed_ms, result_json
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (u['utteranceId'], sa['stage'], sa['status'], sa.get('reason'), sa['elapsedMs'], res_str))
+conn.close()
+`;
+  execFileSync(PYTHON_BIN, ["-c", pyCode, dbPath], {
+    input: JSON.stringify(payload),
+    encoding: "utf-8",
+  });
+}
 
-  for (const entry of payload.utterances) {
-    const u = entry.utterance;
-    const sessionId = u.sessionId ?? payload.session.sessionId;
-    const sttStr =
-      u.sttJson == null
-        ? null
-        : typeof u.sttJson === "string"
-          ? u.sttJson
-          : JSON.stringify(u.sttJson);
-
-    db.prepare(
-      `
-      INSERT INTO utterances (
-        utterance_id, session_id, source, stt_json, final_stage, final_status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(utterance_id) DO UPDATE SET
-        session_id=excluded.session_id,
-        source=excluded.source,
-        stt_json=excluded.stt_json,
-        final_stage=excluded.final_stage,
-        final_status=excluded.final_status,
-        created_at=excluded.created_at
-    `,
-    ).run(
-      u.utteranceId,
-      sessionId,
-      u.source,
-      sttStr,
-      u.finalStage ?? null,
-      u.finalStatus,
-      u.createdAt,
-    );
-
-    db.prepare("DELETE FROM stage_attempts WHERE utterance_id = ?").run(u.utteranceId);
-    for (const sa of entry.stageAttempts) {
-      const resStr =
-        sa.resultJson == null
-          ? null
-          : typeof sa.resultJson === "string"
-            ? sa.resultJson
-            : JSON.stringify(sa.resultJson);
-      db.prepare(
-        `
-        INSERT INTO stage_attempts (
-          utterance_id, stage, status, reason, elapsed_ms, result_json
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `,
-      ).run(u.utteranceId, sa.stage, sa.status, sa.reason ?? null, sa.elapsedMs, resStr);
-    }
-  }
+function querySqlite<T>(dbPath: string, sql: string, params: unknown[] = []): T[] {
+  const pyCode = `
+import json, sqlite3, sys
+db_path = sys.argv[1]
+sql = sys.argv[2]
+params = json.loads(sys.argv[3]) if len(sys.argv) > 3 else []
+conn = sqlite3.connect(db_path)
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
+cur.execute(sql, params)
+rows = [dict(r) for r in cur.fetchall()]
+conn.close()
+print(json.dumps(rows))
+`;
+  const stdout = execFileSync(PYTHON_BIN, ["-c", pyCode, dbPath, sql, JSON.stringify(params)], {
+    encoding: "utf-8",
+  });
+  return JSON.parse(stdout) as T[];
 }
 
 function sampleAudioClip(): AudioClip {
@@ -143,20 +166,14 @@ function sampleAudioClip(): AudioClip {
 describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
   let tempDir: string;
   let dbPath: string;
-  let db: DatabaseSync;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "atc-trace-acceptance-"));
     dbPath = path.join(tempDir, "acceptance-traces.sqlite");
-    db = initSqliteSink(dbPath);
+    initSqliteSink(dbPath);
   });
 
   afterEach(() => {
-    try {
-      db.close();
-    } catch {
-      // ignore
-    }
     try {
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch {
@@ -169,7 +186,7 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
     // 1. Setup mock fetch to simulate POST /debug/traces sink
     const customFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(init?.body as string) as TraceBatchPayload;
-      insertTraceBatch(db, body);
+      insertTraceBatch(dbPath, body);
       return new Response(JSON.stringify({ ok: true, count: body.utterances.length }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -214,7 +231,7 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
   test("AC2 & AC3: Runs realistic utterances and validates SQLite storage", async () => {
     const customFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(init?.body as string) as TraceBatchPayload;
-      insertTraceBatch(db, body);
+      insertTraceBatch(dbPath, body);
       return new Response(JSON.stringify({ ok: true, count: body.utterances.length }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -308,15 +325,13 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
     expect(customFetch).toHaveBeenCalledTimes(1);
 
     // Verify SQLite tables
-    const utterances = db
-      .prepare("SELECT * FROM utterances ORDER BY created_at ASC")
-      .all() as Array<{
+    const utterances = querySqlite<{
       utterance_id: string;
       source: string;
       final_stage: string;
       final_status: string;
       stt_json: string | null;
-    }>;
+    }>(dbPath, "SELECT * FROM utterances ORDER BY created_at ASC");
 
     expect(utterances).toHaveLength(6);
 
@@ -340,29 +355,31 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
     expect(utterances[5]!.final_status).toBe("rejected");
 
     // Verify stage_attempts table
-    const attempts = db.prepare("SELECT * FROM stage_attempts").all() as Array<{
+    const attempts = querySqlite<{
       stage: string;
       status: string;
       reason: string | null;
       elapsed_ms: number;
-    }>;
+    }>(dbPath, "SELECT * FROM stage_attempts");
     expect(attempts.length).toBeGreaterThanOrEqual(18);
 
     // Verify Spoken B rescue: utterance 3 had spoken_a = miss, spoken_b = hit
-    const u3Attempts = db
-      .prepare("SELECT stage, status FROM stage_attempts WHERE utterance_id = ?")
-      .all(utterances[2]!.utterance_id) as Array<{ stage: string; status: string }>;
+    const u3Attempts = querySqlite<{ stage: string; status: string }>(
+      dbPath,
+      "SELECT stage, status FROM stage_attempts WHERE utterance_id = ?",
+      [utterances[2]!.utterance_id],
+    );
     const aAttempt = u3Attempts.find((s) => s.stage === "spoken_a");
     const bAttempt = u3Attempts.find((s) => s.stage === "spoken_b");
     expect(aAttempt?.status).toBe("miss");
     expect(bAttempt?.status).toBe("hit");
 
     // Verify Path C schema rejection recorded
-    const u6Attempts = db
-      .prepare(
-        "SELECT stage, status, reason FROM stage_attempts WHERE utterance_id = ? AND stage = 'llm_c'",
-      )
-      .all(utterances[5]!.utterance_id) as Array<{ stage: string; status: string; reason: string }>;
+    const u6Attempts = querySqlite<{ stage: string; status: string; reason: string }>(
+      dbPath,
+      "SELECT stage, status, reason FROM stage_attempts WHERE utterance_id = ? AND stage = 'llm_c'",
+      [utterances[5]!.utterance_id],
+    );
     expect(u6Attempts[0]?.status).toBe("rejected");
     expect(u6Attempts[0]?.reason).toBe("schema_rejection");
   });
@@ -370,7 +387,7 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
   test("AC4: Proves no raw audio saved in any column", async () => {
     const customFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(init?.body as string) as TraceBatchPayload;
-      insertTraceBatch(db, body);
+      insertTraceBatch(dbPath, body);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
 
@@ -413,11 +430,11 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
     await collector.flush();
 
     // Inspect all SQLite rows and columns across utterances and stage_attempts
-    const allUtterances = db.prepare("SELECT * FROM utterances").all() as Record<string, unknown>[];
-    const allAttempts = db.prepare("SELECT * FROM stage_attempts").all() as Record<
-      string,
-      unknown
-    >[];
+    const allUtterances = querySqlite<Record<string, unknown>>(dbPath, "SELECT * FROM utterances");
+    const allAttempts = querySqlite<Record<string, unknown>>(
+      dbPath,
+      "SELECT * FROM stage_attempts",
+    );
 
     const forbiddenAudioSubstrings = [
       "pcm16",
@@ -440,7 +457,7 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
       }
       // Explicitly check stt_json
       if (typeof row.stt_json === "string") {
-        const parsed = JSON.parse(row.stt_json) as Record<string, unknown>;
+        const parsed = JSON.parse(row.stt_json as string) as Record<string, unknown>;
         expect(parsed).not.toHaveProperty("pcm16");
         expect(parsed).not.toHaveProperty("audio");
         expect(parsed).not.toHaveProperty("clip");
@@ -464,7 +481,7 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
   test("AC4: Generic storage of future or synthetic command types without schema failure", async () => {
     const customFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(init?.body as string) as TraceBatchPayload;
-      insertTraceBatch(db, body);
+      insertTraceBatch(dbPath, body);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
 
@@ -500,12 +517,14 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
     await collector.flush();
 
     // Verify row was inserted and retrieved without schema violation
-    const attempt = db
-      .prepare("SELECT result_json FROM stage_attempts WHERE stage = 'llm_c'")
-      .get() as { result_json: string };
+    const attempts = querySqlite<{ result_json: string }>(
+      dbPath,
+      "SELECT result_json FROM stage_attempts WHERE stage = 'llm_c'",
+    );
+    const attempt = attempts[0];
     expect(attempt).toBeDefined();
 
-    const parsed = JSON.parse(attempt.result_json) as { instructionTypes: string[] };
+    const parsed = JSON.parse(attempt!.result_json) as { instructionTypes: string[] };
     expect(parsed.instructionTypes).toEqual(["FUTURE_SYNTHETIC_CMD_V99"]);
   });
 
@@ -606,23 +625,12 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
       ],
     };
 
-    insertTraceBatch(db, payload);
-    db.close(); // Close so python can open WAL cleanly
+    insertTraceBatch(dbPath, payload);
 
     // Run speech-api/query_traces.py via python
-    const pythonCandidates = [
-      process.env.PYTHON,
-      path.join(process.cwd(), "speech-api/.venv/bin/python"),
-      "python3",
-      "python",
-    ].filter(
-      (p): p is string =>
-        typeof p === "string" && (p === "python3" || p === "python" || fs.existsSync(p)),
-    );
-    const pythonBin = pythonCandidates[0] ?? "python3";
     const scriptPath = path.join(process.cwd(), "speech-api/query_traces.py");
 
-    const stdout = execFileSync(pythonBin, [scriptPath, "--summary", "--json", "--db", dbPath], {
+    const stdout = execFileSync(PYTHON_BIN, [scriptPath, "--summary", "--json", "--db", dbPath], {
       encoding: "utf-8",
     });
 
