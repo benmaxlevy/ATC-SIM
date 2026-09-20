@@ -5674,3 +5674,24 @@ and stops at the Phase 4 boundary. No push is authorized.
 The worker must implement exactly one ticket per wave, preserve unrelated
 `.worktrees/` and `speech-api/:memory:.ses` artifacts, and satisfy the complete
 typed/Path A/Path B/Path C/PTT/speech GBNF contract before handoff.
+
+## Seventy-eighth swarm completed — VFR Class B pilot requests (2026-09-20)
+
+Completed T04-97 through T04-100 sequentially on `feature/sattelite-traffic`
+with captain squash merges. The slice adds VFR-only Class B request
+scheduling, deterministic `say request` details, request lifecycle handling,
+`CLEARED AS REQUESTED`, Class B `UNABLE`, explicit remain-outside handling,
+and typed/Path A/Path B/Path C/PTT/speech GBNF parity. Pilot `OUT_OF` requests
+and Raytheon STARS behavior remain out of scope.
+
+Final browser CI passed: 244 files, 2,657 tests passed, 4 skipped. Focused
+speech parity passed: 2 passed, 44 deselected; the full local speech mock
+suite was stopped after the existing FastAPI `test_health_ok_parse_ready`
+TestClient path hung under the local Python/pytest environment. `py_compile`
+and `git diff --check` passed. No push; unrelated `.worktrees/` and
+`speech-api/:memory:.ses` artifacts were preserved.
+
+**PHASE EXIT BLOCKED**
+
+Blocker: full `SPEECH_API_MOCK=1 pytest` cannot complete in this environment;
+the implementation and all targeted Class B gates are green.

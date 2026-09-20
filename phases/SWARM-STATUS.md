@@ -1,5 +1,33 @@
 # Swarm status
 
+## SEVENTY-EIGHTH SWARM — VFR Class B PILOT REQUESTS (T04-97–T04-100, 2026-09-20)
+
+Completed on `feature/sattelite-traffic` with captain squash merges:
+
+- T04-97 `1db5215` — generic VFR Class B request schema, scheduling,
+  eligibility, route grounding, and lifecycle state.
+- T04-98 `4432dda` — deterministic Class B `say request` response and
+  standby/details lifecycle.
+- T04-99 `7d58c36` — `CLEARED AS REQUESTED`, Class B `UNABLE`, and complete
+  typed/Path A/Path B/Path C/PTT/speech GBNF parity.
+- T04-100 `24c0cb5` — runtime request association/resolution, integrated
+  acceptance, docs, shared contracts, and backlog update.
+
+Final browser `npm run ci`: **244 files passed, 2,657 passed, 4 skipped**.
+Focused speech parity: **2 passed, 44 deselected**; `py_compile` passed. The
+full local `SPEECH_API_MOCK=1 pytest` gate was attempted twice and stopped by
+timeout at the existing FastAPI `test_health_ok_parse_ready` TestClient path
+under the local Python/pytest environment. No speech failure was observed in
+the changed parser tests. `git diff --check` passed.
+
+FAA grounding is recorded in the tickets/docs: JO 7110.65 §§2-1-18, 7-9-2,
+7-9-3 and AIM §§3-2-3, 3-5-7, 4-2-3. No Raytheon STARS manual was supplied or
+needed; no STARS behavior was added. No push performed. Unrelated
+`.worktrees/` and `speech-api/:memory:.ses` artifacts preserved.
+
+**PHASE EXIT BLOCKED** — implementation complete, but the configured full
+speech mock gate is blocked by the environment timeout described above.
+
 ## SEVENTY-FOURTH SWARM — AUDIT REMEDIATION HANDOFF BLOCKED (T02-202, T04-86–T04-91, 2026-09-19)
 
 Completed on `feature/sattelite-traffic` through T04-91 with captain squash
