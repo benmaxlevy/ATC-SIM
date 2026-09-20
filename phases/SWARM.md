@@ -5778,10 +5778,10 @@ not stage either artifact.
 **Captain return:**
 
 ```text
-PHASE EXIT BLOCKED
+PHASE EXIT GREEN
 Phase: generic communications transfer and landing closure T04-101–T04-103
 Merge target: feature/sattelite-traffic
 Merged: T04-101, T04-102, T04-103
-Tests: focused acceptance 18 passed; npm run ci 247 files/2692 passed/4 skipped; git diff --check; FAA evidence recorded
-Notes: speech-api mock pytest hung in existing TestClient startup and timed out; no speech files changed in T04-103; no-frequency CONTACT TOWER/CENTER; VFR preserved; IFR towered plan closes only at landing; VFR/non-towered IFR plans remain open; no STARS; no push
+Tests: focused acceptance 18 passed; npm run ci 247 files/2692 passed/4 skipped; speech-api mock pytest 94 passed; git diff --check; FAA evidence recorded
+Notes: restricted sandbox TestClient hang bypassed by required outside-sandbox speech gate; no-frequency CONTACT TOWER/CENTER; VFR preserved; IFR towered plan closes only at landing; VFR/non-towered IFR plans remain open; no STARS; no push
 ```

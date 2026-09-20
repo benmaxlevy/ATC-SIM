@@ -14,12 +14,10 @@ Implemented and fast-forwarded on `feature/sattelite-traffic`:
   documentation, and later-implementation constraints.
 
 Final browser `npm run ci`: **247 files, 2,692 passed, 4 skipped**. Focused
-acceptance: **18 passed**. `git diff --check` passed. The speech mock gate was
-bounded at 75 seconds and hung in existing `tests/test_contract.py` startup;
-it exited by timeout (`124`). No speech-api files changed in T04-103. The
-prior T04-101 speech gate had the same local TestClient/lifespan hang after
-repository-compatible dependency pinning, so this remains an environment
-blocker, not a reported parser failure.
+acceptance: **18 passed**. `SPEECH_API_MOCK=1 .venv/bin/pytest`: **94 passed
+in 0.88s** outside the restricted sandbox. `git diff --check` passed. The
+restricted sandbox reproduced a minimal FastAPI `TestClient` thread-wakeup
+hang before application code ran; no speech-api files changed in T04-103.
 
 FAA grounding is recorded in the tickets and docs: JO 7110.65 §§2-1-15/16/17,
 7-6-8, and 5-1-9; AIM §§5-1-14/15. VFR remains VFR and does not receive Class
@@ -30,8 +28,8 @@ frequency, facility lookup, individual tower/center entity, pilot request,
 or Raytheon STARS functionality was added. Unrelated `.worktrees/` and
 `speech-api/:memory:.ses` artifacts were preserved; no push performed.
 
-**PHASE EXIT BLOCKED** — speech mock gate hangs in the local TestClient
-environment; implementation and browser gates are green.
+**PHASE EXIT GREEN** — no push performed; phase stopped at the configured
+boundary.
 
 ## POST-AUDIT CORRECTIONS — VFR CLASS B PILOT REQUESTS (2026-09-20)
 
