@@ -22,12 +22,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Generator, Sequence
 
-try:
-    from config import Settings
-    from trace_db import get_db_connection
-except ImportError:  # pragma: no cover - fallback when run outside speech-api dir
-    from speech_api.config import Settings
-    from speech_api.trace_db import get_db_connection
+DEFAULT_DB_PATH = Path(".local/parse-traces.sqlite")
 
 
 # Standard failure root cause category keys
@@ -66,7 +61,10 @@ def _open_conn(conn_or_path: sqlite3.Connection | Path | str) -> Generator[sqlit
             yield None
             return
 
-    conn = get_db_connection(conn_or_path)
+    conn = sqlite3.connect(path_str, timeout=10.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA foreign_keys=ON;")
     try:
         yield conn
     finally:
@@ -617,10 +615,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.db:
-        db_path: Path | str = args.db if args.db == ":memory:" else Path(args.db).resolve()
+        db_path = args.db if args.db == ":memory:" else Path(args.db).resolve()
     else:
-        settings = Settings.load()
-        db_path = settings.trace_db_path
+        try:
+            from config import Settings
+            settings = Settings.load()
+            db_path = settings.trace_db_path
+        except Exception:
+            db_path = DEFAULT_DB_PATH
 
     # If no specific query is selected, default to summary
     specific_flags = [

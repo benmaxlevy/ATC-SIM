@@ -611,13 +611,15 @@ describe("Parse trace acceptance and diagnostic integration (T03-30)", () => {
 
     // Run speech-api/query_traces.py via python
     const pythonCandidates = [
+      process.env.PYTHON,
       path.join(process.cwd(), "speech-api/.venv/bin/python"),
-      "/home/ben/ATC-SIM/speech-api/.venv/bin/python",
       "python3",
       "python",
-    ];
-    const pythonBin =
-      pythonCandidates.find((p) => p.startsWith("/") && fs.existsSync(p)) ?? "python3";
+    ].filter(
+      (p): p is string =>
+        typeof p === "string" && (p === "python3" || p === "python" || fs.existsSync(p)),
+    );
+    const pythonBin = pythonCandidates[0] ?? "python3";
     const scriptPath = path.join(process.cwd(), "speech-api/query_traces.py");
 
     const stdout = execFileSync(pythonBin, [scriptPath, "--summary", "--json", "--db", dbPath], {
