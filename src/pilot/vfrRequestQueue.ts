@@ -18,7 +18,13 @@
 import {
   courseDeg,
   distanceNm,
+  findOpenRadioRequest,
   mulberry32,
+  isPointInsideAvoidanceVolumes,
+  isSegmentUnsafeFromAvoidance,
+  type ClassBRequestIntent,
+  type ClassBRequestOperation,
+  type ClassBRequestRouteLeg,
   type Aircraft,
   type IfrCancellationCandidate,
   type IfrCancellationState,
@@ -28,9 +34,9 @@ import {
   type VfrPilotRequestState,
   type World,
 } from "@core";
+import type { AmbientVfrWaypoint } from "../core/aircraft";
 import {
   extractVolumePolygonNm,
-  isPointInsideAvoidanceVolumes,
   planSafeVfrContinuation,
   isVfrAvoidanceVolume,
   pointInPolygon2D,
@@ -59,6 +65,7 @@ export const VFR_REQUEST_DEFAULT_SEED = 1;
 export const VFR_REQUEST_IDLE_GAP_MS = 500;
 export const VFR_CANCEL_DELAY_MIN_MS = 30_000;
 export const VFR_CANCEL_DELAY_MAX_MS = 120_000;
+const CLASS_B_ROUTE_FIX_TOLERANCE_NM = 0.05;
 
 const VFR_POSITION_CARDINALS = [
   "north",
@@ -142,6 +149,45 @@ export function formatIfrPickupRequest(args: {
   return segments.join(", ");
 }
 
+/** Format the deterministic pilot transmission for a pending Class B request. */
+export function formatVfrClassBRequest(args: {
+  callsign: string;
+  positionPhrase?: string;
+  aircraftType?: string;
+  altitudeFt?: number;
+  headingDeg?: number;
+  classBIntent: ClassBRequestIntent;
+  classBOperation: ClassBRequestOperation;
+  originAirportId?: string;
+  destinationAirportId?: string;
+  route?: readonly ClassBRequestRouteLeg[];
+}): string {
+  const segments = [args.callsign];
+  if (args.positionPhrase) segments.push(args.positionPhrase);
+  segments.push(args.aircraftType ?? "type unknown");
+  if (args.altitudeFt !== undefined && Number.isFinite(args.altitudeFt)) {
+    segments.push(String(Math.round(args.altitudeFt)));
+  }
+  if (args.headingDeg !== undefined && Number.isFinite(args.headingDeg)) {
+    segments.push(`${bearingToCardinalDirection(args.headingDeg)}bound`);
+  }
+  const phrase =
+    args.classBOperation === "THROUGH"
+      ? "request transition through Bravo"
+      : args.classBIntent === "DEPARTURE"
+        ? "request VFR departure into Bravo"
+        : "request VFR arrival into Bravo";
+  let request = phrase;
+  if (args.destinationAirportId) request += ` to ${args.destinationAirportId}`;
+  else if (args.originAirportId && args.classBIntent === "DEPARTURE") {
+    request += ` from ${args.originAirportId}`;
+  }
+  const route = args.route?.map((leg) => leg.fixId).filter(Boolean);
+  if (route && route.length > 0) request += ` via ${route.join(" then ")}`;
+  segments.push(request);
+  return segments.join(", ");
+}
+
 /**
  * Format a VFR position report relative to the nearest regional airport,
  * e.g. "15 miles north of KAHN".
@@ -216,6 +262,9 @@ export function isAirborneVfrEligible(aircraft: Aircraft): boolean {
   if (aircraft.activeClearance) {
     return false;
   }
+  if (aircraft.classBClearance?.active) {
+    return false;
+  }
   if (!aircraft.ambientVfr) {
     return false;
   }
@@ -229,6 +278,196 @@ export function isAirborneVfrEligible(aircraft: Aircraft): boolean {
     return false;
   }
   return true;
+}
+
+export interface ClassBAccessRequestPlan {
+  operation: ClassBRequestOperation;
+  intent: ClassBRequestIntent;
+  destinationAirportId?: string;
+  originAirportId?: string;
+  requestedAltitudeFt: number;
+  route?: ClassBRequestRouteLeg[];
+}
+
+type ClassBAccessAssessment =
+  | { plan: ClassBAccessRequestPlan }
+  | { blocked: true }
+  | null;
+
+function sameNmPoint(
+  left: { xNm: number; yNm: number },
+  right: { xNm: number; yNm: number },
+): boolean {
+  return Math.hypot(left.xNm - right.xNm, left.yNm - right.yNm) <= CLASS_B_ROUTE_FIX_TOLERANCE_NM;
+}
+
+/**
+ * Ground ambient-VFR waypoints to the current catalog. Airport ARPs and
+ * visual-only points are deliberately not route fixes.
+ */
+function groundClassBRoute(
+  world: World,
+  waypoints: readonly AmbientVfrWaypoint[],
+): ClassBRequestRouteLeg[] | undefined {
+  if (!world.fixRegistry || !waypoints || waypoints.length === 0) {
+    return undefined;
+  }
+
+  const registered = world.fixRegistry
+    .ids()
+    .map((id) => world.fixRegistry!.get(id))
+    .filter((fix): fix is NonNullable<typeof fix> => fix !== undefined);
+  const used = new Set<string>();
+  const route: ClassBRequestRouteLeg[] = [];
+
+  for (const waypoint of waypoints) {
+    if (waypoint.fixId) {
+      const fix = world.fixRegistry.get(waypoint.fixId);
+      if (!fix || used.has(fix.id) || !sameNmPoint(fix, waypoint)) {
+        return undefined;
+      }
+      used.add(fix.id);
+      route.push({ type: "DIRECT", fixId: fix.id });
+      continue;
+    }
+
+    const matches = registered.filter((fix) => sameNmPoint(fix, waypoint));
+    if (matches.length !== 1 || used.has(matches[0]!.id)) {
+      return undefined;
+    }
+    used.add(matches[0]!.id);
+    route.push({ type: "DIRECT", fixId: matches[0]!.id });
+  }
+
+  return route;
+}
+
+function projectedClassBRoute(aircraft: Aircraft, regional: RegionalFacility): Array<{
+  xNm: number;
+  yNm: number;
+  altitudeFt: number;
+}> {
+  const vfr = aircraft.ambientVfr;
+  const waypoints = vfr?.waypoints ?? [];
+  const points = [
+    { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
+    ...waypoints.slice(vfr?.waypointIndex ?? 0).map((waypoint) => ({
+      xNm: waypoint.xNm,
+      yNm: waypoint.yNm,
+      altitudeFt: waypoint.altitudeFt ?? aircraft.altitudeFt,
+    })),
+  ];
+
+  // Synthetic and sparse traffic fixtures may carry only a destination. Add
+  // its generic ARP endpoint so the same 3-D test handles those records.
+  if (vfr?.mission === "AIRPORT_BOUND" && vfr.destinationAirportId) {
+    const destination = regional.airports.find(
+      (airport) => airport.icao.toUpperCase() === vfr.destinationAirportId!.toUpperCase(),
+    );
+    const last = points[points.length - 1]!;
+    if (destination && !sameNmPoint(last, destination.arpNm)) {
+      points.push({
+        xNm: destination.arpNm.xNm,
+        yNm: destination.arpNm.yNm,
+        altitudeFt: Math.max(destination.fieldElevFt + 1000, 1500),
+      });
+    }
+  }
+  return points;
+}
+
+/**
+ * Determine whether the current projected ambient route needs a pilot Class B
+ * request. This is pure geometry/data classification: it never authorizes the
+ * aircraft or mutates any world state.
+ */
+export function assessClassBAccessRequest(
+  aircraft: Aircraft,
+  world: World,
+  regionalOverride?: RegionalFacility,
+): ClassBAccessAssessment {
+  if (!isAirborneVfrEligible(aircraft)) {
+    return null;
+  }
+  const regional = regionalOverride ?? (world.regional as RegionalFacility | undefined);
+  if (!regional) {
+    return null;
+  }
+  const classBVolumes = regional.airspaces.filter(isVfrAvoidanceVolume);
+  if (classBVolumes.length === 0) {
+    return null;
+  }
+
+  const current = { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt };
+  if (isPointInsideAvoidanceVolumes(current, classBVolumes)) {
+    return null;
+  }
+  const projected = projectedClassBRoute(aircraft, regional);
+  if (
+    projected.length < 2 ||
+    !projected.slice(1).some((point, index) =>
+      isSegmentUnsafeFromAvoidance(projected[index]!, point, classBVolumes),
+    )
+  ) {
+    return null;
+  }
+
+  const mission = aircraft.ambientVfr?.mission;
+  const originAirportId = aircraft.ambientVfr?.originAirportId;
+  if (
+    mission === "SATELLITE_DEPARTURE" &&
+    originAirportId?.toUpperCase() === regional.centerAirportId.toUpperCase()
+  ) {
+    // Primary-airport departures use their departure clearance; never create
+    // a separate pilot OUT_OF request.
+    return null;
+  }
+
+  const endpoint = projected[projected.length - 1]!;
+  const endpointInside = isPointInsideAvoidanceVolumes(endpoint, classBVolumes);
+  let intent: ClassBRequestIntent;
+  let operation: ClassBRequestOperation;
+  switch (mission) {
+    case "AIRPORT_BOUND":
+      intent = endpointInside ? "ARRIVAL" : "TRANSITION";
+      operation = endpointInside ? "TO_ENTER" : "THROUGH";
+      break;
+    case "SATELLITE_DEPARTURE":
+      intent = "DEPARTURE";
+      operation = endpointInside ? "TO_ENTER" : "THROUGH";
+      break;
+    case "TRANSIT":
+    case "LOCAL":
+      intent = "TRANSITION";
+      operation = endpointInside ? "TO_ENTER" : "THROUGH";
+      break;
+    default:
+      return null;
+  }
+
+  const waypoints = (aircraft.ambientVfr?.waypoints ?? []).slice(
+    aircraft.ambientVfr?.waypointIndex ?? 0,
+  );
+  const route = groundClassBRoute(world, waypoints);
+  if (operation === "THROUGH" && !route?.length) {
+    return { blocked: true };
+  }
+
+  const destinationAirportId =
+    aircraft.ambientVfr?.destinationAirportId ?? aircraft.destinationAirport ?? aircraft.destination;
+  const finalWaypointAltitude = waypoints[waypoints.length - 1]?.altitudeFt;
+  return {
+    plan: {
+      operation,
+      intent,
+      ...(destinationAirportId ? { destinationAirportId } : {}),
+      ...(originAirportId ? { originAirportId } : {}),
+      requestedAltitudeFt: Math.round(
+        aircraft.requestedAltitudeFt ?? finalWaypointAltitude ?? aircraft.altitudeFt,
+      ),
+      ...(route ? { route } : {}),
+    },
+  };
 }
 
 /** Default validator for pilot IFR cancellation candidates outside Class B. */
@@ -357,6 +596,21 @@ export class VfrRequestQueue {
     this.worldRef = null;
   }
 
+  /** Release a reserved admission slot when a request withdraws before transmit. */
+  private releaseAdmission(request: VfrPilotRequest): void {
+    const slotIndex = this.admittedTimesSimMs.indexOf(request.dueAtSimMs);
+    if (slotIndex < 0) {
+      return;
+    }
+    this.admittedTimesSimMs.splice(slotIndex, 1);
+    const spacingMs = this.requestCapPerHour > 0 ? 3_600_000 / this.requestCapPerHour : 0;
+    if (this.admittedTimesSimMs.length === 0) {
+      this.nextSlotSimMs = null;
+    } else if (this.nextSlotSimMs === request.dueAtSimMs + spacingMs) {
+      this.nextSlotSimMs = this.admittedTimesSimMs.at(-1)! + spacingMs;
+    }
+  }
+
   /**
    * Schedule requests from all eligible aircraft in the world.
    */
@@ -378,14 +632,36 @@ export class VfrRequestQueue {
       return;
     }
 
+    const classBAssessment = assessClassBAccessRequest(aircraft, world, this.regional);
     this.evaluatedAircraftIds.add(aircraft.id);
 
-    const roll = this.rng() * 100;
+    if (classBAssessment && "blocked" in classBAssessment) {
+      // A route that would require a Class B clearance but cannot be grounded
+      // must not silently become an unrelated request.
+      return;
+    }
+
     let kind: VfrPilotRequestKind | null = null;
-    if (roll < this.flightFollowingPercent) {
-      kind = "FLIGHT_FOLLOWING";
-    } else if (roll < this.flightFollowingPercent + this.ifrPickupPercent) {
-      kind = "IFR_PICKUP";
+    if (classBAssessment && "plan" in classBAssessment) {
+      const existingClassB =
+        findOpenRadioRequest(world.radioRequests, aircraft.id, "CLASS_B_ACCESS") ??
+        this.requests.find(
+          (request) =>
+            request.aircraftId === aircraft.id &&
+            request.kind === "CLASS_B_ACCESS" &&
+            request.state !== "WITHDRAWN",
+        );
+      if (existingClassB) {
+        return;
+      }
+      kind = "CLASS_B_ACCESS";
+    } else {
+      const roll = this.rng() * 100;
+      if (roll < this.flightFollowingPercent) {
+        kind = "FLIGHT_FOLLOWING";
+      } else if (roll < this.flightFollowingPercent + this.ifrPickupPercent) {
+        kind = "IFR_PICKUP";
+      }
     }
 
     if (!kind) {
@@ -413,11 +689,26 @@ export class VfrRequestQueue {
       return;
     }
 
-    // Determine destination and requested altitude for IFR_PICKUP
+    // Determine destination, Class B intent, and requested altitude.
     let destinationAirportId: string | undefined;
     let requestedAltitudeFt: number | undefined;
+    let classBOperation: ClassBRequestOperation | undefined;
+    let classBIntent: ClassBRequestIntent | undefined;
+    let originAirportId: string | undefined;
+    let route: ClassBRequestRouteLeg[] | undefined;
 
-    if (kind === "IFR_PICKUP") {
+    if (kind === "CLASS_B_ACCESS") {
+      const plan = classBAssessment && "plan" in classBAssessment ? classBAssessment.plan : undefined;
+      if (!plan) {
+        return;
+      }
+      classBOperation = plan.operation;
+      classBIntent = plan.intent;
+      destinationAirportId = plan.destinationAirportId;
+      originAirportId = plan.originAirportId;
+      requestedAltitudeFt = plan.requestedAltitudeFt;
+      route = plan.route;
+    } else if (kind === "IFR_PICKUP") {
       const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
       const eligibleDestinations = getEligibleVfrDestinations(regionalFacility);
       if (eligibleDestinations.length === 0) {
@@ -525,6 +816,10 @@ export class VfrRequestQueue {
       ...(aircraft.aircraftType ? { aircraftType: aircraft.aircraftType } : {}),
       ...(destinationAirportId ? { destinationAirportId } : {}),
       ...(requestedAltitudeFt !== undefined ? { requestedAltitudeFt } : {}),
+      ...(classBOperation ? { classBOperation } : {}),
+      ...(classBIntent ? { classBIntent } : {}),
+      ...(originAirportId ? { originAirportId } : {}),
+      ...(route ? { route } : {}),
     };
 
     this.requests.push(request);
@@ -676,6 +971,7 @@ export class VfrRequestQueue {
 
       const aircraft = world.aircraft.find((ac) => ac.id === next.aircraftId);
       if (!aircraft) {
+        this.releaseAdmission(next);
         next.state = "WITHDRAWN";
         next.withdrawnReason = "AIRCRAFT_EXITED";
         log.append({
@@ -693,6 +989,7 @@ export class VfrRequestQueue {
         aircraft.ambientVfr?.phase === "EXITING" ||
         aircraft.ambientVfr?.phase === "HANDOFF_COMPLETED"
       ) {
+        this.releaseAdmission(next);
         next.state = "WITHDRAWN";
         next.withdrawnReason = "AIRCRAFT_EXITED";
         log.append({
@@ -706,7 +1003,8 @@ export class VfrRequestQueue {
         continue;
       }
 
-      if (aircraft.flightRules !== "VFR" || aircraft.activeClearance) {
+      if (aircraft.flightRules !== "VFR" || aircraft.activeClearance || aircraft.classBClearance?.active) {
+        this.releaseAdmission(next);
         next.state = "WITHDRAWN";
         next.withdrawnReason = "INELIGIBLE_FLIGHT_RULES";
         log.append({
@@ -718,6 +1016,24 @@ export class VfrRequestQueue {
           reason: next.withdrawnReason,
         });
         continue;
+      }
+
+      if (next.kind === "CLASS_B_ACCESS") {
+        const classBAssessment = assessClassBAccessRequest(aircraft, world, this.regional);
+        if (!classBAssessment || !("plan" in classBAssessment)) {
+          this.releaseAdmission(next);
+          next.state = "WITHDRAWN";
+          next.withdrawnReason = "NO_LONGER_REQUIRES_CLASS_B";
+          log.append({
+            type: "vfr.request.withdrawn",
+            atSimMs: world.simTimeMs,
+            atWallMs: nowWall,
+            callsign: next.callsign,
+            requestId: next.id,
+            reason: next.withdrawnReason,
+          });
+          continue;
+        }
       }
 
       // Check radio availability
@@ -774,6 +1090,10 @@ export class VfrRequestQueue {
             positionNm: next.positionNm,
             altitudeFt: next.altitudeFt,
             headingDeg: next.headingDeg,
+            classBOperation: next.classBOperation,
+            classBIntent: next.classBIntent,
+            originAirportId: next.originAirportId,
+            route: next.route,
           },
         });
       } else {
@@ -785,6 +1105,10 @@ export class VfrRequestQueue {
           positionNm: next.positionNm,
           altitudeFt: next.altitudeFt,
           headingDeg: next.headingDeg,
+          classBOperation: next.classBOperation,
+          classBIntent: next.classBIntent,
+          originAirportId: next.originAirportId,
+          route: next.route,
         };
       }
 
@@ -816,7 +1140,8 @@ export class VfrRequestQueue {
   ): string | undefined {
     const radioReq = world.radioRequests?.find(
       (r) =>
-        r.aircraftId === aircraftId && (r.status === "AWAITING_DETAILS" || r.status === "PENDING"),
+        r.aircraftId === aircraftId &&
+        (r.status === "AWAITING_DETAILS" || r.status === "PENDING" || r.status === "STANDBY"),
     );
     if (!radioReq) {
       return undefined;
@@ -828,7 +1153,23 @@ export class VfrRequestQueue {
       ? formatVfrPositionReport({ xNm: aircraft.xNm, yNm: aircraft.yNm }, regionalFacility)
       : undefined;
     const detailText =
-      radioReq.kind === "FLIGHT_FOLLOWING"
+      radioReq.kind === "CLASS_B_ACCESS"
+        ? formatVfrClassBRequest({
+            callsign: radioReq.callsign,
+            positionPhrase: detailPosition,
+            aircraftType:
+              schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
+            altitudeFt:
+              schedReq?.altitudeFt ?? radioReq.details.altitudeFt ?? aircraft?.altitudeFt,
+            headingDeg: aircraft?.headingDeg ?? radioReq.details.headingDeg,
+            classBIntent: radioReq.details.classBIntent ?? "TRANSITION",
+            classBOperation: radioReq.details.classBOperation ?? "THROUGH",
+            originAirportId: schedReq?.originAirportId ?? radioReq.details.originAirportId,
+            destinationAirportId:
+              schedReq?.destinationAirportId ?? radioReq.details.destinationAirportId,
+            route: schedReq?.route ?? radioReq.details.route,
+          })
+        : radioReq.kind === "FLIGHT_FOLLOWING"
         ? formatVfrFlightFollowingRequest({
             callsign: radioReq.callsign,
             positionPhrase: detailPosition ?? undefined,

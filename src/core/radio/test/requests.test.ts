@@ -7,6 +7,7 @@ import {
   isTerminalRadioRequest,
   transitionRequestToApproved,
   transitionRequestToAwaitingDetails,
+  transitionRequestToCleared,
   transitionRequestToDeclined,
   transitionRequestToIdentified,
   transitionRequestToIdentifying,
@@ -43,6 +44,10 @@ describe("RadioRequest lifecycle and state transitions (T04-73)", () => {
     const approved = makeSampleRequest({ status: "APPROVED" });
     expect(isOpenRadioRequest(approved)).toBe(true);
     expect(isTerminalRadioRequest(approved)).toBe(false);
+
+    const cleared = makeSampleRequest({ kind: "CLASS_B_ACCESS", status: "CLEARED" });
+    expect(isOpenRadioRequest(cleared)).toBe(false);
+    expect(isTerminalRadioRequest(cleared)).toBe(true);
 
     const declined = makeSampleRequest({ status: "DECLINED" });
     expect(isOpenRadioRequest(declined)).toBe(false);
@@ -125,6 +130,28 @@ describe("RadioRequest lifecycle and state transitions (T04-73)", () => {
     if (!declineRes.ok) {
       expect(declineRes.error).toBe("REQUEST: active service must be terminated");
     }
+  });
+
+  it("resolves only Class B requests to terminal CLEARED", () => {
+    const req = makeSampleRequest({
+      kind: "CLASS_B_ACCESS",
+      details: { classBOperation: "TO_ENTER" },
+    });
+    const result = transitionRequestToCleared(req, "TO_ENTER", 5000);
+
+    expect(result.ok).toBe(true);
+    expect(req.status).toBe("CLEARED");
+    expect(req.clearedAtSimMs).toBe(5000);
+    expect(req.clearedClassBOperation).toBe("TO_ENTER");
+    expect(findOpenRadioRequest([req], req.aircraftId, "CLASS_B_ACCESS")).toBeUndefined();
+  });
+
+  it("does not let non-Class-B requests enter the CLEARED state", () => {
+    const req = makeSampleRequest();
+    const result = transitionRequestToCleared(req, "THROUGH", 5000);
+
+    expect(result).toEqual({ ok: false, error: "REQUEST: Class B access request required" });
+    expect(req.status).toBe("PENDING");
   });
 
   it("transitions to TERMINATED", () => {

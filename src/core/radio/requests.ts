@@ -4,13 +4,23 @@
  * Models structured pilot service requests (flight following, airborne IFR pickup)
  * and their controller interaction lifecycle:
  * PENDING -> AWAITING_DETAILS | STANDBY | IDENTIFYING -> IDENTIFIED -> APPROVED
- * Terminal: DECLINED, WITHDRAWN, TERMINATED.
+ * Terminal: CLEARED, DECLINED, WITHDRAWN, TERMINATED.
  *
  * State boundary: request records only. No mutation of flight rules,
  * kinematics, flight plan, active IFR clearance, or CA/MSAW.
  */
 
-export type RadioRequestKind = "FLIGHT_FOLLOWING" | "IFR_PICKUP";
+export type RadioRequestKind = "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS";
+
+/** Pilot-requestable Class B operations. `OUT_OF` is controller-issued only. */
+export type ClassBRequestOperation = "TO_ENTER" | "THROUGH";
+
+export type ClassBRequestIntent = "ARRIVAL" | "DEPARTURE" | "TRANSITION";
+
+export interface ClassBRequestRouteLeg {
+  type: "DIRECT";
+  fixId: string;
+}
 
 export type RadioRequestStatus =
   | "PENDING"
@@ -19,6 +29,7 @@ export type RadioRequestStatus =
   | "IDENTIFYING"
   | "IDENTIFIED"
   | "APPROVED"
+  | "CLEARED"
   | "DECLINED"
   | "WITHDRAWN"
   | "TERMINATED";
@@ -30,6 +41,10 @@ export interface RadioRequestDetails {
   positionNm?: { xNm: number; yNm: number };
   altitudeFt?: number;
   headingDeg?: number;
+  classBOperation?: ClassBRequestOperation;
+  classBIntent?: ClassBRequestIntent;
+  originAirportId?: string;
+  route?: ClassBRequestRouteLeg[];
 }
 
 export interface RadioContactReport {
@@ -51,6 +66,8 @@ export interface RadioRequest {
   identifiedAtSimMs?: number;
   radarContact?: RadioContactReport;
   approvedAtSimMs?: number;
+  clearedAtSimMs?: number;
+  clearedClassBOperation?: ClassBRequestOperation;
   declinedAtSimMs?: number;
   terminatedAtSimMs?: number;
   withdrawnAtSimMs?: number;
@@ -60,11 +77,21 @@ export interface RadioRequest {
 }
 
 export function isOpenRadioRequest(req: RadioRequest): boolean {
-  return req.status !== "DECLINED" && req.status !== "WITHDRAWN" && req.status !== "TERMINATED";
+  return (
+    req.status !== "CLEARED" &&
+    req.status !== "DECLINED" &&
+    req.status !== "WITHDRAWN" &&
+    req.status !== "TERMINATED"
+  );
 }
 
 export function isTerminalRadioRequest(req: RadioRequest): boolean {
-  return req.status === "DECLINED" || req.status === "WITHDRAWN" || req.status === "TERMINATED";
+  return (
+    req.status === "CLEARED" ||
+    req.status === "DECLINED" ||
+    req.status === "WITHDRAWN" ||
+    req.status === "TERMINATED"
+  );
 }
 
 export function findOpenRadioRequest(
@@ -163,6 +190,24 @@ export function transitionRequestToApproved(
   }
   request.status = "APPROVED";
   request.approvedAtSimMs = simTimeMs;
+  return { ok: true, request };
+}
+
+/** Resolve a Class B access request with the operation actually cleared. */
+export function transitionRequestToCleared(
+  request: RadioRequest,
+  operation: ClassBRequestOperation,
+  simTimeMs: number,
+): RequestTransitionResult {
+  if (isTerminalRadioRequest(request)) {
+    return { ok: false, error: "REQUEST: request is already resolved" };
+  }
+  if (request.kind !== "CLASS_B_ACCESS" || request.details.classBOperation === undefined) {
+    return { ok: false, error: "REQUEST: Class B access request required" };
+  }
+  request.status = "CLEARED";
+  request.clearedAtSimMs = simTimeMs;
+  request.clearedClassBOperation = operation;
   return { ok: true, request };
 }
 

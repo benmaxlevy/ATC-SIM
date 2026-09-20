@@ -8,7 +8,13 @@
  * radio contact, radar identification, service, or flight rules.
  */
 
-export type VfrPilotRequestKind = "FLIGHT_FOLLOWING" | "IFR_PICKUP";
+import type {
+  ClassBRequestIntent,
+  ClassBRequestOperation,
+  ClassBRequestRouteLeg,
+} from "./radio/requests";
+
+export type VfrPilotRequestKind = "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS";
 export type VfrPilotRequestState = "PENDING" | "TRANSMITTED" | "WITHDRAWN";
 
 export interface VfrPilotRequest {
@@ -25,6 +31,10 @@ export interface VfrPilotRequest {
   aircraftType?: string;
   destinationAirportId?: string;
   requestedAltitudeFt?: number;
+  classBOperation?: ClassBRequestOperation;
+  classBIntent?: ClassBRequestIntent;
+  originAirportId?: string;
+  route?: ClassBRequestRouteLeg[];
   withdrawnReason?: string;
 }
 

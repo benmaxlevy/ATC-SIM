@@ -314,6 +314,173 @@ describe("VfrRequestQueue eligibility (T04-72)", () => {
   });
 });
 
+describe("VfrRequestQueue Class B access scheduling (T04-97)", () => {
+  function makeClassBWorld(fixes = [
+    { id: "FIX1", xNm: 0, yNm: 0, kind: "FIX" },
+    { id: "FIX2", xNm: 10, yNm: 0, kind: "FIX" },
+  ]) {
+    const regional = createSyntheticRegional();
+    const world = createWorld({
+      regional,
+      fixRegistry: buildFixRegistry({ navaids: [], fixes }),
+    });
+    return { regional, world };
+  }
+
+  function makeCrossingAircraft(
+    mission: NonNullable<Aircraft["ambientVfr"]>["mission"],
+    ambient?: Partial<NonNullable<Aircraft["ambientVfr"]>>,
+  ): Aircraft {
+    return createSyntheticVfrAircraft({
+      id: `ac-${mission.toLowerCase()}`,
+      xNm: -15,
+      yNm: 0,
+      ambientVfr: {
+        mission,
+        waypoints: [{ xNm: 0, yNm: 0, fixId: "FIX1", altitudeFt: 4500 }],
+        ...(ambient ?? {}),
+      },
+    });
+  }
+
+  it.each([
+    ["AIRPORT_BOUND", "TO_ENTER", "ARRIVAL"],
+    ["TRANSIT", "THROUGH", "TRANSITION"],
+    ["SATELLITE_DEPARTURE", "TO_ENTER", "DEPARTURE"],
+  ] as const)("schedules generic %s Class B request", (mission, operation, intent) => {
+    const { regional, world } = makeClassBWorld();
+    const aircraft = makeCrossingAircraft(mission, {
+      destinationAirportId: mission === "AIRPORT_BOUND" ? "KPDK" : undefined,
+      originAirportId: mission === "SATELLITE_DEPARTURE" ? "KPDK" : undefined,
+    });
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()).toHaveLength(1);
+    expect(queue.getRequests()[0]).toMatchObject({
+      kind: "CLASS_B_ACCESS",
+      classBOperation: operation,
+      classBIntent: intent,
+      requestedAltitudeFt: 4500,
+    });
+    expect(queue.getRequests()[0]!.route).toEqual([{ type: "DIRECT", fixId: "FIX1" }]);
+    expect(aircraft.flightRules).toBe("VFR");
+    expect(aircraft.classBClearance).toBeUndefined();
+  });
+
+  it("schedules a THROUGH request for an underlying-airport departure that exits Bravo", () => {
+    const { regional, world } = makeClassBWorld();
+    const aircraft = makeCrossingAircraft("SATELLITE_DEPARTURE", {
+      originAirportId: "KPDK",
+      waypoints: [
+        { xNm: 0, yNm: 0, fixId: "FIX1", altitudeFt: 4500 },
+        { xNm: 10, yNm: 0, fixId: "FIX2", altitudeFt: 4500 },
+      ],
+    });
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()[0]).toMatchObject({
+      kind: "CLASS_B_ACCESS",
+      classBOperation: "THROUGH",
+      classBIntent: "DEPARTURE",
+      originAirportId: "KPDK",
+    });
+    expect(queue.getRequests()[0]!.route).toEqual([
+      { type: "DIRECT", fixId: "FIX1" },
+      { type: "DIRECT", fixId: "FIX2" },
+    ]);
+  });
+
+  it("does not create a pilot OUT_OF request for a primary-airport departure", () => {
+    const { regional, world } = makeClassBWorld();
+    const aircraft = makeCrossingAircraft("SATELLITE_DEPARTURE", {
+      originAirportId: regional.centerAirportId,
+    });
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()).toHaveLength(0);
+  });
+
+  it("does not request when the projected route remains below a Bravo shelf", () => {
+    const { regional, world } = makeClassBWorld();
+    regional.airspaces[0]!.lowerLimitFt = 6000;
+    regional.airspaces[0]!.lowerLimit.altitudeFt = 6000;
+    const aircraft = makeCrossingAircraft("TRANSIT");
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()).toHaveLength(0);
+  });
+
+  it("rejects an ungrounded THROUGH route without falling back to another request", () => {
+    const { regional, world } = makeClassBWorld([{ id: "FIX1", xNm: 10, yNm: 0, kind: "FIX" }]);
+    const aircraft = makeCrossingAircraft("TRANSIT", {
+      waypoints: [{ xNm: 0, yNm: 0, altitudeFt: 4500 }],
+    });
+    world.aircraft = [aircraft];
+
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { flightFollowingPercent: 100, requestCapPerHour: 10 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+
+    expect(queue.getRequests()).toHaveLength(0);
+  });
+
+  it("releases the request-cap slot when a Class B request withdraws before transmission", () => {
+    const { regional, world } = makeClassBWorld();
+    const first = makeCrossingAircraft("TRANSIT");
+    world.aircraft = [first];
+    const queue = createVfrRequestQueue({
+      regional,
+      config: { requestCapPerHour: 1 },
+      initialSlotOffsetMs: 0,
+    });
+    queue.scheduleFromWorld(world, 0);
+    first.ambientVfr!.phase = "EXITING";
+    const log = new SessionLog();
+    queue.drain({ world, log });
+    expect(queue.getRequests()[0]!.state).toBe("WITHDRAWN");
+
+    const second = makeCrossingAircraft("TRANSIT", { waypoints: [{ xNm: 0, yNm: 0, fixId: "FIX1" }] });
+    second.id = "ac-second";
+    world.aircraft = [second];
+    world.simTimeMs = 1000;
+    queue.scheduleFromWorld(world, world.simTimeMs);
+
+    expect(queue.getRequests()[1]!.state).toBe("PENDING");
+    expect(queue.getRequests()[1]!.dueAtSimMs).toBe(1000);
+  });
+});
+
 describe("VfrRequestQueue seeded distribution & exclusivity (T04-72)", () => {
   it("each eligible ambient spawn draws one outcome once", () => {
     const regional = createSyntheticRegional();

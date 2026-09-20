@@ -273,6 +273,8 @@ export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND" | "SATELLI
 export interface AmbientVfrWaypoint {
   xNm: number;
   yNm: number;
+  /** Optional catalog fix identity used when a radio request reports a route. */
+  fixId?: string;
   altitudeFt?: number;
   speedKt?: number;
   targetToleranceNm?: number;
