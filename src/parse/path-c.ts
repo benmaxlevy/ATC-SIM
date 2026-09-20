@@ -419,6 +419,9 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   if (cancelApproachSequenceError(instructions) !== null) {
     return null;
   }
+  if (instructions.some((instruction) => instruction.type === "CLASS_B_CLEARANCE") && instructions.length !== 1) {
+    return null;
+  }
   return { callsignToken, instructions };
 }
 
@@ -687,6 +690,17 @@ export function pathCResultIsComplete(
   const has = (pattern: RegExp) => pattern.test(text);
   const hasType = (...types: string[]) =>
     instructions.some((instruction) => types.includes(instruction.type));
+  const classBClearances = instructions.filter(
+    (instruction): instruction is Extract<Instruction, { type: "CLASS_B_CLEARANCE" }> =>
+      instruction.type === "CLASS_B_CLEARANCE",
+  );
+  if (classBClearances.length > 0) {
+    if (instructions.length !== 1) return false;
+    const clearance = classBClearances[0];
+    const hasVia = has(/\bvia\b/);
+    if (hasVia !== (clearance.route !== undefined)) return false;
+    if (hasVia && clearance.route?.length === 0) return false;
+  }
   if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
     return false;
   }
@@ -732,7 +746,7 @@ export function pathCResultIsComplete(
   }
   if (
     has(
-      /\b(?:cleared|clear)\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+      /\bcleared\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
     ) &&
     !hasType("CLASS_B_CLEARANCE")
   ) {

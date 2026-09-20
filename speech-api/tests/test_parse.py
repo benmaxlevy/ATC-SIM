@@ -1143,7 +1143,7 @@ def test_heading_360_normalizes_in_schema() -> None:
     }
 
 
-def test_semantic_guard_drops_unsupported_extra_instructions() -> None:
+def test_semantic_guard_rejects_unsupported_extra_instructions() -> None:
     from parse_engine import guard_instruction_semantics
 
     mixed = ParseOutcome(
@@ -1161,15 +1161,8 @@ def test_semantic_guard_drops_unsupported_extra_instructions() -> None:
     out = guard_instruction_semantics(
         "maintain four thousand until established on the localizer", mixed
     )
-    assert out.ok
-    assert out.instructions == [
-        {
-            "type": "ALTITUDE",
-            "altitudeFt": 4000,
-            "verb": "MAINTAIN",
-            "untilEstablished": True,
-        }
-    ]
+    assert not out.ok
+    assert out.error == "PARSE_MISS"
 
 
 def test_user_message_passes_transcript_unrewritten() -> None:

@@ -1071,6 +1071,8 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     if request_control_sequence_error(instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if class_b_clearance_sequence_error(instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     return ParseOutcome(ok=True, callsign_token=token, instructions=instructions)
 
 
@@ -1096,6 +1098,12 @@ def cancel_approach_sequence_error(instructions: list[dict[str, Any]]) -> str | 
 def request_control_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
     if any(instruction.get("type") in REQUEST_CONTROL_TYPES for instruction in instructions) and len(instructions) != 1:
         return "request instruction must be the only instruction"
+    return None
+
+
+def class_b_clearance_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
+    if any(instruction.get("type") == "CLASS_B_CLEARANCE" for instruction in instructions) and len(instructions) != 1:
+        return "CLASS_B_CLEARANCE must be the only instruction"
     return None
 
 
@@ -1217,17 +1225,21 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
     if instruction_type == "CLASS_B_CLEARANCE":
         operation = instruction.get("operation")
         if operation == "TO_ENTER":
-            if not has(r"\b(?:cleared|clear)\s+(?:to\s+enter|into)(?:\s+the)?(?:\s+class)?\s+bravo\s+airspace\b"):
+            if not has(r"\bcleared\s+(?:to\s+enter|into)(?:\s+the)?(?:\s+class)?\s+bravo\s+airspace\b"):
                 return False
         elif operation == "THROUGH":
-            if not has(r"\b(?:cleared|clear)\s+through\s+bravo\s+airspace\b"):
+            if not has(r"\bcleared\s+through\s+bravo\s+airspace\b"):
                 return False
         elif operation == "OUT_OF":
-            if not has(r"\b(?:cleared|clear)\s+out\s+of\s+bravo\s+airspace\b"):
+            if not has(r"\bcleared\s+out\s+of\s+bravo\s+airspace\b"):
                 return False
         else:
             return False
-        if instruction.get("route") and not has(r"\bvia\b"):
+        has_via = has(r"\bvia\b")
+        route = instruction.get("route")
+        if has_via and (not isinstance(route, list) or not route):
+            return False
+        if route and not has_via:
             return False
         if "altitudeFt" in instruction and not has(
             r"\bmaintain\b[\s\S]*\bwhile\s+in\s+(?:the\s+)?bravo\s+airspace\b"
@@ -1369,20 +1381,14 @@ def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcom
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     if request_control_sequence_error(outcome.instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if class_b_clearance_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     normalized = normalize_evidence_text(text)
-    kept = [
-        instruction
+    if not all(
+        _instruction_has_transcript_evidence(instruction, normalized)
         for instruction in outcome.instructions
-        if _instruction_has_transcript_evidence(instruction, normalized)
-    ]
-    if not kept:
+    ):
         return ParseOutcome(ok=False, error="PARSE_MISS")
-    if len(kept) != len(outcome.instructions):
-        return ParseOutcome(
-            ok=True,
-            callsign_token=outcome.callsign_token,
-            instructions=kept,
-        )
     return outcome
 
 
@@ -1625,6 +1631,8 @@ def guard_catalog_ids(
     """When a catalog is provided, instruction ids must be listed ids."""
     if not outcome.ok:
         return outcome
+    if class_b_clearance_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     ctx = sanitize_parse_context(context) if context else None
     if not ctx:
         return outcome
@@ -1699,8 +1707,11 @@ def guard_catalog_ids(
                 return ParseOutcome(ok=False, error="PARSE_MISS")
         if kind == "CLASS_B_CLEARANCE":
             route = instruction.get("route")
+            has_via = re.search(r"\bvia\b", text) is not None
+            if has_via and (not isinstance(route, list) or not route):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
             if route is not None:
-                if not isinstance(route, list) or not route:
+                if not isinstance(route, list) or not route or not has_via:
                     return ParseOutcome(ok=False, error="PARSE_MISS")
                 if not fixes or any(
                     not isinstance(segment, dict) or segment.get("fixId") not in fixes
