@@ -212,6 +212,8 @@ direct fixes.
 | `radar contact [<distance> miles [direction] from\|of <fix/navaid/airport>]` | `RADAR_CONTACT` with optional all-or-nothing `{ distanceNm, referenceId, referenceKind }` (`referenceKind` is `FIX`, `NAVAID`, or `AIRPORT`; T04-73; radar identification; pilot answers `roger`) |
 | `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
 | `IFR cancellation received` | `ACKNOWLEDGE_IFR_CANCELLATION` (T04-75; acknowledge pilot IFR cancellation outside Class B and revert to VFR) |
+| `contact <facility-name> tower` | `CONTACT_TOWER { facilityName }` (T04-101; syntax/readback name only; no frequency or facility lookup) |
+| `contact <facility-name> center` | `CONTACT_CENTER { facilityName }` (T04-101; syntax/readback name only; no frequency or facility lookup) |
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 

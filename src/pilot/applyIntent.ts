@@ -511,6 +511,8 @@ function applyOne(
     case "TERMINATE_RADAR_SERVICE":
     case "ACKNOWLEDGE_IFR_CANCELLATION":
     case "CLASS_B_CLEARANCE_AS_REQUESTED":
+    case "CONTACT_TOWER":
+    case "CONTACT_CENTER":
       return;
     default: {
       const _exhaustive: never = instruction;

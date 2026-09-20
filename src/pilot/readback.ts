@@ -260,6 +260,10 @@ function formatInstructionClause(
       return "radar service terminated";
     case "ACKNOWLEDGE_IFR_CANCELLATION":
       return "IFR cancellation received";
+    case "CONTACT_TOWER":
+      return `contact ${instruction.facilityName.toLowerCase()} tower`;
+    case "CONTACT_CENTER":
+      return `contact ${instruction.facilityName.toLowerCase()} center`;
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

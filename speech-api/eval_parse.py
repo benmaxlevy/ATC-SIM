@@ -307,6 +307,16 @@ CASES: list[dict[str, Any]] = [
         "text": "ifr cancellation received",
         "expect": {"instructions": [{"type": "ACKNOWLEDGE_IFR_CANCELLATION"}]},
     },
+    {
+        "id": "contact-tower",
+        "text": "contact Atlanta tower",
+        "expect": {"instructions": [{"type": "CONTACT_TOWER", "facilityName": "ATLANTA"}]},
+    },
+    {
+        "id": "contact-center",
+        "text": "contact Atlanta center",
+        "expect": {"instructions": [{"type": "CONTACT_CENTER", "facilityName": "ATLANTA"}]},
+    },
     # --- IFR clearance forms ---
     {
         "id": "clearance-as-filed-airport-alias",

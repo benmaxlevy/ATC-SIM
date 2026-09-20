@@ -30,6 +30,7 @@ import {
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "./instruction-order";
+import { parseFacilityName } from "./contact";
 import {
   EIGHT_POINT_CARDINALS,
   groundAirportPhraseToCatalog,
@@ -116,7 +117,9 @@ function isRequestControlInstruction(inst: Instruction): boolean {
     inst.type === "DECLINE_REQUEST" ||
     inst.type === "RADAR_CONTACT" ||
     inst.type === "TERMINATE_RADAR_SERVICE" ||
-    inst.type === "ACKNOWLEDGE_IFR_CANCELLATION"
+    inst.type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    inst.type === "CONTACT_TOWER" ||
+    inst.type === "CONTACT_CENTER"
   );
 }
 
@@ -144,6 +147,7 @@ function isTypedInstructionStart(token: string): boolean {
     token === "UNABLE" ||
     token === "RADAR" ||
     token === "IFR" ||
+    token === "CONTACT" ||
     token === "VIS"
   ) {
     return true;
@@ -527,6 +531,27 @@ function parseOneInstruction(
       };
     }
     return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "CONTACT") {
+    const terminalIndex = tokens.findIndex(
+      (candidate, candidateIndex) =>
+        candidateIndex > index && (candidate === "TOWER" || candidate === "CENTER"),
+    );
+    if (terminalIndex < 0) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+    }
+    const facilityName = parseFacilityName(tokens.slice(index + 1, terminalIndex));
+    if (!facilityName) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: "facility name" };
+    }
+    return {
+      ok: true,
+      instruction: {
+        type: tokens[terminalIndex] === "TOWER" ? "CONTACT_TOWER" : "CONTACT_CENTER",
+        facilityName,
+      },
+      nextIndex: terminalIndex + 1,
+    };
   }
   if (token === "DCT") {
     const fixId = tokens[index + 1];

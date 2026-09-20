@@ -52,8 +52,10 @@ service `FLIGHT_FOLLOWING`, `IFR_PICKUP`, or `CLASS_B_ACCESS`), `cleared as requ
 [direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
 terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
 (`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
-transmissions. A compound transmission combining any of these with another
-instruction is `BAD_CLEARANCE`. A present `RADAR_CONTACT` position is
+transmissions. `contact <facility-name> tower` and `contact <facility-name>
+center` are also atomic, emit `CONTACT_TOWER` or `CONTACT_CENTER`, require a
+1–4-token syntax-only name, and accept no frequency. A compound transmission
+combining any of these with another instruction is `BAD_CLEARANCE`. A present `RADAR_CONTACT` position is
 all-or-nothing; its fixes/navaids are grounded via the shared catalog
 matcher, airports via the airport namespace, and ungrounded references return
 a parse miss. The pilot answer to `RADAR_CONTACT` is `roger`. Transcripts

@@ -507,6 +507,8 @@ export function handleRadioCommand(
       "DECLINE_REQUEST",
       "RADAR_CONTACT",
       "TERMINATE_RADAR_SERVICE",
+      "CONTACT_TOWER",
+      "CONTACT_CENTER",
     ].includes(item.type),
   );
   if (requestControl) {
@@ -642,6 +644,9 @@ export function handleRadioCommand(
         }
         break;
       }
+      case "CONTACT_TOWER":
+      case "CONTACT_CENTER":
+        break;
     }
     const readback = formatReadback({
       callsign: resolved.callsign,

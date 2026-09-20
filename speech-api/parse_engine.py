@@ -60,6 +60,8 @@ INSTRUCTION_TYPES = frozenset(
         "RADAR_CONTACT",
         "TERMINATE_RADAR_SERVICE",
         "ACKNOWLEDGE_IFR_CANCELLATION",
+        "CONTACT_TOWER",
+        "CONTACT_CENTER",
         "CLEARED_VISUAL",
     }
 )
@@ -83,6 +85,8 @@ REQUEST_CONTROL_TYPES = frozenset(
         "TERMINATE_RADAR_SERVICE",
         "ACKNOWLEDGE_IFR_CANCELLATION",
         "CLASS_B_CLEARANCE_AS_REQUESTED",
+        "CONTACT_TOWER",
+        "CONTACT_CENTER",
     }
 )
 
@@ -100,6 +104,8 @@ Position advisories are not commands, but never stop parsing later sentences. �
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; CLEARED_VISUAL requires cleared visual approach plus runway; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
 New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “unable ifr pickup” and “unable to provide ifr pickup” are DECLINE_REQUEST with service IFR_PICKUP. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+
+CONTACT commands use “contact <facility-name> tower” or “contact <facility-name> center” with a required 1–4-token facilityName. Canonicalize the name to uppercase for the IR. Facility names are syntax/readback data only; never perform a catalog lookup, accept a frequency, or invent a facility.
 
 VFR Class B clearances use CLASS_B_CLEARANCE with operation TO_ENTER, THROUGH, or OUT_OF. TO_ENTER accepts only the controlled variants “cleared to enter/into [the] [class] bravo airspace”; THROUGH and OUT_OF stay canonical. The phrase must include “bravo airspace”. Optional VIA route legs are ordered catalog fixes/navaids, and an optional “maintain <altitude> while in bravo airspace” follows the route. “remain outside bravo airspace” is REMAIN_OUTSIDE_BRAVO. “resume appropriate VFR altitudes” is RESUME_APPROPRIATE_VFR_ALTITUDES. “cleared as requested” is CLASS_B_CLEARANCE_AS_REQUESTED. “unable class b clearance” and “unable to provide class b clearance” are DECLINE_REQUEST with service CLASS_B_ACCESS. These are VFR instructions only; never emit IFR clearance, flight-plan, beacon, or service state.
 
@@ -647,6 +653,18 @@ def _exact_keys(obj: dict[str, Any], required: set[str], optional: set[str] | No
     return required.issubset(obj.keys()) and set(obj.keys()).issubset(allowed)
 
 
+_FACILITY_NAME_TOKEN = re.compile(r"^[A-Z0-9]+(?:-[A-Z0-9]+)*$")
+
+
+def _canonical_facility_name(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    tokens = value.strip().upper().split()
+    if not 1 <= len(tokens) <= 4 or any(not _FACILITY_NAME_TOKEN.fullmatch(token) for token in tokens):
+        return None
+    return " ".join(tokens)
+
+
 def validate_instruction(raw: object) -> dict[str, Any] | None:
     """Closed Command IR v0 check. Illegal type (e.g. CHAT) → None."""
     if not isinstance(raw, dict):
@@ -966,6 +984,13 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "ACKNOWLEDGE_IFR_CANCELLATION"}
+    if instr_type in {"CONTACT_TOWER", "CONTACT_CENTER"}:
+        if not _exact_keys(raw, {"type", "facilityName"}):
+            return None
+        facility_name = _canonical_facility_name(raw.get("facilityName"))
+        if facility_name is None:
+            return None
+        return {"type": instr_type, "facilityName": facility_name}
     if instr_type == "DESCEND_VIA":
         if (
             not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
@@ -1321,6 +1346,10 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         return has(r"\bradar\s+service\s+terminat\w*\b")
     if instruction_type == "ACKNOWLEDGE_IFR_CANCELLATION":
         return has(r"\bifr\s+cancellation\s+receiv\w*\b")
+    if instruction_type == "CONTACT_TOWER":
+        return bool(re.search(r"\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+tower\s*$", text))
+    if instruction_type == "CONTACT_CENTER":
+        return bool(re.search(r"\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+center\s*$", text))
     return False
 
 

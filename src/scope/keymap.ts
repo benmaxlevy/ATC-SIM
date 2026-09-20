@@ -198,6 +198,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Terminates radar advisory service; squawk is not automatically reset to 1200.",
       },
       {
+        id: "contact-facility",
+        command: "contact <facility> tower|center",
+        example: "DAL123 contact Atlanta tower",
+        input: "Radio",
+        result:
+          "Transfers communications to the named terminal function. Facility names are syntax/readback data only; no frequency is accepted.",
+      },
+      {
         id: "acknowledge-ifr-cancellation",
         command: "IFR cancellation received",
         example: "DAL123 IFR cancellation received",

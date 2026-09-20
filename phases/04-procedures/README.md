@@ -749,6 +749,12 @@ T04-81 enables arrival-airport approach resolution and satellite ILS parity;
 T04-82 implements visual approach clearance (`CLEARED_VISUAL`, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance);
 T04-83 executes autonomous VFR auto-land on visual final for airport-bound traffic, emitting `vfr.tower.handoff` and `nav.landed` events with MSAW inhibit on final descent and standard VFR datablock presentation.
 
+### Post-exit addendum (T04-101 contact tower/center command parity)
+
+T04-101 adds parser-only `CONTACT_TOWER` and `CONTACT_CENTER` commands. Each
+requires a 1–4-token syntax-only facility name and accepts no frequency or
+facility lookup; runtime transfer behavior belongs to T04-102.
+
 ---
 
 ## Phase exit checklist

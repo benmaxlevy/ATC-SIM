@@ -9,6 +9,7 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+import { parseFacilityName } from "../contact";
 
 function isRequestControlInstruction(instruction: Instruction): boolean {
   return (
@@ -18,7 +19,9 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "DECLINE_REQUEST" ||
     instruction.type === "RADAR_CONTACT" ||
     instruction.type === "TERMINATE_RADAR_SERVICE" ||
-    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    instruction.type === "CONTACT_TOWER" ||
+    instruction.type === "CONTACT_CENTER"
   );
 }
 
@@ -87,6 +90,7 @@ const COMMAND_TRIGGERS = new Set([
   "approve",
   "unable",
   "radar",
+  "contact",
   "visual",
   "remain",
   "resume",
@@ -1222,6 +1226,32 @@ function matchAcknowledgeIfrCancellation(
   return null;
 }
 
+function matchContact(
+  tokens: readonly string[],
+  i: number,
+): { instruction: Instruction; next: number } | null {
+  if (tokens[i] !== "contact") return null;
+  const facilityTokens: string[] = [];
+  let j = i + 1;
+  while (j < tokens.length && tokens[j] !== "tower" && tokens[j] !== "center") {
+    facilityTokens.push(tokens[j]!);
+    j += 1;
+    if (facilityTokens.length > 4) return null;
+  }
+  const terminal = tokens[j];
+  const facilityName = parseFacilityName(facilityTokens);
+  if ((terminal !== "tower" && terminal !== "center") || !facilityName) return null;
+  const next = j + 1;
+  if (next < tokens.length && !COMMAND_TRIGGERS.has(tokens[next]!)) return null;
+  return {
+    instruction: {
+      type: terminal === "tower" ? "CONTACT_TOWER" : "CONTACT_CENTER",
+      facilityName,
+    },
+    next,
+  };
+}
+
 function matchRadarContact(
   tokens: readonly string[],
   i: number,
@@ -1891,6 +1921,7 @@ export function matchSpokenPatterns(
       matchDeclineRequest(tokens, i) ??
       matchRadarServiceTerminated(tokens, i) ??
       matchAcknowledgeIfrCancellation(tokens, i) ??
+      matchContact(tokens, i) ??
       matchRadarContact(tokens, i, catalog, airports) ??
       matchTurnDegrees(tokens, i) ??
       matchFlyHeading(tokens, i) ??

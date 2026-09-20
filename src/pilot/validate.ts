@@ -112,6 +112,8 @@ const REQUEST_CONTROL_TYPES = new Set([
   "RADAR_CONTACT",
   "TERMINATE_RADAR_SERVICE",
   "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CONTACT_TOWER",
+  "CONTACT_CENTER",
 ]);
 
 /** Against present kinematics, not would-be assigned values in the same Command. */
@@ -581,6 +583,9 @@ function validateOne(
       }
       return { ok: true };
     }
+    case "CONTACT_TOWER":
+    case "CONTACT_CENTER":
+      return { ok: true };
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

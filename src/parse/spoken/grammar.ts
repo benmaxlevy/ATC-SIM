@@ -9,6 +9,7 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+import { parseFacilityName } from "../contact";
 
 function isRequestControlInstruction(instruction: Instruction): boolean {
   return (
@@ -18,7 +19,9 @@ function isRequestControlInstruction(instruction: Instruction): boolean {
     instruction.type === "DECLINE_REQUEST" ||
     instruction.type === "RADAR_CONTACT" ||
     instruction.type === "TERMINATE_RADAR_SERVICE" ||
-    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION"
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    instruction.type === "CONTACT_TOWER" ||
+    instruction.type === "CONTACT_CENTER"
   );
 }
 
@@ -431,6 +434,28 @@ function tryAcknowledgeIfrCancellation(c: Cursor): Instruction | null {
   }
   c.i = start;
   return null;
+}
+
+function tryContact(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "contact")) return null;
+  const facilityTokens: string[] = [];
+  while (peek(c) !== undefined && peek(c) !== "tower" && peek(c) !== "center") {
+    facilityTokens.push(peek(c)!);
+    c.i += 1;
+    if (facilityTokens.length > 4) {
+      c.i = start;
+      return null;
+    }
+  }
+  const terminal = peek(c);
+  const facilityName = parseFacilityName(facilityTokens);
+  if ((terminal !== "tower" && terminal !== "center") || !facilityName) {
+    c.i = start;
+    return null;
+  }
+  c.i += 1;
+  return { type: terminal === "tower" ? "CONTACT_TOWER" : "CONTACT_CENTER", facilityName };
 }
 
 function tryRadarContact(c: Cursor): Instruction | null {
@@ -1349,6 +1374,7 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryDeclineRequest(c) ??
     tryRadarServiceTerminated(c) ??
     tryAcknowledgeIfrCancellation(c) ??
+    tryContact(c) ??
     tryRadarContact(c) ??
     tryClassBClearance(c) ??
     tryRemainOutsideBravo(c) ??

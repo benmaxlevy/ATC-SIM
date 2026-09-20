@@ -12,6 +12,7 @@ import {
 } from "@core";
 import type { CatalogFixMatchMethod } from "./spoken/catalog-ground";
 import { cancelApproachSequenceError } from "./instruction-order";
+import { parseFacilityName } from "./contact";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
@@ -130,6 +131,8 @@ const SINGLE_INSTRUCTION_TYPES = new Set([
   "RADAR_CONTACT",
   "TERMINATE_RADAR_SERVICE",
   "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CONTACT_TOWER",
+  "CONTACT_CENTER",
 ]);
 const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
   "exact",
@@ -230,6 +233,13 @@ export function isLegalInstruction(value: unknown): value is Instruction {
       (obj.service === "FLIGHT_FOLLOWING" ||
         obj.service === "IFR_PICKUP" ||
         obj.service === "CLASS_B_ACCESS")
+    );
+  }
+  if (type === "CONTACT_TOWER" || type === "CONTACT_CENTER") {
+    return (
+      keysOk(obj, ["type", "facilityName"]) &&
+      typeof obj.facilityName === "string" &&
+      parseFacilityName(obj.facilityName.split(/\s+/)) !== null
     );
   }
   if (type === "RADAR_CONTACT") {
@@ -432,7 +442,11 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
     if (!isLegalInstruction(item)) {
       return null;
     }
-    instructions.push(item);
+    if (item.type === "CONTACT_TOWER" || item.type === "CONTACT_CENTER") {
+      instructions.push({ ...item, facilityName: item.facilityName.toUpperCase() });
+    } else {
+      instructions.push(item);
+    }
   }
   if (cancelApproachSequenceError(instructions) !== null) {
     return null;
@@ -683,6 +697,7 @@ const SELF_CONTAINED_CUES: RegExp[] = [
   /\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b/,
   /\bradar\s+service\s+terminated\b/,
   /\bifr\s+cancellation\s+received\b/,
+  /\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+(?:tower|center)\b/,
   /\bmaintain\s+vfr\b/,
   /\b(?:cleared|clear)\s+visual\b/,
   /\b(?:cleared|clear)\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
@@ -848,6 +863,23 @@ export function pathCResultIsComplete(
   }
   if (has(/\bifr\s+cancellation\s+received\b/) && !hasType("ACKNOWLEDGE_IFR_CANCELLATION")) {
     return false;
+  }
+  const contactMatch = text.match(
+    /\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+(tower|center)\s*$/,
+  );
+  if (has(/\bcontact\b/) && !has(/\bradar\s+contact\b/) && contactMatch === null) {
+    return false;
+  }
+  if (contactMatch) {
+    const expected = contactMatch[2] === "tower" ? "CONTACT_TOWER" : "CONTACT_CENTER";
+    const contact = instructions.find((instruction) => instruction.type === expected);
+    if (
+      !contact ||
+      contact.type !== expected ||
+      contact.facilityName.toLowerCase() !== contactMatch[1]!.toLowerCase()
+    ) {
+      return false;
+    }
   }
   return instructions.length > 0;
 }

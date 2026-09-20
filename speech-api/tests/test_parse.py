@@ -615,10 +615,20 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert validate_instruction(ack_cancellation) == ack_cancellation
     assert validate_instruction({"type": "ACKNOWLEDGE_IFR_CANCELLATION", "extra": True}) is None
 
+    contact_tower = {"type": "CONTACT_TOWER", "facilityName": "ATLANTA"}
+    contact_center = {"type": "CONTACT_CENTER", "facilityName": "ATLANTA CENTER"}
+    assert validate_instruction(contact_tower) == contact_tower
+    assert validate_instruction({"type": "CONTACT_TOWER", "facilityName": "atlanta"}) == contact_tower
+    assert validate_instruction(contact_center) == contact_center
+    assert validate_instruction({"type": "CONTACT_TOWER", "facilityName": ""}) is None
+    assert validate_instruction({"type": "CONTACT_TOWER", "facilityName": "A B C D E"}) is None
+    assert validate_instruction({"type": "CONTACT_TOWER", "facilityName": "ATLANTA", "frequency": "118.5"}) is None
+
     # Compound request control rejection
     from parse_engine import validate_parse_json
     assert validate_parse_json({"ok": True, "instructions": [req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}]}).error == "BAD_CLEARANCE"
     assert validate_parse_json({"ok": True, "instructions": [bare_radar_contact, {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "CLIMB"}]}).error == "BAD_CLEARANCE"
+    assert validate_parse_json({"ok": True, "instructions": [contact_tower, {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "CLIMB"}]}).error == "BAD_CLEARANCE"
     class_b = {"type": "CLASS_B_CLEARANCE", "operation": "TO_ENTER"}
     assert validate_parse_json({"ok": True, "instructions": [class_b, {"type": "ALTITUDE", "altitudeFt": 4000, "verb": "MAINTAIN"}]}).error == "BAD_CLEARANCE"
     assert not guard_instruction_semantics(
@@ -657,6 +667,15 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert guard_instruction_semantics("radar service terminated", ParseOutcome(ok=True, instructions=[term_radar])).ok
     assert guard_instruction_semantics("ifr cancellation received", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
     assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[ack_cancellation])).ok
+    assert guard_instruction_semantics(
+        "contact Atlanta tower", ParseOutcome(ok=True, instructions=[contact_tower])
+    ).ok
+    assert guard_instruction_semantics(
+        "contact Atlanta center", ParseOutcome(ok=True, instructions=[contact_center])
+    ).ok
+    assert not guard_instruction_semantics(
+        "contact Atlanta tower 118.5", ParseOutcome(ok=True, instructions=[contact_tower])
+    ).ok
 
     # Catalog guards for RADAR_CONTACT
     rc_outcome = ParseOutcome(ok=True, instructions=[radar_contact])
