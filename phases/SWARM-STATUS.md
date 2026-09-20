@@ -1,5 +1,38 @@
 # Swarm status
 
+## SEVENTY-NINTH SWARM — CONTACT TOWER/CENTER AND LANDING CLOSURE (T04-101–T04-103, 2026-09-20)
+
+Implemented and fast-forwarded on `feature/sattelite-traffic`:
+
+- T04-101 `63961de` — `CONTACT_TOWER` / `CONTACT_CENTER` Command IR,
+  typed/Path A/Path B/Path C/PTT/speech GBNF parity, readback, and shared
+  contracts.
+- T04-102 `aca2fd8` — generic tower/center transfer gates, VFR preservation,
+  Class B guard reuse, landing-based IFR plan closure, and read-only closed
+  plan history.
+- T04-103 `88ecc81` — integrated acceptance coverage, Help, user/phase/shared
+  documentation, and later-implementation constraints.
+
+Final browser `npm run ci`: **247 files, 2,692 passed, 4 skipped**. Focused
+acceptance: **18 passed**. `git diff --check` passed. The speech mock gate was
+bounded at 75 seconds and hung in existing `tests/test_contract.py` startup;
+it exited by timeout (`124`). No speech-api files changed in T04-103. The
+prior T04-101 speech gate had the same local TestClient/lifespan hang after
+repository-compatible dependency pinning, so this remains an environment
+blocker, not a reported parser failure.
+
+FAA grounding is recorded in the tickets and docs: JO 7110.65 §§2-1-15/16/17,
+7-6-8, and 5-1-9; AIM §§5-1-14/15. VFR remains VFR and does not receive Class
+B authorization. Contact transfer is separate from radar-service termination.
+Only an active IFR plan landing at an eligible functioning towered destination
+closes automatically; VFR/DVFR and non-towered IFR plans remain open. No
+frequency, facility lookup, individual tower/center entity, pilot request,
+or Raytheon STARS functionality was added. Unrelated `.worktrees/` and
+`speech-api/:memory:.ses` artifacts were preserved; no push performed.
+
+**PHASE EXIT BLOCKED** — speech mock gate hangs in the local TestClient
+environment; implementation and browser gates are green.
+
 ## POST-AUDIT CORRECTIONS — VFR CLASS B PILOT REQUESTS (2026-09-20)
 
 Read-only subagent audit found and corrected runtime, clearance, Path C, and
