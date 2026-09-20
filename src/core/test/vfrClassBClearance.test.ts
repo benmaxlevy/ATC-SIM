@@ -165,6 +165,34 @@ describe("T04-95 VFR Class B clearance state and execution", () => {
     });
   });
 
+  test("uses cleared altitude for route fixes but present altitude for the aircraft point", () => {
+    const world = createWorld({
+      regional,
+      catalog: {
+        airportId: "KSYN",
+        fixes: [{ id: "BRAVO-IN", xNm: 0, yNm: 0, kind: "fix" }],
+        navaids: [],
+        stars: [],
+        sids: [],
+        approaches: [],
+      },
+    });
+    const clearance = command({
+      type: "CLASS_B_CLEARANCE",
+      operation: "TO_ENTER",
+      altitudeFt: 4000,
+      route: [{ type: "DIRECT", fixId: "BRAVO-IN" }],
+    });
+
+    expect(
+      validateClassBInstruction(aircraft({ altitudeFt: 2000 }), clearance, {
+        regional,
+        fixRegistry: world.fixRegistry,
+        mvaChart,
+      }),
+    ).toEqual({ ok: true });
+  });
+
   test("REMAIN OUTSIDE rejects an aircraft already inside Bravo", () => {
     const ac = aircraft({ xNm: 0, yNm: 0 });
     expect(validateClassBInstruction(ac, { type: "REMAIN_OUTSIDE_BRAVO" }, { regional })).toEqual({

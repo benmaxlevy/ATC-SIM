@@ -1172,3 +1172,66 @@ test("VFR flight following and radio contact instruction validation (T04-73)", (
   ac.flightFollowing = { active: true, approvedAtSimMs: 1000 };
   expect(validateInstructions(ac, [{ type: "TERMINATE_RADAR_SERVICE" }]).ok).toBe(true);
 });
+
+test("Class B request controls require operational VFR without changing other request behavior", () => {
+  const ac = createAircraft({
+    id: "ac-class-b",
+    callsign: "N12345",
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 110,
+    flightRules: "VFR",
+  });
+  const classBRequest = {
+    id: "req-class-b",
+    aircraftId: ac.id,
+    callsign: ac.callsign,
+    kind: "CLASS_B_ACCESS" as const,
+    requestedAtSimMs: 1000,
+    status: "PENDING" as const,
+    details: { classBOperation: "TO_ENTER" as const },
+  };
+
+  ac.flightRules = "IFR";
+  for (const instruction of [
+    { type: "REQUEST_DETAILS" } as const,
+    { type: "STANDBY_REQUEST" } as const,
+    { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" } as const,
+    { type: "CLASS_B_CLEARANCE_AS_REQUESTED" } as const,
+  ]) {
+    expect(
+      validateInstructions(ac, [instruction], { radioRequests: [classBRequest] }),
+      instruction.type,
+    ).toEqual({
+      ok: false,
+      reason: "CLEARANCE",
+      detail: "CLEARANCE: VFR aircraft required",
+    });
+  }
+
+  ac.flightRules = "VFR";
+  ac.activeClearance = {
+    route: { route: { text: "", segments: [] }, nextIndex: 0, revision: 1, lifecycle: "active" },
+    limitId: "KSYN",
+    access: { type: "RADAR_VECTORS" },
+    issuedAtSimMs: 0,
+  };
+  expect(
+    validateInstructions(ac, [{ type: "CLASS_B_CLEARANCE_AS_REQUESTED" }], {
+      radioRequests: [classBRequest],
+    }),
+  ).toEqual({
+    ok: false,
+    reason: "CLEARANCE",
+    detail: "CLEARANCE: VFR aircraft required",
+  });
+
+  const flightFollowingRequest = { ...classBRequest, kind: "FLIGHT_FOLLOWING" as const };
+  expect(
+    validateInstructions(ac, [{ type: "REQUEST_DETAILS" }], {
+      radioRequests: [flightFollowingRequest],
+    }).ok,
+  ).toBe(true);
+});

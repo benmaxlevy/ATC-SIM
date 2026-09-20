@@ -62,6 +62,12 @@ export type ValidateReason =
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
+function validateOperationalVfr(aircraft: Aircraft): ValidateResult {
+  return aircraft.flightRules === "VFR" && aircraft.activeClearance === undefined
+    ? { ok: true }
+    : { ok: false, reason: "CLEARANCE", detail: "CLEARANCE: VFR aircraft required" };
+}
+
 export interface ValidateApproach {
   id: string;
   type?: string;
@@ -360,10 +366,7 @@ function validateOne(
       return result.ok ? result : { ok: false, reason: "CLEARANCE", detail: result.detail };
     }
     case "CLASS_B_CLEARANCE_AS_REQUESTED":
-      if (aircraft.flightRules !== "VFR") {
-        return { ok: false, reason: "CLEARANCE", detail: "CLEARANCE: VFR aircraft required" };
-      }
-      return { ok: true };
+      return validateOperationalVfr(aircraft);
     case "IFR_CLEARANCE":
       if (instruction.limitId.trim() === "") {
         return { ok: false, reason: "CLEARANCE" };
@@ -424,6 +427,10 @@ function validateOne(
       if (!openReq) {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
       }
+      if (openReq.kind === "CLASS_B_ACCESS") {
+        const vfr = validateOperationalVfr(aircraft);
+        if (!vfr.ok) return vfr;
+      }
       if (openReq.status === "APPROVED") {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
       }
@@ -433,6 +440,10 @@ function validateOne(
       const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id);
       if (!openReq) {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };
+      }
+      if (openReq.kind === "CLASS_B_ACCESS") {
+        const vfr = validateOperationalVfr(aircraft);
+        if (!vfr.ok) return vfr;
       }
       if (openReq.status === "APPROVED") {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: request is already resolved" };
@@ -450,6 +461,10 @@ function validateOne(
       return { ok: true };
     }
     case "DECLINE_REQUEST": {
+      if (instruction.service === "CLASS_B_ACCESS") {
+        const vfr = validateOperationalVfr(aircraft);
+        if (!vfr.ok) return vfr;
+      }
       const openReq = findOpenRadioRequest(opts?.radioRequests, aircraft.id, instruction.service);
       if (!openReq) {
         return { ok: false, reason: "REQUEST", detail: "REQUEST: no pending radio request" };

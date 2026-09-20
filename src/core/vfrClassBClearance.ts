@@ -36,6 +36,7 @@ function routePoints(
   aircraft: Aircraft,
   routeFixIds: readonly string[],
   registry: FixRegistry | null | undefined,
+  routeAltitudeFt: number,
 ): Point3D[] | null {
   const points: Point3D[] = [
     { xNm: aircraft.xNm, yNm: aircraft.yNm, altitudeFt: aircraft.altitudeFt },
@@ -43,7 +44,7 @@ function routePoints(
   for (const fixId of routeFixIds) {
     const fix = registry?.get(fixId);
     if (!fix) return null;
-    points.push({ xNm: fix.xNm, yNm: fix.yNm, altitudeFt: aircraft.altitudeFt });
+    points.push({ xNm: fix.xNm, yNm: fix.yNm, altitudeFt: routeAltitudeFt });
   }
   return points;
 }
@@ -125,6 +126,7 @@ export function validateClassBInstruction(
     aircraft,
     instruction.route.map((leg) => leg.fixId),
     options.fixRegistry,
+    instruction.altitudeFt ?? aircraft.altitudeFt,
   );
   if (!points) return { ok: false, detail: "CLEARANCE: route does not satisfy Class B clearance" };
   const intersects = routeIntersectsClassB(points, volumes);
