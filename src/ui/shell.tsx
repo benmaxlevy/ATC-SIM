@@ -46,7 +46,7 @@ import {
   type ScopeView,
   type FlightPlanModalRequest,
 } from "@scope";
-import { flightPlanForAircraft, handoffFor, type FlightPlan } from "@core";
+import { flightPlanForAircraft, handoffFor, isFlightPlanOperational, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
@@ -162,7 +162,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           : "arrival";
       if (!plan && targetAcid) {
         const sameAcidPlan = app.world.flightPlans.find(
-          (item) => item.status !== "deleted" && item.acid === targetAcid,
+          (item) => isFlightPlanOperational(item) && item.acid === targetAcid,
         );
         // A target slew addresses only a uniquely beacon-correlated plan.
         // Do not let surveillance callsign text bypass a mismatch and open
@@ -183,7 +183,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       const entry = visibleEntries.find((item) => item.index === request.index);
       plan = entry?.planId
         ? app.world.flightPlans.find(
-            (item) => item.id === entry.planId && item.status !== "deleted",
+            (item) => item.id === entry.planId && isFlightPlanOperational(item),
           )
         : undefined;
       // A visible TAB item remains addressable even before it has a local
@@ -196,7 +196,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       }
     } else if (request.acid) {
       plan = app.world.flightPlans.find(
-        (item) => item.status !== "deleted" && item.acid === request.acid,
+        (item) => isFlightPlanOperational(item) && item.acid === request.acid,
       );
     }
     const acid =

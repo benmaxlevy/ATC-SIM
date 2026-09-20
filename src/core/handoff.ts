@@ -15,7 +15,9 @@ import type { Aircraft } from "./aircraft";
 import type { SessionLog } from "./events/session-log";
 import { isLandingInhibited, isOnMissed } from "./fms/missed";
 import { acceptTowerHandoff, isTowerHandoffEligible } from "./fms/landing";
+import { acceptVfrTowerHandoff, resolveVfrTowerHandoffContext } from "./vfrNavigation";
 import type { World } from "./world";
+import type { RegionalFacility } from "../scenario/regional";
 
 export const DEFAULT_INBOUND_SECTOR_ID = "C";
 export const DEFAULT_CENTER_SECTOR_ID = "C";
@@ -27,6 +29,90 @@ export type OutboundHandoffDestination = string;
 
 /** Stable `command.rejected` reason while inbound HO is pending. */
 export const HANDOFF_PENDING_REASON = "handoff-pending";
+export const CONTACT_TOWER_INELIGIBLE_ERROR =
+  "CONTACT TOWER: aircraft is not eligible for tower transfer";
+export const CONTACT_TOWER_NO_DESTINATION_ERROR = "CONTACT TOWER: no eligible towered destination";
+export const CONTACT_CENTER_INELIGIBLE_ERROR =
+  "CONTACT CENTER: aircraft is not eligible for center transfer";
+
+export type ContactTransferResult = { ok: true } | { ok: false; error: string };
+
+function isAirborne(ac: Aircraft): boolean {
+  return ac.airborne ?? ac.altitudeFt > 0;
+}
+
+function regionalAirports(world: World): RegionalFacility["airports"] {
+  return (world.regional as RegionalFacility | undefined)?.airports ?? [];
+}
+
+/** Validate the generic controller-issued tower transfer without mutation. */
+export function validateContactTower(ac: Aircraft, world: World): ContactTransferResult {
+  if (!isAirborne(ac)) {
+    return { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+  }
+  if (ac.flightRules === "IFR") {
+    return isTowerHandoffEligible(ac, world)
+      ? { ok: true }
+      : { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+  }
+  if (ac.flightRules !== "VFR" || ac.activeClearance !== undefined) {
+    return { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+  }
+  const context = resolveVfrTowerHandoffContext(ac, regionalAirports(world));
+  const destinationId =
+    ac.ambientVfr?.destinationAirportId ?? ac.destinationAirport ?? ac.destination;
+  const airport = destinationId
+    ? regionalAirports(world).find(
+        (candidate) => candidate.icao.toUpperCase() === destinationId.toUpperCase(),
+      )
+    : undefined;
+  if (
+    !airport ||
+    airport.eligible !== true ||
+    airport.publicUse !== true ||
+    airport.towered !== true ||
+    airport.runways.length === 0
+  ) {
+    return { ok: false, error: CONTACT_TOWER_NO_DESTINATION_ERROR };
+  }
+  return context?.inTerminalWindow
+    ? { ok: true }
+    : { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+}
+
+/** Validate then apply CONTACT_TOWER; rejected commands do not mutate aircraft/world. */
+export function applyContactTower(
+  world: World,
+  ac: Aircraft,
+  _facilityName: string,
+): ContactTransferResult {
+  const validation = validateContactTower(ac, world);
+  if (!validation.ok) return validation;
+  if (ac.flightRules === "IFR") {
+    return acceptTowerHandoff(ac, {
+      log: world.sessionLog,
+      simTimeMs: world.simTimeMs,
+    })
+      ? { ok: true }
+      : { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+  }
+  return acceptVfrTowerHandoff(ac, world.simTimeMs, world.sessionLog, regionalAirports(world))
+    ? { ok: true }
+    : { ok: false, error: CONTACT_TOWER_INELIGIBLE_ERROR };
+}
+
+/** Validate then initiate the existing generic outbound center handoff. */
+export function applyContactCenter(
+  world: World,
+  ac: Aircraft,
+  _facilityName: string,
+): ContactTransferResult {
+  if (!isAirborne(ac) || !isCenterHandoffEligible(ac, world)) {
+    return { ok: false, error: CONTACT_CENTER_INELIGIBLE_ERROR };
+  }
+  initiateOutboundHandoff(ac, { world, log: world.sessionLog, simTimeMs: world.simTimeMs });
+  return { ok: true };
+}
 
 export type TrackHandoff =
   | { kind: "none" }

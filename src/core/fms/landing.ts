@@ -12,6 +12,13 @@ import type { SessionLog } from "../events/session-log";
 import { resolveApproachContext } from "../nav/approachContext";
 import { locAxisForApproach, locDeviation, type LocAxis } from "../nav/localizer";
 import type { World } from "../world";
+import {
+  closeFlightPlan,
+  flightPlanForAircraft,
+  isFlightPlanOperational,
+  type FlightPlan,
+} from "../flightPlan";
+import type { RegionalFacility } from "../../scenario/regional";
 import { isLandingInhibited, isOnMissed, missedApproachId, missedSpecFor } from "./missed";
 
 /** Offer HO from this along-track inward (documented gate). */
@@ -123,6 +130,52 @@ function emitLanded(ac: Aircraft, approachId: string, ctx: LandingFmsContext): v
   });
 }
 
+function landingDestinationId(ac: Aircraft, plan?: FlightPlan): string | undefined {
+  return (
+    ac.activeClearance?.limitId ??
+    ac.destinationAirport ??
+    ac.destination ??
+    ac.flightPlan?.destination ??
+    ac.fp?.destination ??
+    plan?.airportId
+  )
+    ?.trim()
+    .toUpperCase();
+}
+
+/** FAA AIM §5-1-15 trainer rule: only IFR at a functioning towered airport closes on landing. */
+export function closeIfrFlightPlanOnLanding(world: World, ac: Aircraft): boolean {
+  const correlated = flightPlanForAircraft(world, ac.id);
+  const plan =
+    correlated ??
+    world.flightPlans.find(
+      (candidate) =>
+        isFlightPlanOperational(candidate) &&
+        candidate.acid.trim().toUpperCase() === ac.callsign.trim().toUpperCase(),
+    );
+  if (
+    !plan ||
+    plan.status !== "active" ||
+    (ac.flightRules !== "IFR" && plan.flightType !== "IFR" && plan.flightRules !== "I")
+  ) {
+    return false;
+  }
+  const regional = world.regional as RegionalFacility | undefined;
+  const destinationId = landingDestinationId(ac, plan);
+  const airport = destinationId ? regional?.getAirport(destinationId) : undefined;
+  if (
+    !airport ||
+    airport.eligible !== true ||
+    airport.publicUse !== true ||
+    airport.towered !== true ||
+    airport.runways.length === 0
+  ) {
+    return false;
+  }
+  Object.assign(plan, closeFlightPlan(plan, world.simTimeMs));
+  return true;
+}
+
 /**
  * After kinematics: despawn LANDING / landingCleared arrivals that reached
  * the threshold. Mutates `world.aircraft`. Strips/PPI must tolerate missing ids.
@@ -148,6 +201,7 @@ export function despawnLandedAircraft(world: World): void {
         distNm < LANDING_RW_DIST_NM;
       if (reachedThreshold && ac.altitudeFt <= fieldElevFt + LANDING_ALT_MAX_FT) {
         emitLanded(ac, ac.intent.clearedApproachId ?? `VISUAL_${lat.runwayId}`, ctx);
+        closeIfrFlightPlanOnLanding(world, ac);
         gone.add(ac.id);
         continue;
       }
@@ -164,6 +218,7 @@ export function despawnLandedAircraft(world: World): void {
       continue;
     }
     emitLanded(ac, approachId, ctx);
+    closeIfrFlightPlanOnLanding(world, ac);
     gone.add(ac.id);
   }
   if (gone.size === 0) {

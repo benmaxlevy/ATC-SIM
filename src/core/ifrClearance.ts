@@ -12,6 +12,7 @@ import {
 } from "./filedRoute";
 import type { FlightPlan, FlightPlanRoute } from "./flightPlan";
 import { isValidBeaconCode } from "./flightPlan";
+import { isFlightPlanOperational } from "./flightPlan";
 import { applyActiveRouteToAircraft, type RouteExecutionAccess } from "./fms/routeExecution";
 import type { SessionLog } from "./events/session-log";
 import {
@@ -304,7 +305,8 @@ export function applyIfrClearance(
 
   const existingPlan = world.flightPlans.find(
     (item) =>
-      item.status !== "deleted" && normalize(item.acid) === normalize(matchingAircraft.callsign),
+      isFlightPlanOperational(item) &&
+      normalize(item.acid) === normalize(matchingAircraft.callsign),
   );
 
   const pickupRequest = world.radioRequests

@@ -29,6 +29,7 @@ import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
+  isFlightPlanOperational,
   modifyFlightPlan,
   releaseAssignedBeacon,
   withAllocatedBeacon,
@@ -380,7 +381,9 @@ function applyPreviewArmedAction(
       if (action.creationMode === "vfr") {
         const existing = world.flightPlans.find(
           (plan) =>
-            plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === action.acid,
+            isFlightPlanOperational(plan) &&
+            plan.flightRules === "VFR" &&
+            plan.acid === action.acid,
         );
         if (existing) {
           if (!existing.assignedBeacon) {
@@ -436,7 +439,7 @@ function applyPreviewArmedAction(
           return;
         }
       }
-      if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
+      if (world.flightPlans.filter((plan) => isFlightPlanOperational(plan)).length >= 100) {
         view.preview.rejection = "CAPACITY — FP";
         return;
       }
@@ -512,7 +515,8 @@ function applyPreviewArmedAction(
       const callsigns = getVfrListCallsigns(world, view);
       const callsign = /^\d{1,2}$/.test(id) ? callsigns[Number(id) - 1] : id;
       const plans = world.flightPlans.filter(
-        (plan) => plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === callsign,
+        (plan) =>
+          isFlightPlanOperational(plan) && plan.flightRules === "VFR" && plan.acid === callsign,
       );
       if (plans.length !== 1) {
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
@@ -553,7 +557,7 @@ function applyPreviewArmedAction(
       if (!world) return;
       const plans = world.flightPlans.filter(
         (plan) =>
-          plan.status !== "deleted" &&
+          isFlightPlanOperational(plan) &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
       if (/^\d{1,2}$/.test(action.flid)) {
@@ -563,7 +567,7 @@ function applyPreviewArmedAction(
         const plan = entry?.planId
           ? world.flightPlans.find((item) => item.id === entry.planId)
           : undefined;
-        if (plan && plan.status !== "deleted") plans.push(plan);
+        if (plan && isFlightPlanOperational(plan)) plans.push(plan);
       }
       const uniquePlans = [...new Map(plans.map((plan) => [plan.id, plan])).values()];
       if (uniquePlans.length !== 1) {
@@ -620,7 +624,7 @@ function applyPreviewArmedAction(
       if (!world) return;
       const plans = world.flightPlans.filter(
         (plan) =>
-          plan.status !== "deleted" &&
+          isFlightPlanOperational(plan) &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
       if (/^\d{1,2}$/.test(action.flid)) {
@@ -630,7 +634,7 @@ function applyPreviewArmedAction(
         const plan = entry?.planId
           ? world.flightPlans.find((item) => item.id === entry.planId)
           : undefined;
-        if (plan && plan.status !== "deleted") plans.push(plan);
+        if (plan && isFlightPlanOperational(plan)) plans.push(plan);
       }
       if (plans.length !== 1) {
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "DUP ID";

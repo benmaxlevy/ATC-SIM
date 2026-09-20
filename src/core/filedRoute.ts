@@ -13,6 +13,7 @@ import {
   createFlightPlanRoute,
   isValidAcid,
   isValidBeaconCode,
+  isFlightPlanOperational,
   routeFixIds,
   validateFlightPlan,
 } from "./flightPlan";
@@ -689,7 +690,9 @@ export function applyFlightPlanRouteTransaction(
   planId: string,
   input: FlightPlanRouteTransactionInput,
 ): FlightPlanRouteTransactionResult<FlightPlanRoute> {
-  const plan = world.flightPlans.find((item) => item.id === planId && item.status !== "deleted");
+  const plan = world.flightPlans.find(
+    (item) => item.id === planId && isFlightPlanOperational(item),
+  );
   if (!plan) {
     return {
       ok: false,
@@ -1027,16 +1030,19 @@ export function saveFlightPlanDraft(
 ): FlightPlanDraftResult {
   const acid = input.acid.trim().toUpperCase();
   const byId = input.id
-    ? world.flightPlans.find((item) => item.id === input.id && item.status !== "deleted")
+    ? world.flightPlans.find((item) => item.id === input.id && isFlightPlanOperational(item))
     : undefined;
   const existing =
-    byId ?? world.flightPlans.find((item) => item.acid === acid && item.status !== "deleted");
+    byId ?? world.flightPlans.find((item) => item.acid === acid && isFlightPlanOperational(item));
   if (input.id && !byId)
     return {
       ok: false,
       error: draftError("PLAN_NOT_FOUND", "plan", `flight plan ${input.id} not found`, input.id),
     };
-  if (!existing && world.flightPlans.filter((item) => item.status !== "deleted").length >= 100) {
+  if (
+    !existing &&
+    world.flightPlans.filter((item) => isFlightPlanOperational(item)).length >= 100
+  ) {
     return {
       ok: false,
       error: draftError("CAPACITY", "plan", "CAPACITY — FP"),
@@ -1135,7 +1141,7 @@ export function saveFlightPlanDraft(
   const route = resolveFiledRoute(routeText, effectiveCatalog);
   if (!route.ok) return { ok: false, error: route.error };
   const otherPlans = world.flightPlans.filter(
-    (item) => item.status !== "deleted" && item.id !== existing?.id,
+    (item) => isFlightPlanOperational(item) && item.id !== existing?.id,
   );
   const identity = validateFlightPlan(
     {

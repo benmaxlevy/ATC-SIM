@@ -14,6 +14,7 @@
 import {
   flightPlanForAircraft,
   handoffFor,
+  isFlightPlanOperational,
   type Aircraft,
   type TrackHandoff,
   type World,
@@ -223,7 +224,9 @@ export function flightPlanForDatablock(
   }
 
   const retained = track?.derivedPlanId
-    ? world.flightPlans.find((plan) => plan.id === track.derivedPlanId && plan.status !== "deleted")
+    ? world.flightPlans.find(
+        (plan) => plan.id === track.derivedPlanId && isFlightPlanOperational(plan),
+      )
     : undefined;
   if (retained) return retained;
 
@@ -231,7 +234,7 @@ export function flightPlanForDatablock(
   if (!assignedSquawk) return undefined;
   const candidates = world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
+      isFlightPlanOperational(plan) && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
   );
   return candidates.length === 1 ? candidates[0] : undefined;
 }

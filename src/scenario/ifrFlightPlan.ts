@@ -10,6 +10,7 @@
 import {
   saveFlightPlanDraft,
   resolveFiledRoute,
+  isFlightPlanOperational,
   type Aircraft,
   type AircraftInit,
   type FlightPlan,
@@ -63,7 +64,7 @@ export function createScenarioIfrFlightPlan(
     );
   }
   const existing = world.flightPlans.find(
-    (plan) => plan.status !== "deleted" && plan.acid === input.acid.trim().toUpperCase(),
+    (plan) => isFlightPlanOperational(plan) && plan.acid === input.acid.trim().toUpperCase(),
   );
   const requestedRoute = routeText(input.route);
   if (existing) {

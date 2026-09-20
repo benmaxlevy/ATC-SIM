@@ -2,6 +2,7 @@ import {
   acceptPointout,
   handoffFor,
   flightPlanForAircraft,
+  isFlightPlanOperational,
   modifyFlightPlan,
   setSelectedAircraft,
   type World,
@@ -167,7 +168,8 @@ function explicitPlanEntryForFlid(
   }
   const plans = world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+      isFlightPlanOperational(plan) &&
+      (plan.acid === normalized || plan.assignedBeacon === normalized),
   );
   if (plans.length !== 1) {
     return undefined;

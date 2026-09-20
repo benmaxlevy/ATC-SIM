@@ -59,6 +59,7 @@ import { resolvePerformanceRegime } from "./performance/regime";
 import type { AircraftPerformanceProfile } from "./performance/types";
 import {
   routeFixIds,
+  isFlightPlanOperational,
   synchronizeFlightPlanRoute,
   updateAircraftSquawk,
   type FlightPlan,
@@ -631,7 +632,7 @@ function synchronizeRouteCursor(
 ): void {
   const plan = world.flightPlans.find(
     (item) =>
-      item.status !== "deleted" &&
+      isFlightPlanOperational(item) &&
       item.acid.trim().toUpperCase() === aircraft.callsign.trim().toUpperCase() &&
       item.routeRecord?.lifecycle === "active",
   );

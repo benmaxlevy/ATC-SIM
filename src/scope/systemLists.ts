@@ -8,6 +8,7 @@ import {
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
   getOperationalService,
+  isFlightPlanOperational,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -513,7 +514,11 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
   for (const plan of world.flightPlans) {
-    if (plan.status === "deleted" || correlatedPlanIds.has(plan.id) || seenCallsigns.has(plan.acid))
+    if (
+      !isFlightPlanOperational(plan) ||
+      correlatedPlanIds.has(plan.id) ||
+      seenCallsigns.has(plan.acid)
+    )
       continue;
     seenCallsigns.add(plan.acid);
     rawItems.push({
@@ -1354,11 +1359,13 @@ export function getVfrListEntries(
       const plan =
         flightPlanForAircraft(world, aircraft.id) ??
         (track?.derivedPlanId
-          ? world.flightPlans.find((p) => p.id === track.derivedPlanId && p.status !== "deleted")
+          ? world.flightPlans.find(
+              (p) => p.id === track.derivedPlanId && isFlightPlanOperational(p),
+            )
           : undefined) ??
         world.flightPlans.find(
           (p) =>
-            p.status !== "deleted" &&
+            isFlightPlanOperational(p) &&
             p.acid === aircraft.callsign &&
             (p.flightRules === "VFR" || p.flightType === "VFR"),
         );
@@ -1375,14 +1382,14 @@ export function getVfrListEntries(
       return true;
     }
     const plan = plansByAircraftId.get(ac.id);
-    if (!plan || plan.status === "deleted") return false;
+    if (!plan || !isFlightPlanOperational(plan)) return false;
     return plan.flightRules === "VFR" || plan.flightType === "VFR";
   });
 
   const unassociatedVfrPlans = world.flightPlans
     .filter(
       (plan) =>
-        plan.status !== "deleted" &&
+        isFlightPlanOperational(plan) &&
         (plan.flightRules === "VFR" || plan.flightType === "VFR") &&
         !correlatedPlanIds.has(plan.id) &&
         !droppedSet.has(plan.acid.toUpperCase()),

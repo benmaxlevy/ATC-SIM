@@ -45,7 +45,9 @@ export type RejectReason =
   | "UNABLE_ROUTE"
   | "REQUEST"
   | "RADAR_CONTACT"
-  | "RUNWAY";
+  | "RUNWAY"
+  | "CONTACT_TOWER"
+  | "CONTACT_CENTER";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -74,6 +76,8 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   RADAR_CONTACT: "unable radar contact",
   CANCELLATION: "unable cancellation",
   RUNWAY: "unable runway",
+  CONTACT_TOWER: "unable contact tower",
+  CONTACT_CENTER: "unable contact center",
 };
 
 function capitalizeFirst(text: string): string {

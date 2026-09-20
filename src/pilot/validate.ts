@@ -22,6 +22,9 @@ import {
   normalizeHeading,
   performanceRegistry,
   validateClassBInstruction,
+  validateContactTower,
+  isCenterHandoffEligible,
+  CONTACT_CENTER_INELIGIBLE_ERROR,
 } from "@core";
 import { isValidBeaconCode } from "@core";
 import {
@@ -58,7 +61,9 @@ export type ValidateReason =
   | "REQUEST"
   | "RADAR_CONTACT"
   | "CANCELLATION"
-  | "RUNWAY";
+  | "RUNWAY"
+  | "CONTACT_TOWER"
+  | "CONTACT_CENTER";
 
 export type ValidateResult = { ok: true } | { ok: false; reason: ValidateReason; detail?: string };
 
@@ -583,9 +588,24 @@ function validateOne(
       }
       return { ok: true };
     }
-    case "CONTACT_TOWER":
-    case "CONTACT_CENTER":
-      return { ok: true };
+    case "CONTACT_TOWER": {
+      if (!opts?.world) return { ok: true };
+      const result = validateContactTower(aircraft, opts.world);
+      return result.ok
+        ? result
+        : {
+            ok: false,
+            reason: "CONTACT_TOWER",
+            detail: result.error,
+          };
+    }
+    case "CONTACT_CENTER": {
+      if (!opts?.world) return { ok: true };
+      return isCenterHandoffEligible(aircraft, opts.world) &&
+        (aircraft.airborne ?? aircraft.altitudeFt > 0)
+        ? { ok: true }
+        : { ok: false, reason: "CONTACT_CENTER", detail: CONTACT_CENTER_INELIGIBLE_ERROR };
+    }
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;

@@ -871,6 +871,101 @@ export interface NavStepResult {
   handoff: boolean;
 }
 
+export interface VfrTowerHandoffContext {
+  airport: RegionalAirport;
+  runway: RegionalRunwayGeometry;
+  inTerminalWindow: boolean;
+}
+
+/**
+ * Resolve the generic VFR arrival transfer gate. The destination must already
+ * be an eligible public-use/towered airport with runway data; facility names
+ * from CONTACT_TOWER are intentionally not involved.
+ */
+export function resolveVfrTowerHandoffContext(
+  ac: Aircraft,
+  airports?: readonly RegionalAirport[],
+): VfrTowerHandoffContext | undefined {
+  const vfr = ac.ambientVfr;
+  if (ac.flightRules !== "VFR" || ac.activeClearance || vfr?.mission !== "AIRPORT_BOUND") {
+    return undefined;
+  }
+  const destinationId = vfr.destinationAirportId ?? ac.destinationAirport ?? ac.destination;
+  const airport = destinationId
+    ? airports?.find((candidate) => candidate.icao.toUpperCase() === destinationId.toUpperCase())
+    : undefined;
+  if (
+    !airport ||
+    airport.eligible !== true ||
+    airport.publicUse !== true ||
+    airport.towered !== true ||
+    airport.runways.length === 0
+  ) {
+    return undefined;
+  }
+  const runway =
+    airport.runways.find((candidate) =>
+      matchesRunway(candidate.id, vfr.destinationRunwayId ?? ""),
+    ) ?? airport.runways[0];
+  if (!runway) return undefined;
+  if (ac.intent.lateral?.type === "VISUAL_FINAL" && vfr.phase === "HANDOFF_COMPLETED") {
+    return { airport, runway, inTerminalWindow: true };
+  }
+
+  const headingRad = (runway.headingMagDeg * Math.PI) / 180;
+  const uX = Math.sin(headingRad);
+  const uY = Math.cos(headingRad);
+  const dx = ac.xNm - runway.thresholdNm.xNm;
+  const dy = ac.yNm - runway.thresholdNm.yNm;
+  const alongTrackNm = -(dx * uX + dy * uY);
+  const crossTrackNm = dx * uY - dy * uX;
+  const distToThreshNm = Math.hypot(dx, dy);
+  const inTerminalWindow =
+    (alongTrackNm >= 0.2 && alongTrackNm <= 5.5 && Math.abs(crossTrackNm) <= 2.5) ||
+    ((vfr.waypointIndex ?? 0) >= (vfr.waypoints?.length ?? 0) &&
+      alongTrackNm >= 0.1 &&
+      distToThreshNm <= 6.0 &&
+      Math.abs(crossTrackNm) <= 3.5);
+  return { airport, runway, inTerminalWindow };
+}
+
+/** Apply the same generic visual-final landing behavior used by autonomous VFR. */
+export function acceptVfrTowerHandoff(
+  ac: Aircraft,
+  simTimeMs: number,
+  log: SessionLog | null | undefined,
+  airports?: readonly RegionalAirport[],
+): boolean {
+  const context = resolveVfrTowerHandoffContext(ac, airports);
+  if (!context?.inTerminalWindow) return false;
+  if (ac.intent.lateral?.type === "VISUAL_FINAL" && ac.ambientVfr?.phase === "HANDOFF_COMPLETED") {
+    return true;
+  }
+  const { airport, runway } = context;
+  ac.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: runway.id,
+    threshold: { xNm: runway.thresholdNm.xNm, yNm: runway.thresholdNm.yNm },
+    headingDeg: runway.headingMagDeg,
+    fieldElevFt: airport.fieldElevFt,
+  };
+  ac.intent.vertical = {
+    type: "GLIDEPATH",
+    approachId: `VISUAL ${runway.id}`,
+  };
+  ac.intent.assignedAltitudeFt = airport.fieldElevFt;
+  ac.intent.assignedHeadingDeg = runway.headingMagDeg;
+  if (ac.ambientVfr) ac.ambientVfr.phase = "HANDOFF_COMPLETED";
+  log?.append({
+    type: "vfr.tower.handoff",
+    callsign: ac.callsign,
+    destinationAirportId: airport.icao,
+    atSimMs: simTimeMs,
+    atWallMs: simTimeMs,
+  });
+  return true;
+}
+
 /**
  * Step autonomous navigation for one ambient VFR aircraft.
  * Updates assigned heading and altitude towards the active waypoint.
@@ -926,50 +1021,8 @@ export function stepVfrAircraftNavigation(
   // Intercept visual final when in terminal approach window (T04-83).
   // Airborne IFR pickups never auto-land.
   if (vfr.mission === "AIRPORT_BOUND" && ac.flightRules !== "IFR" && destAirport && runway) {
-    const headingRad = (runway.headingMagDeg * Math.PI) / 180;
-    const uX = Math.sin(headingRad);
-    const uY = Math.cos(headingRad);
-    const dx = ac.xNm - runway.thresholdNm.xNm;
-    const dy = ac.yNm - runway.thresholdNm.yNm;
-    const alongTrackNm = -(dx * uX + dy * uY);
-    const crossTrackNm = dx * uY - dy * uX;
-    const distToThreshNm = Math.hypot(dx, dy);
-
-    // Terminal intercept window (~3-5 NM along extended centerline)
-    const isAlignedForFinal =
-      alongTrackNm >= 0.2 && alongTrackNm <= 5.5 && Math.abs(crossTrackNm) <= 2.5;
-
-    const isTerminalWaypointReached =
-      curIdx >= wps.length &&
-      alongTrackNm >= 0.1 &&
-      distToThreshNm <= 6.0 &&
-      Math.abs(crossTrackNm) <= 3.5;
-
-    if (isAlignedForFinal || isTerminalWaypointReached) {
-      const fieldElevFt = destAirport.fieldElevFt ?? 0;
-      ac.intent.lateral = {
-        type: "VISUAL_FINAL",
-        runwayId: runway.id,
-        threshold: { xNm: runway.thresholdNm.xNm, yNm: runway.thresholdNm.yNm },
-        headingDeg: runway.headingMagDeg,
-        fieldElevFt,
-      };
-      ac.intent.vertical = {
-        type: "GLIDEPATH",
-        approachId: `VISUAL ${runway.id}`,
-      };
-      ac.intent.assignedAltitudeFt = fieldElevFt;
-      ac.intent.assignedHeadingDeg = runway.headingMagDeg;
-      vfr.phase = "HANDOFF_COMPLETED";
-
-      log?.append({
-        type: "vfr.tower.handoff",
-        callsign: ac.callsign,
-        destinationAirportId: vfr.destinationAirportId,
-        atSimMs: simTimeMs,
-        atWallMs: simTimeMs,
-      });
-
+    const towerContext = resolveVfrTowerHandoffContext(ac, airports);
+    if (towerContext?.inTerminalWindow && acceptVfrTowerHandoff(ac, simTimeMs, log, airports)) {
       return { exited: false, handoff: true };
     }
   }

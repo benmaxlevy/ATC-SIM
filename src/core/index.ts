@@ -96,6 +96,7 @@ export type {
 export {
   allocateBeaconCode,
   associateFlightPlan,
+  closeFlightPlan,
   correlateFlightPlanForAircraft,
   resolveFlightPlanCorrelation,
   createActiveFlightPlanFromTarget,
@@ -107,6 +108,8 @@ export {
   flightPlanForAircraft,
   isValidAcid,
   isValidBeaconCode,
+  isFlightPlanClosed,
+  isFlightPlanOperational,
   modifyFlightPlan,
   releaseAssignedBeacon,
   transitionFlightPlan,
@@ -134,12 +137,16 @@ export {
 } from "./world";
 export type {
   CenterHandoffContext,
+  ContactTransferResult,
   OutboundHandoffContext,
   OutboundHandoffDestination,
   TrackHandoff,
 } from "./handoff";
 export {
   CENTER_HANDOFF_AUTO_ACCEPT_DELAY_MS,
+  CONTACT_CENTER_INELIGIBLE_ERROR,
+  CONTACT_TOWER_INELIGIBLE_ERROR,
+  CONTACT_TOWER_NO_DESTINATION_ERROR,
   OUTBOUND_HANDOFF_AUTO_ACCEPT_DELAY_MS,
   DEFAULT_CENTER_SECTOR_ID,
   DEFAULT_INBOUND_SECTOR_ID,
@@ -148,6 +155,8 @@ export {
   NONE_HANDOFF,
   acceptInboundHandoff,
   acceptOutboundHandoff,
+  applyContactCenter,
+  applyContactTower,
   acceptPointout,
   assertHandoffOwned,
   convertPointoutToHandoff,
@@ -156,6 +165,7 @@ export {
   initiateOutboundHandoff,
   initiatePointout,
   isCenterHandoffEligible,
+  validateContactTower,
   isRadioCommandAllowed,
   offerDepartureHandoff,
   offerInboundHandoff,

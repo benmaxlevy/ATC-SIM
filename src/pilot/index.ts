@@ -14,6 +14,7 @@
  */
 
 import type { Command, World } from "@core";
+import { applyContactCenter, applyContactTower, isFlightPlanOperational } from "@core";
 import { applyIntent } from "./applyIntent";
 
 export type { HandleRadioOpts, PilotResult } from "./handleRadioText";
@@ -58,12 +59,25 @@ export function applyCommand(world: World, command: Command): void {
   if (!aircraft) {
     throw new Error(`applyCommand: no aircraft ${command.callsign}`);
   }
+  const contact = command.instructions.find(
+    (instruction) => instruction.type === "CONTACT_TOWER" || instruction.type === "CONTACT_CENTER",
+  );
+  if (contact?.type === "CONTACT_TOWER") {
+    const result = applyContactTower(world, aircraft, contact.facilityName);
+    if (!result.ok) throw new Error(result.error);
+    return;
+  }
+  if (contact?.type === "CONTACT_CENTER") {
+    const result = applyContactCenter(world, aircraft, contact.facilityName);
+    if (!result.ok) throw new Error(result.error);
+    return;
+  }
   applyIntent(aircraft, command.instructions, world.simTimeMs, {
     catalog: world.catalog,
     log: world.sessionLog,
     fixXy: world.fixRegistry ? (id) => world.fixRegistry?.get(id) : undefined,
     flightPlan: world.flightPlans.find(
-      (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+      (plan) => isFlightPlanOperational(plan) && plan.acid === aircraft.callsign,
     ),
   });
 }

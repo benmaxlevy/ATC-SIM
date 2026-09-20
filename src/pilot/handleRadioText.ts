@@ -11,9 +11,12 @@ import type { Aircraft, Command, Instruction, ParseStage, SessionLog, World } fr
 import {
   applyIfrCancellation,
   applyIfrClearance,
+  applyContactCenter,
+  applyContactTower,
   assertHandoffOwned,
   findOpenRadioRequest,
   handoffFor,
+  isFlightPlanOperational,
   regionalSatelliteIlsApproaches,
   resolveApproachContext,
   transitionRequestToApproved,
@@ -483,7 +486,7 @@ export function handleRadioCommand(
       fixXy: effectiveFixRegistry ? (id) => effectiveFixRegistry.get(id) : undefined,
       activeRunwayId: world.activeRunwayId,
       flightPlan: world.flightPlans.find(
-        (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+        (plan) => isFlightPlanOperational(plan) && plan.acid === aircraft.callsign,
       ),
       radioRequests: world.radioRequests,
       regional: world.regional as RegionalFacility | undefined,
@@ -644,9 +647,20 @@ export function handleRadioCommand(
         }
         break;
       }
-      case "CONTACT_TOWER":
-      case "CONTACT_CENTER":
+      case "CONTACT_TOWER": {
+        const applied = applyContactTower(world, aircraft, requestControl.facilityName);
+        if (!applied.ok) {
+          return reject("CONTACT_TOWER", applied.error, resolvedCommand);
+        }
         break;
+      }
+      case "CONTACT_CENTER": {
+        const applied = applyContactCenter(world, aircraft, requestControl.facilityName);
+        if (!applied.ok) {
+          return reject("CONTACT_CENTER", applied.error, resolvedCommand);
+        }
+        break;
+      }
     }
     const readback = formatReadback({
       callsign: resolved.callsign,
@@ -663,7 +677,7 @@ export function handleRadioCommand(
     fixXy: effectiveFixRegistry ? (id) => effectiveFixRegistry.get(id) : undefined,
     activeRunwayId: world.activeRunwayId,
     flightPlan: world.flightPlans.find(
-      (plan) => plan.status !== "deleted" && plan.acid === aircraft.callsign,
+      (plan) => isFlightPlanOperational(plan) && plan.acid === aircraft.callsign,
     ),
     radioRequests: world.radioRequests,
     regional: world.regional as RegionalFacility | undefined,
