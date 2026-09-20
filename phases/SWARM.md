@@ -5684,14 +5684,11 @@ scheduling, deterministic `say request` details, request lifecycle handling,
 and typed/Path A/Path B/Path C/PTT/speech GBNF parity. Pilot `OUT_OF` requests
 and Raytheon STARS behavior remain out of scope.
 
-Final browser CI passed: 244 files, 2,657 tests passed, 4 skipped. Focused
-speech parity passed: 2 passed, 44 deselected; the full local speech mock
-suite was stopped after the existing FastAPI `test_health_ok_parse_ready`
-TestClient path hung under the local Python/pytest environment. `py_compile`
-and `git diff --check` passed. No push; unrelated `.worktrees/` and
-`speech-api/:memory:.ses` artifacts were preserved.
+Final browser CI passed: 244 files, 2,657 tests passed, 4 skipped. Full
+`SPEECH_API_MOCK=1 pytest` passed: 94 tests. Focused speech parity and
+`py_compile` passed; `git diff --check` passed. The default local speech venv
+had an incompatible latest FastAPI/Starlette TestClient hang; the gate passed
+with dependency versions allowed by `requirements-ci.txt`. No push; unrelated
+`.worktrees/` and `speech-api/:memory:.ses` artifacts were preserved.
 
-**PHASE EXIT BLOCKED**
-
-Blocker: full `SPEECH_API_MOCK=1 pytest` cannot complete in this environment;
-the implementation and all targeted Class B gates are green.
+**PHASE EXIT GREEN**

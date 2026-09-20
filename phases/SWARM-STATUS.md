@@ -14,19 +14,18 @@ Completed on `feature/sattelite-traffic` with captain squash merges:
   acceptance, docs, shared contracts, and backlog update.
 
 Final browser `npm run ci`: **244 files passed, 2,657 passed, 4 skipped**.
-Focused speech parity: **2 passed, 44 deselected**; `py_compile` passed. The
-full local `SPEECH_API_MOCK=1 pytest` gate was attempted twice and stopped by
-timeout at the existing FastAPI `test_health_ok_parse_ready` TestClient path
-under the local Python/pytest environment. No speech failure was observed in
-the changed parser tests. `git diff --check` passed.
+Full `SPEECH_API_MOCK=1 pytest`: **94 passed**. Focused speech parity,
+`py_compile`, and `git diff --check` passed. The default local speech venv
+had an incompatible latest FastAPI/Starlette TestClient hang; the full gate
+passed with dependency versions allowed by `requirements-ci.txt`.
 
 FAA grounding is recorded in the tickets/docs: JO 7110.65 §§2-1-18, 7-9-2,
 7-9-3 and AIM §§3-2-3, 3-5-7, 4-2-3. No Raytheon STARS manual was supplied or
 needed; no STARS behavior was added. No push performed. Unrelated
 `.worktrees/` and `speech-api/:memory:.ses` artifacts preserved.
 
-**PHASE EXIT BLOCKED** — implementation complete, but the configured full
-speech mock gate is blocked by the environment timeout described above.
+**PHASE EXIT GREEN** — no push performed; phase stopped at the configured
+boundary.
 
 ## SEVENTY-FOURTH SWARM — AUDIT REMEDIATION HANDOFF BLOCKED (T02-202, T04-86–T04-91, 2026-09-19)
 
