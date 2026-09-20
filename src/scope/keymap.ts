@@ -198,12 +198,20 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Terminates radar advisory service; squawk is not automatically reset to 1200.",
       },
       {
-        id: "contact-facility",
-        command: "contact <facility> tower|center",
+        id: "contact-tower",
+        command: "contact <facility> tower",
         example: "DAL123 contact Atlanta tower",
         input: "Radio",
         result:
-          "Transfers communications to the named terminal function. Facility names are syntax/readback data only; no frequency is accepted.",
+          "Transfers an eligible arrival to the generic tower/landing path. No frequency is accepted; VFR remains VFR and Class B is not authorized.",
+      },
+      {
+        id: "contact-center",
+        command: "contact <facility> center",
+        example: "DAL123 contact Atlanta center",
+        input: "Radio",
+        result:
+          "Transfers an eligible outbound aircraft to the generic center handoff. Route, flight rules, beacon, and radar service remain separate.",
       },
       {
         id: "acknowledge-ifr-cancellation",

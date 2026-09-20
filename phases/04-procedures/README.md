@@ -749,11 +749,18 @@ T04-81 enables arrival-airport approach resolution and satellite ILS parity;
 T04-82 implements visual approach clearance (`CLEARED_VISUAL`, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance);
 T04-83 executes autonomous VFR auto-land on visual final for airport-bound traffic, emitting `vfr.tower.handoff` and `nav.landed` events with MSAW inhibit on final descent and standard VFR datablock presentation.
 
-### Post-exit addendum (T04-101 contact tower/center command parity)
+### Post-exit addendum (T04-101–103 contact tower/center and landing closure)
 
-T04-101 adds parser-only `CONTACT_TOWER` and `CONTACT_CENTER` commands. Each
-requires a 1–4-token syntax-only facility name and accepts no frequency or
-facility lookup; runtime transfer behavior belongs to T04-102.
+`CONTACT_TOWER` and `CONTACT_CENTER` use a 1–4-token syntax-only facility
+name. No frequency is accepted and no facility identity lookup occurs. Tower
+contact reuses the generic IFR tower/landing and VFR visual-final gates;
+center contact reuses the generic outbound handoff gate. Contact transfer is
+not radar-service termination, an approach clearance, or Class B
+authorization. VFR remains VFR. At actual `nav.landed`, an active IFR plan
+closes only at an eligible public-use towered destination; the historical
+record remains read-only while VFR/DVFR and non-towered IFR plans remain open.
+This is trainer behavior, with no tower cab, frequency, facility entity, or
+Raytheon STARS functionality.
 
 ---
 

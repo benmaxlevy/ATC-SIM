@@ -63,6 +63,14 @@ carrying one of these cues (plus `maintain vfr` and visual-runway cues) may
 engage Path C even when identifier retrieval comes back empty; schema,
 completeness, grounding, and identifier-listed guards still decide acceptance.
 
+After parser acceptance, `CONTACT_TOWER` and `CONTACT_CENTER` use generic
+runtime transfer gates. Tower contact reuses the existing IFR tower/landing or
+VFR visual-final path; center contact reuses the outbound handoff path. Contact
+does not terminate radar service, issue an approach clearance, change flight
+rules, or authorize Class B. Actual `nav.landed` closes only an active IFR plan
+at an eligible functioning towered destination; VFR/DVFR and non-towered IFR
+plans remain open.
+
 ## IFR clearance route windows
 
 After an IFR clearance `VIA`, deterministic parsing scans one route window until

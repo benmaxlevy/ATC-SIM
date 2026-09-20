@@ -140,6 +140,16 @@ flight plan, service, beacon, or kinematics except for an accepted clearance's
 existing Class B route/altitude behavior. A primary-airport departure does not
 create a pilot `OUT_OF` request; `OUT_OF` remains controller-issued.
 
+Communications transfer uses `contact <facility> tower` or `contact
+<facility> center`. The facility name is syntax/readback data only: no
+frequency is accepted and no facility identity lookup occurs. Tower contact
+requires the existing eligible-arrival gate and reuses visual-final or IFR
+landing behavior. Center contact requires the existing outbound gate. These
+commands do not terminate radar service, issue an approach clearance, change
+flight rules, or authorize Class B. At actual `nav.landed`, only an active IFR
+plan at an eligible functioning towered destination closes; VFR/DVFR and
+non-towered IFR plans remain open, and closed plans remain read-only history.
+
 ### Typed command syntax
 
 Spaces between command letters and numeric parameters are optional (e.g. `H 240` or `H240`, `C 50` or `C50`).
@@ -178,7 +188,8 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | | `unable flight following` / `unable to provide flight following` | `DAL123 unable flight following` | Decline flight following request |
 | | `radar contact <distance> miles from <fix>` | `DAL123 radar contact 5 miles from MERGE` | Establish radar identification with informational position report |
 | | `radar service terminated` | `DAL123 radar service terminated` | Terminate radar advisory service (transponder squawk is not automatically reset to 1200) |
-| | `contact <facility> tower` / `contact <facility> center` | `DAL123 contact Atlanta tower` | Transfer communications to the named terminal function; facility name is syntax/readback data only and no frequency is accepted. |
+| | `contact <facility> tower` | `DAL123 contact Atlanta tower` | Transfer an eligible arrival to the generic tower/landing path; no frequency is accepted, VFR remains VFR, and this does not authorize Class B. |
+| | `contact <facility> center` | `DAL123 contact Atlanta center` | Transfer an eligible outbound aircraft to the generic center handoff; route, flight rules, beacon, and radar service remain separate. |
 | **Pilot IFR Cancellation** | `IFR cancellation received` | `DAL123 IFR cancellation received` | Acknowledge pilot-initiated IFR cancellation outside Class B airspace; operational rules revert to VFR and autonomous navigation resumes, with unsafe continuation replanned around Bravo |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |

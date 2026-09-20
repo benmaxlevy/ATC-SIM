@@ -797,31 +797,28 @@ Constraints later work must keep:
 - self-hosted `speech-api` only; no paid STT/TTS/LLM hosts;
 - synthetic catalogs in generic tests; no KATL production counts.
 
-### Radio communications transfer to tower ("contact tower [frequency]")
+### Radio communications transfer to tower/center (no frequency)
 
-Visible now: Tower handoffs exist as internal STARS scope tracking/UI handoffs
-(`initiateOutboundHandoff` to `TWR`, `acceptInboundHandoff`) and internal telemetry/lifecycle
-events (`vfr.tower.handoff` at ~3–5 NM from destination). Tower handoff eligibility
-(`isTowerHandoffEligible`) gates handoffs inside 5 NM.
+Shipped in T04-101–103: typed, Path A/B/C, PTT, and speech-parser parity for
+`CONTACT_TOWER` and `CONTACT_CENTER`; generic tower/center transfer gates;
+VFR visual-final reuse; and landing-based IFR plan closure. Facility names are
+syntax/readback/log data only. No frequency field, facility lookup, individual
+tower/center entity, or Raytheon STARS behavior exists.
 
-Deliberately missing: Spoken and typed radio phraseology for communications transfer to the
-tower (`"contact [airport] tower [frequency]"`, e.g. `"Delta 123, contact tower 119.1"` /
-`"Skyhawk 172SP, contact Peachtree Tower 120.9"`) across all controlled airports (center airport
-KATL/KDEM and all controlled satellite airports such as KPDK, KFTY, KRYY). There is currently
-no Command IR instruction (e.g. `CONTACT_TOWER`), typed shorthand, speech API GBNF grammar,
-readback generator, or pilot frequency transfer state machine.
+Still deliberately missing: live frequency assignment, facility-specific
+communications entities, tower-cab/ground coordination, receiving-position
+simulation, and real facility identity validation. The current trainer uses
+generic eligible-destination and outbound-handoff gates, and does not claim
+facility-specific operational fidelity.
 
 Constraints later work must keep:
-- Follow FAA JO 7110.65 §2-1-17, §5-9-4, §7-6-8: for controlled airports, transfer phraseology
-  is `"Contact [Facility] Tower [frequency]"`. Never state `"radar service terminated"` for
-  arrivals at tower-controlled airports (§5-1-13(b)(2)-(3) termination is automatic upon landing).
-- Work across all controlled airports uniformly (center and regional satellites) using
-  catalog/facility tower frequency metadata, without facility-specific branches or hardcoded
-  airport names.
-- Maintain Path C / Command IR synchronization: update `src/core/command/types.ts`,
-  `speech-api/parse_engine.py`, GBNF, prompt, validator, parity guard, and docs together.
-- Inbound pilot check-in on tower frequency remains decoupled from TRACON simulation or scored
-  as appropriate.
+- Follow FAA JO 7110.65 §§2-1-15/16/17 and 7-6-8: transfer remains coordinated and
+  the named receiving function is distinct from radar-service termination.
+- Keep `CONTACT_TOWER` and `CONTACT_CENTER` generic across regional data; do not add
+  facility-specific branches or hardcoded facility identity validation.
+- Maintain Path C / Command IR synchronization for any later contract change.
+- Inbound pilot check-in, frequency assignment, and receiving-position behavior remain
+  decoupled from this trainer slice.
 
 ### Controller VFR clearances through/into Class B
 
