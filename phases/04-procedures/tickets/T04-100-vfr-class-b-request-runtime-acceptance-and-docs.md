@@ -110,6 +110,9 @@ Cover:
 - departure from an airport below a Bravo shelf requesting entry/transition;
 - flight remaining below the shelf with no request;
 - primary-airport departure with no pilot `OUT_OF` request;
+- primary-airport arrival request and clearance association;
+- explicit clearance association to the matching aircraft only;
+- underlying-airport departure details containing both origin and destination;
 - `say request` → standby → say request;
 - explicit clearance, `CLEARED AS REQUESTED`, `UNABLE`, and remain-outside;
 - request terminal state, duplicate/capacity behavior, and association;
@@ -147,7 +150,7 @@ Update:
 
 - Re-read JO 7110.65 §§2-1-18, 7-9-2, and 7-9-3 against command/readback
   strings and request lifecycle.
-- Re-read AIM §§3-2-3, 3-5-7, and 4-2-3 against arrival, transition, and
+- Re-read AIM §§3-2-3, 3-5-5, and 4-2-3 against arrival, transition, and
   underlying-airport generated requests.
 - Confirm `OUT_OF` remains controller-only and primary-airport departure is not
   represented as a pilot `OUT_OF` request.

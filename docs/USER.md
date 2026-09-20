@@ -443,14 +443,14 @@ PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
 Service versus flight rules: flight following is a radar advisory *service*
 on a VFR aircraft, not an IFR clearance. Pickup changes operational flight
 rules to IFR; cancellation reverts them to VFR and repairs the autonomous
-continuation around modeled Class B when needed. There are no VFR arrivals to
-the primary airport through Class B: airport-bound traffic flies only to
-eligible towered satellite destinations, swept-path Bravo avoidance is
-enforced on every planned route, and the trainer issues no VFR Bravo
-clearance without explicit authorization. A controller-issued Class B clearance
-authorizes the named VFR operation only; it does not create an IFR clearance or
-alter flight-plan, service, or beacon state. Other-airspace and tower
-coordination is assumed, not simulated.
+continuation around modeled Class B when needed. Airport-bound VFR traffic may
+request Class B access before arriving at the primary airport; the request and
+clearance lifecycle is modeled, while surface/tower coordination is not.
+Swept-path Bravo avoidance is enforced on every planned route, and the trainer
+issues no VFR Bravo clearance without explicit authorization. A
+controller-issued Class B clearance authorizes the named VFR operation only; it
+does not create an IFR clearance or alter flight-plan, service, or beacon state.
+Other-airspace and tower coordination is assumed, not simulated.
 
 Trainer limitations: deterministic virtual pilots with configurable workload,
 not observed traffic statistics; VMC assumed for generated IFR cancellation;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCommand } from "@parse";
 import { formatReadback } from "@pilot";
-import { isLegalInstruction, schemaCheckPathC } from "../path-c";
+import { isLegalInstruction, pathCResultIsComplete, schemaCheckPathC } from "../path-c";
 import { matchSpokenPatterns } from "../spoken/pattern-matcher";
 import { parseSpokenGrammar } from "../spoken/grammar";
 
@@ -137,6 +137,31 @@ describe("T04-94 VFR Class B Command IR", () => {
       callsignToken: "DAL123",
       instructions: [{ type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }],
     });
+  });
+
+  it("keeps Path C Class B evidence canonical and atomic", () => {
+    const clearance = { type: "CLASS_B_CLEARANCE", operation: "TO_ENTER" } as const;
+    expect(pathCResultIsComplete("DAL123 clear into bravo airspace", [clearance])).toBe(false);
+    expect(pathCResultIsComplete("DAL123 cleared through bravo airspace via", [clearance])).toBe(
+      false,
+    );
+    expect(
+      schemaCheckPathC({
+        ok: true,
+        callsignToken: "DAL123",
+        instructions: [clearance, { type: "ALTITUDE", altitudeFt: 4000, verb: "MAINTAIN" }],
+      }),
+    ).toBeNull();
+    expect(
+      schemaCheckPathC({
+        ok: true,
+        callsignToken: "DAL123",
+        instructions: [
+          { type: "CLASS_B_CLEARANCE_AS_REQUESTED" },
+          { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it("formats deterministic readbacks without changing flight-rule semantics", () => {

@@ -84,6 +84,12 @@ Path A/B and GBNF must emit the same closed JSON shapes as typed and Path C.
 Unknown or tied route evidence remains a parse miss. No cloud inference or
 unconstrained fuzzy repair is allowed.
 
+Path C must preserve the same safety contract: Class B evidence requires the
+canonical `CLEARED` phrase; a transcript containing `VIA` requires nonempty,
+catalog-grounded route legs; `CLASS_B_CLEARANCE` must be the only instruction;
+and semantic evidence failure rejects the whole result rather than returning a
+partial instruction list.
+
 ## Acceptance contract
 
 | Input/form | Expected action/result | State/side effect | Rejection/edge case | Manual evidence |

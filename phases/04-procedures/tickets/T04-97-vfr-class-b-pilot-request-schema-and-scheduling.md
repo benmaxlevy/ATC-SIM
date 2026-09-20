@@ -33,7 +33,7 @@ planned route enters the 3D volume. Do not create pilot `OUT_OF` requests.
   https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap7_section_9.html
 - **R02:** FAA AIM §3-2-3, VFR Class B arrival, transit, and departure:
   https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_2.html
-- **R03:** FAA AIM §3-5-7, VFR transition routes and secondary-airport
+- **R03:** FAA AIM §3-5-5, VFR transition routes and secondary-airport
   arrivals/departures:
   https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_5.html
 - **R04:** FAA AIM §4-2-3, initial contact request/position/altitude content:
@@ -79,14 +79,19 @@ preserving existing flight-following `APPROVED` behavior.
   withdrawn request.
 - Duplicate active Class B requests for one aircraft are rejected without a
   second cap charge.
+- Explicit `airborne: false` is ineligible even when `altitudeFt` is positive.
+- If the stored Class B plan changes before transmission, withdraw the stale
+  request and re-evaluate it before emitting pilot audio or radio details.
+- `AIRPORT_BOUND` is `TO_ENTER` only when its projected endpoint is inside
+  Bravo; an entering route that exits Bravo is `THROUGH`.
 
 ## Acceptance contract
 
 | Input/form | Expected action/result | State/side effect | Rejection/edge case | Manual evidence |
 | --- | --- | --- | --- | --- |
 | Airborne VFR arrival route enters Bravo toward KATL-like primary airport | Create `CLASS_B_ACCESS` `TO_ENTER` request | `PENDING`; details preserve destination, position, altitude, direction | Route stays outside/under shelf → no request | R02 §3-2-3 |
-| Airborne VFR transition across Bravo | Create `THROUGH` request | `PENDING`; route legs are catalog-grounded | Missing or ungrounded route → no request and no authorization | R03 §3-5-7 |
-| VFR departure from airport below a Bravo shelf | Create `TO_ENTER`/`THROUGH` request when route enters volume | `PENDING`; origin and destination remain generic data | Route remains below shelf → no request | R03 §3-5-7 |
+| Airborne VFR transition across Bravo | Create `THROUGH` request | `PENDING`; route legs are catalog-grounded | Missing or ungrounded route → no request and no authorization | R03 §3-5-5 |
+| VFR departure from airport below a Bravo shelf | Create `TO_ENTER`/`THROUGH` request when route enters volume | `PENDING`; origin and destination remain generic data | Route remains below shelf → no request | R03 §3-5-5 |
 | Departure from primary airport | Use existing departure path | No Class B pilot request; no `OUT_OF` request | Must not schedule a pilot `OUT_OF` request | R02 §3-2-3 |
 | IFR, non-airborne, or already-authorized aircraft | Skip scheduling | No request, route, flight-rule, service, or beacon mutation | Existing eligibility behavior remains unchanged | Existing VFR eligibility contract |
 | Duplicate active Class B request | Do not append a second record | No extra cap charge or audio | Exact `REQUEST: request already pending` | Existing request lifecycle pattern |

@@ -20,7 +20,7 @@ from parse_engine import (
     validate_parse_json,
 )
 def test_parse_contract_version_is_explicit() -> None:
-    assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-1"
+    assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-2"
 
 
 def test_catalog_guard_rejects_unlisted_callsign() -> None:
@@ -619,6 +619,17 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     from parse_engine import validate_parse_json
     assert validate_parse_json({"ok": True, "instructions": [req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}]}).error == "BAD_CLEARANCE"
     assert validate_parse_json({"ok": True, "instructions": [bare_radar_contact, {"type": "ALTITUDE", "altitudeFt": 5000, "verb": "CLIMB"}]}).error == "BAD_CLEARANCE"
+    class_b = {"type": "CLASS_B_CLEARANCE", "operation": "TO_ENTER"}
+    assert validate_parse_json({"ok": True, "instructions": [class_b, {"type": "ALTITUDE", "altitudeFt": 4000, "verb": "MAINTAIN"}]}).error == "BAD_CLEARANCE"
+    assert not guard_instruction_semantics(
+        "clear into bravo airspace",
+        ParseOutcome(ok=True, instructions=[class_b]),
+    ).ok
+    class_b_through = {"type": "CLASS_B_CLEARANCE", "operation": "THROUGH"}
+    assert not guard_instruction_semantics(
+        "cleared through bravo airspace via",
+        ParseOutcome(ok=True, instructions=[class_b_through]),
+    ).ok
     assert guard_instruction_semantics("say request turn left heading 270", ParseOutcome(ok=True, instructions=[req_details, {"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}])).error == "BAD_CLEARANCE"
 
     # Semantics guards

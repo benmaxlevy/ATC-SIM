@@ -34,7 +34,7 @@ response reports intent; it never authorizes Class B entry.
   https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap2_section_1.html
 - **R02:** FAA JO 7110.65 §7-9-2, Class B clearance is separate from the request:
   https://www.faa.gov/air_traffic/publications/atpubs/atc_html/chap7_section_9.html
-- **R03:** FAA AIM §3-5-7, position/altitude/route/direction for transition routes:
+- **R03:** FAA AIM §3-5-5, position/altitude/route/direction for transition routes:
   https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap3_section_5.html
 - **R04:** FAA AIM §4-2-3, initial-contact request content:
   https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap4_section_2.html
@@ -61,6 +61,7 @@ N12345, 10 miles south of PDK, Cessna 172, 2500, northbound, request transition 
 Omit unavailable optional fields without empty commas or invented values.
 Normalize `TO_ENTER` arrival to “VFR arrival into Bravo”, `TO_ENTER` departure
 to “VFR departure into Bravo”, and `THROUGH` to “transition through Bravo”.
+For a departure, include both available origin and destination, in that order.
 
 ## Lifecycle and side effects
 
@@ -78,8 +79,8 @@ to “VFR departure into Bravo”, and `THROUGH` to “transition through Bravo�
 | Input/form | Expected action/result | State/side effect | Rejection/edge case | Manual evidence |
 | --- | --- | --- | --- | --- |
 | `say request` with `TO_ENTER` arrival | Direct pilot response with position, type, altitude, destination, and Bravo entry intent | Details event; request returns to `PENDING`; no authorization | No open request → `REQUEST: no pending radio request` | R02 §§2-1-18, 7-9-2 |
-| `say request` with `THROUGH` transition | Direct response with route/direction and transition intent | Details event; no aircraft or Class B state change | Missing route → omit only unavailable optional route; never invent fix | R03 §3-5-7 |
-| `say request` with underlying-airport departure | Direct response includes departure intent and available origin/destination | Request remains pending | No origin data → omit origin cleanly | R03 §3-5-7 |
+| `say request` with `THROUGH` transition | Direct response with route/direction and transition intent | Details event; no aircraft or Class B state change | Missing route → omit only unavailable optional route; never invent fix | R03 §3-5-5 |
+| `say request` with underlying-airport departure | Direct response includes departure intent and available origin/destination | Request remains pending | No origin data → omit origin cleanly | R03 §3-5-5 |
 | `stand by` / `standby` | Existing `STANDBY_REQUEST` behavior | `PENDING`/`AWAITING_DETAILS` → `STANDBY` | Terminal request → `REQUEST: request is already resolved` | R01 §2-1-18 |
 | `say request` after standby | Direct response once | `STANDBY` → `PENDING` | Withdrawn/declined/cleared → exact existing no-open/resolved error | R01 §2-1-18 |
 | `say request` for a controller-only `OUT_OF` action | No pilot request response | No new request | No `OUT_OF` request may exist | R02 §7-9-2 |

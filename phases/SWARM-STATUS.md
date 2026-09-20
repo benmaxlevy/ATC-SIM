@@ -1,5 +1,25 @@
 # Swarm status
 
+## POST-AUDIT CORRECTIONS — VFR CLASS B PILOT REQUESTS (2026-09-20)
+
+Read-only subagent audit found and corrected runtime, clearance, Path C, and
+documentation gaps without creating new tickets. Existing T04-97–T04-100
+tickets were amended with the corrected invariants and acceptance coverage.
+
+- `0993ab0` — enforce VFR-only Class B request controls.
+- `bd299d7` — reject grounded aircraft, classify airport-bound routes by
+  endpoint, and refresh changed Class B plans before transmission.
+- `432c6bc` — harden Path C Class B evidence, route, sequence, and semantic
+  guards.
+- Follow-up commit — correct departure origin/destination details, contract
+  version, integration coverage, FAA AIM §3-5-5 citations, and user docs.
+
+Focused TypeScript tests: **150 passed**. Final browser `npm run ci`:
+**244 files, 2,667 passed, 4 skipped**. Speech mock gate passed **94 tests**
+with repository-compatible pytest 8 dependencies; pytest 9 remains a local
+FastAPI TestClient hang. No STARS behavior added. No unrelated artifacts
+staged.
+
 ## SEVENTY-EIGHTH SWARM — VFR Class B PILOT REQUESTS (T04-97–T04-100, 2026-09-20)
 
 Completed on `feature/sattelite-traffic` with captain squash merges:

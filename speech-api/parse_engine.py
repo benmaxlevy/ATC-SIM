@@ -20,7 +20,7 @@ log = logging.getLogger("speech-api")
 
 SCHEMA_VERSION = "command-ir-v0"
 # Shared browser/service safety contract. Bump when semantic guard behavior changes.
-PARSE_CONTRACT_VERSION = "command-ir-v0-safe-1"
+PARSE_CONTRACT_VERSION = "command-ir-v0-safe-2"
 # Bounded increase over the original 128-token budget; remains below the
 # configured context window and is measured by the per-request timing log.
 PATH_C_MAX_OUTPUT_TOKENS = 192

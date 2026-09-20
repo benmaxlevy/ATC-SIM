@@ -15,7 +15,7 @@ import { cancelApproachSequenceError } from "./instruction-order";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
-export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-1" as const;
+export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-2" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 /** Path C is optional salvage; it must not hold the radio loop indefinitely. */
 export const DEFAULT_PARSE_TIMEOUT_MS = 3000;
@@ -120,6 +120,17 @@ const ALT_VERBS = new Set(["CLIMB", "DESCEND", "MAINTAIN"]);
 const SPEED_VERBS = new Set(["MAINTAIN", "INCREASE", "REDUCE"]);
 const CROSS_RESTRICTIONS = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 const LEGAL_TYPES = new Set<string>(INSTRUCTION_TYPES);
+const SINGLE_INSTRUCTION_TYPES = new Set([
+  "CLASS_B_CLEARANCE",
+  "CLASS_B_CLEARANCE_AS_REQUESTED",
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
+]);
 const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
   "exact",
   "alias",
@@ -157,6 +168,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function hasSingleInstructionConflict(instructions: readonly Instruction[]): boolean {
+  return (
+    instructions.some((instruction) => SINGLE_INSTRUCTION_TYPES.has(instruction.type)) &&
+    instructions.length !== 1
+  );
 }
 
 /** Closed Instruction union. Extra keys or unknown type → miss. */
@@ -419,7 +437,7 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   if (cancelApproachSequenceError(instructions) !== null) {
     return null;
   }
-  if (instructions.some((instruction) => instruction.type === "CLASS_B_CLEARANCE") && instructions.length !== 1) {
+  if (hasSingleInstructionConflict(instructions)) {
     return null;
   }
   return { callsignToken, instructions };
@@ -690,6 +708,7 @@ export function pathCResultIsComplete(
   const has = (pattern: RegExp) => pattern.test(text);
   const hasType = (...types: string[]) =>
     instructions.some((instruction) => types.includes(instruction.type));
+  if (hasSingleInstructionConflict(instructions)) return false;
   const classBClearances = instructions.filter(
     (instruction): instruction is Extract<Instruction, { type: "CLASS_B_CLEARANCE" }> =>
       instruction.type === "CLASS_B_CLEARANCE",
@@ -701,6 +720,10 @@ export function pathCResultIsComplete(
     if (hasVia !== (clearance.route !== undefined)) return false;
     if (hasVia && clearance.route?.length === 0) return false;
   }
+  const hasNonCanonicalClassBCue = has(
+    /\bclear\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+  );
+  if (hasNonCanonicalClassBCue) return false;
   if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
     return false;
   }
@@ -745,9 +768,7 @@ export function pathCResultIsComplete(
     return false;
   }
   if (
-    has(
-      /\bcleared\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
-    ) &&
+    has(/\bcleared\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/) &&
     !hasType("CLASS_B_CLEARANCE")
   ) {
     return false;

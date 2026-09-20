@@ -178,10 +178,10 @@ export function formatVfrClassBRequest(args: {
         ? "request VFR departure into Bravo"
         : "request VFR arrival into Bravo";
   let request = phrase;
-  if (args.destinationAirportId) request += ` to ${args.destinationAirportId}`;
-  else if (args.originAirportId && args.classBIntent === "DEPARTURE") {
+  if (args.originAirportId && args.classBIntent === "DEPARTURE") {
     request += ` from ${args.originAirportId}`;
   }
+  if (args.destinationAirportId) request += ` to ${args.destinationAirportId}`;
   const route = args.route?.map((leg) => leg.fixId).filter(Boolean);
   if (route && route.length > 0) request += ` via ${route.join(" then ")}`;
   segments.push(request);
