@@ -5785,3 +5785,107 @@ Merged: T04-101, T04-102, T04-103
 Tests: focused acceptance 18 passed; npm run ci 247 files/2692 passed/4 skipped; speech-api mock pytest 94 passed; git diff --check; FAA evidence recorded
 Notes: restricted sandbox TestClient hang bypassed by required outside-sandbox speech gate; no-frequency CONTACT TOWER/CENTER; VFR preserved; IFR towered plan closes only at landing; VFR/non-towered IFR plans remain open; no STARS; no push
 ```
+
+## Eightieth swarm planned — aircraft spoken callsign aliases (2026-09-20)
+
+Human approved the aircraft alias plan on the current
+`feature/sattelite-traffic` branch. The slice adds explicit aliases to every
+current VFR aircraft profile, accepts canonical N-number and alias callsigns,
+uses aliases in pilot output when available, extends spoken N-numbers to five
+digits, and keeps canonical callsigns authoritative. It includes browser
+parser, Path C, speech-api prompt/validator, GBNF, mock/eval, Help, user docs,
+and shared parse-pipeline updates.
+
+| Key | Value |
+| --- | --- |
+| Goal | Add data-backed VFR aircraft aliases with safe canonical grounding and pilot speech. |
+| Phase | `phases/03-voice/` addendum with generic core/performance data plumbing |
+| Include | T03-27 → T03-28; T03-29; T03-30; T03-31 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Merge lock | Captain-only; workers never merge or spawn |
+| Stop | T03-31, focused tests, `npm run ci`, speech mock pytest, `git diff --check`, and manual evidence |
+| Push | Push `feature/sattelite-traffic` after green phase exit; user explicitly requested push |
+
+**Product law:** Canonical N-number is the only authoritative aircraft
+identity. `N123` and an authored alias form such as `Skyhawk 123` may target
+the same live aircraft. Alias matching requires the complete registration tail
+and a unique live candidate. Unknown, incomplete, malformed, or ambiguous
+aliases return `PARSE_MISS` and mutate nothing. Selected-aircraft fallback is
+never used to resolve an explicit alias. Pilots use the preferred authored
+alias plus complete N-number tail when available; otherwise they use canonical
+N-number speech. All current VFR profiles have explicit alias data. Five-digit
+N-numbers are supported. Path C is optional local salvage only: it receives
+bounded alias candidates and may return only a listed canonical callsign.
+Command IR instruction types do not change.
+
+**Path law:** Any changed callsign grammar/grounding contract is updated in
+the browser parser, Path A, Path B, Path C, speech-api prompt and semantic
+validator, GBNF, mock/contract tests, and live eval corpus together. The
+browser schema-check remains authoritative. No cloud inference or unconstrained
+fuzzy repair is allowed.
+
+**Skip:** N-prefix abbreviation to longer registrations, alias-only
+callsigns, non-N registrations, new VFR types, new Command IR instructions,
+paid/cloud speech, facility-specific branches, unrelated Help/UI work, and
+phase 4/5 behavior.
+
+**Waves:**
+
+- Wave A: T03-27 — profile schema, all seven VFR aliases, and runtime data.
+- Wave B: T03-28 ∥ T03-29 — pilot output and deterministic grounding.
+- Wave C: T03-30 — Path C structured candidates, prompt, semantic validator,
+  GBNF, mocks, and eval parity. Starts after T03-28.
+- Wave D: T03-31 — integrated acceptance, Help, user/phase/shared/speech docs,
+  final gates, and manual evidence. Starts after all prior tickets.
+
+**Ticket ownership:**
+
+- T03-27 owns profile/runtime alias data and generic VFR propagation.
+- T03-28 owns pilot check-in, readback, VFR request, IFR pickup, and TTS alias
+  presentation.
+- T03-29 owns deterministic parser candidate grounding and five-digit spoken
+  N-number support.
+- T03-30 owns Path C context, prompt, semantic validation, GBNF, mocks,
+  contract tests, and live eval fixtures.
+- T03-31 owns integrated acceptance, Help, `docs/USER.md`, phase/shared/speech
+  documentation, final CI, and manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T03-27-aircraft-spoken-alias-data` → `phases/03-voice/tickets/T03-27-aircraft-spoken-alias-data.md`
+- `ticket/T03-28-pilot-spoken-alias-output` → `phases/03-voice/tickets/T03-28-pilot-spoken-alias-output.md`
+- `ticket/T03-29-deterministic-alias-callsign-grounding` → `phases/03-voice/tickets/T03-29-deterministic-alias-callsign-grounding.md`
+- `ticket/T03-30-path-c-gbnf-alias-parity` → `phases/03-voice/tickets/T03-30-path-c-gbnf-alias-parity.md`
+- `ticket/T03-31-callsign-alias-acceptance-help-docs` → `phases/03-voice/tickets/T03-31-callsign-alias-acceptance-help-docs.md`
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The captain owns the merge lock,
+progressive ticket merges, focused gates, final CI, STATUS handoff, and phase
+boundary. Preserve unrelated `.worktrees/` and `speech-api/:memory:.ses`; do
+not stage either artifact.
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: aircraft spoken callsign aliases T03-27–T03-31
+Merge target: feature/sattelite-traffic
+Merged: T03-27, T03-28, T03-29, T03-30, T03-31
+Tests: focused acceptance; npm run ci; speech-api mock pytest; git diff --check; FAA evidence
+Notes: seven VFR aliases; canonical N-number preservation; five-digit speech; Path C/GBNF parity; Help/docs updated; push feature/sattelite-traffic
+```
+
+## Eightieth swarm started — aircraft spoken callsign aliases (2026-09-20)
+
+Execution authorized by the user on `feature/sattelite-traffic` after the
+T03-27–T03-31 planning update. The captain runs the five tickets under the
+dependency waves with one isolated worker at a time, performs the merge lock
+and post-merge gates, and stops at the Phase 3 boundary.
+
+Workers implement exactly one ticket, never merge or spawn children, and return
+exactly `READY TO MERGE` or `BLOCKED`. The worker model resolves to the
+session-default `inherit` configuration. Existing unrelated `.worktrees/` and
+`speech-api/:memory:.ses` artifacts remain untouched. Push
+`feature/sattelite-traffic` is authorized only after the final green phase
+exit.
