@@ -311,6 +311,55 @@ python -m query_traces --command-miss-rates
 python -m query_traces --latencies
 ```
 
+### 5. Enabling trace collection
+
+Trace collection is **disabled by default** to avoid unexpected disk I/O and telemetry overhead. You can enable it via browser storage, environment variables, or programmatically:
+
+#### A. Browser console (immediate runtime toggle)
+
+Open your browser's Developer Tools (F12) console on the simulator page and run:
+
+```javascript
+// Enable trace recording and async flushing
+localStorage.setItem("atc_parse_traces", "1");
+
+// Disable trace recording
+localStorage.removeItem("atc_parse_traces");
+```
+
+Traces start recording on the next command or voice transmission immediately; no server restart required.
+
+#### B. Build-time / environment variable
+
+When launching the Vite development server:
+
+```bash
+# Enable in .env or shell
+VITE_ENABLE_PARSE_TRACES=1 npm run dev
+
+# Optional: customize trace sink endpoint (defaults to http://127.0.0.1:8090/debug/traces)
+VITE_TRACE_URL=http://127.0.0.1:8090/debug/traces
+```
+
+#### C. Programmatic toggle
+
+```typescript
+import { getTraceCollector } from "@/parse/trace";
+
+// Enable or disable at runtime
+getTraceCollector().enable();
+getTraceCollector().disable();
+getTraceCollector().setEnabled(true);
+```
+
+#### D. Verifying active trace collection
+
+1. **Browser Network tab**: Filter by `/debug/traces` to see debounced batch `POST` requests returning `{ "ok": true, "count": N }`.
+2. **Database inspection**: Run the CLI query tool to inspect collected traces:
+   ```bash
+   python3 speech-api/query_traces.py --summary
+   ```
+
 ## Non-goals
 
 - LLM as pilot, chat, or intent applier (`non-goals.md`).

@@ -16,6 +16,7 @@ Paid or metered STT/TTS/LLM APIs, including: OpenAI, Deepgram, AssemblyAI, Groq,
 | `POST` | `/stt` | body `audio/wav` (pcm16le mono, 16 kHz preferred). Optional `X-ATC-Fixes` and `X-ATC-Procedures` headers ground Qwen transcription in catalog spellings. | `{ "text": string, "metadata": { "model", "audioDurationMs", "inferenceLatencyMs", "emptySignal", "noSpeechProbability?" } }` |
 | `POST` | `/tts` | JSON `{ "text", "voiceId" }` | `audio/wav` (mono PCM) |
 | `POST` | `/parse` | JSON `{ "text", "source", "schemaVersion": "command-ir-v0", "context"? }` — no n-best, no confidence. Optional `context: { callsigns, selectedCallsign, fixes, procedures, approaches, airports }` is live-strip + catalog prompt grounding. `airports` is only for IFR clearance limits. | `{ "ok": true, "callsignToken", "instructions" }` or `{ "ok": false, "error": "UNAVAILABLE" \| "PARSE_MISS" \| "SCHEMA" }` (200 or 503). Never 500-with-stack. |
+| `POST` | `/debug/traces` | JSON `{ "session", "utterances" }` | `{ "ok": true, "count": int }` (200). Passive SQLite persistence sink for browser caller-side parser telemetry. |
 
 The STT response intentionally has no confidence score: Qwen does not expose a calibrated command-level score. Metadata is telemetry only; command parsing remains responsible for rejecting invalid input.
 
@@ -150,6 +151,7 @@ Copy `.env.example` → `.env` (gitignored) or export the same names in the shel
 | `STT_DEVICE` | auto (`cuda` when PyTorch CUDA is available; else `cpu`) | `cpu` or `cuda` |
 | `HF_TOKEN` | unset | Local-only, gated Hub models |
 | `CORS_ORIGINS` | (empty) | Extra allowed origins, comma-separated |
+| `TRACE_DB_PATH` | `.local/parse-traces.sqlite` | SQLite database destination for browser telemetry traces |
 
 ## Mock mode (CI)
 
@@ -185,3 +187,35 @@ curl -s -X POST http://127.0.0.1:8090/tts -H "Content-Type: application/json" -d
 ```
 
 Play `readback.wav` locally. The Vite sim still boots with `NullSpeechPort` if this process is down; typed commands keep working.
+
+## Diagnostic trace persistence & queries
+
+`speech-api` serves as an optional passive persistence sink (`POST /debug/traces`) for the browser's caller-side parser and STT observability telemetry, writing transactions to SQLite in WAL mode (`.local/parse-traces.sqlite`).
+
+### Query traces (`query_traces.py`)
+
+Run diagnostic queries against the trace database:
+
+```bash
+# Full diagnostic summary
+python query_traces.py --summary
+
+# Machine-readable JSON output
+python query_traces.py --summary --json
+
+# Query specific failure categories
+python query_traces.py --failure-root-causes
+python query_traces.py --rescue-rate
+python query_traces.py --guard-rejections
+python query_traces.py --command-miss-rates
+python query_traces.py --latencies
+```
+
+### Prune traces (`prune_traces.py`)
+
+Maintain storage bounds:
+
+```bash
+# Retain at most 14 days and max 25,000 utterances
+python prune_traces.py --days 14 --max-utterances 25000
+```
