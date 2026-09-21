@@ -42,6 +42,7 @@ export const DEFAULT_PROFILE: AircraftPerformanceProfile = Object.freeze({
   icaoType: "DEFAULT",
   representativeVariant: "legacy-default",
   representativeEngine: "legacy-default",
+  spokenAliases: Object.freeze([]),
   status: "SUPPORTED",
   limits: Object.freeze({
     minControlledSpeedKt: 0,
@@ -59,6 +60,44 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+const SPOKEN_ALIAS_PATTERN = /^[A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*$/;
+
+/**
+ * Validate and normalize authored pilot names. Aliases are data, not a value
+ * inferred from representativeVariant or an aircraft type string.
+ */
+export function normalizeSpokenAliases(value: unknown): readonly string[] {
+  if (value === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("spokenAliases must be an array when provided");
+  }
+  if (value.length === 0) {
+    throw new Error("spokenAliases must contain at least one alias when provided");
+  }
+
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+  for (const [index, rawAlias] of value.entries()) {
+    if (typeof rawAlias !== "string") {
+      throw new Error(`spokenAliases[${index}] must be a non-empty word or phrase`);
+    }
+    const alias = rawAlias.trim().replace(/\s+/g, " ");
+    if (!alias || !SPOKEN_ALIAS_PATTERN.test(alias)) {
+      throw new Error(`spokenAliases[${index}] must be a non-empty word or phrase`);
+    }
+    const key = alias.toUpperCase();
+    if (seen.has(key)) {
+      throw new Error("spokenAliases must not contain duplicates");
+    }
+    seen.add(key);
+    aliases.push(alias);
+  }
+
+  return Object.freeze(aliases);
 }
 
 function freezeDeep<T>(value: T): T {
@@ -291,6 +330,11 @@ export class AircraftPerformanceRegistry {
     return [...this.generalAviation.keys()].sort();
   }
 
+  /** Preferred and alternate authored pilot names for an aircraft type. */
+  public getSpokenAliases(aircraftType?: string | null): readonly string[] {
+    return this.getProfile(aircraftType).spokenAliases ?? [];
+  }
+
   private buildProfile(
     icao: string,
     override: AircraftProfileOverride,
@@ -373,6 +417,7 @@ export class AircraftPerformanceRegistry {
       icaoType: icao,
       representativeVariant: override.representativeVariant ?? icao,
       representativeEngine: override.representativeEngine ?? "generic",
+      spokenAliases: normalizeSpokenAliases(override.spokenAliases),
       status: "SUPPORTED",
       limits,
       regimes: Object.freeze(regimesObj) as Record<PerformanceRegime, PerformanceRegimeLimits>,
@@ -387,10 +432,24 @@ export const performanceRegistry = new AircraftPerformanceRegistry();
 /** Exported for production-data shape tests without exposing mutable internals. */
 export function isAircraftProfileDataset(value: unknown): value is AircraftProfileDataset {
   if (!isRecord(value)) return false;
+  const hasValidAliases = (catalog: unknown): boolean => {
+    if (!isRecord(catalog)) return true;
+    return Object.values(catalog).every((override) => {
+      if (!isRecord(override) || !("spokenAliases" in override)) return true;
+      try {
+        normalizeSpokenAliases(override.spokenAliases);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  };
   return (
     isRecord(value.defaults) &&
     isRecord(value.aircraft) &&
     isRecord(value.defaults.limits) &&
-    isRecord(value.defaults.regimes)
+    isRecord(value.defaults.regimes) &&
+    hasValidAliases(value.aircraft) &&
+    hasValidAliases(value.generalAviation)
   );
 }

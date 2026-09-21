@@ -190,6 +190,8 @@ export interface Aircraft {
    * Display-only — kinematics ignore this.
    */
   aircraftType?: string;
+  /** Authored pilot names; canonical `callsign` remains the roster identity. */
+  spokenAliases?: readonly string[];
   /** Assigned or active 4-digit beacon/squawk code (e.g. "1200", "0342"). */
   squawk?: string;
   /** Transponder capability / mode ("primary", "mode_c", "mode_a", "mode_s", "none"). */
@@ -307,6 +309,8 @@ export interface AircraftInit {
   altitudeFt: number;
   speedKt: number;
   aircraftType?: string;
+  /** Authored pilot names; never replace the canonical callsign. */
+  spokenAliases?: readonly string[];
   squawk?: string;
   transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
   primaryOnly?: boolean;
@@ -417,6 +421,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
     },
     identUntilSimMs: 0,
     ...(init.aircraftType ? { aircraftType: init.aircraftType.toUpperCase() } : {}),
+    ...(init.spokenAliases?.length
+      ? { spokenAliases: Object.freeze([...init.spokenAliases]) }
+      : {}),
     ...(init.squawk ? { squawk: init.squawk } : {}),
     ...(init.transponder ? { transponder: init.transponder } : {}),
     ...(init.primaryOnly !== undefined ? { primaryOnly: init.primaryOnly } : {}),

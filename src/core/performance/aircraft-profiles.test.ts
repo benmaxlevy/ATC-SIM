@@ -2,7 +2,12 @@ import { describe, expect, test } from "vitest";
 import { createAircraft } from "../aircraft";
 import { createWorld, stepWorld } from "../world";
 import profilesJson from "./aircraft-profiles.json";
-import { isAircraftProfileDataset, performanceRegistry, DEFAULT_PROFILE } from "./registry";
+import {
+  isAircraftProfileDataset,
+  normalizeSpokenAliases,
+  performanceRegistry,
+  DEFAULT_PROFILE,
+} from "./registry";
 import type { AircraftProfileDataset, PerformanceRegime } from "./types";
 
 const dataset = profilesJson as unknown as AircraftProfileDataset;
@@ -15,6 +20,16 @@ const ALL_REGIMES: readonly PerformanceRegime[] = [
   "missedApproach",
   "landing",
 ];
+
+const EXPECTED_GA_ALIASES = {
+  BE36: ["Bonanza"],
+  C172: ["Skyhawk"],
+  C182: ["Skylane"],
+  C208: ["Caravan"],
+  DA40: ["Diamond"],
+  PA28: ["Archer"],
+  SR22: ["Cirrus"],
+} as const;
 
 describe("unified aircraft profiles dataset contract", () => {
   test("dataset satisfies isAircraftProfileDataset schema guard", () => {
@@ -97,6 +112,44 @@ describe("unified aircraft profiles dataset contract", () => {
     expect(performanceRegistry.getProfile("C172").limits?.serviceCeilingFt).toBe(14000);
     expect(performanceRegistry.getProfile("C208").limits?.serviceCeilingFt).toBe(25000);
     expect(performanceRegistry.listGeneralAviationTypes()).toEqual(gaKeys);
+  });
+
+  test("every current VFR profile has explicit preferred spoken alias data", () => {
+    for (const [aircraftType, aliases] of Object.entries(EXPECTED_GA_ALIASES)) {
+      expect(dataset.generalAviation?.[aircraftType]?.spokenAliases).toEqual(aliases);
+      expect(performanceRegistry.getSpokenAliases(aircraftType)).toEqual(aliases);
+      expect(performanceRegistry.getProfile(aircraftType).spokenAliases).toEqual(aliases);
+      expect(Object.isFrozen(performanceRegistry.getProfile(aircraftType).spokenAliases)).toBe(
+        true,
+      );
+    }
+  });
+
+  test("alias validation allows omission and multiple authored aliases", () => {
+    expect(normalizeSpokenAliases(undefined)).toEqual([]);
+    expect(normalizeSpokenAliases(["  Skyhawk  ", "172S"])).toEqual(["Skyhawk", "172S"]);
+    expect(
+      isAircraftProfileDataset({
+        defaults: dataset.defaults,
+        aircraft: { SYNTH: {} },
+        generalAviation: { SYNTH: { spokenAliases: ["Trainer", "Four Twenty"] } },
+      }),
+    ).toBe(true);
+  });
+
+  test.each([
+    ["empty", { spokenAliases: [] }],
+    ["blank", { spokenAliases: ["   "] }],
+    ["duplicate", { spokenAliases: ["Skyhawk", "skyhawk"] }],
+    ["malformed", { spokenAliases: ["Skyhawk!"] }],
+  ])("alias validation rejects %s values", (_label, override) => {
+    expect(
+      isAircraftProfileDataset({
+        defaults: dataset.defaults,
+        aircraft: { SYNTH: override },
+      }),
+    ).toBe(false);
+    expect(() => normalizeSpokenAliases(override.spokenAliases)).toThrow();
   });
 });
 

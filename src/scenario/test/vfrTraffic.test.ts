@@ -386,6 +386,41 @@ describe("T04-77 Training-box spawning, repeatability, and legacy IFR-stream ide
     }));
   }
 
+  test.each([
+    ["BE36", "Bonanza"],
+    ["C172", "Skyhawk"],
+    ["C182", "Skylane"],
+    ["C208", "Caravan"],
+    ["DA40", "Diamond"],
+    ["PA28", "Archer"],
+    ["SR22", "Cirrus"],
+  ])("VFR spawn propagates the authored %s alias", (aircraftType, alias) => {
+    const scenario = createTestVfrScenario();
+    const config = {
+      ...scenario.vfrTraffic!,
+      initialCount: 1,
+      targetCount: 1,
+      entriesPerHour: 0,
+      maxPopulation: 1,
+      aircraftMix: [
+        {
+          aircraftType,
+          weight: 1,
+          callsignPrefix: "N" as const,
+          performanceSource: "PROFILE_REGISTRY" as const,
+        },
+      ],
+    };
+    const manager = new VfrTrafficManager({ config, scenario, seed: 7 });
+    const world = createWorldFromScenario(loadKdem());
+    const aircraft = manager.spawnOneVfrAircraft(world);
+
+    expect(aircraft?.aircraftType).toBe(aircraftType);
+    expect(aircraft?.spokenAliases).toEqual([alias]);
+    expect(aircraft?.callsign).toMatch(/^N[0-9]{1,5}[A-Z]?$/);
+    expect(aircraft?.callsign).not.toContain(alias.toUpperCase());
+  });
+
   test("Spawn radius follows scenario coverage with 30 NM fallback", () => {
     expect(VFR_TRAINING_HALF_EXTENT_NM).toBe(30);
     // KDEM declares rangeRings.maxNm = 60, so the whole 60 NM region is on the table.

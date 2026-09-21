@@ -268,6 +268,7 @@ export {
 export type {
   AircraftPerformanceProfile,
   AircraftProfileDataset,
+  AircraftProfileOverride,
   PerformanceProvenance,
   PerformanceRegime,
   PerformanceRegimeLimits,

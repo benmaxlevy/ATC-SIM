@@ -37,6 +37,7 @@ export interface AircraftPerformanceProfile {
   readonly icaoType: string;
   readonly representativeVariant: string;
   readonly representativeEngine: string;
+  readonly spokenAliases?: readonly string[];
   readonly openapType?: string;
   readonly status: "SUPPORTED" | "UNRESOLVED";
   readonly sources?: readonly PerformanceSource[];
@@ -75,6 +76,8 @@ export interface AircraftProfileOverride {
   readonly source?: string;
   readonly representativeVariant?: string;
   readonly representativeEngine?: string;
+  /** Authored names pilots may use instead of the canonical registration. */
+  readonly spokenAliases?: readonly string[];
   readonly limits?: Readonly<Partial<AircraftProfileDefaultsLimits>>;
   readonly regimes?: Readonly<Partial<Record<PerformanceRegime, Partial<PerformanceRegimeLimits>>>>;
 }
