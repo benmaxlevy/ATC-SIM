@@ -2338,3 +2338,33 @@ user separately authorized pushing the completed target branch after this
 phase; no other branch is pushed.
 
 **PHASE EXIT GREEN**
+
+## EIGHTIETH SWARM COMPLETE — aircraft spoken callsign aliases (T03-27–T03-31)
+
+Completed sequentially on `feature/sattelite-traffic` with one worker slot and
+captain squash merges. T03-27 adds explicit `spokenAliases` metadata to all
+seven VFR aircraft profiles. T03-28 makes pilot transmissions use the alias
+when available while preserving canonical N-number output. T03-29 grounds
+spoken `N123` and alias forms such as `Skyhawk 123` to the canonical callsign,
+with transcript-evidence and ambiguity rejection. T03-30 synchronizes the
+frontend parser, Path C instruction types, semantic validator, prompt, mock,
+tests, and GBNF; aliases are input evidence only and canonical N-number
+callsigns remain the output contract. T03-31 adds acceptance coverage, Help,
+user documentation, phase documentation, and the shared parse-pipeline
+contract.
+
+Captain commits: `ed3fb7c`, `b19572d`, `17b4d01`, `cd6a431`, `8035d4b`.
+Final `npm run ci`: **251 files passed, 2,753 passed, 4 skipped, 0 failures**.
+Focused alias acceptance and Help tests passed; `git diff --check` passed. The
+speech API mock gate passed **98 tests** after T03-30 and before T03-31's
+README-only speech change. A post-merge rerun hung in this container after
+initial collection and was terminated; no speech runtime files changed in
+T03-31. No supplied STARS manual was present and no STARS surface changed, so
+the manual gate was not applicable.
+
+Manual leftover: live browser/type/PTT/audio review and live GGUF evaluation
+were not run. Automated coverage is committed trainer-fixture evidence only.
+No unrelated worktree or session artifacts were staged. Push was authorized by
+the user and is the next captain action.
+
+**PHASE EXIT GREEN**
