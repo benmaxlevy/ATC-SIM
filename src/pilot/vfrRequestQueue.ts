@@ -50,6 +50,7 @@ import {
   type RegionalFacility,
   type VfrRequestConfig,
 } from "@scenario";
+import { formatCallsignSpeech } from "./telephony";
 
 export type {
   IfrCancellationCandidate,
@@ -86,6 +87,16 @@ export function bearingToCardinalDirection(bearingDeg: number): string {
 }
 
 /**
+ * VFR callups keep the existing canonical fallback text for TTS identifier
+ * expansion, while authored aliases use the shared pilot callsign formatter.
+ */
+function formatRequestCallsign(callsign: string, spokenAliases?: readonly string[]): string {
+  return spokenAliases?.some((alias) => alias.trim().length > 0)
+    ? formatCallsignSpeech(callsign, { spokenAliases })
+    : callsign;
+}
+
+/**
  * Format a VFR flight-following callup with aircraft type, destination, and
  * altitude, e.g. "N123, 15 miles north of KPDK, C172, request flight
  * following to KFTY at 4500".
@@ -95,13 +106,14 @@ export function bearingToCardinalDirection(bearingDeg: number): string {
  */
 export function formatVfrFlightFollowingRequest(args: {
   callsign: string;
+  spokenAliases?: readonly string[];
   positionPhrase?: string;
   aircraftType?: string;
   destinationAirportId?: string;
   altitudeFt?: number;
 }): string {
   const typeText = args.aircraftType ?? "type unknown";
-  const segments = [args.callsign];
+  const segments = [formatRequestCallsign(args.callsign, args.spokenAliases)];
   if (args.positionPhrase) {
     segments.push(args.positionPhrase);
   }
@@ -128,12 +140,13 @@ export function formatVfrFlightFollowingRequest(args: {
  */
 export function formatIfrPickupRequest(args: {
   callsign: string;
+  spokenAliases?: readonly string[];
   positionPhrase?: string;
   aircraftType?: string;
   destinationAirportId?: string;
   requestedAltitudeFt?: number;
 }): string {
-  const segments: string[] = [args.callsign];
+  const segments: string[] = [formatRequestCallsign(args.callsign, args.spokenAliases)];
   if (args.positionPhrase && args.positionPhrase.trim().length > 0) {
     segments.push(args.positionPhrase.trim());
   }
@@ -152,6 +165,7 @@ export function formatIfrPickupRequest(args: {
 /** Format the deterministic pilot transmission for a pending Class B request. */
 export function formatVfrClassBRequest(args: {
   callsign: string;
+  spokenAliases?: readonly string[];
   positionPhrase?: string;
   aircraftType?: string;
   altitudeFt?: number;
@@ -162,7 +176,7 @@ export function formatVfrClassBRequest(args: {
   destinationAirportId?: string;
   route?: readonly ClassBRequestRouteLeg[];
 }): string {
-  const segments = [args.callsign];
+  const segments = [formatRequestCallsign(args.callsign, args.spokenAliases)];
   if (args.positionPhrase) segments.push(args.positionPhrase);
   segments.push(args.aircraftType ?? "type unknown");
   if (args.altitudeFt !== undefined && Number.isFinite(args.altitudeFt)) {
@@ -1119,7 +1133,7 @@ export class VfrRequestQueue {
       const regionalFacility = (world.regional as RegionalFacility | undefined) ?? this.regional;
       const facilityName = regionalFacility?.facilityName?.trim();
       const facilityPrefix = facilityName ? `${facilityName} ` : "";
-      const checkInText = `${facilityPrefix}Approach, ${next.callsign}`;
+      const checkInText = `${facilityPrefix}Approach, ${formatRequestCallsign(next.callsign, aircraft.spokenAliases)}`;
       setStatus?.(checkInText);
 
       log.append({
@@ -1216,6 +1230,7 @@ export class VfrRequestQueue {
       radioReq.kind === "CLASS_B_ACCESS"
         ? formatVfrClassBRequest({
             callsign: radioReq.callsign,
+            spokenAliases: aircraft?.spokenAliases,
             positionPhrase: detailPosition,
             aircraftType:
               schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
@@ -1231,6 +1246,7 @@ export class VfrRequestQueue {
         : radioReq.kind === "FLIGHT_FOLLOWING"
           ? formatVfrFlightFollowingRequest({
               callsign: radioReq.callsign,
+              spokenAliases: aircraft?.spokenAliases,
               positionPhrase: detailPosition ?? undefined,
               aircraftType:
                 schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,
@@ -1244,6 +1260,7 @@ export class VfrRequestQueue {
             })
           : formatIfrPickupRequest({
               callsign: radioReq.callsign,
+              spokenAliases: aircraft?.spokenAliases,
               positionPhrase: detailPosition ?? undefined,
               aircraftType:
                 schedReq?.aircraftType ?? radioReq.details.aircraftType ?? aircraft?.aircraftType,

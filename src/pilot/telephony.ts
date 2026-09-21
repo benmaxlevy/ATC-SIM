@@ -75,13 +75,40 @@ export function speakAlphanumeric(text: string): string {
   return parts.join(" ");
 }
 
+export interface CallsignSpeechOptions {
+  isHeavy?: boolean;
+  /** Authored pilot name; canonical callsign remains the identity source. */
+  spokenAliases?: readonly string[];
+}
+
+function formatAliasedNNumber(
+  callsign: string,
+  spokenAliases: readonly string[] | undefined,
+): string | undefined {
+  const match = /^N(\d{1,5})([A-Z]{0,2})$/i.exec(callsign.trim());
+  const alias = spokenAliases?.find((candidate) => candidate.trim().length > 0)?.trim();
+  if (!match || !alias) {
+    return undefined;
+  }
+  const [, digits, suffix] = match;
+  const tail = [speakDigitString(digits), speakAlphanumeric(suffix)].filter(Boolean).join(" ");
+  return `${alias} ${tail}`;
+}
+
 /**
  * `DAL123` → `Delta 123`. Unknown `XYZ99` → `X-ray Yankee Zulu 99`.
+ * FAA AIM §4-2-4 analog: model/manufacturer name plus registration tail.
+ * Trainer delta: first authored alias is always preferred; no communication
+ * history or abbreviated-tail state is modeled.
  */
-export function formatCallsignSpeech(callsign: string, options?: { isHeavy?: boolean }): string {
+export function formatCallsignSpeech(callsign: string, options?: CallsignSpeechOptions): string {
   const trimmed = callsign.trim();
   if (!trimmed) {
     return "";
+  }
+  const aliased = formatAliasedNNumber(trimmed, options?.spokenAliases);
+  if (aliased) {
+    return [aliased, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
   }
   const gaMatch = trimmed.match(/^([A-Za-z]+)\s+(\d+.*)$/);
   if (gaMatch) {
@@ -204,6 +231,7 @@ export function speakAltitude(altitudeFt: number): string {
 
 export interface FormatDepartureCheckInArgs {
   callsign: string;
+  spokenAliases?: readonly string[];
   sidName?: string;
   currentAltitudeFt: number;
   assignedAltitudeFt: number;
@@ -217,7 +245,10 @@ export interface FormatDepartureCheckInArgs {
  * Level / assigned: "Departure, Delta 123, leaving one thousand two hundred for one-zero thousand"
  */
 export function formatDepartureCheckIn(args: FormatDepartureCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy });
+  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+    isHeavy: args.isHeavy,
+    spokenAliases: args.spokenAliases,
+  });
   const altFt = roundAltitudeToHundreds(args.currentAltitudeFt);
   const altSpeech = altFt >= FLIGHT_LEVEL_FT ? `FL ${altFt / 100}` : speakAltitude(altFt);
 

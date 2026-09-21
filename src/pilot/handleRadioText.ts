@@ -327,6 +327,7 @@ export function handleRadioCommand(
         reason,
         detail,
         isHeavy,
+        spokenAliases: world.aircraft.find((ac) => ac.callsign === c.callsign)?.spokenAliases,
       }),
       command: c,
       reason,
@@ -537,6 +538,7 @@ export function handleRadioCommand(
           req.kind === "CLASS_B_ACCESS"
             ? formatVfrClassBRequest({
                 callsign: req.callsign,
+                spokenAliases: aircraft.spokenAliases,
                 positionPhrase: detailPosition,
                 aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
                 altitudeFt: req.details.altitudeFt ?? aircraft.altitudeFt,
@@ -550,6 +552,7 @@ export function handleRadioCommand(
             : req.kind === "FLIGHT_FOLLOWING"
               ? formatVfrFlightFollowingRequest({
                   callsign: req.callsign,
+                  spokenAliases: aircraft.spokenAliases,
                   positionPhrase: detailPosition,
                   aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
                   destinationAirportId: req.details.destinationAirportId,
@@ -560,6 +563,7 @@ export function handleRadioCommand(
                 })
               : formatIfrPickupRequest({
                   callsign: req.callsign,
+                  spokenAliases: aircraft.spokenAliases,
                   positionPhrase: detailPosition,
                   aircraftType: req.details.aircraftType ?? aircraft.aircraftType,
                   destinationAirportId: req.details.destinationAirportId,

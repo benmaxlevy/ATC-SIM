@@ -20,7 +20,10 @@ import {
 
 export { formatCallsignSpeech } from "./telephony";
 
-export type ReadbackAircraft = Pick<Aircraft, "headingDeg" | "altitudeFt" | "wakeCategory">;
+export type ReadbackAircraft = Pick<
+  Aircraft,
+  "headingDeg" | "altitudeFt" | "wakeCategory" | "spokenAliases"
+>;
 
 export type RejectReason =
   | "UNKNOWN_CALLSIGN"
@@ -332,6 +335,7 @@ export function formatReadback(args: {
 }): string {
   const callsignSpeech = formatCallsignSpeech(args.callsign, {
     isHeavy: args.aircraft.wakeCategory === "H",
+    spokenAliases: args.aircraft.spokenAliases,
   });
   const clauses = args.instructions
     .map((instruction) => formatInstructionClause(instruction, args.aircraft, args.procedureNames))
@@ -349,6 +353,7 @@ export function formatRejectReadback(args: {
   reason: string;
   detail?: string;
   isHeavy?: boolean;
+  spokenAliases?: readonly string[];
 }): string {
   const reason = args.reason.trim().toUpperCase();
   const fixed = REJECT_FIXED[reason];
@@ -361,6 +366,11 @@ export function formatRejectReadback(args: {
   } else if ((reason === "SPEED" || reason === "ALTITUDE") && args.detail) {
     after = args.detail;
   }
-  const cs = args.callsign ? formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy }) : "";
+  const cs = args.callsign
+    ? formatCallsignSpeech(args.callsign, {
+        isHeavy: args.isHeavy,
+        spokenAliases: args.spokenAliases,
+      })
+    : "";
   return capitalizeFirst(cs ? `${cs} ${after}` : after);
 }
