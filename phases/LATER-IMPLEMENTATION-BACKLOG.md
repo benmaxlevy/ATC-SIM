@@ -12,11 +12,11 @@ value. Items already shipped or limited to manual validation are excluded.
 ### P0 — core safety and runtime truth
 
 1. MCI evaluator, suppression state, and `CA M` command semantics.
-2. Predicted MSAW and flashing **LA** behavior.
+2. Predicted MSAW.
 3. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
 4. CSMM, duplicate-beacon world-level detection, and `NO FP` datablock indicator.
 5. Wake-aware live datablock output, including `NOWGT`.
-6. Manual Conflict Alert inhibit commands.
+6. Adapted ATPA eligibility and per-position adaptation.
 
 ### P1 — controller operations
 
@@ -28,26 +28,36 @@ value. Items already shipped or limited to manual validation are excluded.
 12. Flight-plan amendment modals and target-click deletion.
 13. Scratchpad and tactical altitude/heading/speed command chords.
 14. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+15. Clearance/plan synchronization, readback validation, route conformance, and audit state.
+16. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
 
 ### P2 — facility and display expansion
 
-15. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
-16. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
-17. MOA and selected-beacon workflows.
-18. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
-19. Pilot barometric corrections and weather-driven deviation behavior.
-20. Additional PTL prediction geometry and presets.
-21. Additional catalog-backed maps, map management, and AVL restyle.
-22. Handwritten strip annotations and cross-rack/window strip movement.
+17. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+18. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
+19. MOA and selected-beacon workflows.
+20. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+21. Pilot barometric corrections and weather-driven deviation behavior.
+22. Additional PTL prediction geometry and presets.
+23. AVL restyle and remaining CRC-style DCB parity.
+24. Handwritten strip annotations and cross-rack/window strip movement.
 
 ### P3 — procedure and voice follow-ups
 
-23. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
-24. RNAV/hold/RF in-sim FMS guidance.
-25. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
+25. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+26. Airways and richer route grammar; RNAV/hold/RF in-sim FMS guidance.
+27. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
+28. Frequency assignment, receiving-position simulation, and facility communications entities.
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
+
+Items removed from this list are shipped: flashing `LA`, manual CA inhibit,
+basic RNAV/fix-to-fix flying, climb-via/descend-via, SID/STAR transitions,
+CIFP parsing/closure/packing, KATL catalog/map integration, core TPA/PTL,
+WX mosaic, catalog map management, core DCB controls, typed strip annotations,
+handoff ownership, IFR clearance execution, VFR Class B, generic tower/center
+transfer, and pilot-side GA telephony.
 
 ## Scope and display
 
@@ -102,10 +112,9 @@ Deliberately missing:
   codes in all LDBs, `*BI <ENTER>` to inhibit/remove beacon codes in all LDBs.
 - STARS §6.13.7 single-track LDB beacon display toggle: `*B [slew]` to toggle
   beacon code display on a selected unassociated track.
-- STARS §6.13.2 unassociated track nominal single-line Mode C altitude display
-  with 5-second transient beacon + ground speed readout upon slew click (Fig. 6-9).
-  Currently beacon code is displayed continuously on line 1 unless globally
-  inhibited by view options.
+
+Shipped: `*B` click provides the five-second transient beacon and ground-speed
+readout. The remaining global and single-track toggles are still missing.
 
 Constraints later work must keep:
 - LDB Field 5 is strictly ground speed digits (tens or knots); no flight rules
@@ -122,9 +131,8 @@ shipped a 300 ft yellow caution band (`alt < floor` but `>= floor - 300`);
 that band is unused.
 
 NAS/STARS color displays use flashing red **LA** (NTSB A-06-44; JO 7110.65
-5-14). CRC R07 names Low-Altitude / MSAW alert status. Predicted MSAW
-(look-ahead still showing **LA** in red) is still not modeled. Flashing
-**LA** is not modeled (tag is static, like CA).
+5-14). CRC R07 names Low-Altitude / MSAW alert status. The live tag now
+flashes; predicted MSAW (look-ahead still showing **LA** in red) is not modeled.
 
 Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
 no datablock/target tint from MSAW; CA remains the only conflict audio. Do
@@ -302,10 +310,6 @@ The following specialized or multi-subsystem command sets remain deliberately de
    - `* CRDA OFF [Pair ID] <ENTER>`: Deactivate CRDA runway pair.
    - `* CRDA DISP <ENTER>`: Display active CRDA configuration matrix.
 
-5. **Conflict Alert Manual Inhibit:**
-   - `* K [Click Target]`: Inhibit Conflict Alert on specific target.
-   - `* K ALL <ENTER>`: Inhibit Conflict Alert on all targets.
-
 **Shipped vs deferred collisions (do not regress):**
 - Idle F is the altitude-filter chord (`beginFilterEntry`). `*F` Enter is T02-65 FILTER readout and does **not** open the deferred `*F [Callsign]` flight-plan modal.
 - `*BCN` / `*BCN DEL` are T02-65 beacon filters. Bare `*B` Enter is TPA (`*B INV`). Live `*B` click is T02-66 beaconator.
@@ -387,8 +391,10 @@ FILTER WX toggle). All settings are persisted in PREF v3.
 
 Remaining later implementations:
 - AVL 2×3 / half-height badge restyle;
-- additional catalog-backed maps and map management;
 - fuller CRC-style DCB workflows.
+
+Catalog-backed maps, map management, and the shipped DCB controls are complete;
+do not re-add them as generic backlog items.
 
 Do not fill empty map slots with OSM or add unvetted controls as an incidental
 change; each capability needs its own data and acceptance criteria.
@@ -405,7 +411,6 @@ rejects the `nexrad-n0q` layer group.
 
 Still later:
 
-- AVL 2×3 / half-height badge restyle
 - Pilot deviate via `vipAtNm` (query exists; does not steer aircraft)
 
 Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
@@ -420,7 +425,13 @@ STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (
 - `<MULTI FUNC>Q` / `<MULTI FUNC>V` are shipped as scope-local trainer controls: Q suppresses only a current LA alert and V toggles persistent per-track MSAW processing; both render the ACID `*`. They are not certified MSAW.
 - `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
 
-The remaining manual invocation commands and corresponding glyph extensions are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced. Typed Preview Area holes that include those chords are listed under **STARS preview area — commands not parsed** rather than duplicated here. Later work must preserve the distinct Q current-alert lifetime and V persistent per-track lifetime.
+Q/V controls are shipped as scope-local trainer behavior. The remaining M/C/Y
+manual invocation commands and corresponding glyph extensions are preserved for
+later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is
+introduced. Typed Preview Area holes that include those chords are listed under
+**STARS preview area — commands not parsed** rather than duplicated here. Later
+work must preserve the distinct Q current-alert lifetime and V persistent
+per-track lifetime.
 
 ### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
 
@@ -509,7 +520,7 @@ walk SID/STAR/approach references and does not contain every procedure leg.
 `buildSpatialIndex` keys records by ICAO and `identity.key`. Runtime `src/`
 does not import this tool.
 
-Deliberately missing:
+Repository boundary, not implementation backlog:
 
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
@@ -538,17 +549,11 @@ catalog `files` layout. Tests prove a far SID runway-transition fix outside
 the seed radius is present after closure, and that an unrelated airport
 procedure is excluded.
 
-Deliberately missing:
+Module boundary, not implementation backlog:
 
-- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`; this
-  T04-33 closure module does not compute NM distance or select the seed.
-  The generic pack CLI already wires radius selection to closure.
-- **Radius-based deletion after closure.** Once a procedure is selected, its
-  required fixes/navaids stay even when they sit outside the seed radius.
-- **Runtime national catalog.** Closure stays in the developer tool. `src/`
-  does not import it.
-- **New RNAV / hold / RF flying.** Unsupported path terminators remain
-  diagnostics, not catalog TF legs.
+The generic pack CLI already owns radius selection and wires it to closure.
+Closure intentionally keeps required out-of-radius references, remains a
+developer tool, and does not add new RNAV / hold / RF flying.
 
 Constraints later work must keep:
 
@@ -574,7 +579,7 @@ CRC conversion pack loaded through generic `loadVideoMapSet("KATL")` (T04-39),
 not CIFP-emitted. Authored trainer MVA is a uniform 3000 ft floor (not FAA
 source data).
 
-Deliberately missing:
+Trainer boundary, not CIFP implementation backlog:
 
 - **KATL ATPA, telephony.** Catalog JSON and authored scenario/spawn files
   are separate. Maps are not CIFP-emitted (CRC pack is T04-39). Never point
@@ -611,7 +616,7 @@ flows from that catalog and are session-visible inventory entries. Maps and
 ATPA stay outside CIFP catalog JSON. Trainer MVA is a uniform 3000 ft floor,
 not FAA source data.
 
-Deliberately missing:
+Boundary and remaining procedure gap:
 
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
@@ -637,7 +642,7 @@ including 17 GEO-only ULIDs in `mapsAbsentFromGroups`. `*D ALL` / `*D NONE` /
 CLR ALL / CURRENT walk the full inventory. CRC A/B is `map` / `mapDim`.
 Runtime does not read CRC or import the converter.
 
-Deliberately missing:
+Remaining procedure gap:
 
 - **RNAV / hold / RF FMS.** CIFP catalog rows
   stay as T04-35. Unsupported path terminators stay diagnostics.
@@ -779,37 +784,24 @@ This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.
 
-### Pilot clearances and flight-plan execution remain later
+### Clearance and flight-plan execution — remaining tails
 
-The flight-plan lifecycle swarm covers local scope-side plan creation,
-association, editing, deletion, and datablock projection only. Later work must
-connect those records to the radio/pilot pipeline:
+Radio-issued tactical clearances, IFR route activation, supported SID/STAR FMS
+execution, controller squawk assignment, generic tower/center transfer, and
+VFR Class B clearance/request workflows are shipped. The remaining work is:
 
-- controller-issued squawk assignments and amendments through radio phraseology;
-- pilot readback/validation and reported-squawk changes after a clearance;
-- controller clearances for assigned altitude, heading, speed, route, SID/STAR,
-  and approach that execute through Command IR and pilot intent;
-- full route entry and amendment in the flight-plan editor, beyond the current
-  compact entry/exit `FIXES` pair;
-- route legs, airways, direct-to segments, and generic fix/procedure
-  validation backed by the loaded catalog;
-- SID/STAR selection and transitions linked from the authoritative flight plan
-  into the aircraft FMS, including runway and common/enroute legs;
-- synchronization from amended flight-plan route data into active aircraft
-  intent/FMS state, without facility-specific route branches;
-- authoritative filed route/procedure state driving the FMS after accepted
-  amendments, including conformance and mismatch handling;
-- pilot route execution, deviation detection, and controller-visible
-  route-conformance status;
-- rejected or misunderstood clearances, explicit readback errors, and audit
-  state linking the clearance to the plan.
-- future squawk update sources not yet routed through the aircraft-scoped
-  correlation hook: pilot clearance execution, live surveillance/transponder
-  input, remaining scenario import adapters, replay, and network/controller
-  feeds. Scheduled-departure spawning now routes an authored reported squawk
-  through the hook. Each future source must update reported squawk first and
-  may not scan or associate other aircraft.
+- synchronize amended filed-plan data with active clearance state without
+  silently retargeting an already-cleared aircraft;
+- add richer route grammar, including airways and additional route-leg forms;
+- validate pilot readbacks, mismatches, rejected or misunderstood clearances,
+  and audit state linking each clearance to its plan;
+- detect IFR route deviation and expose controller-visible conformance state;
+- add live frequency assignment, receiving-position identity, facility-specific
+  communications, and tower/ground coordination;
+- route future squawk sources through the aircraft-scoped correlation hook;
+  each source must update reported squawk first and may not scan or associate
+  other aircraft.
 
-These later flows must preserve the boundary: scope plan editing does not emit
+These flows must preserve the boundary: scope plan editing does not emit
 Command IR or mutate kinematics; radio clearances do. Keep pilot execution
 self-hosted and do not add metered speech services.
