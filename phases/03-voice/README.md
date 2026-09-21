@@ -125,12 +125,26 @@ Align with frozen `Instruction` types in `command-ir.md`. Anything not in that u
 Callsign := Telephony FlightNumber
           | "november" TailChars
           | SpokenIcao  (delta alpha lima one two three)
+          | AuthoredAlias RegistrationTail
 ```
 
 - **Telephony table** (data, not code): `Delta`→`DAL`, `American`→`AAL`, `United`→`UAL`, `Southwest`→`SWA`, `JetBlue`→`JBU`, `Alaska`→`ASA`, `Frontier`→`FFT`, `Skywest`→`SKW`, `Endeavor`→`EDV`, `Brickyard`→`RPA`, `FedEx`→`FDX`, `UPS`→`UPS`. Ship ~10–20 rows as JSON under `src/parse` or `src/scenario`. Unknown telephony → parse miss with reason `unknown_telephony`, not a guessed ICAO.
 - **Flight number:** digit-by-digit required (`one two three` → `123`). Grouped forms (`twelve`, `twenty three`) are best-effort, not phase-exit blockers.
 - **Selected track:** if the parser receives a selected callsign from the session (phase 1/2 selection) and the utterance has **no** callsign, attach the selected track’s callsign — same rule as typed. If neither selected nor spoken → reject.
 - Ambiguous numeric suffix (`123` matches two strips) is **pilot** validation, not the grammar.
+- **VFR aircraft aliases:** the current authored aliases are `Bonanza` (BE36),
+  `Skyhawk` (C172), `Skylane` (C182), `Caravan` (C208), `Diamond` (DA40),
+  `Archer` (PA28), and `Cirrus` (SR22). An alias is valid only with the
+  complete registration tail: `N123 H270` and `Skyhawk 123 H270` both target
+  canonical `N123`.
+- **N-number length:** registration tails contain one through five digits,
+  with any authored suffix letters retained. `N12345` and `Skyhawk 12345`
+  are complete identities; six-digit forms, short `N` prefixes, alias-only
+  forms, unknown aliases, incomplete tails, and ambiguous alias matches are
+  `PARSE_MISS` with no selected-aircraft fallback or mutation.
+- Alias matching is an explicit simulator data contract, not session-based
+  abbreviation behavior. Pilot readback uses the preferred authored alias plus
+  the complete canonical registration tail; no alias uses the N-number.
 
 ### 4.2 Numbers
 

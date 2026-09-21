@@ -29,6 +29,33 @@ normalizeSpoken
     └─ miss (no throw)
 ```
 
+## Callsign identity and alias grounding
+
+The canonical N-number or ICAO callsign is the only identity in Command IR,
+world state, logs, and pilot resolution. A live roster candidate may carry
+authored `aliases`, but alias text is input evidence only:
+
+```json
+{ "callsign": "N123", "aliases": ["Skyhawk"] }
+```
+
+For an explicit callsign slot, grounding precedence is exact canonical token,
+then exact authored alias plus its complete registration tail, then existing
+unique numeric suffix behavior. Selected-aircraft fallback is allowed only
+when the input has no explicit callsign. Alias matching requires one through
+five registration digits and preserves any suffix letters. `Skyhawk 123 H270`
+therefore returns `callsignToken: "N123"`, while `Skyhawk`, an unknown alias,
+an incomplete or short tail, a six-digit N-number, or an ambiguous alias is
+`PARSE_MISS` and cannot mutate an aircraft. This exact-tail rule is a
+trainer-specific deterministic contract, not session-based abbreviation.
+
+Path C receives the same bounded live candidates as grounding context. It may
+use complete alias evidence only to select one listed canonical candidate;
+unknown, incomplete, alias-only, or ambiguous evidence is a soft
+`PARSE_MISS`. The GBNF and semantic validator constrain `callsignToken` to
+that canonical candidate; an alias-shaped model output is rejected and never
+enters Command IR.
+
 An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Tactical fix grounding and IFR route-window grounding share one ranked catalog matcher: exact, spoken-alias, folded, then unique Levenshtein-distance-1 candidates are deterministic; distance-2 candidates are retrieval-only Path C evidence. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / delete speed restrictions / ident / say-* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
 
 `CAPP` and spoken `cancel approach clearance` emit the zero-argument

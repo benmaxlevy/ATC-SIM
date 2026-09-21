@@ -88,7 +88,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
 
 ### Simulated pilot & handoffs
 
-- **Callsign resolution**: Matches callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target.
+- **Callsign resolution**: Matches canonical callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target. Current VFR aircraft may also have an authored alias: `N123 H270` and `Skyhawk 123 H270` target canonical `N123`. The alias must include the complete one-to-five-digit registration tail; aliases never replace the canonical N-number in aircraft state, logs, or commands.
 - **Automated check-ins**: Staggered arrival and departure check-in radio calls:
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SID departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
@@ -97,7 +97,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F1` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
 - **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 terminates the track and its associated local plan. No live second position or network is modeled.
-- **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances.
+- **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances. VFR pilots use the preferred authored alias plus the complete tail (for example, `Skyhawk one two three`); aircraft without an alias use the N-number.
 
 ## ATC command reference
 
@@ -107,6 +107,26 @@ Pressing `Tab` toggles focus between the command line and the radar scope (PPI /
 > [!NOTE]
 > Radio commands stay strictly on the command line or PTT audio channel and issue pilot instructions.
 > Scope keys and STARS Preview Area commands stay on the radar display and never issue radio transmissions.
+
+#### VFR callsign aliases
+
+The seven current VFR profile aliases are `Bonanza`, `Skyhawk`, `Skylane`,
+`Caravan`, `Diamond`, `Archer`, and `Cirrus`. They are authored aircraft data,
+not abbreviations selected from communication history. Use the canonical
+N-number or the exact alias plus the complete registration tail:
+
+```text
+N123 H270
+Skyhawk 123 H270
+Skyhawk one two three turn left heading two seven zero
+N12345 H270
+```
+
+Both `N123` and `Skyhawk 123` resolve to the same canonical aircraft. The
+parser returns `PARSE_MISS` and changes nothing for an alias-only input such as
+`Skyhawk`, an unknown or ambiguous alias, an incomplete tail, a short
+N-prefix, or a six-digit N-number. Pilot readback may say `Skyhawk one two
+three`, but the underlying aircraft identity remains `N123`.
 
 `MVFR` / "maintain VFR" is a radio-only trainer instruction. It sets only an
 aircraft marker for a future VFR-to-IFR pickup path and produces a deterministic

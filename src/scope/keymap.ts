@@ -37,6 +37,10 @@ export const RADIO_CONFLICT_WARNING =
 export const HELP_GLOSSARY_NOTE =
   "Use this reference for the trainer's active commands. Radio commands use the command line; display commands use the PPI, Preview Area, DCB, or mouse.";
 
+/** Callsign identity contract shared by the Help overlay and its tests. */
+export const HELP_CALLSIGN_ALIAS_NOTE =
+  "Callsigns: N123 H270 and Skyhawk 123 H270 are valid when Skyhawk is authored for that aircraft. The alias needs its complete registration tail and resolves to the canonical N-number. Skyhawk alone, an unknown or ambiguous alias, a short N-prefix, or an incomplete tail returns PARSE_MISS with no aircraft mutation. Five-digit N-numbers such as N12345 are supported. Pilot readback uses the preferred alias plus the complete tail; without an alias it uses the N-number.";
+
 export interface HelpCommandEntry {
   id: string;
   command: string;
