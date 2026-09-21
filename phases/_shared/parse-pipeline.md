@@ -199,6 +199,167 @@ Grade **`parseStage`**, not a second parse:
 
 The checker must not call `/parse`.
 
+## Diagnostic trace architecture and telemetry
+
+Local-only diagnostic observability for parser and STT stages operates with zero parse behavior alterations, caller-originated logging, and generic instruction representation.
+
+```
+Caller (JS / TS)                                       speech-api (Python)
+┌──────────────────────────────┐
+│  parseCommand / voiceLoop    │
+│  - Stage attempt timings     │
+│  - STT latency / metadata    │
+│  - Generic instructionTypes  │
+└──────────────┬───────────────┘
+               │ recordUtteranceTrace
+               ▼
+┌──────────────────────────────┐                       ┌──────────────────────────────┐
+│        TraceCollector        │  POST /debug/traces   │         FastAPI Sink         │
+│  - In-memory FIFO queue      ├──────────────────────►│  - Atomic batch insert      │
+│  - Debounced async flush     │  (non-blocking async) │  - SQLite WAL persistence    │
+└──────────────────────────────┘                       └──────────────┬───────────────┘
+                                                                      │
+                                                                      ▼
+                                                       ┌──────────────────────────────┐
+                                                       │ .local/parse-traces.sqlite   │
+                                                       │ - sessions                   │
+                                                       │ - utterances                 │
+                                                       │ - stage_attempts             │
+                                                       └──────────────┬───────────────┘
+                                                                      │
+                                                                      ▼
+                                                       ┌──────────────────────────────┐
+                                                       │       query_traces.py        │
+                                                       │ - 5 diagnostic questions     │
+                                                       │ - prune_traces.py retention  │
+                                                       └──────────────────────────────┘
+```
+
+### 1. Caller-side logging contract
+
+- **Caller, not callee:** All telemetry originates from the caller (the browser / JS client in `src/parse/parse-command.ts` and `src/speech/voice-loop.ts`). The `speech-api` provides only a passive SQLite ingestion sink (`POST /debug/traces`).
+- **Zero parse alterations:** Tracing is read-only observability. Outputs from `parseCommand` are bit-for-bit identical whether instrumentation is enabled or disabled.
+- **Non-blocking failure safety:** Trace recording and transport failures are safely absorbed and never throw into the caller, pause sim loops, or drop aircraft commands.
+- **Disabled by default:** Enabled explicitly via `TraceCollectorOptions.enabled`, `localStorage.getItem("atc_parse_traces") === "1"`, or `VITE_ENABLE_PARSE_TRACES === "1"`.
+- **Zero raw audio persistence:** No PCM16 samples, WAV files, base64 audio, or audio byte buffers are stored in any column. STT metadata retains only text, duration, model name, and latency.
+
+### 2. SQLite schema
+
+Persisted to `.local/parse-traces.sqlite` (gitignored, WAL mode):
+
+```sql
+CREATE TABLE sessions (
+    session_id TEXT PRIMARY KEY,
+    started_at TEXT NOT NULL,
+    app_version TEXT NOT NULL
+);
+
+CREATE TABLE utterances (
+    utterance_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    source TEXT NOT NULL,          -- 'text' | 'voice'
+    stt_json TEXT,                 -- {"text": "...", "latencyMs": 142, ...}
+    final_stage TEXT,              -- 'typed' | 'spoken_a' | 'spoken_b' | 'llm_c' | 'none'
+    final_status TEXT NOT NULL,    -- 'hit' | 'miss' | 'rejected' | 'timeout'
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+);
+
+CREATE TABLE stage_attempts (
+    attempt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    utterance_id TEXT NOT NULL,
+    stage TEXT NOT NULL,           -- 'typed' | 'spoken_a' | 'spoken_b' | 'llm_c' | 'stt'
+    status TEXT NOT NULL,          -- 'hit' | 'miss' | 'rejected' | 'skipped'
+    reason TEXT,                   -- 'prior_hit' | 'not_eligible' | 'syntax_miss' | 'ungrounded_tokens' | 'schema_rejection' | ...
+    elapsed_ms REAL NOT NULL,
+    result_json TEXT,              -- {"instructionTypes": [...], ...}
+    FOREIGN KEY (utterance_id) REFERENCES utterances(utterance_id) ON DELETE CASCADE
+);
+```
+
+### 3. Retention policy
+
+Retention is managed via `speech-api/prune_traces.py`:
+
+```bash
+# Keep at most 30 days of traces and prune excess beyond 50,000 utterances
+python -m prune_traces --days 30 --max-utterances 50000
+```
+
+### 4. Diagnostic queries (`speech-api/query_traces.py`)
+
+Answers the 5 core diagnostic questions against `.local/parse-traces.sqlite`:
+
+1. **Failure root cause breakdown:** Groups failed utterances into primary failure stages (`stt_empty_or_low_prob`, `typed_syntax`, `spoken_a_grammar`, `ungrounded_catalog_token`, `path_b_rewrite_miss`, `path_c_rejection`).
+2. **Path B rescue rate:** Ratio of utterances where `spoken_a` was a `miss` and `spoken_b` was a `hit`.
+3. **Path C guard rejections:** Counts grouped by `schema_rejection`, `evidence_rejection`, `catalog_grounding_rejection`, and `timeout`.
+4. **Command miss rate ranking:** Utterances grouped by generic instruction type (`FLY_HEADING`, `ALTITUDE`, etc., dynamically extracted via `json_each`) showing hit vs miss percentages without hardcoded command discriminants.
+5. **Latency distribution:** p50, p90, and p99 elapsed milliseconds broken down by stage (`stt`, `typed`, `spoken_a`, `spoken_b`, `llm_c`), excluding skipped attempts.
+
+```bash
+# Full human-readable summary
+python -m query_traces --summary
+
+# Machine-readable JSON output
+python -m query_traces --summary --json
+
+# Specific questions
+python -m query_traces --failure-root-causes
+python -m query_traces --rescue-rate
+python -m query_traces --guard-rejections
+python -m query_traces --command-miss-rates
+python -m query_traces --latencies
+```
+
+### 5. Enabling trace collection
+
+Trace collection is **disabled by default** to avoid unexpected disk I/O and telemetry overhead. You can enable it via browser storage, environment variables, or programmatically:
+
+#### A. Browser console (immediate runtime toggle)
+
+Open your browser's Developer Tools (F12) console on the simulator page and run:
+
+```javascript
+// Enable trace recording and async flushing
+localStorage.setItem("atc_parse_traces", "1");
+
+// Disable trace recording
+localStorage.removeItem("atc_parse_traces");
+```
+
+Traces start recording on the next command or voice transmission immediately; no server restart required.
+
+#### B. Build-time / environment variable
+
+When launching the Vite development server:
+
+```bash
+# Enable in .env or shell
+VITE_ENABLE_PARSE_TRACES=1 npm run dev
+
+# Optional: customize trace sink endpoint (defaults to http://127.0.0.1:8090/debug/traces)
+VITE_TRACE_URL=http://127.0.0.1:8090/debug/traces
+```
+
+#### C. Programmatic toggle
+
+```typescript
+import { getTraceCollector } from "@/parse/trace";
+
+// Enable or disable at runtime
+getTraceCollector().enable();
+getTraceCollector().disable();
+getTraceCollector().setEnabled(true);
+```
+
+#### D. Verifying active trace collection
+
+1. **Browser Network tab**: Filter by `/debug/traces` to see debounced batch `POST` requests returning `{ "ok": true, "count": N }`.
+2. **Database inspection**: Run the CLI query tool to inspect collected traces:
+   ```bash
+   python3 speech-api/query_traces.py --summary
+   ```
+
 ## Non-goals
 
 - LLM as pilot, chat, or intent applier (`non-goals.md`).
@@ -206,3 +367,5 @@ The checker must not call `/parse`.
 - Path C in the Vite bundle or as the default quality path.
 - Teaching the **tokenizer** English (A already owns English).
 - A second `/ground` LLM that only rewrites names. Always-on LLM after STT.
+- Streaming telemetry to third-party cloud analytics or unhosted services.
+

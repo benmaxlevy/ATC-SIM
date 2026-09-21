@@ -26,6 +26,7 @@ DEFAULT_PORT = 8090
 # Mandatory local Path C default. Qwen3 4B instruct GGUF; no hosted inference.
 DEFAULT_PARSE_MODEL_ID = "MaziyarPanahi/Qwen3-4B-Instruct-2507-GGUF"
 DEFAULT_PARSE_GGUF_FILE = "Qwen3-4B-Instruct-2507.Q4_K_M.gguf"
+DEFAULT_TRACE_DB_PATH = (API_DIR.parent / ".local" / "parse-traces.sqlite").resolve()
 
 VITE_ORIGINS = (
     "http://localhost:5173",
@@ -94,6 +95,7 @@ class Settings:
     cors_origins: tuple[str, ...]
     stt_device: str | None
     tts_voices: tuple[str, ...]
+    trace_db_path: Path = DEFAULT_TRACE_DB_PATH
 
     @classmethod
     def load(cls) -> Settings:
@@ -102,6 +104,14 @@ class Settings:
         origins = list(VITE_ORIGINS)
         if extra:
             origins.extend(o.strip() for o in extra.split(",") if o.strip())
+        trace_db_env = (
+            os.environ.get("TRACE_DB_PATH", "").strip()
+            or os.environ.get("PARSE_TRACES_DB", "").strip()
+        )
+        if trace_db_env:
+            trace_db_path = Path(trace_db_env) if trace_db_env == ":memory:" else Path(trace_db_env).resolve()
+        else:
+            trace_db_path = DEFAULT_TRACE_DB_PATH
         return cls(
             host=os.environ.get("HOST", DEFAULT_HOST).strip() or DEFAULT_HOST,
             port=int(os.environ.get("PORT", str(DEFAULT_PORT))),
@@ -118,6 +128,7 @@ class Settings:
             cors_origins=tuple(dict.fromkeys(origins)),
             stt_device=_optional_env("STT_DEVICE"),
             tts_voices=_tts_voice_roster(),
+            trace_db_path=trace_db_path,
         )
 
     def apply_hub_cache(self) -> None:

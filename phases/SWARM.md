@@ -4882,4 +4882,78 @@ next wave.
 No push is authorized. Workers implement exactly one ticket, never merge or
 spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T04-62.
 
+---
+
+## Sixty-sixth swarm planned — 2026-09-20 (Parser and STT Diagnostics Instrumentation)
+
+Add optional, local-only parser and STT instrumentation to diagnose systemic gaps across typed, Path A, Path B, and Path C parsing, persisting batched traces to `.local/parse-traces.sqlite` via `speech-api`.
+
+| Key | Value |
+| --- | --- |
+| Goal | Local-only diagnostic instrumentation for STT and parser stages with zero parse behavior alterations, caller-originated logging, and generic instruction representation. |
+| Phase | `phases/03-voice/` |
+| Tickets | `T03-27` → `T03-28` → `T03-29` → `T03-30` |
+| Merge target | `feature/parsing-observability` |
+| Worker limit | 1 ticket worker; sequential waves |
+| Model | inherit available Codex worker model |
+| Required gate | `npm run ci && (cd speech-api && SPEECH_API_MOCK=1 /home/ben/ATC-SIM/speech-api/.venv/bin/pytest)` |
+| Stop | Stop after `T03-30`; do not start another phase |
+
+**Product law:**
+
+- All telemetry logging occurs from caller (JS/TS), not callee (`speech-api`). `speech-api` provides only a passive SQLite sink (`POST /debug/traces`).
+- Instrumentation is local-only and disabled by default.
+- Ingestion failures never throw or alter parse results or radio loop timing.
+- No raw audio or full catalog/roster prompts persisted; candidate counts and generic instruction type strings only.
+- SQLite traces file `.local/parse-traces.sqlite` is gitignored and never committed.
+- Instruction extraction remains fully generic (`instructions.map(i => i.type)`) without hardcoded command discriminants.
+
+**Skip:**
+
+- UI dashboards, remote telemetry, audio recording, cloud backends.
+
+**Waves:**
+
+- **Wave A:** `T03-27` (SQLite schema, trace writer, prune CLI, and `POST /debug/traces`)
+- **Wave B:** `T03-28` (In-memory trace collector, queueing, non-blocking transport; waits for T03-27)
+- **Wave C:** `T03-29` (Caller pipeline and voice loop stage instrumentation; waits for T03-28)
+- **Wave D:** `T03-30` (Diagnostic query engine, acceptance verification, doc update; waits for T03-29)
+
+**Ticket ownership:**
+
+- **T03-27:** `speech-api/trace_db.py`, `speech-api/prune_traces.py`, `speech-api/app.py`, `speech-api/config.py`, `.gitignore`, `speech-api/tests/test_traces.py`.
+- **T03-28:** `src/parse/trace/types.ts`, `src/parse/trace/collector.ts`, `src/parse/trace/index.ts`, `src/parse/test/traceCollector.test.ts`.
+- **T03-29:** `src/parse/parse-command.ts`, `src/speech/voice-loop.ts`, `src/pilot/handleRadioText.ts`, `src/parse/test/parseTrace.test.ts`.
+- **T03-30:** `speech-api/query_traces.py`, `speech-api/tests/test_query_traces.py`, `tests/integration/parseTraceAcceptance.test.ts`, `phases/_shared/parse-pipeline.md`.
+
+**Ticket branches:**
+
+- `ticket/T03-27-sqlite-trace-sink-and-prune` ← `phases/03-voice/tickets/T03-27-sqlite-trace-sink-and-prune.md`
+- `ticket/T03-28-browser-trace-collector-and-transport` ← `phases/03-voice/tickets/T03-28-browser-trace-collector-and-transport.md`
+- `ticket/T03-29-caller-pipeline-stage-instrumentation` ← `phases/03-voice/tickets/T03-29-caller-pipeline-stage-instrumentation.md`
+- `ticket/T03-30-trace-acceptance-and-diagnostic-queries` ← `phases/03-voice/tickets/T03-30-trace-acceptance-and-diagnostic-queries.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: Parser and STT Diagnostics Instrumentation T03-27–30
+Merge target: feature/parsing-observability
+Merged: T03-27, T03-28, T03-29, T03-30
+Tests: npm run ci && pytest exit 0
+Notes: Local-only SQLite trace pipeline operational with caller-side logging and verified against 5 diagnostic queries
+```
+
+## Sixty-sixth swarm started — 2026-09-20 (Parser and STT Diagnostics Instrumentation)
+
+Execution authorized on `feature/parsing-observability`. The captain runs T03-27,
+T03-28, T03-29, then T03-30 sequentially with one isolated worker at a time. Every
+squash merge onto `feature/parsing-observability` requires `npm run ci && (cd speech-api && SPEECH_API_MOCK=1 pytest)` before the
+next wave.
+
+No push is authorized until the full swarm is exit green. Workers implement exactly one ticket,
+never merge or spawn, and return exactly `READY TO MERGE` or `BLOCKED`. Stop after T03-30.
+
+
+
 

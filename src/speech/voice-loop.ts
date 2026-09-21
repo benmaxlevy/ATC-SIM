@@ -33,6 +33,7 @@ import {
 import { readbackForTts } from "./tts-text";
 import type { PathCRouteCandidateInput } from "../parse/path-c";
 import type { CatalogFixInput } from "../parse/spoken/catalog-ground";
+import type { ParseTraceContext, TraceCollector } from "@parse";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -76,6 +77,8 @@ export type ParseCommandFn = (
     approaches?: ReadonlyArray<{ id: string; name?: string; runway?: string }>;
     airports?: ReadonlyArray<{ icao: string; name: string; aliases?: readonly string[] }>;
     pathC?: boolean;
+    traceContext?: ParseTraceContext;
+    traceCollector?: TraceCollector;
   },
 ) => Promise<VoiceParseResult>;
 
@@ -141,6 +144,8 @@ export interface VoiceLoopOptions {
   /** TTS voice id. Default {@link DEFAULT_READBACK_VOICE_ID}. */
   voiceId?: string;
   getVoiceId?: (callsign?: string) => string;
+  /** Optional trace collector override for telemetry. */
+  traceCollector?: TraceCollector;
 }
 
 export interface VoiceLoop {
@@ -261,6 +266,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly gate = new TransmitGate();
   private readonly latencyTracker: VoiceLatencyTracker;
   private readonly dispatchedCommandIds = new Set<string>();
+  private readonly traceCollector?: TraceCollector;
   readonly readbackPlayer: ReadbackPlayer;
 
   constructor(options: VoiceLoopOptions) {
@@ -283,6 +289,7 @@ class VoiceLoopImpl implements VoiceLoop {
     this.onParseMiss = options.onParseMiss;
     this.onMetrics = options.onMetrics;
     this.onUtteranceComplete = options.onUtteranceComplete;
+    this.traceCollector = options.traceCollector;
     this.getVoiceId = options.getVoiceId ?? (() => options.voiceId ?? DEFAULT_READBACK_VOICE_ID);
     this.readbackPlayer = options.readbackPlayer ?? createReadbackPlayer({ now: this.now });
     this.latencyTracker = new VoiceLatencyTracker(this.speechPort.id);
@@ -448,6 +455,26 @@ class VoiceLoopImpl implements VoiceLoop {
     // R01 SAY AGAIN is unreadable radio; T03-15 does not skip parse on low ASR confidence.
     // Trainer delta: Transcript.confidence is an ASR score, not unreadable radio.
     // STT metadata is telemetry only; parser execution never depends on a score.
+    const utteranceId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `voice-${this.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const audioDurationMs =
+      clip.sampleRate > 0
+        ? (clip.pcm16.length / clip.sampleRate) * 1000
+        : (transcript.metadata?.audioDurationMs ?? 0);
+    const traceContext: ParseTraceContext = {
+      utteranceId,
+      source: "voice",
+      stt: {
+        text: transcript.text,
+        latencyMs: transcript.latencyMs,
+        audioDurationMs,
+        model: transcript.metadata?.model,
+        metadata: transcript.metadata ?? null,
+      },
+    };
+
     const parseStartedAt = this.now();
     const parsed = await softTimeout(
       this.parseCommand(transcript.text, {
@@ -460,6 +487,8 @@ class VoiceLoopImpl implements VoiceLoop {
         approaches: this.getCatalogApproaches(),
         airports: this.getCatalogAirports(),
         pathC: this.pathC,
+        traceContext,
+        ...(this.traceCollector ? { traceCollector: this.traceCollector } : {}),
       }),
       DEFAULT_VOICE_PARSE_TIMEOUT_MS,
     );

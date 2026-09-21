@@ -2026,3 +2026,36 @@ started, no push was performed, and unrelated `.agents/rules/`, `GEMINI.md`,
 and the separate T02-185 worktree were preserved.
 
 **PHASE EXIT GREEN**
+
+---
+
+## Sixty-sixth swarm completed — 2026-09-20 (Parser and STT Diagnostics Instrumentation)
+
+Captain merged tickets `T03-27`, `T03-28`, `T03-29`, and `T03-30` onto `feature/parsing-observability`.
+
+- **T03-27:** SQLite trace store (`.local/parse-traces.sqlite`) with WAL mode, indexes, `POST /debug/traces` batch sink in `speech-api`, retention `prune_traces.py` CLI.
+- **T03-28:** In-memory trace collector (`src/parse/trace/collector.ts`), bounded queue (100 items), opt-in configuration toggle (disabled by default), non-blocking async batch flush.
+- **T03-29:** Caller-side pipeline and voice loop stage instrumentation in `parseCommand`, `voice-loop.ts`, and `handleRadioText.ts` covering STT metadata, `typed`, `spoken_a`, `spoken_b`, and `llm_c`, recording hit/miss/rejected/skipped reasons, Path C guard classifications, candidate counts, and generic `instructionTypes` dynamically extracted from instructions.
+- **T03-30:** Diagnostic query script `speech-api/query_traces.py` answering the 5 core diagnostic questions (failure root cause breakdown, Path B rescue rate, Path C guard rejection distribution, command miss ranking, and stage latency percentiles), full-stack integration test `tests/integration/parseTraceAcceptance.test.ts`, and documentation in `phases/_shared/parse-pipeline.md`.
+
+Product law verified:
+- All telemetry logging occurs strictly caller-side in JS/TS; `speech-api` acts purely as a passive SQLite persistence sink.
+- Instrumentation is disabled by default; when disabled, overhead is zero-allocation.
+- Tracing failures never throw into or alter parse results or radio loop timing.
+- No raw audio or full prompt/catalog context is stored.
+- Schema is completely generic and automatically supports future command types without schema adjustments.
+- `.local/` is gitignored.
+
+Captain squash commits on `feature/parsing-observability`:
+- `e12b9e6`: docs(swarm): plan parser and STT diagnostics instrumentation swarm
+- `7623049`: feat(T03-27): add sqlite trace sink and prune command in speech-api
+- `c623c44`: feat(T03-28): implement browser in-memory trace collector and async transport
+- `14b9ee9`: feat(T03-29): implement caller parse pipeline and voice loop stage instrumentation
+- `fe8b77e`: feat(T03-30): implement diagnostic query CLI, acceptance tests, and pipeline docs
+
+Final test gates:
+- `npm run ci`: 217 passed, 2,217 passed, 4 skipped, 0 failures. Typecheck, lint, format clean.
+- `cd speech-api && SPEECH_API_MOCK=1 pytest`: 112 passed, 0 failures.
+
+**PHASE EXIT GREEN**
+
