@@ -52,8 +52,7 @@ value. Items already shipped or limited to manual validation are excluded.
 30. FAA cycle update workflow; national source/index files remain local.
 31. KATL MAPS/GEO/BRITE visual operator validation.
 32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
-33. Radio communications transfer to tower ("contact tower [frequency]") for all controlled airports.
-34. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
+33. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
@@ -206,9 +205,6 @@ Deliberately missing, each of which later work must keep the JSON-minima path:
 - **TDW white monitor variant.** The tower display workstation paints the
   monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
   TPA blue until a TDW surface exists.
-- **R07 24 s predicted Alert.** Shipped in T02-140: ATPA Alert applies when
-  already inside the required NM or predicted to lose it within 24 s; 24–45 s
-  remains Warning. Do not invent a third color.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS
@@ -394,10 +390,6 @@ Remaining possible follow-ups:
 - pilot aircraft barometric kinematic corrections;
 - source timestamps, stale-data handling, and alerting.
 
-### Multi-Airport Satellite Altimeter Matrix in SSA
-
-Shipped in T02-78–80: `ssaWeatherAirports` in scenario JSON drives automated METAR fetching and decoding; primary airport altimeter renders on Line 3 alongside time (`1620/02  30.18`), and satellite airports render in 3-airport matrix rows below SSA (e.g. `KATL 30.18  FTY 30.18  PDK 30.18`), fully controlled by the `ALTSTG` SSA FILTER toggle.
-
 ### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
 
 In real STARS operations, the SSA includes a Quicklook indicator (`QL: ALL` or `QL: <sector>`) showing whether the workstation is monitoring all sector tracks or filtering data blocks to assigned control sectors:
@@ -433,19 +425,6 @@ Remaining later implementations:
 Do not fill empty map slots with OSM or add unvetted controls as an incidental
 change; each capability needs its own data and acceptance criteria.
 
-### Weather Radar / DCB WX chrome
-
-T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
-(six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
-from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
-levels off). T02-70 latches MAIN WX1–6 onto `view.wxLevels` and persists
-them in PREF v3. T02-71 ships scope-preview `*WX 1`–`6` / `ALL` / `OFF`
-(optional space after `*`) against the same bitmask. T02-72 ships live
-BRITE WX/WXC: fills tint with `brite.wx`, VIP band contours tint with
-`brite.wxc`. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
-injected fetch. T02-82 ships live SSA WX status, timestamp, WX HIST age, and
-15-minute staleness alert indicator.
-
 ### WX mosaic leftovers (T02-72 / T02-82)
 
 Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
@@ -464,18 +443,6 @@ Still later:
 Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
 operator in this worker worktree. Automated tests cover DCB / `*WX` /
 BRITE / cached paint / SSA WX telemetry. Do not invent a visual pass.
-
-### PREF SAVE AS named sets
-
-Shipped: SAVE AS collects a short alphanumeric name through the preview-area /
-status-line buffer (CRC analog, R07). Enter writes the first empty slot, or the
-last slot when the 32-slot table is full. Esc cancels with no write. Digit-only
-names are rejected (FIL reserved). MAIN shows the active set name; slot caps
-show the stored name. No `window.prompt`, no HTML `<input>`.
-
-Still not a NAS preference host. Slash names such as `22/27` are not typeable
-(alphanumeric only). Per-track PTL and TPA stay session state and are not
-persisted in PREF. WX `wxLevels` stay the other swarm.
 
 ### Manual Inhibit Commands and Safety Inhibit Glyphs
 
