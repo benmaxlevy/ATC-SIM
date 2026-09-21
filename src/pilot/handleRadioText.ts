@@ -34,6 +34,7 @@ import {
   sanitizeCatalogFixEntries,
   type CatalogApproach,
   type CatalogFixEntry,
+  type CallsignCandidate,
 } from "@parse";
 import type { RegionalFacility } from "../scenario/regional";
 import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
@@ -130,8 +131,11 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
-function callsignsFromWorld(world: World): string[] {
-  return world.aircraft.map((ac) => ac.callsign);
+function callsignsFromWorld(world: World): CallsignCandidate[] {
+  return world.aircraft.map((ac) => ({
+    callsign: ac.callsign,
+    ...(ac.spokenAliases ? { aliases: ac.spokenAliases } : {}),
+  }));
 }
 
 function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {

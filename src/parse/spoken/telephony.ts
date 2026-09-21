@@ -108,8 +108,17 @@ const TELEPHONY_ENTRIES = Object.entries(TABLE).sort(
 
 export type CallsignAttempt =
   | { kind: "none" }
-  | { kind: "ok"; callsign: string; next: number }
+  | { kind: "ok"; callsign: string; next: number; alias?: boolean }
+  | { kind: "invalid_alias" }
   | { kind: "unknown_telephony"; word: string };
+
+/** Canonical live identity plus authored spoken names. Aliases never leave the parser. */
+export interface CallsignCandidate {
+  callsign: string;
+  aliases?: readonly string[];
+}
+
+export type CallsignRosterEntry = string | CallsignCandidate;
 
 function phoneticLetter(tok: string | undefined): string | null {
   if (tok === undefined) {
@@ -336,9 +345,14 @@ function parseNovemberTail(
   }
   let j = i + 1;
   const chars: string[] = [];
-  while (j < tokens.length && chars.length < 6) {
+  let digits = 0;
+  while (j < tokens.length && chars.length < 7) {
     const d = singleDigit(tokens[j]);
     if (d !== null) {
+      if (digits >= 5) {
+        break;
+      }
+      digits += 1;
       chars.push(String(d));
       j += 1;
       continue;
@@ -357,13 +371,102 @@ function parseNovemberTail(
   return { callsign: `N${chars.join("")}`, next: j };
 }
 
+function normalizedAliasWords(alias: string): string[] {
+  return alias.trim().toLowerCase().replace(/\s+/g, " ").split(" ").filter(Boolean);
+}
+
+function canonicalTail(callsign: string): string | null {
+  const match = callsign
+    .trim()
+    .toUpperCase()
+    .match(/^N(\d{1,5}[A-Z]{0,2})$/);
+  return match?.[1] ?? null;
+}
+
+function parseAliasTail(
+  tokens: readonly string[],
+  i: number,
+): { tail: string; next: number } | null {
+  const compact = tokens[i]?.match(/^(\d{1,5})([a-z]{0,2})$/i);
+  if (compact) {
+    return { tail: `${compact[1]}${compact[2]}`.toUpperCase(), next: i + 1 };
+  }
+
+  let j = i;
+  let digits = "";
+  while (j < tokens.length && digits.length < 5) {
+    const digit = singleDigit(tokens[j]);
+    if (digit === null) break;
+    digits += String(digit);
+    j += 1;
+  }
+  if (digits.length === 0) return null;
+
+  let letters = "";
+  while (j < tokens.length && letters.length < 2) {
+    const letter = phoneticLetter(tokens[j]);
+    if (letter === null || letter === "N") break;
+    letters += letter;
+    j += 1;
+  }
+  return { tail: `${digits}${letters}`, next: j };
+}
+
+function aliasCallsignAt(
+  tokens: readonly string[],
+  i: number,
+  roster: readonly CallsignRosterEntry[],
+): { kind: "none" | "invalid" | "ambiguous" | "ok"; callsign?: string; next?: number } {
+  const candidates = roster.flatMap((entry) => {
+    const callsign = typeof entry === "string" ? entry : entry.callsign;
+    const aliases = typeof entry === "string" ? [] : (entry.aliases ?? []);
+    return aliases.map((alias) => ({ callsign: callsign.trim().toUpperCase(), alias }));
+  });
+  let aliasPrefix = false;
+  const aliasOwners = new Set<string>();
+  const matches: Array<{ callsign: string; next: number }> = [];
+  for (const candidate of candidates) {
+    const words = normalizedAliasWords(candidate.alias);
+    if (words.length === 0 || tokens.slice(i, i + words.length).join(" ") !== words.join(" ")) {
+      continue;
+    }
+    aliasPrefix = true;
+    aliasOwners.add(candidate.callsign);
+    const tail = parseAliasTail(tokens, i + words.length);
+    const expected = canonicalTail(candidate.callsign);
+    if (tail && expected !== null && tail.tail === expected) {
+      matches.push({ callsign: candidate.callsign, next: tail.next });
+    }
+  }
+  if (aliasOwners.size > 1) return { kind: "ambiguous" };
+  const unique = [...new Map(matches.map((match) => [match.callsign, match])).values()];
+  if (unique.length === 1) return { kind: "ok", ...unique[0] };
+  if (unique.length > 1) return { kind: "ambiguous" };
+  return { kind: aliasPrefix ? "invalid" : "none" };
+}
+
+/** Rewrite only a complete leading alias for the typed tokenizer. */
+export function rewriteLeadingAliasCallsign(
+  normalized: string,
+  roster: readonly CallsignRosterEntry[],
+): string {
+  const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
+  const alias = aliasCallsignAt(tokens, 0, roster);
+  if (alias.kind !== "ok") return normalized;
+  return [alias.callsign!, ...tokens.slice(alias.next!)].join(" ");
+}
+
 /**
  * Optional callsign at the start of a spoken utterance.
  * Canonical flight number is digit-by-digit (`one two three` → `123`).
  * Compact ASR digits (`203`) are accepted after telephony (`Southwest 203` → `SWA203`).
  * Glued ASR (`American201`) is the same mapping without a space.
  */
-export function parseSpokenCallsign(tokens: readonly string[], i: number): CallsignAttempt {
+export function parseSpokenCallsign(
+  tokens: readonly string[],
+  i: number,
+  roster: readonly CallsignRosterEntry[] = [],
+): CallsignAttempt {
   const afterCallsign = (next: number): number => (tokens[next] === "heavy" ? next + 1 : next);
   const first = tokens[i];
   if (first === undefined || RESERVED_SPOKEN.has(first)) {
@@ -382,6 +485,21 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
       callsign: november.callsign,
       next: afterCallsign(november.next),
     };
+  }
+
+  // FAA identity analog: model/manufacturer plus complete registration tail.
+  // Trainer delta: alias tails must be exact; no session abbreviation or fuzzy repair.
+  const alias = aliasCallsignAt(tokens, i, roster);
+  if (alias.kind === "ok") {
+    return {
+      kind: "ok",
+      callsign: alias.callsign!,
+      next: afterCallsign(alias.next!),
+      alias: true,
+    };
+  }
+  if (alias.kind === "invalid" || alias.kind === "ambiguous") {
+    return { kind: "invalid_alias" };
   }
 
   const tel = matchTelephony(tokens, i);
@@ -449,10 +567,14 @@ export function spokenFlightNumberHint(normalized: string): string | null {
 export function groundCallsignToRoster(
   token: string | null,
   normalized: string,
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
 ): string | null {
   const list = [
-    ...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0)),
+    ...new Set(
+      roster
+        .map((entry) => (typeof entry === "string" ? entry : entry.callsign).trim().toUpperCase())
+        .filter((cs) => cs.length > 0),
+    ),
   ];
   function uniqueSuffix(hint: string | null): string | null {
     if (!hint) {
@@ -480,6 +602,18 @@ export function groundCallsignToRoster(
     if (fromToken) {
       return fromToken;
     }
+  }
+
+  const alias = aliasCallsignAt(
+    normalized.split(" ").filter((tok) => tok.length > 0),
+    0,
+    roster,
+  );
+  if (alias.kind === "ok") {
+    return alias.callsign!;
+  }
+  if (alias.kind === "ambiguous" || alias.kind === "invalid") {
+    return null;
   }
 
   const spoken = spokenCallsignToken(normalized);

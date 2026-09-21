@@ -21,6 +21,7 @@ export {
 export type { ParseErrorCode } from "./tokens";
 export { parseCommand } from "./parse-command";
 export type { ParseCommandOpts } from "./parse-command";
+export type { CallsignCandidate, CallsignRosterEntry } from "./spoken/telephony";
 export { normalizeSpoken } from "./spoken/normalizer";
 export { repairSpokenLexemes } from "./spoken/lexical-repair";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";

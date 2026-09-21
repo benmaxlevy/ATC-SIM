@@ -10,6 +10,7 @@ import {
   parseCommand,
   proceduresFromCatalog,
   sanitizeCatalogFixEntries,
+  type CallsignCandidate,
   type CatalogFixEntry,
 } from "@parse";
 import {
@@ -177,7 +178,11 @@ export function createApp(deps: AppDeps): AppHandles {
         return result;
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
-      getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
+      getOnFrequencyCallsigns: (): CallsignCandidate[] =>
+        world.aircraft.map((ac) => ({
+          callsign: ac.callsign,
+          ...(ac.spokenAliases ? { aliases: ac.spokenAliases } : {}),
+        })),
       getCatalogFixIds: () => catalogFixEntriesFromWorld(world),
       getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),

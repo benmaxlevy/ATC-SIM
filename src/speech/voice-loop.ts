@@ -33,6 +33,7 @@ import {
 import { readbackForTts } from "./tts-text";
 import type { PathCRouteCandidateInput } from "../parse/path-c";
 import type { CatalogFixInput } from "../parse/spoken/catalog-ground";
+import type { CallsignRosterEntry } from "../parse/spoken/telephony";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -69,7 +70,7 @@ export type ParseCommandFn = (
   opts: {
     source: "text" | "voice";
     selectedCallsign?: string | null;
-    callsigns?: readonly string[];
+    callsigns?: readonly CallsignRosterEntry[];
     fixes?: readonly CatalogFixInput[];
     routeCandidates?: readonly PathCRouteCandidateInput[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
@@ -99,7 +100,7 @@ export interface VoiceLoopOptions {
   dispatchCommand: DispatchCommandFn;
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
-  getOnFrequencyCallsigns?: () => readonly string[];
+  getOnFrequencyCallsigns?: () => readonly CallsignRosterEntry[];
   /** Full facility fix/navaid vocabulary for parseCommand. Not the STT header. */
   getCatalogFixIds?: () => readonly CatalogFixInput[];
   /** Fix/navaid kind and aliases for route-window Path C grounding. */
@@ -239,7 +240,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly parseCommand: ParseCommandFn;
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
-  private readonly getOnFrequencyCallsigns: () => readonly string[];
+  private readonly getOnFrequencyCallsigns: () => readonly CallsignRosterEntry[];
   private readonly getCatalogFixIds: () => readonly CatalogFixInput[];
   private readonly getCatalogRouteCandidates: () => readonly PathCRouteCandidateInput[];
   private readonly getSttFixIds: () => readonly string[];

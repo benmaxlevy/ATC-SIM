@@ -62,6 +62,7 @@ import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./tele
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "../instruction-order";
+import type { CallsignRosterEntry } from "./telephony";
 
 const PROCEDURE_TRAILING = new Set(["arrival", "star", "sid", "departure", "procedure"]);
 
@@ -1876,6 +1877,7 @@ export function matchSpokenPatterns(
   catalogApproaches?: readonly CatalogApproach[],
   clearanceLimitIds?: ReadonlySet<string>,
   catalogAirports?: readonly CatalogAirport[],
+  callsignRoster?: readonly CallsignRosterEntry[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1951,8 +1953,11 @@ export function matchSpokenPatterns(
     }
 
     // Try callsign if no instruction matched at i
-    const cs = parseSpokenCallsign(tokens, i);
+    const cs = parseSpokenCallsign(tokens, i, callsignRoster);
     if (cs.kind === "ok") {
+      if (cs.alias && i !== 0) {
+        return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
+      }
       let canClaim = true;
       for (let k = i; k < cs.next; k += 1) {
         if (claimed[k]) {
@@ -1974,6 +1979,8 @@ export function matchSpokenPatterns(
       if (!unknownTelephonyWord) {
         unknownTelephonyWord = cs.word;
       }
+    } else if (cs.kind === "invalid_alias") {
+      return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
     }
   }
 

@@ -59,7 +59,12 @@ import {
   type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
-import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import {
+  parseSpokenCallsign,
+  PHONETIC_TO_LETTER,
+  RESERVED_SPOKEN,
+  type CallsignRosterEntry,
+} from "./telephony";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "../instruction-order";
@@ -1431,6 +1436,7 @@ export function parseSpokenGrammar(
   catalogProcedures?: readonly CatalogProcedure[],
   clearanceLimitIds?: ReadonlySet<string>,
   catalogAirports?: readonly CatalogAirport[],
+  callsignRoster?: readonly CallsignRosterEntry[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1445,11 +1451,13 @@ export function parseSpokenGrammar(
     clearanceLimitIds,
     airports: catalogAirports ?? [],
   };
-  const callsignAttempt = parseSpokenCallsign(tokens, 0);
+  const callsignAttempt = parseSpokenCallsign(tokens, 0, callsignRoster);
   let callsignToken: string | null = null;
   if (callsignAttempt.kind === "ok") {
     callsignToken = callsignAttempt.callsign;
     c.i = callsignAttempt.next;
+  } else if (callsignAttempt.kind === "invalid_alias") {
+    return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   } else if (selectedCallsign) {
     const selectedStart = tokens.findIndex(
       (token, index) =>

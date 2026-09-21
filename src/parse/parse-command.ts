@@ -18,7 +18,12 @@ import { formatParseError, PARSE_ERROR } from "./tokens";
 import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
 import { repairSpokenLexemes } from "./spoken/lexical-repair";
-import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
+import {
+  groundCallsignToRoster,
+  rewriteLeadingAliasCallsign,
+  spokenCallsignToken,
+  type CallsignRosterEntry,
+} from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import { matchSpokenPatterns } from "./spoken/pattern-matcher";
 import {
@@ -69,8 +74,8 @@ import {
 export interface ParseCommandOpts {
   source: "text" | "voice";
   selectedCallsign?: string | null;
-  /** Live ICAO roster for Path C prompt grounding. Parse stays World-free. */
-  callsigns?: readonly string[];
+  /** Live roster for deterministic callsign grounding. Strings remain canonical-only input. */
+  callsigns?: readonly CallsignRosterEntry[];
   /**
    * Facility fix/navaid vocabulary for DIRECT/CROSS snap and Path C `fixes=`
    * prompt grounding. Not kinematics. Parse stays World-free.
@@ -224,22 +229,27 @@ const SLOT_SKIP = new Set([
   "then",
 ]);
 
-function rosterFromOpts(opts: ParseCommandOpts): string[] {
+function rosterFromOpts(opts: ParseCommandOpts): CallsignRosterEntry[] {
   const raw = opts.callsigns ?? [];
-  const out: string[] = [];
+  const out: CallsignRosterEntry[] = [];
   const seen = new Set<string>();
-  for (const cs of raw) {
-    const up = cs.trim().toUpperCase();
+  for (const entry of raw) {
+    const callsign = (typeof entry === "string" ? entry : entry.callsign).trim().toUpperCase();
+    const up = callsign;
     if (!up || seen.has(up)) {
       continue;
     }
     seen.add(up);
-    out.push(up);
+    out.push(typeof entry === "string" ? up : { callsign: up, aliases: entry.aliases });
     if (out.length >= MAX_ROSTER) {
       break;
     }
   }
   return out;
+}
+
+function rosterCallsigns(roster: readonly CallsignRosterEntry[]): string[] {
+  return roster.map((entry) => (typeof entry === "string" ? entry : entry.callsign));
 }
 
 function isIdentPart(tok: string): boolean {
@@ -892,7 +902,7 @@ function clearanceLimitCandidates(
 }
 
 function pathCContext(
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
   selected: string | null,
   catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
@@ -931,7 +941,7 @@ function pathCContext(
   }
   if (route !== undefined) {
     return {
-      callsigns: [...roster],
+      callsigns: rosterCallsigns(roster),
       selectedCallsign: selected,
       routeWindow: route,
       ...(limits.length > 0 ? { clearanceLimits: [...limits] } : {}),
@@ -939,7 +949,7 @@ function pathCContext(
     };
   }
   return {
-    callsigns: [...roster],
+    callsigns: rosterCallsigns(roster),
     selectedCallsign: selected,
     ...(fixes.length > 0 ? { fixes } : {}),
     ...(pathProcedures.length > 0 ? { procedures: pathProcedures } : {}),
@@ -951,7 +961,7 @@ function pathCContext(
 function groundLocalCallsign(
   parsed: ParseResult,
   normalized: string,
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
   selected: string | null,
 ): ParseResult {
   if (!parsed.ok || !parsed.callsignToken) {
@@ -1268,6 +1278,7 @@ export async function parseCommand(
     repairSpokenLexemes(normalizeSpoken(sourceText)),
     airports,
   );
+  const typedNormalized = rewriteLeadingAliasCallsign(normalized, roster);
   const ifrCandidate = isIfrClearanceCandidate(normalized);
   const routeInfo = ifrCandidate
     ? routeWindowContext(normalized, catalog, opts.routeCandidates ?? [], procedures, airports)
@@ -1291,7 +1302,7 @@ export async function parseCommand(
 
   const typed = tryGroundedLocal(
     groundLocalCallsign(
-      parseRadioText(normalized, { fixes: catalog, procedures, airports }),
+      parseRadioText(typedNormalized, { fixes: catalog, procedures, airports }),
       normalized,
       roster,
       selected,
@@ -1316,6 +1327,7 @@ export async function parseCommand(
     procedures,
     clearanceLimitIds,
     airports,
+    roster,
   );
   const pathA = tryGroundedLocal(
     groundLocalCallsign(spoken, normalized, roster, selected),
@@ -1362,6 +1374,7 @@ export async function parseCommand(
     approaches,
     clearanceLimitIds,
     airports,
+    roster,
   );
   const island = tryGroundedLocal(
     groundLocalCallsign(islandParsed, normalized, roster, selected),
@@ -1443,7 +1456,7 @@ export async function parseCommand(
         const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
         const callsignSafe =
           roster.length === 0 ||
-          (grounded !== null && roster.includes(grounded)) ||
+          (grounded !== null && rosterCallsigns(roster).includes(grounded)) ||
           (rawCallsign === null && selected === null);
         const pathFixes = [
           ...(context?.fixes ?? []),
@@ -1487,11 +1500,6 @@ export async function parseCommand(
     }
   }
 
-  const error =
-    !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
-      ? spoken.error
-      : !islandParsed.ok && islandParsed.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
-        ? islandParsed.error
-        : formatParseError(PARSE_ERROR.PARSE_MISS);
+  const error = formatParseError(PARSE_ERROR.PARSE_MISS);
   return { ok: false, error, sourceText };
 }
