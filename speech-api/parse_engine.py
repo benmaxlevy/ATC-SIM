@@ -20,7 +20,7 @@ log = logging.getLogger("speech-api")
 
 SCHEMA_VERSION = "command-ir-v0"
 # Shared browser/service safety contract. Bump when semantic guard behavior changes.
-PARSE_CONTRACT_VERSION = "command-ir-v0-safe-2"
+PARSE_CONTRACT_VERSION = "command-ir-v0-safe-3"
 # Bounded increase over the original 128-token budget; remains below the
 # configured context window and is measured by the per-request timing log.
 PATH_C_MAX_OUTPUT_TOKENS = 192
@@ -97,6 +97,8 @@ SYSTEM_PROMPT = """Convert ATC radio into Command IR v0 JSON. Output JSON only; 
 
 Repair fused, slurred, and compact ASR when the intended clearance is clear. Normalize airline telephony to ICAO (Delta DAL, Southwest SWA, American AAL, United UAL, JetBlue JBU, Alaska ASA, Frontier FFT, Spirit NKS, FedEx FDX, UPS UPS), spoken digits to a callsign token, niner/tree/fife to 9/3/5, headings/altitudes to numbers, heading 360 to 0, and grouped thousands (one one thousand is 11000). Preserve a recognizable spoken callsign; use onFrequency only when its flight number uniquely repairs noisy audio. Never substitute selected or unrelated traffic.
 
+When aircraftCandidates/onFrequency includes an authored alias, a complete alias plus registration tail (for example Skyhawk 123 or Skyhawk one two three) is only evidence for the one matching canonical callsign. Alias-only, incomplete, unknown, or ambiguous alias evidence is PARSE_MISS. Emit only the listed canonical callsign in callsignToken; never emit alias text such as Skyhawk 123. This is local salvage using simulator-authored evidence, not FAA-complete natural-language understanding.
+
 “turn left heading 270” is FLY_HEADING with LEFT, never TURN_DEGREES. ASR “turn leftening 360” and “turn leftening one five zero” mean “turn left heading …” and are FLY_HEADING with LEFT. “zero niner zero” is heading 90. “fly heading” with no left/right is SHORTEST; never invent LEFT or RIGHT. “turn 20 degrees right” is TURN_DEGREES with RIGHT and degrees 20, never FLY_HEADING. TURN_DEGREES requires “degrees” without a heading. “present heading” is PRESENT_HEADING. “descend and maintain 4000” and ASR “descent and maintain 4000” are ALTITUDE with DESCEND and altitudeFt 4000. “cross <fix> at and maintain <altitude>” maps to {"type": "CROSS", "restriction": "AT"}. “maintain 210 knots” is SPEED with MAINTAIN and speedKt 210, never FLY_HEADING or ALTITUDE. “increase speed to 250 knots” is SPEED INCREASE; “reduce speed” is REDUCE. “maintain five thousand, maintain two one zero knots” is both ALTITUDE MAINTAIN 5000 and SPEED MAINTAIN 210; never drop one instruction. DESCEND_VIA and CLIMB_VIA require the word “via” plus a listed procedure; never use VIA for an altitude assignment; never map an unmatched spoken name onto a different listed procedure. “without delay” means expedite, never untilEstablished; “until established” belongs on ALTITUDE. IDENT, go around, localizer intercept, and cleared/expect approach retain their normal instruction meanings. Position reports never imply DIRECT.
 
 Position advisories are not commands, but never stop parsing later sentences. “You are 15 miles from a fix. Maintain 4000 until established on the localizer. Cleared ILS runway 09 approach.” has two instructions after the advisory: ALTITUDE with MAINTAIN, altitudeFt 4000, untilEstablished true; then CLEARED_APPROACH using the matching approaches= id. Preserve every independent instruction in spoken order. “Turn 40 degrees left. Intercept runway 09 localizer. Maintain 5000.” requires three instructions: TURN_DEGREES, INTERCEPT_LOCALIZER using the matching approaches= id, then ALTITUDE. Do not drop one instruction or combine it into another.
@@ -161,16 +163,64 @@ class ParseEngine(Protocol):
 
 
 MAX_ROSTER = 64
+MAX_CALLSIGN_ALIASES = 8
+MAX_ALIAS_LENGTH = 64
 MAX_FIXES = 64
 MAX_PROCEDURES = 32
 MAX_APPROACHES = 32
 MAX_AIRPORTS = 64
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
+_CANONICAL_N_NUMBER_RE = re.compile(r"^N\d{1,5}[A-Z]{0,2}$")
+_CANONICAL_ICAO_CALLSIGN_RE = re.compile(r"^[A-Z]{3}\d{1,4}[A-Z]?$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 _NAVAID_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 _APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _AIRPORT_RE = re.compile(r"^[A-Z]{4}$")
+
+
+def _is_canonical_callsign(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    token = value.strip().upper()
+    return bool(_CANONICAL_N_NUMBER_RE.fullmatch(token) or _CANONICAL_ICAO_CALLSIGN_RE.fullmatch(token))
+
+
+def _sanitize_callsign_candidates(raw: object) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if isinstance(item, str):
+            callsign = item.strip().upper()
+            raw_aliases: object = []
+        elif isinstance(item, dict):
+            callsign_raw = item.get("callsign")
+            callsign = callsign_raw.strip().upper() if isinstance(callsign_raw, str) else ""
+            raw_aliases = item.get("aliases")
+        else:
+            continue
+        if not _is_canonical_callsign(callsign) or callsign in seen:
+            continue
+        aliases: list[str] = []
+        alias_seen: set[str] = set()
+        if isinstance(raw_aliases, list):
+            for alias in raw_aliases:
+                if not isinstance(alias, str):
+                    continue
+                clean = " ".join(alias.strip().split())
+                key = clean.casefold()
+                if 1 <= len(clean) <= MAX_ALIAS_LENGTH and key not in alias_seen:
+                    alias_seen.add(key)
+                    aliases.append(clean)
+                if len(aliases) >= MAX_CALLSIGN_ALIASES:
+                    break
+        seen.add(callsign)
+        out.append({"callsign": callsign, "aliases": aliases})
+        if len(out) >= MAX_ROSTER:
+            break
+    return out
 
 
 def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
@@ -498,7 +548,7 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
         return None
-    callsigns = _sanitize_id_list(raw.get("callsigns") or [], _CALLSIGN_RE, MAX_ROSTER)
+    callsigns = _sanitize_callsign_candidates(raw.get("callsigns") or [])
     fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
     procedures = _sanitize_procedures(raw.get("procedures") or [])
     approaches = _sanitize_approaches(raw.get("approaches") or [])
@@ -514,7 +564,7 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
-        if up and _CALLSIGN_RE.match(up):
+        if up and _is_canonical_callsign(up):
             selected = up
     if (
         not callsigns
@@ -546,16 +596,18 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
 
 
 def build_parse_user_message(text: str, source: str, context: dict[str, Any] | None = None) -> str:
-    """User turn: transcript plus optional roster and catalog ids (not kinematics)."""
+    """User turn: transcript plus bounded grounding candidates (not kinematics)."""
     lines = [f"schemaVersion={SCHEMA_VERSION}", f"source={source}"]
     ctx = sanitize_parse_context(context) if context else None
     if ctx:
         roster = ctx.get("callsigns") or []
         if roster:
-            lines.append("onFrequency=" + ",".join(roster))
+            lines.append("onFrequency=" + ",".join(row["callsign"] for row in roster))
+            lines.append("aircraftCandidates=" + json.dumps(roster, separators=(",", ":")))
             lines.append(
-                "callsignToken MUST be one onFrequency ICAO token or null. "
-                "Match noisy ASR to the listed flight number."
+                "callsignToken MUST be one listed canonical onFrequency callsign or null. "
+                "Use aliases only as input evidence, and require the complete registration tail; "
+                "unknown, incomplete, or ambiguous aliases are PARSE_MISS."
             )
         selected = ctx.get("selectedCallsign")
         if selected:
@@ -1083,6 +1135,10 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         return ParseOutcome(ok=False, error="SCHEMA")
     if isinstance(token, str) and token.strip() == "":
         token = None
+    if token is not None and not _is_canonical_callsign(token):
+        return ParseOutcome(ok=False, error="SCHEMA")
+    if isinstance(token, str):
+        token = token.strip().upper()
     raw_list = payload.get("instructions")
     if not isinstance(raw_list, list) or len(raw_list) == 0:
         return ParseOutcome(ok=False, error="SCHEMA")
@@ -1652,6 +1708,113 @@ def _guard_route_window_ids(
     return outcome
 
 
+_CALLSIGN_DIGIT_WORDS: dict[str, str] = {
+    "zero": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "tree": "3",
+    "four": "4",
+    "five": "5",
+    "fife": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "niner": "9",
+}
+
+
+def _callsign_tail_patterns(callsign: str) -> list[str]:
+    match = re.fullmatch(r"(?:N|[A-Z]{3})(\d{1,5})[A-Z]{0,2}", callsign)
+    if match is None:
+        return []
+    digits = match.group(1)
+    words = " ".join(
+        {
+            "0": "zero",
+            "1": "one",
+            "2": "two",
+            "3": "three",
+            "4": "four",
+            "5": "five",
+            "6": "six",
+            "7": "seven",
+            "8": "eight",
+            "9": "nine",
+        }[digit]
+        for digit in digits
+    )
+    return [digits, words]
+
+
+def _alias_evidence_owners(text: str, candidates: list[dict[str, Any]]) -> set[str]:
+    normalized = normalize_evidence_text(text).casefold()
+    owners: set[str] = set()
+    for candidate in candidates:
+        callsign = str(candidate.get("callsign") or "").upper()
+        for alias in candidate.get("aliases") or []:
+            alias_text = " ".join(str(alias).strip().split()).casefold()
+            if not alias_text:
+                continue
+            for tail in _callsign_tail_patterns(callsign):
+                pattern = rf"\b{re.escape(alias_text)}\s+{re.escape(tail)}\b"
+                if re.search(pattern, normalized):
+                    owners.add(callsign)
+                    break
+    return owners
+
+
+def _callsign_alias_like(text: str) -> bool:
+    normalized = normalize_evidence_text(text).casefold().strip()
+    if not normalized:
+        return False
+    tokens = normalized.split()
+    if len(tokens) < 2:
+        return False
+    if re.fullmatch(r"n\d{1,5}[a-z]{0,2}", tokens[0]) or re.fullmatch(
+        r"[a-z]{3}\d{1,4}[a-z]?", tokens[0]
+    ):
+        return False
+    if tokens[0] in {"november", "delta", "southwest", "american", "united", "jetblue", "alaska", "frontier", "spirit", "fedex", "ups"}:
+        return False
+    return tokens[1].isdigit() or tokens[1] in _CALLSIGN_DIGIT_WORDS
+
+
+def _ground_callsign_token(
+    text: str, context: dict[str, Any], token: str | None
+) -> str | None:
+    if token is None:
+        return None
+    canonical = token.strip().upper()
+    if not _is_canonical_callsign(canonical):
+        return None
+    candidates = context.get("callsigns") or []
+    by_callsign = {
+        row["callsign"]: row
+        for row in candidates
+        if isinstance(row, dict) and isinstance(row.get("callsign"), str)
+    }
+    if not by_callsign:
+        return canonical
+    if canonical not in by_callsign:
+        return None
+    alias_owners = _alias_evidence_owners(text, list(by_callsign.values()))
+    if alias_owners:
+        return canonical if len(alias_owners) == 1 and canonical in alias_owners else None
+    normalized = normalize_evidence_text(text).casefold().strip()
+    if any(
+        normalized == " ".join(str(alias).split()).casefold()
+        or normalized.startswith(" ".join(str(alias).split()).casefold() + " ")
+        for row in by_callsign.values()
+        for alias in row.get("aliases") or []
+    ):
+        return None
+    if _callsign_alias_like(text):
+        return None
+    return canonical
+
+
 def guard_catalog_ids(
     text: str,
     context: dict[str, Any] | None,
@@ -1671,12 +1834,10 @@ def guard_catalog_ids(
     airports = {row["icao"] for row in ctx.get("airports") or []}
     procedures = {row["id"] for row in ctx.get("procedures") or []}
     approaches = {row["id"] for row in ctx.get("approaches") or []}
-    roster = set(ctx.get("callsigns") or [])
-    token = outcome.callsign_token
-    if token and roster and token.upper() not in roster:
+    roster = {row["callsign"] for row in ctx.get("callsigns") or [] if isinstance(row, dict)}
+    token = _ground_callsign_token(text, ctx, outcome.callsign_token)
+    if outcome.callsign_token is not None and token is None:
         return ParseOutcome(ok=False, error="PARSE_MISS")
-    if token:
-        token = token.upper()
     for instruction in outcome.instructions:
         kind = instruction["type"]
         if kind in {"DIRECT", "CROSS"}:
@@ -1853,6 +2014,21 @@ class MockParseEngine:
         # Explicit SCHEMA trigger so CI does not need a real model.
         if "[SCHEMA]" in stripped.upper() or stripped.upper().startswith("CHAT"):
             return ParseOutcome(ok=False, error="SCHEMA")
+        if isinstance(context, dict) and _callsign_alias_like(stripped):
+            ctx = sanitize_parse_context(context)
+            owners = _alias_evidence_owners(stripped, (ctx or {}).get("callsigns") or [])
+            if len(owners) != 1:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            alias_outcome = ParseOutcome(
+                ok=True,
+                callsign_token=next(iter(owners)),
+                instructions=list(MOCK_PARSE_OK["instructions"]),  # type: ignore[arg-type]
+            )
+            return guard_catalog_ids(
+                stripped,
+                context,
+                guard_instruction_semantics(stripped, alias_outcome),
+            )
         if isinstance(context, dict) and context.get("routeWindow") is not None:
             route = _mock_route_parse(context)
             return guard_catalog_ids(stripped, context, guard_instruction_semantics(stripped, route))

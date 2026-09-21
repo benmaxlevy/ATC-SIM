@@ -16,7 +16,7 @@ import { parseFacilityName } from "./contact";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
-export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-2" as const;
+export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-3" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 /** Path C is optional salvage; it must not hold the radio loop indefinitely. */
 export const DEFAULT_PARSE_TIMEOUT_MS = 3000;
@@ -78,7 +78,8 @@ export interface PathCRouteWindow {
 }
 
 export interface PathCContext {
-  callsigns: string[];
+  /** Canonical live identities plus authored alias evidence. Aliases never enter Command IR. */
+  callsigns: PathCCallsignCandidate[];
   selectedCallsign?: string | null;
   /** Facility catalog ids. Optional; never kinematics, n-best, or STT confidence. */
   fixes?: string[];
@@ -92,6 +93,11 @@ export interface PathCContext {
   routeWindow?: PathCRouteWindow;
   /** Non-airport clearance-limit candidates, separately scoped from route legs. */
   clearanceLimits?: PathCRouteCandidate[];
+}
+
+export interface PathCCallsignCandidate {
+  callsign: string;
+  aliases: string[];
 }
 
 export interface PathCRequest {
@@ -141,6 +147,14 @@ const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
   "levenshtein",
 ]);
 const ROUTE_CONNECTORS = new Set(["direct", "then"]);
+const CANONICAL_N_NUMBER = /^N\d{1,5}[A-Z]{0,2}$/;
+const CANONICAL_ICAO_CALLSIGN = /^[A-Z]{3}\d{1,4}[A-Z]?$/;
+
+/** Path C output identity is canonical ICAO/N-number, never an authored alias. */
+export function isCanonicalCallsignToken(value: string): boolean {
+  const token = value.trim().toUpperCase();
+  return CANONICAL_N_NUMBER.test(token) || CANONICAL_ICAO_CALLSIGN.test(token);
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -432,7 +446,11 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   if (tokenRaw !== null && tokenRaw !== undefined && typeof tokenRaw !== "string") {
     return null;
   }
-  const callsignToken = typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw : null;
+  const callsignToken =
+    typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw.trim().toUpperCase() : null;
+  if (callsignToken !== null && !isCanonicalCallsignToken(callsignToken)) {
+    return null;
+  }
   const list = obj.instructions;
   if (!Array.isArray(list) || list.length === 0) {
     return null;

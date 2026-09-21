@@ -7,7 +7,7 @@ ok-false-object ::= "{" ws ok-false "," ws error-field ws "}"
 ok-true ::= "\"ok\"" ws ":" ws "true"
 ok-false ::= "\"ok\"" ws ":" ws "false"
 error-field ::= "\"error\"" ws ":" ws ("\"PARSE_MISS\"" | "\"UNAVAILABLE\"" | "\"SCHEMA\"" | "\"BAD_CLEARANCE\"")
-callsign-field ::= "\"callsignToken\"" ws ":" ws (string | "null")
+callsign-field ::= "\"callsignToken\"" ws ":" ws (canonical-callsign | "null")
 instructions-field ::= "\"instructions\"" ws ":" ws "[" ws instruction (ws "," ws instruction)* ws "]"
 
 instruction ::= fly-heading | turn-degrees | present-heading | altitude | speed | direct | class-b-clearance | class-b-clearance-as-requested | remain-outside-bravo | resume-appropriate-vfr-altitudes | expect-approach | cleared-approach | cleared-visual | intercept-localizer | cancel-approach | assign-squawk | maintain-vfr | ifr-clearance | ident | say-heading | say-altitude | descend-via | climb-via | join-procedure | cross | go-around | delete-speed-restrictions | request-details | standby-request | approve-flight-following | decline-request | radar-contact | terminate-radar-service | acknowledge-ifr-cancellation | contact-tower | contact-center
@@ -81,6 +81,12 @@ octal-digit ::= [0-7]
 runway-string ::= "\"" [0-9] [0-9]? [LRC]? "\""
 boolean ::= "true" | "false"
 
+canonical-callsign ::= "\"" canonical-callsign-token "\""
+canonical-callsign-token ::= n-number | icao-callsign
+n-number ::= "N" digit digit? digit? digit? digit? letter? letter?
+icao-callsign ::= letter letter letter digit digit? digit? digit? letter?
+digit ::= [0-9]
+letter ::= [A-Z]
 number ::= "-"? [0-9]+ ("." [0-9]+)?
 string ::= "\"" chars "\""
 chars ::= char*

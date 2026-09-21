@@ -20,7 +20,7 @@ from parse_engine import (
     validate_parse_json,
 )
 def test_parse_contract_version_is_explicit() -> None:
-    assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-2"
+    assert PARSE_CONTRACT_VERSION == "command-ir-v0-safe-3"
 
 
 def test_catalog_guard_rejects_unlisted_callsign() -> None:
@@ -36,6 +36,69 @@ def test_catalog_guard_rejects_unlisted_callsign() -> None:
     )
     assert guarded.ok is False
     assert guarded.error == "PARSE_MISS"
+
+
+def test_alias_context_is_structured_and_grounded_to_one_canonical_callsign() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {"callsigns": [{"callsign": "N123", "aliases": ["Skyhawk"]}]}
+    sanitized = sanitize_parse_context(context)
+    assert sanitized == context
+    valid = ParseOutcome(
+        ok=True,
+        callsign_token="N123",
+        instructions=[{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+    )
+    assert guard_catalog_ids("Skyhawk 123 turn left heading 270", context, valid).ok
+    assert guard_catalog_ids(
+        "Skyhawk 123 turn left heading 270",
+        context,
+        ParseOutcome(ok=True, callsign_token="Skyhawk 123", instructions=valid.instructions),
+    ).error == "PARSE_MISS"
+    assert guard_catalog_ids("Skyhawk turn left heading 270", context, valid).error == "PARSE_MISS"
+    assert guard_catalog_ids("Citation 123 turn left heading 270", context, valid).error == "PARSE_MISS"
+
+
+def test_alias_context_rejects_ambiguous_tail_and_accepts_five_digit_n_number() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {
+        "callsigns": [
+            {"callsign": "UAL123", "aliases": ["Skyhawk"]},
+            {"callsign": "DAL123", "aliases": ["Skyhawk"]},
+        ]
+    }
+    outcome = ParseOutcome(
+        ok=True,
+        callsign_token="UAL123",
+        instructions=[{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+    )
+    assert guard_catalog_ids("Skyhawk 123 turn left heading 270", context, outcome).error == "PARSE_MISS"
+    assert validate_parse_json(
+        {
+            "ok": True,
+            "callsignToken": "N12345",
+            "instructions": [{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+        }
+    ).callsign_token == "N12345"
+    assert validate_parse_json(
+        {
+            "ok": True,
+            "callsignToken": "Skyhawk 123",
+            "instructions": [{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+        }
+    ).error == "SCHEMA"
+
+
+def test_frontend_backend_callsign_context_and_grammar_parity() -> None:
+    root = Path(__file__).resolve().parents[2]
+    frontend = (root / "src/parse/path-c.ts").read_text(encoding="utf-8")
+    grammar = (root / "speech-api/parse_grammar.gbnf").read_text(encoding="utf-8")
+    assert "interface PathCCallsignCandidate" in frontend
+    assert "callsign: string;" in frontend
+    assert "aliases: string[];" in frontend
+    assert "callsign-field ::= \"\\\"callsignToken\\\"\" ws \":\" ws (canonical-callsign | \"null\")" in grammar
+    assert "digit digit? digit? digit? digit?" in grammar
 
 
 def _settings(*, parse_model_id: str, mock: bool = True) -> Settings:
@@ -847,7 +910,10 @@ def test_user_message_includes_on_frequency_roster() -> None:
     from parse_engine import build_parse_user_message, sanitize_parse_context
 
     assert sanitize_parse_context({"callsigns": ["swa204", "DAL123", "nope!"]}) == {
-        "callsigns": ["SWA204", "DAL123"],
+        "callsigns": [
+            {"callsign": "SWA204", "aliases": []},
+            {"callsign": "DAL123", "aliases": []},
+        ],
     }
     assert sanitize_parse_context({"fixes": ["semax", "C-Max", "FI27"]}) == {
         "callsigns": [],

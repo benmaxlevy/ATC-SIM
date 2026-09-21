@@ -32,7 +32,7 @@ def test_health_ok_parse_ready(client: TestClient) -> None:
     assert isinstance(body["sttModel"], str) and body["sttModel"]
     assert isinstance(body["ttsVoice"], str) and body["ttsVoice"]
     assert body["parse"] == "ready"
-    assert body["parseContract"] == "command-ir-v0-safe-2"
+    assert body["parseContract"] == "command-ir-v0-safe-3"
 
 
 def test_parse_mock_ready_without_download(client: TestClient) -> None:
@@ -47,6 +47,25 @@ def test_parse_mock_ready_without_download(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
+
+
+def test_parse_mock_alias_returns_canonical_callsign(client: TestClient) -> None:
+    response = client.post(
+        "/parse",
+        json={
+            "text": "Skyhawk one two three four five turn left heading two seven zero",
+            "source": "voice",
+            "schemaVersion": "command-ir-v0",
+            "context": {
+                "callsigns": [{"callsign": "N12345", "aliases": ["Skyhawk"]}],
+            },
+        },
+    )
+    assert response.json() == {
+        "ok": True,
+        "callsignToken": "N12345",
+        "instructions": [{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+    }
 
 
 def test_stt_fixture_wav_json_shape(client: TestClient) -> None:

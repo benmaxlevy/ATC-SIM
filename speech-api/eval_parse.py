@@ -21,7 +21,11 @@ SCHEMA_VERSION = "command-ir-v0"
 
 # Fictional second facility. Live Path C must map from this catalog, not KDEM.
 FACILITY: dict[str, Any] = {
-    "callsigns": ["UAL456", "AAL12", "SWA88"],
+    "callsigns": [
+        {"callsign": "UAL456", "aliases": []},
+        {"callsign": "AAL12", "aliases": []},
+        {"callsign": "SWA88", "aliases": []},
+    ],
     "selectedCallsign": "UAL456",
     "fixes": ["CEDAR", "RIVVR", "MOUNT"],
     "procedures": [
@@ -38,9 +42,49 @@ FACILITY: dict[str, Any] = {
     ],
 }
 
+ALIAS_FACILITY: dict[str, Any] = {
+    "callsigns": [{"callsign": "N12345", "aliases": ["Skyhawk"]}],
+    "selectedCallsign": "N12345",
+}
+
+AMBIGUOUS_ALIAS_FACILITY: dict[str, Any] = {
+    "callsigns": [
+        {"callsign": "UAL123", "aliases": ["Skyhawk"]},
+        {"callsign": "DAL123", "aliases": ["Skyhawk"]},
+    ]
+}
+
 CS = "UAL456"
 
 CASES: list[dict[str, Any]] = [
+    # --- aircraft alias grounding ---
+    {
+        "id": "callsign-alias-five-digit",
+        "text": "Skyhawk one two three four five turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {
+            "callsignToken": "N12345",
+            "instructions": [{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+        },
+    },
+    {
+        "id": "callsign-alias-unknown",
+        "text": "Citation one two three turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "callsign-alias-incomplete",
+        "text": "Skyhawk turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "callsign-alias-ambiguous",
+        "text": "Skyhawk one two three turn left heading two seven zero",
+        "context": AMBIGUOUS_ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
     # --- FLY_HEADING ---
     {
         "id": "hdg-left-clean",

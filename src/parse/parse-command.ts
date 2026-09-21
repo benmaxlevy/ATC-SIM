@@ -61,6 +61,8 @@ import {
   pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
+  isCanonicalCallsignToken,
+  type PathCCallsignCandidate,
   type PathCProcedureCandidate,
   type PathCRouteCandidate,
   type PathCRouteCandidateInput,
@@ -250,6 +252,95 @@ function rosterFromOpts(opts: ParseCommandOpts): CallsignRosterEntry[] {
 
 function rosterCallsigns(roster: readonly CallsignRosterEntry[]): string[] {
   return roster.map((entry) => (typeof entry === "string" ? entry : entry.callsign));
+}
+
+function pathCCallsignCandidates(roster: readonly CallsignRosterEntry[]): PathCCallsignCandidate[] {
+  return roster.map((entry) => {
+    if (typeof entry === "string") {
+      return { callsign: entry, aliases: [] };
+    }
+    const aliases = [
+      ...new Set(
+        (entry.aliases ?? []).map((alias) => alias.trim()).filter((alias) => alias.length > 0),
+      ),
+    ].slice(0, 8);
+    return { callsign: entry.callsign, aliases };
+  });
+}
+
+const PATH_C_CALLSIGN_DIGITS: Readonly<Record<string, string>> = {
+  zero: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
+const PATH_C_CALLSIGN_TELEPHONY = new Set([
+  "november",
+  "delta",
+  "southwest",
+  "american",
+  "united",
+  "jetblue",
+  "alaska",
+  "frontier",
+  "spirit",
+  "fedex",
+  "ups",
+]);
+
+function pathCCallsignAliasEvidenceSafe(
+  normalized: string,
+  token: string,
+  candidates: readonly PathCCallsignCandidate[],
+): boolean {
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const canonical = token.trim().toUpperCase();
+  if (!candidates.some((candidate) => candidate.callsign === canonical)) {
+    return false;
+  }
+  const owners = new Set<string>();
+  for (const candidate of candidates) {
+    const match = /^(?:N|[A-Z]{3})(\d{1,5})[A-Z]{0,2}$/.exec(candidate.callsign);
+    if (!match) continue;
+    const tail = match[1]!;
+    const tailWords = [...tail].map(
+      (digit) =>
+        Object.entries(PATH_C_CALLSIGN_DIGITS).find(([, value]) => value === digit)?.[0] ?? digit,
+    );
+    for (const alias of candidate.aliases) {
+      const aliasWords = normalizeSpoken(alias).split(/\s+/).filter(Boolean);
+      if (aliasWords.length === 0) continue;
+      const prefixMatches = aliasWords.every((word, index) => words[index] === word);
+      if (!prefixMatches) continue;
+      const remaining = words.slice(aliasWords.length);
+      const compactMatch = remaining[0] === tail;
+      const spokenMatch = remaining.slice(0, tailWords.length).join(" ") === tailWords.join(" ");
+      if (compactMatch || spokenMatch) owners.add(candidate.callsign);
+      else return false;
+    }
+  }
+  if (owners.size > 0) {
+    return owners.size === 1 && owners.has(canonical);
+  }
+  const first = words[0];
+  const aliasPrefix = candidates.some((candidate) =>
+    candidate.aliases.some((alias) => {
+      const aliasWords = normalizeSpoken(alias).split(/\s+/).filter(Boolean);
+      return aliasWords.length > 0 && aliasWords.every((word, index) => words[index] === word);
+    }),
+  );
+  if (aliasPrefix) return false;
+  if (first === canonical.toLowerCase()) return true;
+  if (words.length > 1 && !PATH_C_CALLSIGN_TELEPHONY.has(first ?? "")) {
+    if (/^\d+$/.test(words[1]!) || words[1]! in PATH_C_CALLSIGN_DIGITS) return false;
+  }
+  return true;
 }
 
 function isIdentPart(tok: string): boolean {
@@ -941,7 +1032,7 @@ function pathCContext(
   }
   if (route !== undefined) {
     return {
-      callsigns: rosterCallsigns(roster),
+      callsigns: pathCCallsignCandidates(roster),
       selectedCallsign: selected,
       routeWindow: route,
       ...(limits.length > 0 ? { clearanceLimits: [...limits] } : {}),
@@ -949,7 +1040,7 @@ function pathCContext(
     };
   }
   return {
-    callsigns: rosterCallsigns(roster),
+    callsigns: pathCCallsignCandidates(roster),
     selectedCallsign: selected,
     ...(fixes.length > 0 ? { fixes } : {}),
     ...(pathProcedures.length > 0 ? { procedures: pathProcedures } : {}),
@@ -1454,9 +1545,21 @@ export async function parseCommand(
       ) {
         const rawCallsign = checkedHit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
         const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
+        const outputCallsignEvidenceSafe =
+          checkedHit.callsignToken === null ||
+          roster.length === 0 ||
+          pathCCallsignAliasEvidenceSafe(
+            normalized,
+            checkedHit.callsignToken,
+            context?.callsigns ?? [],
+          );
+        const canonicalListed =
+          rawCallsign === null ||
+          (context?.callsigns ?? []).some((candidate) => candidate.callsign === rawCallsign) ||
+          (context === undefined && isCanonicalCallsignToken(rawCallsign));
         const callsignSafe =
           roster.length === 0 ||
-          (grounded !== null && rosterCallsigns(roster).includes(grounded)) ||
+          (canonicalListed && grounded !== null && rosterCallsigns(roster).includes(grounded)) ||
           (rawCallsign === null && selected === null);
         const pathFixes = [
           ...(context?.fixes ?? []),
@@ -1487,6 +1590,7 @@ export async function parseCommand(
         const ungrounded = salvaged.ungroundedFixes ?? [];
         if (
           callsignSafe &&
+          outputCallsignEvidenceSafe &&
           ungrounded.length === 0 &&
           (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
           pathCIdentifierListed(salvaged.instructions, context) &&

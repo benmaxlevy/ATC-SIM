@@ -56,11 +56,13 @@ export {
   PATH_C_SCHEMA_VERSION,
   createParsePathC,
   fetchParsePathC,
+  isCanonicalCallsignToken,
   schemaCheckPathC,
 } from "./path-c";
 export type {
   ParsePathCFn,
   PathCContext,
+  PathCCallsignCandidate,
   PathCProcedureCandidate,
   PathCRouteCandidate,
   PathCRouteCandidateInput,
