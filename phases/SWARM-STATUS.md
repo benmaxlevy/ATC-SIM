@@ -1,5 +1,15 @@
 # Swarm status
 
+## EIGHTY-SECOND SWARM — F6 AND F9 ORIGIN, DESTINATION, AND ROUTE DERIVATION (T02-203, 2026-09-22)
+
+Implemented and squash-merged on `feature/sattelite-traffic`:
+
+- T02-203 `7baec3a` — derive origin (`departureAirport`), destination (`airportId`), and intermediate filed route (`route`) from asterisk-delimited fix tokens in `<F6>` and `<F9>` entries. Updated `PreviewArmedAction`, `createFlightPlan`, and VFR amendment logic to keep FlightPlanModal and flight plan models fully populated.
+
+Final browser `npm run ci`: **251 files, 2,766 passed, 3 skipped**.
+
+**PHASE EXIT GREEN**
+
 ## EIGHTY-FIRST SWARM — TOWER HANDOFF ELIGIBILITY AND VISUAL APPROACH RELAXATION (T04-104, 2026-09-22)
 
 Implemented and squash-merged on `feature/sattelite-traffic`:
