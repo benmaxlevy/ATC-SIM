@@ -89,3 +89,23 @@ test("alias inside arbitrary text is not a callsign slot", async () => {
   });
   expectMiss(result);
 });
+
+test.each([
+  ["Cirrus 834 turn left heading 270", "N834SP"],
+  ["Sir 834 turn left heading 270", "N834SP"],
+  ["Sirius eight three four turn left heading two seven zero", "N834SP"],
+  ["Serious 834SP heading 270", "N834SP"],
+  ["Cirrus eight three four Sierra Papa turn left heading 270", "N834SP"],
+  ["Skyhawk 123 H270", "N123"],
+] as const)("GA alias variant %s matches canonical callsign %s", async (text, expectedCallsign) => {
+  const gaRoster = [
+    { callsign: "N834SP", aliases: ["Cirrus"] },
+    { callsign: "N123", aliases: ["Skyhawk"] },
+  ] as const;
+  const result = await parseCommand(text, {
+    source: "voice",
+    callsigns: gaRoster,
+    pathC: false,
+  });
+  expect(result).toMatchObject({ ok: true, callsignToken: expectedCallsign });
+});

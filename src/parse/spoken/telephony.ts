@@ -412,6 +412,20 @@ function parseAliasTail(
   return { tail: `${digits}${letters}`, next: j };
 }
 
+export const GA_ALIAS_VARIANTS: Readonly<Record<string, readonly string[]>> = {
+  cirrus: ["cirrus", "sirius", "serious", "cyrus", "sir", "sirs", "service", "cirus"],
+  skyhawk: ["skyhawk", "sky hawk", "sky"],
+  skylane: ["skylane", "sky lane"],
+  bonanza: ["bonanza", "banana", "bonansa"],
+  caravan: ["caravan", "carevan", "car van"],
+  archer: ["archer", "arch"],
+  diamond: ["diamond", "dimon", "diomand"],
+  cessna: ["cessna", "sesna"],
+  piper: ["piper", "pipe"],
+  beechcraft: ["beechcraft", "beech craft", "beech"],
+  mooney: ["mooney", "money", "muni"],
+};
+
 function aliasCallsignAt(
   tokens: readonly string[],
   i: number,
@@ -424,25 +438,57 @@ function aliasCallsignAt(
   });
   let aliasPrefix = false;
   const aliasOwners = new Set<string>();
-  const matches: Array<{ callsign: string; next: number }> = [];
+  const matches: Array<{ callsign: string; next: number; score: number }> = [];
   for (const candidate of candidates) {
-    const words = normalizedAliasWords(candidate.alias);
-    if (words.length === 0 || tokens.slice(i, i + words.length).join(" ") !== words.join(" ")) {
+    const primary = candidate.alias.trim().toLowerCase();
+    const variants = [candidate.alias, ...(GA_ALIAS_VARIANTS[primary] ?? [])];
+    // Sort variants by word length descending so multi-word variants match first
+    const variantWordLists = variants
+      .map((v) => normalizedAliasWords(v))
+      .filter((w) => w.length > 0)
+      .sort((a, b) => b.length - a.length);
+
+    let matchedWordsLen = 0;
+    for (const words of variantWordLists) {
+      if (tokens.slice(i, i + words.length).join(" ") === words.join(" ")) {
+        matchedWordsLen = words.length;
+        break;
+      }
+    }
+    if (matchedWordsLen === 0) {
       continue;
     }
+
     aliasPrefix = true;
     aliasOwners.add(candidate.callsign);
-    const tail = parseAliasTail(tokens, i + words.length);
+    const tail = parseAliasTail(tokens, i + matchedWordsLen);
     const expected = canonicalTail(candidate.callsign);
-    if (tail && expected !== null && tail.tail === expected) {
-      matches.push({ callsign: candidate.callsign, next: tail.next });
+    if (tail && expected !== null) {
+      if (tail.tail === expected) {
+        matches.push({ callsign: candidate.callsign, next: tail.next, score: 2 });
+      } else {
+        const expectedDigits = expected.replace(/\D/g, "");
+        const expectedSuffix = expected.replace(/\d/g, "");
+        const tailDigits = tail.tail.replace(/\D/g, "");
+        const tailSuffix = tail.tail.replace(/\d/g, "");
+        if (
+          tailDigits.length > 0 &&
+          tailDigits === expectedDigits &&
+          (tailSuffix === "" || tailSuffix === expectedSuffix)
+        ) {
+          matches.push({ callsign: candidate.callsign, next: tail.next, score: 1 });
+        }
+      }
     }
   }
   if (aliasOwners.size > 1) return { kind: "ambiguous" };
-  const unique = [...new Map(matches.map((match) => [match.callsign, match])).values()];
+  if (matches.length === 0) return { kind: aliasPrefix ? "invalid" : "none" };
+  const maxScore = Math.max(...matches.map((m) => m.score));
+  const bestMatches = matches.filter((m) => m.score === maxScore);
+  const unique = [...new Map(bestMatches.map((match) => [match.callsign, match])).values()];
   if (unique.length === 1) return { kind: "ok", ...unique[0] };
   if (unique.length > 1) return { kind: "ambiguous" };
-  return { kind: aliasPrefix ? "invalid" : "none" };
+  return { kind: "invalid" };
 }
 
 /** Rewrite only a complete leading alias for the typed tokenizer. */

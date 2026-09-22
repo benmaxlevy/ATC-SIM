@@ -1,4 +1,4 @@
-import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
+import { SessionLog, createWorld, performanceRegistry, type SessionEvent, type World } from "@core";
 import {
   DEFAULT_SPAWN_SEED,
   type RegionalFacility,
@@ -184,10 +184,18 @@ export function createApp(deps: AppDeps): AppHandles {
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
       getOnFrequencyCallsigns: (): CallsignCandidate[] =>
-        world.aircraft.map((ac) => ({
-          callsign: ac.callsign,
-          ...(ac.spokenAliases ? { aliases: ac.spokenAliases } : {}),
-        })),
+        world.aircraft.map((ac) => {
+          const aliases =
+            ac.spokenAliases && ac.spokenAliases.length > 0
+              ? ac.spokenAliases
+              : ac.aircraftType
+                ? performanceRegistry.getSpokenAliases(ac.aircraftType)
+                : undefined;
+          return {
+            callsign: ac.callsign,
+            ...(aliases && aliases.length > 0 ? { aliases } : {}),
+          };
+        }),
       getCatalogFixIds: () => catalogFixEntriesFromWorld(world),
       getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),
