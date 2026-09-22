@@ -437,6 +437,9 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.gate.locked) {
         this.syncLock("utterance-failed");
       }
+      // Playback cleanup can run while the utterance is still marked in
+      // flight. Recompute after clearing that flag or PTT stays locked.
+      this.setTransmitLocked(this.gate.locked || this.busy);
       this.finishUtteranceMetrics();
     }
   }

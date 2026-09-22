@@ -48,6 +48,36 @@ test("spoken heading dispatches voice FLY_HEADING 270 LEFT", async () => {
   ]);
 });
 
+test("accepted voice readback unlocks PTT after the utterance finishes", async () => {
+  const locks: boolean[] = [];
+  const mockPlayer: ReadbackPlayer = {
+    playing: false,
+    fxEnabled: true,
+    warmUp: vi.fn(async () => {}),
+    playPcm: vi.fn(async () => ({ ok: true as const })),
+    stop: vi.fn(),
+    setConnectSource: vi.fn(),
+    setFxEnabled: vi.fn(),
+  };
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => ({ accepted: true, readback: "DAL123 heading 270" }),
+    getSelectedCallsign: () => "DAL123",
+    readbackPlayer: mockPlayer,
+    setTransmitLocked: (locked) => locks.push(locked),
+  });
+
+  await loop.handlePttEvent({ type: "ptt-down" });
+  await loop.handlePttEvent({
+    type: "ptt-up",
+    result: { kind: "clip", clip: nonEmptyClip() },
+  });
+
+  expect(loop.busy).toBe(false);
+  expect(locks.at(-1)).toBe(false);
+});
+
 test("empty clip does not transcribe", async () => {
   const parseSpy: ParseCommandFn = vi.fn(parseCommand);
   const statuses: Array<VoiceLoopStatus | null> = [];
