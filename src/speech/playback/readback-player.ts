@@ -64,6 +64,13 @@ export class TransmitGate {
 export const PLAYBACK_TAIL_MS = 50;
 
 /**
+ * Chromium can occasionally finish an audible buffer without delivering the
+ * source `ended` event to the page. Keep the event as the normal path, but do
+ * not allow that browser failure to hold the radio forever.
+ */
+export const PLAYBACK_END_WATCHDOG_MARGIN_MS = 250;
+
+/**
  * Playback seam. Default PCM path uses {@link connectPlaybackThroughRadio}.
  * Tests and debug inject {@link connectPlaybackDry}.
  */
@@ -215,9 +222,19 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
       this.routePcm(source, ctx, clip);
 
       await new Promise<void>((resolve, reject) => {
-        source.onended = () => {
+        let settled = false;
+        let watchdog: ReturnType<typeof setTimeout> | undefined;
+        const settle = (): void => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (watchdog !== undefined) {
+            clearTimeout(watchdog);
+          }
           resolve();
         };
+        source.onended = settle;
         try {
           // audio-start: source.start() after resume. Map ctx.currentTime to wall clock now
           // (not Bluetooth/hardware delay). T03-07 still uses this same start instant.
@@ -225,6 +242,9 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
           void ctx.currentTime;
           source.start();
           hooks?.onAudioStart?.(wallMs);
+          if (Number.isFinite(buffer.duration)) {
+            watchdog = setTimeout(settle, buffer.duration * 1000 + PLAYBACK_END_WATCHDOG_MARGIN_MS);
+          }
         } catch (err) {
           reject(err);
         }

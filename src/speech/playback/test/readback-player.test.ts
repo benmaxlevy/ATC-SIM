@@ -7,7 +7,15 @@ function clip(samples: number[] = [1, 0, -1]): AudioClip {
 }
 
 class FakeBuffer {
-  constructor(readonly length: number) {}
+  readonly duration: number;
+
+  constructor(
+    readonly length: number,
+    sampleRate: number,
+  ) {
+    this.duration = length / sampleRate;
+  }
+
   getChannelData(): Float32Array {
     return new Float32Array(this.length);
   }
@@ -33,8 +41,8 @@ class FakeContext {
   destination = { id: "dest" } as unknown as AudioDestinationNode;
   readonly sources: FakeSource[] = [];
 
-  createBuffer(_channels: number, length: number, _sampleRate: number): AudioBuffer {
-    return new FakeBuffer(length) as unknown as AudioBuffer;
+  createBuffer(_channels: number, length: number, sampleRate: number): AudioBuffer {
+    return new FakeBuffer(length, sampleRate) as unknown as AudioBuffer;
   }
 
   createBufferSource(): AudioBufferSourceNode {
@@ -117,6 +125,33 @@ test("second playPcm while the first is in flight does not overlap (AC2)", async
 
   finishFirst();
   await expect(first).resolves.toEqual({ ok: true });
+});
+
+test("playPcm releases after the duration watchdog when onended is lost", async () => {
+  vi.useFakeTimers();
+  try {
+    const ctx = new FakeContext();
+    const source = new FakeSource();
+    source.start = () => {
+      // Simulate the browser finishing audio without delivering `ended`.
+    };
+    ctx.createBufferSource = () => {
+      ctx.sources.push(source);
+      return source as unknown as AudioBufferSourceNode;
+    };
+
+    const player = createReadbackPlayer({
+      getAudioContext: () => ctx as unknown as AudioContext,
+      delay: async () => {},
+    });
+    const pending = player.playPcm(clip(new Array(1600).fill(1)));
+
+    await vi.advanceTimersByTimeAsync(1600 / 16 + 250);
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(player.playing).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("createReadbackPlayer tests run without a DOM AudioContext", () => {
