@@ -109,3 +109,38 @@ test.each([
   });
   expect(result).toMatchObject({ ok: true, callsignToken: expectedCallsign });
 });
+
+test.each([
+  ["siriu five three zero zero golf say request", "N5300G"],
+  ["cirru five three zero zero gulf say request", "N5300G"],
+] as const)("fuzzy prefix with exact tail %s parses to %s", async (text, expectedCallsign) => {
+  const roster = [
+    { callsign: "N5300G", aliases: ["Cirrus"] },
+    { callsign: "N172SP", aliases: ["Skyhawk"] },
+    { callsign: "N281AR", aliases: ["Archer"] },
+  ] as const;
+  const result = await parseCommand(text, {
+    source: "voice",
+    callsigns: roster,
+    pathC: false,
+  });
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: expectedCallsign,
+    instructions: [{ type: "REQUEST_DETAILS" }],
+  });
+});
+
+test.each([
+  "siriu nine nine nine golf say request",
+  "xyzcirrus five three zero zero golf say request",
+  "turn five three zero zero golf say request",
+])("invalid near-miss %s fails closed", async (text) => {
+  const roster = [{ callsign: "N5300G", aliases: ["Cirrus"] }] as const;
+  const result = await parseCommand(text, {
+    source: "voice",
+    callsigns: roster,
+    pathC: false,
+  });
+  expectMiss(result);
+});

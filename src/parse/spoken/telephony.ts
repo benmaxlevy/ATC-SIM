@@ -16,6 +16,7 @@ export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
   echo: "E",
   foxtrot: "F",
   golf: "G",
+  gulf: "G",
   hotel: "H",
   india: "I",
   juliett: "J",
@@ -33,6 +34,7 @@ export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
   uniform: "U",
   victor: "V",
   whiskey: "W",
+  whisky: "W",
   "x-ray": "X",
   xray: "X",
   yankee: "Y",
@@ -426,6 +428,44 @@ export const GA_ALIAS_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   mooney: ["mooney", "money", "muni"],
 };
 
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  let prev = Array.from({ length: b.length + 1 }, (_, idx) => idx);
+  let curr = new Array(b.length + 1).fill(0);
+
+  for (let idx = 0; idx < a.length; idx++) {
+    curr[0] = idx + 1;
+    for (let j = 0; j < b.length; j++) {
+      const cost = a.charCodeAt(idx) === b.charCodeAt(j) ? 0 : 1;
+      curr[j + 1] = Math.min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost);
+    }
+    const temp = prev;
+    prev = curr;
+    curr = temp;
+  }
+  return prev[b.length]!;
+}
+
+function wordMatchesFuzzy(spoken: string, target: string): boolean {
+  if (spoken === target) return true;
+  if (
+    RESERVED_SPOKEN.has(spoken) ||
+    singleDigit(spoken) !== null ||
+    spoken in TEENS ||
+    spoken in TENS ||
+    /^\d+$/.test(spoken)
+  ) {
+    return false;
+  }
+  // Guard against short words causing spurious collisions (e.g. "sky", "sir")
+  if (target.length < 4 || spoken.length < 3) return false;
+  const maxDistance = target.length >= 6 ? 2 : 1;
+  return levenshteinDistance(spoken, target) <= maxDistance;
+}
+
 function aliasCallsignAt(
   tokens: readonly string[],
   i: number,
@@ -449,10 +489,30 @@ function aliasCallsignAt(
       .sort((a, b) => b.length - a.length);
 
     let matchedWordsLen = 0;
+    let isExact = false;
     for (const words of variantWordLists) {
       if (tokens.slice(i, i + words.length).join(" ") === words.join(" ")) {
         matchedWordsLen = words.length;
+        isExact = true;
         break;
+      }
+    }
+    if (matchedWordsLen === 0) {
+      for (const words of variantWordLists) {
+        if (i + words.length <= tokens.length) {
+          let allMatch = true;
+          for (let k = 0; k < words.length; k++) {
+            if (!wordMatchesFuzzy(tokens[i + k]!, words[k]!)) {
+              allMatch = false;
+              break;
+            }
+          }
+          if (allMatch) {
+            matchedWordsLen = words.length;
+            isExact = false;
+            break;
+          }
+        }
       }
     }
     if (matchedWordsLen === 0) {
@@ -464,8 +524,9 @@ function aliasCallsignAt(
     const tail = parseAliasTail(tokens, i + matchedWordsLen);
     const expected = canonicalTail(candidate.callsign);
     if (tail && expected !== null) {
+      const baseScore = isExact ? 2 : 1;
       if (tail.tail === expected) {
-        matches.push({ callsign: candidate.callsign, next: tail.next, score: 2 });
+        matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore + 2 });
       } else {
         const expectedDigits = expected.replace(/\D/g, "");
         const expectedSuffix = expected.replace(/\d/g, "");
@@ -476,7 +537,7 @@ function aliasCallsignAt(
           tailDigits === expectedDigits &&
           (tailSuffix === "" || tailSuffix === expectedSuffix)
         ) {
-          matches.push({ callsign: candidate.callsign, next: tail.next, score: 1 });
+          matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore });
         }
       }
     }
