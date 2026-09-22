@@ -9,6 +9,7 @@
 
 import type { Aircraft } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
+import { courseChangeDeg } from "../nav/geometry";
 import { resolveApproachContext } from "../nav/approachContext";
 import { locAxisForApproach, locDeviation, type LocAxis } from "../nav/localizer";
 import type { World } from "../world";
@@ -22,7 +23,7 @@ import type { RegionalFacility } from "../../scenario/regional";
 import { isLandingInhibited, isOnMissed, missedApproachId, missedSpecFor } from "./missed";
 
 /** Offer HO from this along-track inward (documented gate). */
-export const TOWER_HANDOFF_GATE_NM = 5;
+export const TOWER_HANDOFF_GATE_NM = 10;
 /**
  * Advertised inner edge of the HO window. Passing this without HO does not
  * lock out the stub — they can still HO until DA.
@@ -60,15 +61,34 @@ export function isTowerHandoffEligible(ac: Aircraft, world: World): boolean {
   if (isLandingInhibited(ac) || isOnMissed(ac)) {
     return false;
   }
-  const lat = ac.intent.lateral?.type;
-  const vert = ac.intent.vertical?.type;
-  if (lat !== "LOC" && vert !== "GS") {
+  const hasApproach =
+    Boolean(ac.intent.clearedApproachId) ||
+    ac.intent.lateral?.type === "LOC" ||
+    ac.intent.lateral?.type === "INTERCEPT_LOC" ||
+    ac.intent.lateral?.type === "VISUAL_FINAL";
+  if (!hasApproach) {
     return false;
   }
-  const approachId = missedApproachId(ac);
-  if (!approachId) {
-    return false;
+
+  if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+    const lat = ac.intent.lateral;
+    const fieldElevFt = lat.fieldElevFt ?? 0;
+    const headingRad = (lat.headingDeg * Math.PI) / 180;
+    const dx = ac.xNm - lat.threshold.xNm;
+    const dy = ac.yNm - lat.threshold.yNm;
+    const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+    const distNm = Math.hypot(dx, dy);
+    const distGate = alongTrackNm > 0 ? alongTrackNm : distNm;
+    if (distGate > TOWER_HANDOFF_GATE_NM || distGate <= 0) {
+      return false;
+    }
+    if (courseChangeDeg(ac.headingDeg, lat.headingDeg) > 45) {
+      return false;
+    }
+    return ac.altitudeFt > fieldElevFt;
   }
+
+  const approachId = missedApproachId(ac) ?? ac.intent.clearedApproachId;
   const axis = locAxisForAircraft(ac, world);
   if (!axis) {
     return false;
@@ -77,8 +97,14 @@ export function isTowerHandoffEligible(ac: Aircraft, world: World): boolean {
   if (along > TOWER_HANDOFF_GATE_NM || along <= 0) {
     return false;
   }
+  const course = axis.publishedCourseMagneticDeg ?? axis.courseDeg;
+  const isAligned =
+    ac.intent.lateral?.type === "LOC" || courseChangeDeg(ac.headingDeg, course) <= 45;
+  if (!isAligned) {
+    return false;
+  }
   const ctx = resolveApproachContext(ac, world);
-  const spec = missedSpecFor(approachId, ctx.catalog ?? world.catalog);
+  const spec = missedSpecFor(approachId!, ctx.catalog ?? world.catalog);
   return ac.altitudeFt > spec.daFt;
 }
 
@@ -95,7 +121,9 @@ export function acceptTowerHandoff(ac: Aircraft, ctx: LandingFmsContext): boolea
     return false;
   }
   ac.intent.landingCleared = true;
-  ac.intent.lateral = { type: "LANDING", approachId };
+  if (ac.intent.lateral?.type !== "VISUAL_FINAL") {
+    ac.intent.lateral = { type: "LANDING", approachId };
+  }
   ctx.log?.append({
     type: "handoff.tower",
     atSimMs: ctx.simTimeMs,

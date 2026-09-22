@@ -141,6 +141,49 @@ describe("T04-102 contact transfer runtime", () => {
     expect(aircraft.flightRules).toBe("VFR");
   });
 
+  test("CONTACT TOWER accepts an aircraft on VISUAL_FINAL within 10 NM and reads back without rejection", () => {
+    const aircraft = createAircraft({
+      id: "ifr-visual",
+      callsign: "AAL100",
+      xNm: -6,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 2500,
+      speedKt: 140,
+      flightRules: "IFR",
+      airborne: true,
+      destinationAirport: "KAAA",
+    });
+    aircraft.intent.lateral = {
+      type: "VISUAL_FINAL",
+      runwayId: "09",
+      threshold: { xNm: 0, yNm: 0 },
+      headingDeg: 90,
+      fieldElevFt: 1000,
+    };
+    aircraft.intent.clearedApproachId = "VISUAL_09";
+    const log = new SessionLog();
+    const world = createWorld({
+      aircraft: [aircraft],
+      regional: regional(),
+      sessionLog: log,
+    });
+
+    const result = handleRadioCommand(
+      world,
+      command("AAL100", { type: "CONTACT_TOWER", facilityName: "ATHENS" }),
+      log,
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(aircraft.intent.landingCleared).toBe(true);
+    expect(aircraft.intent.lateral?.type).toBe("VISUAL_FINAL");
+    expect(result.readback).toBeDefined();
+    expect(result.readback?.toLowerCase()).toContain("contact");
+    expect(log.byType("handoff.tower")).toHaveLength(1);
+    expect(log.byType("command.rejected")).toHaveLength(0);
+  });
+
   test.each([false, true])("CONTACT TOWER rejects missing/non-towered destination", (towered) => {
     const aircraft = vfrArrival();
     aircraft.ambientVfr!.destinationAirportId = towered ? "KBBB" : "KAAA";
