@@ -336,8 +336,7 @@ const BEACON_PATTERN = /^[0-7]{4}$/;
 const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
 const ETA_PTD_PATTERN = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
 const TCP_PATTERN = /^[A-Z0-9]{1,2}$/;
-const FIX_PAIR_PATTERN =
-  /^(?:[A-Z0-9]{1,4}\*[A-Z0-9]{1,4}|[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
+const FIX_PAIR_PATTERN = /^(?:[A-Z0-9]{1,5}\*|(?:[A-Z0-9]{1,5})?(?:\*[A-Z0-9]{1,5})+)(?:\*[APE])?$/;
 const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 

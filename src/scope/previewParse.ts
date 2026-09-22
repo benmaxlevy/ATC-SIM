@@ -51,7 +51,9 @@ export type PreviewArmedAction =
         | { readonly kind: "none" };
       tcp?: string;
       flightType?: "A" | "P" | "E";
+      departureAirport?: string;
       airportId?: string;
+      route?: string;
       scratchpads: string[];
       aircraftType?: string;
       aircraftCount?: number;
@@ -225,7 +227,25 @@ const SCRATCHPAD = /^Δ[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_2 = /^\+[A-Z0-9+/. *]{0,4}$/;
 const AIRCRAFT = /^(?:(\d{1,2})\/)?([A-Z][A-Z0-9]{1,3})(?:\/([A-Z]))?$/;
 const FLIGHT_RULES = /^[A-Z]$/;
-const FIX_DATA = /^(?:[A-Z0-9]{1,4})?\*(?:[A-Z0-9]{1,4})?(?:\*[APE])?$/;
+export function deriveOriginDestRoute(token: string): {
+  departureAirport?: string;
+  airportId?: string;
+  route?: string;
+} {
+  const parts = token.split("*");
+  const departureAirport = parts[0] && parts[0].length > 0 ? parts[0] : undefined;
+  const airportId =
+    parts.length > 1 && parts[parts.length - 1]?.length ? parts[parts.length - 1] : undefined;
+  const intermediate = parts.slice(1, -1).join(" ");
+  const route = intermediate.length > 0 ? intermediate : undefined;
+  return {
+    ...(departureAirport ? { departureAirport } : {}),
+    ...(airportId ? { airportId } : {}),
+    ...(route ? { route } : {}),
+  };
+}
+
+const FIX_DATA = /^(?:[A-Z0-9]{1,5})?(?:\*[A-Z0-9]{1,5})+(?:\*[APE])?$/;
 const ETA_OR_PTD = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
 
 function isCreationAcid(value: string): boolean {
@@ -278,9 +298,10 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
   if (!/^[A-Z][A-Z0-9]{1,6}$/.test(acid) || (acid.length === 2 && !/\d$/.test(acid))) {
     return invalid("ILL ACID");
   }
-  // Departure may be omitted; a second star carries amended intermediate-fix data.
-  const route = /^(?:[A-Z0-9]{1,4})?\*[A-Z0-9]{1,4}(?:\*[A-Z0-9]{1,4})?$/.exec(tokens[1]!);
+  // Departure may be omitted; intermediate fixes carry amended route data.
+  const route = /^(?:[A-Z0-9]{1,5})?(?:\*[A-Z0-9]{1,5})+$/.exec(tokens[1]!);
   if (!route) return invalid("ILL ROUTE");
+  const derived = deriveOriginDestRoute(tokens[1]!);
   const fields: Extract<PreviewArmedAction, { type: "createFlightPlan" }> = {
     type: "createFlightPlan",
     pendingDiscrete: false,
@@ -288,6 +309,9 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
     acid,
     flightRules: "VFR",
     fixes: [tokens[1]!],
+    ...(derived.departureAirport ? { departureAirport: derived.departureAirport } : {}),
+    ...(derived.airportId ? { airportId: derived.airportId } : {}),
+    ...(derived.route ? { route: derived.route } : {}),
     scratchpads: [],
     beacon: { kind: "pool", pool: "vfr" },
   };
@@ -314,7 +338,7 @@ export function parseVfrFlightPlanCommand(buffer: string): PreviewCommandResult 
       if (aircraftSeen) return invalid("FORMAT");
       const [aircraftType, equipment] = token.split("/");
       fields.aircraftType = aircraftType;
-      fields.equipment = equipment;
+      if (equipment) fields.equipment = equipment;
       aircraftSeen = true;
     } else if (/^[A-Z0-9]{1,2}$/.test(token)) {
       if (fields.tcp) return invalid("FORMAT");
@@ -406,7 +430,11 @@ export function parseFlightPlanCreation(
     }
     if (fltData && FIX_DATA.test(token)) {
       if (used.has("fixes")) return { kind: "invalid", reason: "FORMAT" };
+      const derived = deriveOriginDestRoute(token);
       fields.fixes = [token];
+      if (derived.departureAirport) fields.departureAirport = derived.departureAirport;
+      if (derived.airportId) fields.airportId = derived.airportId;
+      if (derived.route) fields.route = derived.route;
       used.add("fixes");
       continue;
     }
@@ -465,14 +493,15 @@ export function parseFlightPlanCreation(
     const aircraft = AIRCRAFT.exec(token);
     if (aircraft) {
       if (used.has("aircraft")) return { kind: "invalid", reason: "FORMAT" };
-      fields.aircraftCount = aircraft[1] ? Number(aircraft[1]) : undefined;
-      if (
-        fields.aircraftCount !== undefined &&
-        (fields.aircraftCount < 2 || fields.aircraftCount > 99)
-      )
-        return { kind: "invalid", reason: "ILL NUM" };
+      if (aircraft[1]) {
+        const count = Number(aircraft[1]);
+        if (count < 2 || count > 99) return { kind: "invalid", reason: "ILL NUM" };
+        fields.aircraftCount = count;
+      }
       fields.aircraftType = aircraft[2];
-      fields.equipment = aircraft[3];
+      if (aircraft[3]) {
+        fields.equipment = aircraft[3];
+      }
       used.add("aircraft");
       continue;
     }

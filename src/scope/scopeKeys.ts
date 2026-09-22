@@ -32,6 +32,7 @@ import {
   isFlightPlanOperational,
   modifyFlightPlan,
   releaseAssignedBeacon,
+  synchronizeFlightPlanRoute,
   withAllocatedBeacon,
   type FlightPlan,
   type World,
@@ -430,6 +431,19 @@ function applyPreviewArmedAction(
               }
             }
           }
+          if (action.departureAirport !== undefined) {
+            existing.departureAirport = action.departureAirport;
+          }
+          if (action.airportId !== undefined) {
+            existing.airportId = action.airportId;
+          }
+          if (action.route !== undefined) {
+            existing.route = action.route;
+            existing.filedRoute = undefined;
+            existing.routeRecord = undefined;
+            const synchronized = synchronizeFlightPlanRoute(existing);
+            Object.assign(existing, synchronized);
+          }
           if (action.fixes?.length) {
             existing.vfrRetransmit = {
               amendedFix: action.fixes[0]!,
@@ -450,7 +464,9 @@ function applyPreviewArmedAction(
           acid: action.acid,
           assignedBeacon: action.assignedBeacon,
           tcp: action.tcp,
+          departureAirport: action.departureAirport,
           airportId: action.airportId,
+          route: action.route,
           scratchpads: action.scratchpads,
           aircraftType: action.aircraftType,
           aircraftCount: action.aircraftCount,
