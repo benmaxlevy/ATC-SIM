@@ -5889,3 +5889,64 @@ session-default `inherit` configuration. Existing unrelated `.worktrees/` and
 `speech-api/:memory:.ses` artifacts remain untouched. Push
 `feature/sattelite-traffic` is authorized only after the final green phase
 exit.
+
+## Eighty-first swarm planned — tower handoff eligibility and visual approach relaxation (2026-09-22)
+
+Human approved relaxing tower handoff eligibility on `feature/sattelite-traffic`
+to align with FAA JO 7110.65 §5-9-5 and support visual approaches. The existing
+hardcoded 5 NM instrument-only loc/GS requirement is relaxed to allow handoff
+inside 10 NM when an approach clearance is active and the aircraft is set to lock
+onto or tracking final approach course (within 45° of runway/approach course).
+Visual approach lateral guidance (`VISUAL_FINAL`) is preserved across handoff
+until threshold despawn.
+
+| Key | Value |
+| --- | --- |
+| Goal | Relax tower handoff eligibility (`F5` and `CONTACT_TOWER`) to 10 NM when cleared for approach and on intercept/established course; preserve `VISUAL_FINAL` guidance across handoff. |
+| Phase | `phases/04-procedures/` |
+| Include | T04-104 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Merge lock | Captain-only; workers never merge or spawn |
+| Stop | T04-104 plus focused tests, `npm run ci`, and manual review |
+| Push | No push |
+
+**Product law:** Tower handoff eligibility (`isTowerHandoffEligible`) applies
+identically to keyboard `F5` and spoken/typed `CONTACT_TOWER`. An aircraft is
+eligible when airborne, not landing-inhibited, cleared for an approach (`clearedApproachId`,
+`LOC`, `INTERCEPT_LOC`, or `VISUAL_FINAL`), within 10 NM along-track/planar of
+runway threshold, and on intercept or established course (heading within 45° of
+final approach course). On visual approaches, `acceptTowerHandoff` sets
+`landingCleared = true` while preserving `VISUAL_FINAL` lateral mode and
+`GLIDEPATH` vertical mode so the aircraft tracks centerline and despawns at the
+threshold.
+
+**Skip:** New Command IR instructions, speech parser changes, non-towered airport
+procedures, new flight dynamics, and unrelated scope/radar features.
+
+**Waves:**
+- Wave A: T04-104 — Tower handoff eligibility relaxation, visual approach preservation, tests, and documentation.
+
+**Ticket ownership:**
+- T04-104 owns `isTowerHandoffEligible`, `TOWER_HANDOFF_GATE_NM`, `acceptTowerHandoff`, visual approach preservation, and acceptance tests.
+
+**Ticket paths/branches:**
+- `ticket/T04-104-tower-handoff-eligibility-and-visual-approach-relaxation` → `phases/04-procedures/tickets/T04-104-tower-handoff-eligibility-and-visual-approach-relaxation.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: tower handoff eligibility and visual approach relaxation T04-104
+Merge target: feature/sattelite-traffic
+Merged: T04-104
+Tests: focused tests, npm run ci, manual review
+Notes: 10 NM gate; intercept/established alignment check; VISUAL_FINAL preservation; no push
+```
+
+## Eighty-first swarm started — tower handoff eligibility and visual approach relaxation (2026-09-22)
+
+Execution authorized by the user on `feature/sattelite-traffic` after the T04-104
+planning update. The captain runs T04-104 with one isolated worker, enforces the
+merge lock, runs required tests, and stops at the phase boundary. No push.
+
