@@ -415,7 +415,54 @@ function parseAliasTail(
 }
 
 export const GA_ALIAS_VARIANTS: Readonly<Record<string, readonly string[]>> = {
-  cirrus: ["cirrus", "sirius", "serious", "cyrus", "sir", "sirs", "service", "cirus"],
+  cirrus: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  cirru: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  siriu: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  sirius: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
   skyhawk: ["skyhawk", "sky hawk", "sky"],
   skylane: ["skylane", "sky lane"],
   bonanza: ["bonanza", "banana", "bonansa"],
@@ -479,6 +526,9 @@ function aliasCallsignAt(
   let aliasPrefix = false;
   const aliasOwners = new Set<string>();
   const matches: Array<{ callsign: string; next: number; score: number }> = [];
+
+  const gluedMatch = tokens[i]?.match(/^([a-z]+)(\d{1,5}[a-z]{0,2})$/i);
+
   for (const candidate of candidates) {
     const primary = candidate.alias.trim().toLowerCase();
     const variants = [candidate.alias, ...(GA_ALIAS_VARIANTS[primary] ?? [])];
@@ -515,29 +565,69 @@ function aliasCallsignAt(
         }
       }
     }
-    if (matchedWordsLen === 0) {
-      continue;
-    }
 
-    aliasPrefix = true;
-    aliasOwners.add(candidate.callsign);
-    const tail = parseAliasTail(tokens, i + matchedWordsLen);
-    const expected = canonicalTail(candidate.callsign);
-    if (tail && expected !== null) {
-      const baseScore = isExact ? 2 : 1;
-      if (tail.tail === expected) {
-        matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore + 2 });
-      } else {
-        const expectedDigits = expected.replace(/\D/g, "");
-        const expectedSuffix = expected.replace(/\d/g, "");
-        const tailDigits = tail.tail.replace(/\D/g, "");
-        const tailSuffix = tail.tail.replace(/\d/g, "");
-        if (
-          tailDigits.length > 0 &&
-          tailDigits === expectedDigits &&
-          (tailSuffix === "" || tailSuffix === expectedSuffix)
-        ) {
-          matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore });
+    if (matchedWordsLen > 0) {
+      aliasPrefix = true;
+      aliasOwners.add(candidate.callsign);
+      const tail = parseAliasTail(tokens, i + matchedWordsLen);
+      const expected = canonicalTail(candidate.callsign);
+      if (tail && expected !== null) {
+        const baseScore = isExact ? 2 : 1;
+        if (tail.tail === expected) {
+          matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore + 2 });
+        } else {
+          const expectedDigits = expected.replace(/\D/g, "");
+          const expectedSuffix = expected.replace(/\d/g, "");
+          const tailDigits = tail.tail.replace(/\D/g, "");
+          const tailSuffix = tail.tail.replace(/\d/g, "");
+          if (
+            tailDigits.length > 0 &&
+            tailDigits === expectedDigits &&
+            (tailSuffix === "" || tailSuffix === expectedSuffix)
+          ) {
+            matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore });
+          }
+        }
+      }
+    } else if (gluedMatch) {
+      const prefix = gluedMatch[1]!.toLowerCase();
+      const tailStr = gluedMatch[2]!.toUpperCase();
+      let gluedPrefixMatch = false;
+      let gluedExact = false;
+      for (const words of variantWordLists) {
+        if (words.length === 1) {
+          if (prefix === words[0]) {
+            gluedPrefixMatch = true;
+            gluedExact = true;
+            break;
+          } else if (wordMatchesFuzzy(prefix, words[0]!)) {
+            gluedPrefixMatch = true;
+            gluedExact = false;
+            break;
+          }
+        }
+      }
+      if (gluedPrefixMatch) {
+        aliasPrefix = true;
+        aliasOwners.add(candidate.callsign);
+        const expected = canonicalTail(candidate.callsign);
+        if (expected !== null) {
+          const baseScore = gluedExact ? 2 : 1;
+          if (tailStr === expected) {
+            matches.push({ callsign: candidate.callsign, next: i + 1, score: baseScore + 2 });
+          } else {
+            const expectedDigits = expected.replace(/\D/g, "");
+            const expectedSuffix = expected.replace(/\d/g, "");
+            const tailDigits = tailStr.replace(/\D/g, "");
+            const tailSuffix = tailStr.replace(/\d/g, "");
+            if (
+              tailDigits.length > 0 &&
+              tailDigits === expectedDigits &&
+              (tailSuffix === "" || tailSuffix === expectedSuffix)
+            ) {
+              matches.push({ callsign: candidate.callsign, next: i + 1, score: baseScore });
+            }
+          }
         }
       }
     }

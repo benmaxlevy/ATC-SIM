@@ -113,6 +113,16 @@ test.each([
 test.each([
   ["siriu five three zero zero golf say request", "N5300G"],
   ["cirru five three zero zero gulf say request", "N5300G"],
+  ["cirru 5300G say request", "N5300G"],
+  ["siriu 5300G say request", "N5300G"],
+  ["cirru 5300 golf say request", "N5300G"],
+  ["siriu 5300 golf say request", "N5300G"],
+  ["cirru 5300 gulf say request", "N5300G"],
+  ["siriu 5300 gulf say request", "N5300G"],
+  ["cirru 5300 say request", "N5300G"],
+  ["siriu 5300 say request", "N5300G"],
+  ["cirru5300G say request", "N5300G"],
+  ["siriu5300G say request", "N5300G"],
 ] as const)("fuzzy prefix with exact tail %s parses to %s", async (text, expectedCallsign) => {
   const roster = [
     { callsign: "N5300G", aliases: ["Cirrus"] },
