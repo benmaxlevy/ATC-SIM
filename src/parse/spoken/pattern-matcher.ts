@@ -984,9 +984,39 @@ function matchIfrClearance(
     j += 2;
   } else if (tokens[j] === "via") {
     j += 1;
-    if (tokens[j] === "radar" && tokens[j + 1] === "vectors") {
+    if (tokens[j] === "radar" && (tokens[j + 1] === "vectors" || tokens[j + 1] === "vector")) {
       access = { type: "RADAR_VECTORS" };
       j += 2;
+      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
+        j += 2;
+      } else if (tokens[j] === "direct") {
+        j += 1;
+      }
+    } else if (
+      tokens[j] === "direct" &&
+      tokens[j + 1] === "radar" &&
+      (tokens[j + 2] === "vectors" || tokens[j + 2] === "vector")
+    ) {
+      access = { type: "RADAR_VECTORS" };
+      j += 3;
+      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
+        j += 2;
+      } else if (tokens[j] === "direct") {
+        j += 1;
+      }
+    } else if (
+      tokens[j] === "direct" &&
+      tokens[j + 1] === "then" &&
+      tokens[j + 2] === "radar" &&
+      (tokens[j + 3] === "vectors" || tokens[j + 3] === "vector")
+    ) {
+      access = { type: "RADAR_VECTORS" };
+      j += 4;
+      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
+        j += 2;
+      } else if (tokens[j] === "direct") {
+        j += 1;
+      }
     } else {
       const route = scanIfrClearanceRouteWindow(tokens, j, {
         fixes: catalog,
@@ -1379,7 +1409,7 @@ function matchRadarContact(
       next: j + airportHit.length,
     };
   }
-  return null;
+  return { instruction: { type: "RADAR_CONTACT" }, next: end };
 }
 
 function matchTurnDegrees(

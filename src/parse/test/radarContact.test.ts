@@ -399,4 +399,27 @@ describe("RADAR_CONTACT parser & parity", () => {
       expect(res.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "27" }]);
     });
   });
+
+  describe("Ungrounded position report fallback to bare RADAR_CONTACT", () => {
+    it("parses spoken ungrounded position report as bare radar contact", async () => {
+      const res = await parseCommand(
+        "november five three zero zero golf radar contact five miles northwest of lawrenceville",
+        { source: "voice", fixes: DEM_NAVAD },
+      );
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N5300G");
+      expect(res.instructions).toEqual([{ type: "RADAR_CONTACT" }]);
+    });
+
+    it("parses typed ungrounded position report as bare radar contact", () => {
+      const res = parseRadioText("N5300G RADAR CONTACT 5 MILES NORTHWEST OF LAWRENCEVILLE", {
+        fixes: DEM_NAVAD,
+      });
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.callsignToken).toBe("N5300G");
+      expect(res.instructions).toEqual([{ type: "RADAR_CONTACT" }]);
+    });
+  });
 });

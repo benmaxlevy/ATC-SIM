@@ -201,9 +201,39 @@ function parseIfrClearance(
       return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
     }
     i += 1;
-    if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
+    if (tokens[i] === "RADAR" && (tokens[i + 1] === "VECTORS" || tokens[i + 1] === "VECTOR")) {
       access = { type: "RADAR_VECTORS" };
       i += 2;
+      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
+        i += 2;
+      } else if (tokens[i] === "DIRECT") {
+        i += 1;
+      }
+    } else if (
+      tokens[i] === "DIRECT" &&
+      tokens[i + 1] === "RADAR" &&
+      (tokens[i + 2] === "VECTORS" || tokens[i + 2] === "VECTOR")
+    ) {
+      access = { type: "RADAR_VECTORS" };
+      i += 3;
+      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
+        i += 2;
+      } else if (tokens[i] === "DIRECT") {
+        i += 1;
+      }
+    } else if (
+      tokens[i] === "DIRECT" &&
+      tokens[i + 1] === "THEN" &&
+      tokens[i + 2] === "RADAR" &&
+      (tokens[i + 3] === "VECTORS" || tokens[i + 3] === "VECTOR")
+    ) {
+      access = { type: "RADAR_VECTORS" };
+      i += 4;
+      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
+        i += 2;
+      } else if (tokens[i] === "DIRECT") {
+        i += 1;
+      }
     } else {
       const route = scanIfrClearanceRouteWindow(tokens, i, routeOptions);
       if (!route) {
@@ -494,7 +524,15 @@ function parseOneInstruction(
       if (fromToken !== "FROM" && fromToken !== "OF") {
         return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fromToken ?? "" };
       }
-      const refTokens = tokens.slice(refIndex + 1);
+      let refEndIndex = refIndex + 1;
+      while (
+        refEndIndex < tokens.length &&
+        !isTypedInstructionStart(tokens[refEndIndex]!) &&
+        tokens[refEndIndex] !== "SQUAWK"
+      ) {
+        refEndIndex += 1;
+      }
+      const refTokens = tokens.slice(refIndex + 1, refEndIndex);
       if (refTokens.length === 0) {
         return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID, detail: "missing reference" };
       }
@@ -503,6 +541,7 @@ function parseOneInstruction(
       let referenceKind: "FIX" | "NAVAID" | "AIRPORT" = "FIX";
       const fixCatalog = routeOptions.fixes ?? [];
       const hasFixCatalog = fixCatalog.length > 0;
+      let nextIndex = refEndIndex;
       const grounded = hasFixCatalog ? groundReferenceToCatalog(rawRef, fixCatalog) : null;
       const airportHit = groundAirportPhraseToCatalog(rawRef, routeOptions.airports ?? []);
       if (grounded) {
@@ -511,13 +550,45 @@ function parseOneInstruction(
       } else if (airportHit) {
         referenceId = airportHit.icao;
         referenceKind = "AIRPORT";
-      } else if (hasFixCatalog) {
-        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRef };
+        nextIndex = refIndex + 1 + airportHit.length;
       } else {
-        const cleanRef = rawRef.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
-        referenceId = cleanRef.toUpperCase();
-        referenceKind =
-          rawRef.toUpperCase().includes("VOR") || referenceId.length <= 3 ? "NAVAID" : "FIX";
+        let subFound = false;
+        if (hasFixCatalog) {
+          for (let k = refTokens.length - 1; k >= 1; k -= 1) {
+            const subRef = refTokens.slice(0, k).join(" ");
+            const subGrounded = groundReferenceToCatalog(subRef, fixCatalog);
+            if (subGrounded) {
+              referenceId = subGrounded.referenceId;
+              referenceKind = subGrounded.referenceKind;
+              nextIndex = refIndex + 1 + k;
+              subFound = true;
+              break;
+            }
+          }
+        }
+        if (!subFound && (routeOptions.airports ?? []).length > 0) {
+          for (let k = refTokens.length - 1; k >= 1; k -= 1) {
+            const subRef = refTokens.slice(0, k).join(" ");
+            const subAirport = groundAirportPhraseToCatalog(subRef, routeOptions.airports ?? []);
+            if (subAirport) {
+              referenceId = subAirport.icao;
+              referenceKind = "AIRPORT";
+              nextIndex = refIndex + 1 + subAirport.length;
+              subFound = true;
+              break;
+            }
+          }
+        }
+        if (!subFound) {
+          if (hasFixCatalog || (routeOptions.airports ?? []).length > 0) {
+            return { ok: true, instruction: { type: "RADAR_CONTACT" }, nextIndex: refEndIndex };
+          } else {
+            const cleanRef = rawRef.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
+            referenceId = cleanRef.toUpperCase();
+            referenceKind =
+              rawRef.toUpperCase().includes("VOR") || referenceId.length <= 3 ? "NAVAID" : "FIX";
+          }
+        }
       }
       return {
         ok: true,
@@ -527,7 +598,7 @@ function parseOneInstruction(
           referenceId,
           referenceKind,
         },
-        nextIndex: tokens.length,
+        nextIndex,
       };
     }
     return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };

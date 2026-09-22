@@ -588,8 +588,8 @@ function tryRadarContact(c: Cursor): Instruction | null {
       referenceKind: "AIRPORT",
     };
   }
-  c.i = start;
-  return null;
+  c.i = refEnd;
+  return { type: "RADAR_CONTACT" };
 }
 
 function tryAltitude(c: Cursor): Instruction | null {
@@ -777,9 +777,33 @@ function tryIfrClearance(c: Cursor): Instruction | null {
       return null;
     }
     if (take(c, "radar")) {
-      if (!take(c, "vectors")) {
+      if (!take(c, "vectors") && !take(c, "vector")) {
         c.i = start;
         return null;
+      }
+      if (take(c, "then")) {
+        take(c, "direct");
+      } else {
+        take(c, "direct");
+      }
+      access = { type: "RADAR_VECTORS" };
+    } else if (
+      peek(c) === "direct" &&
+      ((peek(c, 1) === "radar" && (peek(c, 2) === "vectors" || peek(c, 2) === "vector")) ||
+        (peek(c, 1) === "then" &&
+          peek(c, 2) === "radar" &&
+          (peek(c, 3) === "vectors" || peek(c, 3) === "vector")))
+    ) {
+      take(c, "direct");
+      take(c, "then");
+      take(c, "radar");
+      if (!take(c, "vectors")) {
+        take(c, "vector");
+      }
+      if (take(c, "then")) {
+        take(c, "direct");
+      } else {
+        take(c, "direct");
       }
       access = { type: "RADAR_VECTORS" };
     } else {

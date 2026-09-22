@@ -202,15 +202,20 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
     });
     const log = new SessionLog();
 
-    // Unknown fix
+    // Partial position report rejects
+    const resPartial = await handleRadioText(world, "AAL999 radar contact 5", log);
+    expect(resPartial.accepted).toBe(false);
+    expect(resPartial.reason).toBe("PARSE");
+    expect(req.status).toBe("PENDING");
+
+    // Ungrounded position report falls back to bare radar contact
     const resUnknown = await handleRadioText(
       world,
       "AAL999 radar contact 5 miles from UNKNOWN",
       log,
     );
-    expect(resUnknown.accepted).toBe(false);
-    expect(resUnknown.reason === "PARSE" || resUnknown.reason === "UNKNOWN_FIX").toBe(true);
-    expect(req.status).toBe("PENDING");
+    expect(resUnknown.accepted).toBe(true);
+    expect(req.status).toBe("IDENTIFIED");
 
     // Compound instruction conflict
     const resCompound = await handleRadioText(world, "AAL999 say request H270", log);
