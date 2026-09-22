@@ -177,71 +177,123 @@ type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
 
+function parseIfrAccess(
+  tokens: string[],
+  i: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): { access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"]; nextIndex: number } | null {
+  if (tokens[i] === "ASFILED") {
+    return { access: { type: "AS_FILED" }, nextIndex: i + 1 };
+  }
+  if (tokens[i] === "AS" && tokens[i + 1] === "FILED") {
+    return { access: { type: "AS_FILED" }, nextIndex: i + 2 };
+  }
+  if (tokens[i] !== "VIA") {
+    return null;
+  }
+  let k = i + 1;
+  if (tokens[k] === "RADAR" && (tokens[k + 1] === "VECTORS" || tokens[k + 1] === "VECTOR")) {
+    k += 2;
+    let thenDirect = false;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+      thenDirect = true;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+      thenDirect = true;
+    }
+    return {
+      access: thenDirect ? { type: "RADAR_VECTORS", thenDirect: true } : { type: "RADAR_VECTORS" },
+      nextIndex: k,
+    };
+  }
+  if (
+    tokens[k] === "DIRECT" &&
+    tokens[k + 1] === "RADAR" &&
+    (tokens[k + 2] === "VECTORS" || tokens[k + 2] === "VECTOR")
+  ) {
+    k += 3;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      nextIndex: k,
+    };
+  }
+  if (
+    tokens[k] === "DIRECT" &&
+    tokens[k + 1] === "THEN" &&
+    tokens[k + 2] === "RADAR" &&
+    (tokens[k + 3] === "VECTORS" || tokens[k + 3] === "VECTOR")
+  ) {
+    k += 4;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      nextIndex: k,
+    };
+  }
+  const route = scanIfrClearanceRouteWindow(tokens, k, routeOptions);
+  if (!route) {
+    return null;
+  }
+  return {
+    access: { type: "EXPLICIT_ROUTE", segments: route.segments },
+    nextIndex: route.nextIndex,
+  };
+}
+
 function parseIfrClearance(
   tokens: string[],
   index: number,
   routeOptions: IfrClearanceRouteWindowOptions,
 ): InstructionParse {
   let i = index + 1;
-  if (tokens[i] !== "TO") {
-    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
-  }
-  i += 1;
-  const limitId = tokens[i];
-  if (!limitId || !isClearanceLimitToken(limitId)) {
-    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
-  }
-  i += 1;
+  let limitId: string | null = null;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (tokens[i] === "ASFILED" || (tokens[i] === "AS" && tokens[i + 1] === "FILED")) {
-    access = { type: "AS_FILED" };
-    i += tokens[i] === "ASFILED" ? 1 : 2;
-  } else {
-    if (tokens[i] !== "VIA") {
-      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+
+  if (tokens[i] === "TO") {
+    i += 1;
+    limitId = tokens[i] ?? null;
+    if (!limitId || !isClearanceLimitToken(limitId)) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
     }
     i += 1;
-    if (tokens[i] === "RADAR" && (tokens[i + 1] === "VECTORS" || tokens[i + 1] === "VECTOR")) {
-      access = { type: "RADAR_VECTORS" };
-      i += 2;
-      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
-        i += 2;
-      } else if (tokens[i] === "DIRECT") {
-        i += 1;
-      }
-    } else if (
-      tokens[i] === "DIRECT" &&
-      tokens[i + 1] === "RADAR" &&
-      (tokens[i + 2] === "VECTORS" || tokens[i + 2] === "VECTOR")
-    ) {
-      access = { type: "RADAR_VECTORS" };
-      i += 3;
-      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
-        i += 2;
-      } else if (tokens[i] === "DIRECT") {
-        i += 1;
-      }
-    } else if (
-      tokens[i] === "DIRECT" &&
-      tokens[i + 1] === "THEN" &&
-      tokens[i + 2] === "RADAR" &&
-      (tokens[i + 3] === "VECTORS" || tokens[i + 3] === "VECTOR")
-    ) {
-      access = { type: "RADAR_VECTORS" };
-      i += 4;
-      if (tokens[i] === "THEN" && tokens[i + 1] === "DIRECT") {
-        i += 2;
-      } else if (tokens[i] === "DIRECT") {
-        i += 1;
-      }
-    } else {
-      const route = scanIfrClearanceRouteWindow(tokens, i, routeOptions);
-      if (!route) {
-        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
-      }
-      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
-      i = route.nextIndex;
+    const parsedAccess = parseIfrAccess(tokens, i, routeOptions);
+    if (!parsedAccess) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
     }
+    access = parsedAccess.access;
+    i = parsedAccess.nextIndex;
+  } else if (
+    tokens[i] === "VIA" ||
+    tokens[i] === "ASFILED" ||
+    (tokens[i] === "AS" && tokens[i + 1] === "FILED")
+  ) {
+    const parsedAccess = parseIfrAccess(tokens, i, routeOptions);
+    if (!parsedAccess) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+    }
+    access = parsedAccess.access;
+    i = parsedAccess.nextIndex;
+    if (tokens[i] !== "TO") {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
+    }
+    i += 1;
+    limitId = tokens[i] ?? null;
+    if (!limitId || !isClearanceLimitToken(limitId)) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
+    }
+    i += 1;
+  } else {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO or VIA" };
   }
   const optional: Pick<
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,

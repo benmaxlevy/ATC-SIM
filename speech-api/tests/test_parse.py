@@ -608,6 +608,11 @@ def test_path_c_validates_squawk_vfr_maintain_vfr_and_clearance_variants() -> No
             "limitId": "KATL",
             "access": {"type": "SID", "procedureId": "RIVR1", "transitionId": "HILL2"},
         },
+        {
+            "type": "IFR_CLEARANCE",
+            "limitId": "KATL",
+            "access": {"type": "RADAR_VECTORS", "thenDirect": True},
+        },
     ]
     for case in cases:
         assert validate_instruction(case) == case

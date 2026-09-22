@@ -105,7 +105,7 @@ Position advisories are not commands, but never stop parsing later sentences. �
 
 Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; CLEARED_VISUAL requires cleared visual approach plus runway; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
-New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “unable ifr pickup” and “unable to provide ifr pickup” are DECLINE_REQUEST with service IFR_PICKUP. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “unable ifr pickup” and “unable to provide ifr pickup” are DECLINE_REQUEST with service IFR_PICKUP. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, “cleared to KATL via radar vectors then direct” (access type RADAR_VECTORS with thenDirect true), and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
 
 CONTACT commands use “contact <facility-name> tower” or “contact <facility-name> center” with a required 1–4-token facilityName. Canonicalize the name to uppercase for the IR. Facility names are syntax/readback data only; never perform a catalog lookup, accept a frequency, or invent a facility.
 
@@ -901,8 +901,13 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not isinstance(access, dict) or not isinstance(access.get("type"), str):
             return None
         access_type = access["type"]
-        if access_type in {"AS_FILED", "DIRECT", "RADAR_VECTORS"}:
+        if access_type in {"AS_FILED", "DIRECT"}:
             if not _exact_keys(access, {"type"}):
+                return None
+        elif access_type == "RADAR_VECTORS":
+            if not _exact_keys(access, {"type"}, {"thenDirect"}):
+                return None
+            if "thenDirect" in access and not isinstance(access["thenDirect"], bool):
                 return None
         elif access_type == "FIX_THEN_DIRECT":
             if (
@@ -1336,9 +1341,15 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
     if instruction_type == "IFR_CLEARANCE":
         # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
         # IFR clearance has the clearance limit and an explicit access method.
-        if not bool(
-            has(r"\b(?:cleared|clear)\s+to\b")
-            and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+        if not (
+            bool(
+                has(r"\b(?:cleared|clear)\s+to\b")
+                and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+            )
+            or bool(
+                has(r"\b(?:cleared|clear)?\s*via\s+radar\s+vectors?\b")
+                and has(r"\bto\b")
+            )
         ):
             return False
         access = instruction.get("access")

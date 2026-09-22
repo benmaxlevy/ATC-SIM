@@ -282,7 +282,7 @@ function formatIfrClearanceAccess(
     case "AS_FILED":
       return "as filed";
     case "RADAR_VECTORS":
-      return "via radar vectors";
+      return access.thenDirect ? "via radar vectors then direct" : "via radar vectors";
     case "DIRECT":
       return "via direct";
     case "FIX_THEN_DIRECT":

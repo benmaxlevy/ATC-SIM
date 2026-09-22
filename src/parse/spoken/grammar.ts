@@ -751,73 +751,100 @@ function tryDirect(c: Cursor): Instruction | null {
 }
 
 /** Compact trainer IFR clearance; kept ahead of tactical cleared-direct. */
+function parseIfrAccess(
+  c: Cursor,
+): Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | null {
+  if (take(c, "asfiled")) {
+    return { type: "AS_FILED" };
+  }
+  if (take(c, "as")) {
+    if (!take(c, "filed")) return null;
+    return { type: "AS_FILED" };
+  }
+  if (!take(c, "via")) {
+    return null;
+  }
+  if (take(c, "radar")) {
+    if (!take(c, "vectors") && !take(c, "vector")) {
+      return null;
+    }
+    let thenDirect = false;
+    if (take(c, "then")) {
+      if (take(c, "direct")) thenDirect = true;
+    } else if (take(c, "direct")) {
+      thenDirect = true;
+    }
+    return thenDirect ? { type: "RADAR_VECTORS", thenDirect: true } : { type: "RADAR_VECTORS" };
+  }
+  if (
+    peek(c) === "direct" &&
+    ((peek(c, 1) === "radar" && (peek(c, 2) === "vectors" || peek(c, 2) === "vector")) ||
+      (peek(c, 1) === "then" &&
+        peek(c, 2) === "radar" &&
+        (peek(c, 3) === "vectors" || peek(c, 3) === "vector")))
+  ) {
+    take(c, "direct");
+    take(c, "then");
+    take(c, "radar");
+    if (!take(c, "vectors")) {
+      take(c, "vector");
+    }
+    if (take(c, "then")) {
+      take(c, "direct");
+    } else {
+      take(c, "direct");
+    }
+    return { type: "RADAR_VECTORS", thenDirect: true };
+  }
+  const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
+    fixes: c.catalog,
+    procedures: c.procedures,
+  });
+  if (!route) {
+    return null;
+  }
+  c.i = route.nextIndex;
+  return { type: "EXPLICIT_ROUTE", segments: route.segments };
+}
+
 function tryIfrClearance(c: Cursor): Instruction | null {
   const start = c.i;
-  if ((!take(c, "cleared") && !take(c, "clear")) || !take(c, "to")) {
-    c.i = start;
-    return null;
-  }
-  const limitId = parseFixId(c, c.clearanceLimitIds);
-  if (!limitId) {
-    c.i = start;
-    return null;
-  }
+  let limitId: string | null = null;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (take(c, "asfiled")) {
-    access = { type: "AS_FILED" };
-  } else if (take(c, "as")) {
-    if (!take(c, "filed")) {
+
+  const hasCleared = take(c, "cleared") || take(c, "clear");
+
+  if (take(c, "to")) {
+    limitId = parseFixId(c, c.clearanceLimitIds);
+    if (!limitId) {
       c.i = start;
       return null;
     }
-    access = { type: "AS_FILED" };
+    const acc = parseIfrAccess(c);
+    if (!acc) {
+      c.i = start;
+      return null;
+    }
+    access = acc;
+  } else if (hasCleared || peek(c) === "via") {
+    const acc = parseIfrAccess(c);
+    if (!acc) {
+      c.i = start;
+      return null;
+    }
+    if (!take(c, "to")) {
+      c.i = start;
+      return null;
+    }
+    limitId = parseFixId(c, c.clearanceLimitIds);
+    if (!limitId) {
+      c.i = start;
+      return null;
+    }
+    access = acc;
   } else {
-    if (!take(c, "via")) {
-      c.i = start;
-      return null;
-    }
-    if (take(c, "radar")) {
-      if (!take(c, "vectors") && !take(c, "vector")) {
-        c.i = start;
-        return null;
-      }
-      if (take(c, "then")) {
-        take(c, "direct");
-      } else {
-        take(c, "direct");
-      }
-      access = { type: "RADAR_VECTORS" };
-    } else if (
-      peek(c) === "direct" &&
-      ((peek(c, 1) === "radar" && (peek(c, 2) === "vectors" || peek(c, 2) === "vector")) ||
-        (peek(c, 1) === "then" &&
-          peek(c, 2) === "radar" &&
-          (peek(c, 3) === "vectors" || peek(c, 3) === "vector")))
-    ) {
-      take(c, "direct");
-      take(c, "then");
-      take(c, "radar");
-      if (!take(c, "vectors")) {
-        take(c, "vector");
-      }
-      if (take(c, "then")) {
-        take(c, "direct");
-      } else {
-        take(c, "direct");
-      }
-      access = { type: "RADAR_VECTORS" };
-    } else {
-      const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
-        fixes: c.catalog,
-        procedures: c.procedures,
-      });
-      if (!route) {
-        c.i = start;
-        return null;
-      }
-      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
-      c.i = route.nextIndex;
-    }
+    c.i = start;
+    return null;
   }
   const optional: Pick<
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,

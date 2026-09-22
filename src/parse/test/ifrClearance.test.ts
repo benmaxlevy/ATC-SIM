@@ -637,7 +637,7 @@ test("typed IFR clearance accepts RADAR VECTOR singular and THEN DIRECT", () => 
       {
         type: "IFR_CLEARANCE",
         limitId: "KPIM",
-        access: { type: "RADAR_VECTORS" },
+        access: { type: "RADAR_VECTORS", thenDirect: true },
         altitudeFt: 8000,
       },
     ],
@@ -652,6 +652,58 @@ test("typed IFR clearance accepts RADAR VECTOR singular and THEN DIRECT", () => 
         type: "IFR_CLEARANCE",
         limitId: "KPIM",
         access: { type: "RADAR_VECTORS" },
+        altitudeFt: 8000,
+      },
+    ],
+  });
+});
+
+test("spoken IFR clearance preserves thenDirect on RADAR_VECTORS", async () => {
+  const result = await parseCommand(
+    "november five three zero zero golf clear to kilo papa india mike via radar vector then direct maintain eight thousand",
+    { source: "voice", pathC: false },
+  );
+  expect(result).toMatchObject({
+    ok: true,
+    callsignToken: "N5300G",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KPIM",
+        access: { type: "RADAR_VECTORS", thenDirect: true },
+        altitudeFt: 8000,
+      },
+    ],
+  });
+});
+
+test("spoken and typed IFR clearance accept cleared via phrasing", async () => {
+  const spoken = await parseCommand(
+    "november five three zero zero golf cleared via radar vectors then direct to kilo papa india mike maintain eight thousand",
+    { source: "voice", pathC: false },
+  );
+  expect(spoken).toMatchObject({
+    ok: true,
+    callsignToken: "N5300G",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KPIM",
+        access: { type: "RADAR_VECTORS", thenDirect: true },
+        altitudeFt: 8000,
+      },
+    ],
+  });
+
+  const typed = parseRadioText("N5300G CLR VIA RADAR VECTORS THEN DIRECT TO KPIM ALT 80");
+  expect(typed).toMatchObject({
+    ok: true,
+    callsignToken: "N5300G",
+    instructions: [
+      {
+        type: "IFR_CLEARANCE",
+        limitId: "KPIM",
+        access: { type: "RADAR_VECTORS", thenDirect: true },
         altitudeFt: 8000,
       },
     ],

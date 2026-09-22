@@ -146,7 +146,13 @@ function isIfrClearanceCandidate(normalized: string): boolean {
         (token === "cleared" || token === "clear") &&
         tokens[index + 1] === "to" &&
         tokens[index + 2] !== "enter",
-    )
+    ) ||
+    tokens.some(
+      (token, index) => (token === "cleared" || token === "clear") && tokens[index + 1] === "via",
+    ) ||
+    (tokens.includes("via") &&
+      (tokens.includes("radar") || tokens.includes("vectors") || tokens.includes("vector")) &&
+      tokens.includes("to"))
   );
 }
 
@@ -166,15 +172,39 @@ function airportKey(raw: string): string {
 /** Replace only the airport-limit slot; airport ids never enter fix grounding. */
 function rewriteIfrAirportLimit(normalized: string, airports: readonly CatalogAirport[]): string {
   const tokens = normalized.split(/\s+/).filter(Boolean);
-  const start = tokens.findIndex(
+  const clearToIndex = tokens.findIndex(
     (token, index) =>
       (token === "clr" || token === "clear" || token === "cleared") && tokens[index + 1] === "to",
   );
-  if (start < 0) return normalized;
-  const limitStart = start + 2;
-  const access = new Set(["via", "asfiled", "as"]);
-  const limitEnd = tokens.findIndex((token, index) => index >= limitStart && access.has(token));
-  const end = limitEnd < 0 ? tokens.length : limitEnd;
+  let limitStart = -1;
+  let end = tokens.length;
+  if (clearToIndex >= 0) {
+    limitStart = clearToIndex + 2;
+    const access = new Set(["via", "asfiled", "as"]);
+    const limitEnd = tokens.findIndex((token, index) => index >= limitStart && access.has(token));
+    end = limitEnd < 0 ? tokens.length : limitEnd;
+  } else {
+    const viaIndex = tokens.findIndex(
+      (token, index) =>
+        token === "via" ||
+        ((token === "clr" || token === "clear" || token === "cleared") &&
+          tokens[index + 1] === "via"),
+    );
+    if (viaIndex >= 0) {
+      const actualVia = tokens[viaIndex] === "via" ? viaIndex : viaIndex + 1;
+      const toIndex = tokens.findIndex((token, index) => index > actualVia && token === "to");
+      if (toIndex >= 0) {
+        limitStart = toIndex + 1;
+        const stopWords = new Set(["alt", "maintain", "cvia", "freq", "frequency", "sq", "squawk"]);
+        const limitEnd = tokens.findIndex(
+          (token, index) => index >= limitStart && stopWords.has(token),
+        );
+        end = limitEnd < 0 ? tokens.length : limitEnd;
+      }
+    }
+  }
+  if (limitStart < 0) return normalized;
+
   let winner: { icao: string; length: number } | null = null;
   for (const airport of sanitizeCatalogAirports(airports)) {
     for (const name of [airport.icao, airport.name, ...(airport.aliases ?? [])]) {

@@ -960,72 +960,118 @@ function matchDirect(
   };
 }
 
+function matchIfrAccess(
+  tokens: readonly string[],
+  j: number,
+  catalog: readonly CatalogFixInput[],
+  procedures: readonly CatalogProcedure[],
+): { access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"]; next: number } | null {
+  if (tokens[j] === "asfiled") {
+    return { access: { type: "AS_FILED" }, next: j + 1 };
+  }
+  if (tokens[j] === "as" && tokens[j + 1] === "filed") {
+    return { access: { type: "AS_FILED" }, next: j + 2 };
+  }
+  if (tokens[j] !== "via") {
+    return null;
+  }
+  let k = j + 1;
+  if (tokens[k] === "radar" && (tokens[k + 1] === "vectors" || tokens[k + 1] === "vector")) {
+    k += 2;
+    let thenDirect = false;
+    if (tokens[k] === "then" && tokens[k + 1] === "direct") {
+      k += 2;
+      thenDirect = true;
+    } else if (tokens[k] === "direct") {
+      k += 1;
+      thenDirect = true;
+    }
+    return {
+      access: thenDirect ? { type: "RADAR_VECTORS", thenDirect: true } : { type: "RADAR_VECTORS" },
+      next: k,
+    };
+  }
+  if (
+    tokens[k] === "direct" &&
+    tokens[k + 1] === "radar" &&
+    (tokens[k + 2] === "vectors" || tokens[k + 2] === "vector")
+  ) {
+    k += 3;
+    if (tokens[k] === "then" && tokens[k + 1] === "direct") {
+      k += 2;
+    } else if (tokens[k] === "direct") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      next: k,
+    };
+  }
+  if (
+    tokens[k] === "direct" &&
+    tokens[k + 1] === "then" &&
+    tokens[k + 2] === "radar" &&
+    (tokens[k + 3] === "vectors" || tokens[k + 3] === "vector")
+  ) {
+    k += 4;
+    if (tokens[k] === "then" && tokens[k + 1] === "direct") {
+      k += 2;
+    } else if (tokens[k] === "direct") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      next: k,
+    };
+  }
+  const route = scanIfrClearanceRouteWindow(tokens, k, {
+    fixes: catalog,
+    procedures,
+  });
+  if (!route) return null;
+  return {
+    access: { type: "EXPLICIT_ROUTE", segments: route.segments },
+    next: route.nextIndex,
+  };
+}
+
 function matchIfrClearance(
   tokens: readonly string[],
   i: number,
-  catalog: readonly CatalogFixInput[],
-  procedures: readonly CatalogProcedure[],
+  catalog: readonly CatalogFixInput[] = [],
+  procedures: readonly CatalogProcedure[] = [],
   protectedIds?: ReadonlySet<string>,
 ): { instruction: Instruction; next: number } | null {
-  if ((tokens[i] !== "cleared" && tokens[i] !== "clear") || tokens[i + 1] !== "to") {
-    return null;
-  }
-  let j = i + 2;
-  const limit = parseFixIdFrom(tokens, j, catalog, protectedIds);
-  if (!limit) return null;
-  j = limit.next;
-  if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
+  let j = i;
+  let limitId: string | null = null;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (tokens[j] === "asfiled") {
-    access = { type: "AS_FILED" };
+
+  const hasCleared = tokens[j] === "cleared" || tokens[j] === "clear";
+  if (hasCleared) j += 1;
+
+  if (tokens[j] === "to") {
     j += 1;
-  } else if (tokens[j] === "as" && tokens[j + 1] === "filed") {
-    access = { type: "AS_FILED" };
-    j += 2;
-  } else if (tokens[j] === "via") {
+    const limit = parseFixIdFrom(tokens, j, catalog, protectedIds);
+    if (!limit) return null;
+    limitId = limit.fixId;
+    j = limit.next;
+    if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
+    const acc = matchIfrAccess(tokens, j, catalog, procedures);
+    if (!acc) return null;
+    access = acc.access;
+    j = acc.next;
+  } else if (hasCleared || tokens[j] === "via") {
+    const acc = matchIfrAccess(tokens, j, catalog, procedures);
+    if (!acc) return null;
+    access = acc.access;
+    j = acc.next;
+    if (tokens[j] !== "to") return null;
     j += 1;
-    if (tokens[j] === "radar" && (tokens[j + 1] === "vectors" || tokens[j + 1] === "vector")) {
-      access = { type: "RADAR_VECTORS" };
-      j += 2;
-      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
-        j += 2;
-      } else if (tokens[j] === "direct") {
-        j += 1;
-      }
-    } else if (
-      tokens[j] === "direct" &&
-      tokens[j + 1] === "radar" &&
-      (tokens[j + 2] === "vectors" || tokens[j + 2] === "vector")
-    ) {
-      access = { type: "RADAR_VECTORS" };
-      j += 3;
-      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
-        j += 2;
-      } else if (tokens[j] === "direct") {
-        j += 1;
-      }
-    } else if (
-      tokens[j] === "direct" &&
-      tokens[j + 1] === "then" &&
-      tokens[j + 2] === "radar" &&
-      (tokens[j + 3] === "vectors" || tokens[j + 3] === "vector")
-    ) {
-      access = { type: "RADAR_VECTORS" };
-      j += 4;
-      if (tokens[j] === "then" && tokens[j + 1] === "direct") {
-        j += 2;
-      } else if (tokens[j] === "direct") {
-        j += 1;
-      }
-    } else {
-      const route = scanIfrClearanceRouteWindow(tokens, j, {
-        fixes: catalog,
-        procedures,
-      });
-      if (!route) return null;
-      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
-      j = route.nextIndex;
-    }
+    const limit = parseFixIdFrom(tokens, j, catalog, protectedIds);
+    if (!limit) return null;
+    limitId = limit.fixId;
+    j = limit.next;
+    if (["airport", "fix", "waypoint", "navaid"].includes(tokens[j] ?? "")) j += 1;
   } else {
     return null;
   }
@@ -1091,7 +1137,7 @@ function matchIfrClearance(
     }
   }
   return {
-    instruction: { type: "IFR_CLEARANCE", limitId: limit.fixId, access, ...optional },
+    instruction: { type: "IFR_CLEARANCE", limitId, access, ...optional },
     next: j,
   };
 }

@@ -96,6 +96,16 @@ test("IFR route readback keeps zero, one, and three-leg route shapes", () => {
       expected:
         "Delta 123 cleared to KATL via direct SWEPT then direct KIMMY then direct BLUFF then direct",
     },
+    {
+      name: "radar vectors",
+      access: { type: "RADAR_VECTORS" },
+      expected: "Delta 123 cleared to KATL via radar vectors",
+    },
+    {
+      name: "radar vectors then direct",
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      expected: "Delta 123 cleared to KATL via radar vectors then direct",
+    },
   ];
 
   for (const item of cases) {

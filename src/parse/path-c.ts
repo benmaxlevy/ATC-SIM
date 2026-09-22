@@ -365,8 +365,11 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     const access = asRecord(obj.access);
     if (access === null || typeof access.type !== "string") return false;
     const accessType = access.type;
-    if (accessType === "AS_FILED" || accessType === "DIRECT" || accessType === "RADAR_VECTORS") {
+    if (accessType === "AS_FILED" || accessType === "DIRECT") {
       if (!keysOk(access, ["type"])) return false;
+    } else if (accessType === "RADAR_VECTORS") {
+      if (!keysOk(access, ["type"], ["thenDirect"])) return false;
+      if (access.thenDirect !== undefined && typeof access.thenDirect !== "boolean") return false;
     } else if (accessType === "FIX_THEN_DIRECT") {
       if (!keysOk(access, ["type", "fixId"]) || typeof access.fixId !== "string") return false;
     } else if (accessType === "SID") {

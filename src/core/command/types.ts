@@ -33,7 +33,7 @@ export type ClearanceRouteSegment =
 /** Canonical IFR clearance access representation. */
 export type IfrClearanceAccess =
   | { type: "AS_FILED" }
-  | { type: "RADAR_VECTORS" }
+  | { type: "RADAR_VECTORS"; thenDirect?: boolean }
   /** An empty segment list means direct to the clearance limit. */
   | { type: "EXPLICIT_ROUTE"; segments: ClearanceRouteSegment[] };
 
