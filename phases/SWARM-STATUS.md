@@ -1,5 +1,16 @@
 # Swarm status
 
+## EIGHTY-FIRST SWARM — TOWER HANDOFF ELIGIBILITY AND VISUAL APPROACH RELAXATION (T04-104, 2026-09-22)
+
+Implemented and squash-merged on `feature/sattelite-traffic`:
+
+- T04-104 `62c2bcc` — relaxed tower handoff eligibility gate to 10 NM (`TOWER_HANDOFF_GATE_NM = 10`), added approach clearance and 45° final approach course intercept/established alignment checks, and preserved `VISUAL_FINAL` lateral mode across handoff through threshold landing despawn.
+
+Final browser `npm run ci`: **251 files, 2,764 passed, 3 skipped**.
+FAA JO 7110.65 §5-9-5 and §7-6-8 alignment verified: aircraft with approach clearances on intercept or established courses can be handed off to tower inside 10 NM for both instrument and visual approaches via `F5` and `CONTACT_TOWER`.
+
+**PHASE EXIT GREEN**
+
 ## SEVENTY-NINTH SWARM — CONTACT TOWER/CENTER AND LANDING CLOSURE (T04-101–T04-103, 2026-09-20)
 
 Implemented and fast-forwarded on `feature/sattelite-traffic`:
