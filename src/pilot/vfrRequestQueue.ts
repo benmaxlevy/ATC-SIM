@@ -50,7 +50,6 @@ import {
   type RegionalFacility,
   type VfrRequestConfig,
 } from "@scenario";
-import { formatCallsignSpeech } from "./telephony";
 
 export type {
   IfrCancellationCandidate,
@@ -68,7 +67,10 @@ export const VFR_CANCEL_DELAY_MIN_MS = 30_000;
 export const VFR_CANCEL_DELAY_MAX_MS = 120_000;
 const CLASS_B_ROUTE_FIX_TOLERANCE_NM = 0.05;
 
-const VFR_POSITION_CARDINALS = [
+import { formatCallsignDisplay } from "./telephony";
+
+/** Ordered 8-point cardinal bearings for relative position reports. */
+export const VFR_POSITION_CARDINALS = [
   "north",
   "northeast",
   "east",
@@ -92,7 +94,7 @@ export function bearingToCardinalDirection(bearingDeg: number): string {
  */
 function formatRequestCallsign(callsign: string, spokenAliases?: readonly string[]): string {
   return spokenAliases?.some((alias) => alias.trim().length > 0)
-    ? formatCallsignSpeech(callsign, { spokenAliases })
+    ? formatCallsignDisplay(callsign, { spokenAliases })
     : callsign;
 }
 

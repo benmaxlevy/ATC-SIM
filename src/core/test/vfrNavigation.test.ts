@@ -628,6 +628,76 @@ describe("VFR arc tessellation and fragmented-shelf fallback", () => {
     // Course from (-40,-40) to (-45,-45) is southwest (225 true, magVar 0).
     expect(ac.intent.assignedHeadingDeg).toBe(225);
   });
+
+  test("Per-tick guard does not deflect when Class B clearance is active", () => {
+    const ac = makeTestAircraft({
+      callsign: "NCLEARED",
+      xNm: -15,
+      yNm: 0,
+      headingDeg: 90,
+      altitudeFt: 5000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      classBClearance: {
+        active: true,
+        issuedAtSimMs: 0,
+        operation: "THROUGH",
+        routeMode: "OWN_NAVIGATION",
+        routeIndex: 0,
+      },
+      ambientVfr: {
+        mission: "AIRPORT_BOUND",
+        destinationAirportId: "KDEST",
+        zoneId: "test",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 15, yNm: 0, altitudeFt: 5000, speedKt: 110, targetToleranceNm: 1.0 }],
+        waypointIndex: 0,
+      },
+    });
+    stepVfrAircraftNavigation(ac, 0, 0, null, FRAGMENTED_VOLUMES);
+    // Cleared aircraft proceeds direct due east (90) without deflection
+    expect(ac.intent.assignedHeadingDeg).toBe(90);
+  });
+
+  test("AIRPORT_BOUND continues steering to destination airport after completing waypoints", () => {
+    const ac = makeTestAircraft({
+      callsign: "NDEST",
+      xNm: 0,
+      yNm: 10,
+      headingDeg: 90,
+      altitudeFt: 3000,
+      speedKt: 110,
+      flightRules: "VFR",
+      squawk: "1200",
+      ambientVfr: {
+        mission: "AIRPORT_BOUND",
+        destinationAirportId: "KDEST",
+        zoneId: "test",
+        spawnedAtSimMs: 0,
+        alertEligibility: "AMBIENT_SUPPRESSED",
+        waypoints: [{ xNm: 0, yNm: 10, altitudeFt: 3000, speedKt: 110, targetToleranceNm: 1.0 }],
+        waypointIndex: 1, // Already sequenced all waypoints
+      },
+    });
+    const destAirport: RegionalAirport = {
+      icao: "KDEST",
+      name: "Destination",
+      arp: { latDeg: 33, lonDeg: -84 },
+      arpNm: { xNm: 0, yNm: 0 },
+      fieldElevFt: 500,
+      magVarDeg: 0,
+      publicUse: true,
+      towered: true,
+      eligible: true,
+      runways: [],
+      hasPublishedApproaches: false,
+    };
+    stepVfrAircraftNavigation(ac, 0, 0, null, [], 28, [destAirport]);
+    // From (0, 10) to (0, 0) is due south (180 deg)
+    expect(ac.intent.assignedHeadingDeg).toBe(180);
+  });
 });
 
 function plannerRegional(

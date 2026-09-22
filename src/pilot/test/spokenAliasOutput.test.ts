@@ -82,29 +82,45 @@ describe("pilot spoken-alias callsign output", () => {
           spokenAliases: common.spokenAliases,
         },
       }),
+    ).toBe("Skyhawk 172SP ident");
+    expect(
+      readbackForTts(
+        formatReadback({
+          ...common,
+          instructions: [{ type: "IDENT" }],
+          aircraft: {
+            headingDeg: 90,
+            altitudeFt: 3000,
+            wakeCategory: undefined,
+            spokenAliases: common.spokenAliases,
+          },
+        }),
+      ),
     ).toBe(`${expected} ident`);
-    expect(
-      formatVfrFlightFollowingRequest({
-        ...common,
-        aircraftType: "C172",
-        destinationAirportId: "KPDK",
-      }),
-    ).toContain(`${expected},`);
-    expect(
-      formatVfrClassBRequest({
-        ...common,
-        aircraftType: "C172",
-        classBIntent: "TRANSITION",
-        classBOperation: "THROUGH",
-      }),
-    ).toContain(`${expected},`);
-    expect(
-      formatIfrPickupRequest({
-        ...common,
-        aircraftType: "C172",
-        destinationAirportId: "KPDK",
-      }),
-    ).toContain(`${expected},`);
+    const ffReq = formatVfrFlightFollowingRequest({
+      ...common,
+      aircraftType: "C172",
+      destinationAirportId: "KPDK",
+    });
+    expect(ffReq).toContain("Skyhawk 172SP,");
+    expect(readbackForTts(ffReq)).toContain(`${expected},`);
+
+    const classBReq = formatVfrClassBRequest({
+      ...common,
+      aircraftType: "C172",
+      classBIntent: "TRANSITION",
+      classBOperation: "THROUGH",
+    });
+    expect(classBReq).toContain("Skyhawk 172SP,");
+    expect(readbackForTts(classBReq)).toContain(`${expected},`);
+
+    const ifrReq = formatIfrPickupRequest({
+      ...common,
+      aircraftType: "C172",
+      destinationAirportId: "KPDK",
+    });
+    expect(ifrReq).toContain("Skyhawk 172SP,");
+    expect(readbackForTts(ifrReq)).toContain(`${expected},`);
   });
 
   test("accepted readback uses alias without mutating aircraft identity", async () => {
@@ -122,7 +138,8 @@ describe("pilot spoken-alias callsign output", () => {
     const result = await handleRadioText(world, "N172SP H270", new SessionLog());
 
     expect(result.accepted).toBe(true);
-    expect(result.readback).toContain("Skyhawk one seven two Sierra Papa");
+    expect(result.readback).toBe("Skyhawk 172SP heading 270");
+    expect(result.spokenReadback).toContain("Skyhawk one seven two Sierra Papa");
     expect(world.aircraft[0]?.callsign).toBe("N172SP");
   });
 });

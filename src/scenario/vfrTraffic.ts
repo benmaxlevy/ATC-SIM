@@ -282,7 +282,9 @@ export function validateVfrTrafficConfig(
   const isEnabled = initialCount > 0 || targetCount > 0 || entriesPerHour > 0;
 
   // movementMix
-  let movementMix: VfrMovementMix = DEFAULT_VFR_MOVEMENT_MIX;
+  let movementMix: VfrMovementMix = context?.regional
+    ? fixedVfrMovementMix(context.regional)
+    : DEFAULT_VFR_MOVEMENT_MIX;
   if (raw.movementMix !== undefined) {
     if (!isRecord(raw.movementMix)) {
       throw new Error("vfrTraffic.movementMix percentages must sum to 100");
@@ -596,7 +598,11 @@ export class VfrTrafficManager {
     }
 
     // 1. Select mission from movementMix (rngMission draw order unchanged after zone deletion)
-    const mix = this.config.movementMix ?? DEFAULT_VFR_MOVEMENT_MIX;
+    const mix =
+      this.config.movementMix ??
+      (this.eligibleDestinations.length > 0
+        ? { localPercent: 60, transitPercent: 20, airportBoundPercent: 20 }
+        : DEFAULT_VFR_MOVEMENT_MIX);
     const localP = mix.localPercent ?? 100;
     const transitP = mix.transitPercent ?? 0;
     const mRoll = this.rngMission() * 100;
@@ -688,6 +694,8 @@ export class VfrTrafficManager {
       reportedSquawk: "1200",
       transponder: "mode_c",
       flightRules: "VFR",
+      destinationAirport: destinationAirport?.icao,
+      destination: destinationAirport?.icao,
       ambientVfr: {
         mission,
         zoneId: VFR_TRAINING_BOX_ID,

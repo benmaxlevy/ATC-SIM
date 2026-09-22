@@ -1047,16 +1047,20 @@ export function stepVfrAircraftNavigation(
         ac.intent.assignedSpeedKt = wp.speedKt;
       }
     }
+  } else if (
+    vfr.mission === "AIRPORT_BOUND" &&
+    (destAirport || vfr.destinationAirportId) &&
+    ac.intent.lateral?.type !== "VISUAL_FINAL"
+  ) {
+    const targetPt = runway ? runway.thresholdNm : (destAirport?.arpNm ?? { xNm: 0, yNm: 0 });
+    const trueBrg = courseDeg(ac, targetPt);
+    ac.intent.assignedHeadingDeg = trueToMagneticDeg(trueBrg, magVarDeg);
   }
 
   const distFromArp = Math.hypot(ac.xNm, ac.yNm);
 
   // Per-tick avoidance guard (LOCAL loops and EXIT radials are unplanned legs).
-  if (
-    avoidanceVolumes !== undefined &&
-    avoidanceVolumes.length > 0 &&
-    (vfr.waypointIndex ?? 0) < wps.length
-  ) {
+  if (avoidanceVolumes !== undefined && avoidanceVolumes.length > 0) {
     applyAvoidanceGuard(ac, magVarDeg, avoidanceVolumes);
   }
 
@@ -1160,6 +1164,10 @@ function applyAvoidanceGuard(
   magVarDeg: number,
   avoidanceVolumes: readonly RegionalAirspaceVolume[],
 ): void {
+  // Aircraft cleared into Class B airspace should not be deflected away from it
+  if (ac.classBClearance?.active) {
+    return;
+  }
   const assigned = ac.intent.assignedHeadingDeg;
   // Both Aircraft.headingDeg and intent.assignedHeadingDeg are magnetic.
   const trueHeading =

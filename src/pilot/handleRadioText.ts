@@ -37,6 +37,7 @@ import {
   type CallsignCandidate,
 } from "@parse";
 import type { RegionalFacility } from "../scenario/regional";
+import { readbackForTts } from "../speech/tts-text";
 import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../parse/tokens";
 import { applyIntent } from "./applyIntent";
 import { formatReadback, formatRejectReadback } from "./readback";
@@ -105,6 +106,7 @@ export function resolveCallsign(input: {
 export interface PilotResult {
   accepted: boolean;
   readback: string;
+  spokenReadback?: string;
   command?: Command;
   reason?: string;
   detail?: string;
@@ -289,9 +291,11 @@ export async function handleRadioText(
           ? "SQUAWK"
           : "PARSE";
     logRejected(log, world, atWallMs, { command: null, reason, sourceText });
+    const rejectReadback = formatRejectReadback({ reason });
     return {
       accepted: false,
-      readback: formatRejectReadback({ reason }),
+      readback: rejectReadback,
+      spokenReadback: readbackForTts(rejectReadback),
       reason,
     };
   }
@@ -324,15 +328,17 @@ export function handleRadioCommand(
       reason,
       sourceText: c.sourceText,
     });
+    const readback = formatRejectReadback({
+      callsign: c.callsign || undefined,
+      reason,
+      detail,
+      isHeavy,
+      spokenAliases: world.aircraft.find((ac) => ac.callsign === c.callsign)?.spokenAliases,
+    });
     return {
       accepted: false,
-      readback: formatRejectReadback({
-        callsign: c.callsign || undefined,
-        reason,
-        detail,
-        isHeavy,
-        spokenAliases: world.aircraft.find((ac) => ac.callsign === c.callsign)?.spokenAliases,
-      }),
+      readback,
+      spokenReadback: readbackForTts(readback),
       command: c,
       reason,
       detail,
@@ -425,7 +431,12 @@ export function handleRadioCommand(
       aircraft,
     });
     logAccepted(log, world, atWallMs, resolvedCommand);
-    return { accepted: true, readback, command: resolvedCommand };
+    return {
+      accepted: true,
+      readback,
+      spokenReadback: readbackForTts(readback),
+      command: resolvedCommand,
+    };
   }
 
   const ifrCancellation = resolvedCommand.instructions.find(
@@ -449,7 +460,12 @@ export function handleRadioCommand(
       aircraft,
     });
     logAccepted(log, world, atWallMs, resolvedCommand);
-    return { accepted: true, readback, command: resolvedCommand };
+    return {
+      accepted: true,
+      readback,
+      spokenReadback: readbackForTts(readback),
+      command: resolvedCommand,
+    };
   }
 
   const classBAsRequested = resolvedCommand.instructions.find(
@@ -504,7 +520,12 @@ export function handleRadioCommand(
       aircraft,
     });
     logAccepted(log, world, atWallMs, resolvedCommand);
-    return { accepted: true, readback, command: resolvedCommand };
+    return {
+      accepted: true,
+      readback,
+      spokenReadback: readbackForTts(readback),
+      command: resolvedCommand,
+    };
   }
 
   const requestControl = resolvedCommand.instructions.find((item) =>
@@ -584,7 +605,12 @@ export function handleRadioCommand(
           text: detailText,
         });
         logAccepted(log, world, atWallMs, resolvedCommand);
-        return { accepted: true, readback: detailText, command: resolvedCommand };
+        return {
+          accepted: true,
+          readback: detailText,
+          spokenReadback: readbackForTts(detailText),
+          command: resolvedCommand,
+        };
       }
       case "STANDBY_REQUEST": {
         const req = findOpenRadioRequest(world.radioRequests, aircraft.id);
@@ -602,6 +628,32 @@ export function handleRadioCommand(
             approvedAtSimMs: world.simTimeMs,
             requestId: req.id,
           };
+          const destId = req.details?.destinationAirportId;
+          if (destId) {
+            aircraft.destinationAirport = destId;
+            aircraft.destination = destId;
+            if (aircraft.ambientVfr) {
+              aircraft.ambientVfr.destinationAirportId = destId;
+              aircraft.ambientVfr.mission = "AIRPORT_BOUND";
+              const regional = world.regional as RegionalFacility | undefined;
+              const destAirport = regional?.airports.find(
+                (a) => a.icao.toUpperCase() === destId.toUpperCase(),
+              );
+              if (destAirport) {
+                const targetPt = destAirport.runways?.[0]?.thresholdNm ?? destAirport.arpNm;
+                aircraft.ambientVfr.waypoints = [
+                  {
+                    xNm: targetPt.xNm,
+                    yNm: targetPt.yNm,
+                    altitudeFt: aircraft.altitudeFt,
+                    speedKt: aircraft.speedKt,
+                    targetToleranceNm: 2.0,
+                  },
+                ];
+                aircraft.ambientVfr.waypointIndex = 0;
+              }
+            }
+          }
         }
         break;
       }
@@ -635,6 +687,34 @@ export function handleRadioCommand(
         }
         if (req) {
           transitionRequestToIdentified(req, report, world.simTimeMs);
+          if (req.details?.destinationAirportId) {
+            const destId = req.details.destinationAirportId;
+            if (!aircraft.destination) {
+              aircraft.destinationAirport = destId;
+              aircraft.destination = destId;
+            }
+            if (aircraft.ambientVfr && aircraft.ambientVfr.mission !== "AIRPORT_BOUND") {
+              aircraft.ambientVfr.destinationAirportId = destId;
+              aircraft.ambientVfr.mission = "AIRPORT_BOUND";
+              const regional = world.regional as RegionalFacility | undefined;
+              const destAirport = regional?.airports.find(
+                (a) => a.icao.toUpperCase() === destId.toUpperCase(),
+              );
+              if (destAirport) {
+                const targetPt = destAirport.runways?.[0]?.thresholdNm ?? destAirport.arpNm;
+                aircraft.ambientVfr.waypoints = [
+                  {
+                    xNm: targetPt.xNm,
+                    yNm: targetPt.yNm,
+                    altitudeFt: aircraft.altitudeFt,
+                    speedKt: aircraft.speedKt,
+                    targetToleranceNm: 2.0,
+                  },
+                ];
+                aircraft.ambientVfr.waypointIndex = 0;
+              }
+            }
+          }
         }
         aircraft.radarContact = report;
         break;
@@ -676,7 +756,12 @@ export function handleRadioCommand(
       aircraft,
     });
     logAccepted(log, world, atWallMs, resolvedCommand);
-    return { accepted: true, readback, command: resolvedCommand };
+    return {
+      accepted: true,
+      readback,
+      spokenReadback: readbackForTts(readback),
+      command: resolvedCommand,
+    };
   }
 
   applyIntent(aircraft, resolvedCommand.instructions, world.simTimeMs, {
@@ -712,5 +797,10 @@ export function handleRadioCommand(
     procedureNames,
   });
   logAccepted(log, world, atWallMs, resolvedCommand);
-  return { accepted: true, readback, command: resolvedCommand };
+  return {
+    accepted: true,
+    readback,
+    spokenReadback: readbackForTts(readback),
+    command: resolvedCommand,
+  };
 }

@@ -438,7 +438,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
                   setReadback(result.readback);
                   if (result.readback && (result.accepted || result.command?.callsign)) {
                     void app.voiceLoop
-                      .playReadback(result.readback, result.command?.callsign)
+                      .playReadback(
+                        result.spokenReadback ?? result.readback,
+                        result.command?.callsign,
+                      )
                       .finally(() => setReadback(""));
                   }
                 });

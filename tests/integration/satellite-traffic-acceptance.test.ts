@@ -534,7 +534,10 @@ describe("T04-76 Satellite Traffic Acceptance Suite", () => {
 
     const cancelAckRes = await handleRadioText(world, "N734SP IFR cancellation received", log);
     expect(cancelAckRes.accepted).toBe(true);
-    expect(cancelAckRes.readback).toBe("November 734 Sierra Papa IFR cancellation received");
+    expect(cancelAckRes.readback).toBe("N734SP IFR cancellation received");
+    expect(cancelAckRes.spokenReadback).toBe(
+      "November seven three four Sierra Papa I F R cancellation received",
+    );
 
     // Operational rules revert to VFR outside Class B
     expect(ac.flightRules).toBe("VFR");

@@ -308,7 +308,8 @@ test("spoken of-form with airport reference identifies and answers roger (field 
     { source: "voice" },
   );
   expect(result.accepted).toBe(true);
-  expect(result.readback).toBe("November 7214 Lima roger");
+  expect(result.readback).toBe("N7214L roger");
+  expect(result.spokenReadback).toBe("November seven two one four Lima roger");
   expect(req.status).toBe("IDENTIFIED");
   expect(nNumber.radarContact).toMatchObject({
     distanceNm: 28,
@@ -428,5 +429,64 @@ test("say request rejects cleanly when no open request exists", async () => {
   const res = await handleRadioText(world, "N172SP say request", log);
   expect(res.accepted).toBe(false);
   expect(res.reason).toBe("REQUEST");
-  expect(res.readback).toBe("November 172 Sierra Papa unable request");
+  expect(res.readback).toBe("N172SP unable request");
+  expect(res.spokenReadback).toBe("November one seven two Sierra Papa unable request");
+});
+
+test("approving flight following with destination updates destination and sets AIRPORT_BOUND waypoints", async () => {
+  const ac = sample("N172SP", "ac-ff-dest");
+  ac.ambientVfr = {
+    mission: "LOCAL",
+    zoneId: "test",
+    spawnedAtSimMs: 0,
+    alertEligibility: "AMBIENT_SUPPRESSED",
+    waypoints: [{ xNm: 10, yNm: 10, altitudeFt: 3500, speedKt: 110, targetToleranceNm: 1.0 }],
+    waypointIndex: 0,
+  };
+  const regionalAirport = {
+    icao: "KPDK",
+    name: "Peachtree-DeKalb",
+    arp: { latDeg: 33.8756, lonDeg: -84.302 },
+    arpNm: { xNm: 15, yNm: 20 },
+    fieldElevFt: 1003,
+    magVarDeg: 0,
+    publicUse: true,
+    towered: true,
+    eligible: true,
+    runways: [],
+    hasPublishedApproaches: false,
+  };
+  const world = createWorld({
+    aircraft: [ac],
+    regional: {
+      facilityId: "A80",
+      facilityName: "Atlanta",
+      centerAirportId: "KATL",
+      airports: [regionalAirport],
+      airspaces: [],
+    } as unknown as import("../../scenario/regional").RegionalFacility,
+    radioRequests: [
+      {
+        id: "req-ff-dest",
+        aircraftId: "ac-ff-dest",
+        callsign: "N172SP",
+        kind: "FLIGHT_FOLLOWING",
+        status: "IDENTIFIED",
+        requestedAtSimMs: 1000,
+        details: {
+          destinationAirportId: "KPDK",
+          requestedAltitudeFt: 3500,
+        },
+      },
+    ],
+    simTimeMs: 1000,
+  });
+  const log = new SessionLog();
+  const res = await handleRadioText(world, "N172SP approve flight following", log);
+  expect(res.accepted).toBe(true);
+  expect(ac.destinationAirport).toBe("KPDK");
+  expect(ac.ambientVfr?.mission).toBe("AIRPORT_BOUND");
+  expect(ac.ambientVfr?.destinationAirportId).toBe("KPDK");
+  expect(ac.ambientVfr?.waypoints?.[0]?.xNm).toBe(15);
+  expect(ac.ambientVfr?.waypoints?.[0]?.yNm).toBe(20);
 });

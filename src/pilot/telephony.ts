@@ -133,6 +133,37 @@ export function formatCallsignSpeech(callsign: string, options?: CallsignSpeechO
     .join(" ");
 }
 
+/**
+ * Clean readable display callsign for the UI/command-line (e.g. `N123`, `N172SP`, `Delta 123`).
+ * Never expands letters/digits phonetically.
+ */
+export function formatCallsignDisplay(callsign: string, options?: CallsignSpeechOptions): string {
+  const trimmed = callsign.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const cs = trimmed.toUpperCase();
+  const alias = options?.spokenAliases?.find((candidate) => candidate.trim().length > 0)?.trim();
+  const nMatch = /^N(\d{1,5})([A-Z]{0,2})$/i.exec(cs);
+  if (nMatch && alias) {
+    const [, digits, suffix] = nMatch;
+    const body = `${alias} ${digits}${suffix}`;
+    return [body, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+  }
+  if (nMatch) {
+    return [cs, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+  }
+  if (/^[A-Z]{3}\s*\d+/.test(cs)) {
+    const prefix = cs.slice(0, 3);
+    const rest = cs.slice(3).trimStart();
+    const head = AIRLINE_TELEPHONY[prefix] ?? prefix;
+    return [`${head} ${rest}`, options?.isHeavy ? "heavy" : ""]
+      .filter((part) => part.length > 0)
+      .join(" ");
+  }
+  return [trimmed, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+}
+
 export const DIGIT_WORDS = [
   "zero",
   "one",

@@ -12,13 +12,12 @@
 import type { Aircraft, Instruction } from "@core";
 import {
   formatAltitude,
-  formatCallsignSpeech,
+  formatCallsignDisplay,
   formatDigitString,
   formatHeadingDigits,
-  speakDigitString,
 } from "./telephony";
 
-export { formatCallsignSpeech } from "./telephony";
+export { formatCallsignDisplay, formatCallsignSpeech } from "./telephony";
 
 export type ReadbackAircraft = Pick<
   Aircraft,
@@ -175,9 +174,7 @@ function formatInstructionClause(
     case "IDENT":
       return "ident";
     case "ASSIGN_SQUAWK":
-      return instruction.source === "VFR"
-        ? "squawk VFR"
-        : `squawk ${speakDigitString(instruction.code)}`;
+      return instruction.source === "VFR" ? "squawk VFR" : `squawk ${instruction.code}`;
     case "MAINTAIN_VFR":
       return "maintain VFR";
     case "CLASS_B_CLEARANCE": {
@@ -210,7 +207,7 @@ function formatInstructionClause(
           : `maintain ${formatAltitude(instruction.altitudeFt)}`,
         instruction.climbVia ? "climb via" : null,
         instruction.frequency ? `frequency ${instruction.frequency}` : null,
-        instruction.squawk ? `squawk ${speakDigitString(instruction.squawk)}` : null,
+        instruction.squawk ? `squawk ${instruction.squawk}` : null,
       ].filter((value): value is string => value !== null);
       return [`cleared to ${instruction.limitId} ${access}`, ...optional].join(", ");
     }
@@ -333,7 +330,7 @@ export function formatReadback(args: {
   aircraft: ReadbackAircraft;
   procedureNames?: Readonly<Record<string, string>>;
 }): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+  const callsignDisplay = formatCallsignDisplay(args.callsign, {
     isHeavy: args.aircraft.wakeCategory === "H",
     spokenAliases: args.aircraft.spokenAliases,
   });
@@ -341,10 +338,10 @@ export function formatReadback(args: {
     .map((instruction) => formatInstructionClause(instruction, args.aircraft, args.procedureNames))
     .filter((clause) => clause.length > 0);
   if (clauses.length === 0) {
-    return callsignSpeech;
+    return callsignDisplay;
   }
   const body = clauses.join(", ");
-  return capitalizeFirst(callsignSpeech ? `${callsignSpeech} ${body}` : body);
+  return capitalizeFirst(callsignDisplay ? `${callsignDisplay} ${body}` : body);
 }
 
 /** Error readbacks for rejects. Omit callsign speech when it is unknown. */
@@ -367,7 +364,7 @@ export function formatRejectReadback(args: {
     after = args.detail;
   }
   const cs = args.callsign
-    ? formatCallsignSpeech(args.callsign, {
+    ? formatCallsignDisplay(args.callsign, {
         isHeavy: args.isHeavy,
         spokenAliases: args.spokenAliases,
       })

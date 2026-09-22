@@ -485,7 +485,10 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
     // 3. Controller: squawk
     const resSq = await handleRadioText(world, "N172SP SQ 4521", log);
     expect(resSq.accepted).toBe(true);
-    expect(resSq.readback).toBe("November 172 Sierra Papa squawk four five two one");
+    expect(resSq.readback).toBe("N172SP squawk 4521");
+    expect(resSq.spokenReadback).toBe(
+      "November one seven two Sierra Papa squawk four five two one",
+    );
     expect(ac.assignedSquawk).toBe("4521");
 
     // 4. Controller: radar contact & approval
@@ -495,7 +498,10 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
 
     const resApprove = await handleRadioText(world, "N172SP approve flight following", log);
     expect(resApprove.accepted).toBe(true);
-    expect(resApprove.readback).toBe("November 172 Sierra Papa flight following approved");
+    expect(resApprove.readback).toBe("N172SP flight following approved");
+    expect(resApprove.spokenReadback).toBe(
+      "November one seven two Sierra Papa flight following approved",
+    );
     expect(req.status).toBe("APPROVED");
     expect(ac.flightFollowing?.active).toBe(true);
   });
@@ -574,7 +580,8 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
     // 2. Controller: stand by
     const resStandby = await handleRadioText(world, "N210AB stand by", log);
     expect(resStandby.accepted).toBe(true);
-    expect(resStandby.readback).toBe("November 210 Alfa Bravo standby");
+    expect(resStandby.readback).toBe("N210AB standby");
+    expect(resStandby.spokenReadback).toBe("November two one zero Alfa Bravo standby");
     expect(req.status).toBe("STANDBY");
 
     // 3. Controller: say request
@@ -595,7 +602,10 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
 
     const resClr = await handleRadioText(world, `N210AB CLR TO ${dest} VIA DIRECT`, log);
     expect(resClr.accepted).toBe(true);
-    expect(resClr.readback).toBe(`November 210 Alfa Bravo cleared to ${dest} via direct`);
+    expect(resClr.readback).toBe(`N210AB cleared to ${dest} via direct`);
+    expect(resClr.spokenReadback).toBe(
+      `November two one zero Alfa Bravo cleared to Kilo Foxtrot Tango Yankee via direct`,
+    );
     expect(ac.flightRules).toBe("IFR");
     expect(ac.activeClearance).toBeDefined();
   });
@@ -672,7 +682,10 @@ describe("VFR flight following and radio-contact lifecycle integration (T04-73)"
     // 3. Controller: unable flight following
     const resUnable = await handleRadioText(world, "N345GA unable flight following", log);
     expect(resUnable.accepted).toBe(true);
-    expect(resUnable.readback).toBe("November 345 Golf Alfa unable flight following");
+    expect(resUnable.readback).toBe("N345GA unable flight following");
+    expect(resUnable.spokenReadback).toBe(
+      "November three four five Golf Alfa unable flight following",
+    );
     expect(req.status).toBe("DECLINED");
   });
 });

@@ -186,6 +186,12 @@ function expandTtsCallsignsAndIdentifiers(text: string): string {
     /\b(\d{1,5})([A-Z]{1,2})\b/g,
     (_, digits: string, letters: string) => `${digits} ${speakIdentifier(letters)}`,
   );
+  // GA callsign with trailing digits/letters (`Skyhawk 172`, `Cirrus 834`).
+  out = out.replace(
+    /\b(Cirrus|Skyhawk|Skylane|Bonanza|Caravan|Archer|Diamond|Cessna|Piper|Beechcraft|Mooney)\s+(\d{1,5})\b/gi,
+    (_, alias: string, digits: string) =>
+      `${alias} ${[...digits].map((ch) => SINGLE_DIGIT_WORDS[ch]!).join(" ")}`,
+  );
   return out;
 }
 
@@ -194,6 +200,10 @@ function expandTtsIdentifiers(text: string): string {
     const alias = TTS_IDENTIFIER_ALIASES[token];
     if (alias) {
       return alias;
+    }
+    // Any 4-letter ICAO airport code starting with K (e.g. KLZU, KATL, KPDK, KFTY, KDEM) speaks phonetically
+    if (/^K[A-Z]{3}$/.test(token)) {
+      return speakIdentifier(token);
     }
     return token.length === 4 ? [...token].join(" ") : token;
   });
@@ -243,8 +253,13 @@ export function speakGroupedNumber(raw: string | number): string {
 }
 
 export function readbackForTts(text: string): string {
+  // Expand squawk codes (e.g. `squawk 0342` -> `squawk zero three four two`, `squawk 1200` -> `squawk one two zero zero`)
+  const withSquawk = text.replace(
+    /\bsquawk\s+(\d{4})\b/gi,
+    (_, code: string) => `squawk ${[...code].map((ch) => SINGLE_DIGIT_WORDS[ch] ?? ch).join(" ")}`,
+  );
   // Expand runway with side (e.g. `runway 27L` -> `runway twenty seven left`)
-  const withRunway = text.replace(
+  const withRunway = withSquawk.replace(
     /\brunway\s+(\d{1,2})([LRC])?\b/gi,
     (_, num: string, side?: string) => {
       const sideWord =

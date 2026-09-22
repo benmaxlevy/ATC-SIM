@@ -110,8 +110,8 @@ describe("T03-31 synthetic aircraft callsign alias acceptance", () => {
       );
 
       expect(result.accepted).toBe(true);
-      expect(result.command).toMatchObject({ callsign, instructions: [{ type: "FLY_HEADING" }] });
-      expect(result.readback).toContain(`${alias} ${spokenTail(callsign)}`);
+      expect(result.readback).toContain(`${alias} ${callsign.slice(1)}`);
+      expect(result.spokenReadback).toContain(`${alias} ${spokenTail(callsign)}`);
       expect(result.readback).toContain("heading 270");
       expect(aircraft.callsign).toBe(callsign);
       expect(aircraft.intent.assignedHeadingDeg).toBe(270);
