@@ -268,3 +268,18 @@ test("re-enabling FX after a dry play routes the next PCM clip through the graph
   expect(secondVoice.connect).toHaveBeenCalledWith(ctx.inputs[0]);
   expect(secondVoice.connect).not.toHaveBeenCalledWith(ctx.destination);
 });
+
+test("playPcm returns unavailable when suspended context fails to resume", async () => {
+  const ctx = new FakeContext();
+  ctx.state = "suspended";
+  ctx.resume = () => new Promise(() => {}); // never resolves
+
+  const player = createReadbackPlayer({
+    getAudioContext: () => ctx as unknown as AudioContext,
+    delay: async () => {},
+  });
+
+  const outcome = await player.playPcm(clip([1]));
+  expect(outcome).toEqual({ ok: false, reason: "unavailable" });
+  expect(player.playing).toBe(false);
+});

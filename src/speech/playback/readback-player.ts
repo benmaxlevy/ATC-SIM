@@ -131,6 +131,24 @@ export function createReadbackPlayer(options: ReadbackPlayerOptions = {}): Readb
   return new ReadbackPlayerImpl(options);
 }
 
+async function resumeContextWithTimeout(ctx: AudioContext, timeoutMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  const resume = ctx.resume().then(
+    () => true,
+    () => false,
+  );
+  try {
+    return await Promise.race([resume, timeout]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 class ReadbackPlayerImpl implements ReadbackPlayer {
   private ctx: AudioContext | null = null;
   private source: AudioBufferSourceNode | null = null;
@@ -172,7 +190,7 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     try {
       const ctx = this.tryContext();
       if (ctx && ctx.state === "suspended") {
-        await ctx.resume();
+        await resumeContextWithTimeout(ctx, 500);
       }
     } catch {
       // Never throw through the sim tick.
@@ -209,7 +227,10 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
 
     try {
       if (ctx.state === "suspended") {
-        await ctx.resume();
+        const resumed = await resumeContextWithTimeout(ctx, 1000);
+        if (!resumed || ctx.state === "suspended") {
+          return { ok: false, reason: "unavailable" };
+        }
       }
       if (this.generation !== generation) {
         return { ok: false, reason: "error" };

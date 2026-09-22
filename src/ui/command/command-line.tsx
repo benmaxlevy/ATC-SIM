@@ -164,6 +164,13 @@ export function CommandLine({
           setSticky("");
         }
         setShowingReadback(true);
+        if (live !== "TX") {
+          const timer = setTimeout(() => {
+            hiddenForRef.current = live;
+            setShowingReadback(false);
+          }, 3000);
+          return () => clearTimeout(timer);
+        }
         return;
       }
       if (!readbackMountedRef.current && !voiceStatus) {
@@ -290,6 +297,7 @@ export function CommandLine({
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
             setPttHeld(true);
+            hiddenForRef.current = null;
             // PTT hit clears a persisted a/c call; the TX status arriving
             // next owns the line until release dismisses it to the input.
             setSticky("");

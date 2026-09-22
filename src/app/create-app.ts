@@ -155,10 +155,15 @@ export function createApp(deps: AppDeps): AppHandles {
   const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
   let ptt: PttCaptureController | undefined = undefined;
   const voiceStatusListeners = new Set<(status: string | null) => void>();
+  let transientStatusTimer: ReturnType<typeof setTimeout> | null = null;
   // User intent starts from prefs; /health must still make Path C effective.
   let pathCActive = false;
 
   function emitVoiceStatus(status: string | null): void {
+    if (status === null && transientStatusTimer !== null) {
+      clearTimeout(transientStatusTimer);
+      transientStatusTimer = null;
+    }
     for (const listener of voiceStatusListeners) {
       listener(status);
     }
@@ -240,12 +245,22 @@ export function createApp(deps: AppDeps): AppHandles {
         ptt?.setTransmitLocked(locked);
       },
       onStatus: (event) => {
+        if (transientStatusTimer !== null) {
+          clearTimeout(transientStatusTimer);
+          transientStatusTimer = null;
+        }
         if (event === null) {
           emitVoiceStatus(null);
           return;
         }
         emitVoiceStatus(formatVoiceStatus(event));
         logVoiceReject(log, world, event);
+        if (event.code !== "ptt_transmit") {
+          transientStatusTimer = setTimeout(() => {
+            emitVoiceStatus(null);
+            transientStatusTimer = null;
+          }, 3000);
+        }
       },
       onUtteranceComplete: (metrics) => {
         logVoiceLatency(log, world, metrics, speech.id);

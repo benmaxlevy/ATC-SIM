@@ -100,3 +100,38 @@ test("transmitLocked ignores keydown without starting capture", async () => {
   expect(events).toEqual([{ type: "ignored-locked" }]);
   controller.dispose();
 });
+
+test("repeated keydown while holding PTT and transmitLocked does not abort capture", async () => {
+  const { controller, events, fake, clock } = setup();
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events).toEqual([{ type: "ptt-down" }]);
+
+  // Simulate voiceLoop locking transmit upon ptt-down
+  controller.setTransmitLocked(true);
+
+  // OS repeat keydown where repeat is false
+  await controller.handleKeyDown(
+    key({ key: "Control", code: "ControlLeft", ctrlKey: true, repeat: false }),
+  );
+  expect(events).toEqual([{ type: "ptt-down" }]);
+
+  fake.push(new Float32Array(48000).fill(0.25));
+  clock.ms = 500;
+  await controller.handleKeyUp(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events.length).toBe(2);
+  expect(events[1]?.type).toBe("ptt-up");
+  controller.dispose();
+});
+
+test("handleBlur finishes capture when capturing", async () => {
+  const { controller, events, fake, clock } = setup();
+  await controller.handleKeyDown(key({ key: "Control", code: "ControlLeft", ctrlKey: true }));
+  expect(events).toEqual([{ type: "ptt-down" }]);
+
+  fake.push(new Float32Array(48000).fill(0.25));
+  clock.ms = 500;
+  controller.handleBlur();
+  expect(events.length).toBe(2);
+  expect(events[1]?.type).toBe("ptt-up");
+  controller.dispose();
+});

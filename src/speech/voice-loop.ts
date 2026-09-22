@@ -382,10 +382,16 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     if (event.type === "permission-denied") {
+      if (this.gate.locked) {
+        this.syncLock("utterance-failed");
+      }
       this.emitStatus({ code: "mic_denied" });
       return;
     }
     if (event.type === "capture-error") {
+      if (this.gate.locked) {
+        this.syncLock("utterance-failed");
+      }
       this.emitStatus(
         event.reason === "insecure-context"
           ? { code: "insecure_context" }
@@ -399,9 +405,12 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   private onPttDown(): void {
-    if (this.inFlightValue || this.gate.current === "playing" || this.busy) {
+    if (this.inFlightValue || this.gate.current === "playing" || this.speakActive > 0) {
       this.emitStatus({ code: "ptt_locked" });
       return;
+    }
+    if (this.gate.locked) {
+      this.syncLock("utterance-failed");
     }
     this.emitStatus({ code: "ptt_transmit" });
     this.syncLock("ptt-down");
@@ -409,6 +418,7 @@ class VoiceLoopImpl implements VoiceLoop {
     try {
       this.speechPort.beginUtterance?.();
     } catch (err) {
+      this.syncLock("utterance-failed");
       this.emitStatus(statusFromTranscribeError(err));
     }
   }

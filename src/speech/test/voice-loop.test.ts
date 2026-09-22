@@ -266,3 +266,41 @@ test("rejected command with callsign and readback synthesizes and plays unable r
   );
   expect(playPcmSpy).toHaveBeenCalledWith(rejectionClip, expect.anything());
 });
+
+test("capture-error unlocks the gate after ptt-down", async () => {
+  const locks: boolean[] = [];
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => null,
+    setTransmitLocked: (locked) => locks.push(locked),
+  });
+
+  await loop.handlePttEvent({ type: "ptt-down" });
+  expect(loop.busy).toBe(true);
+  expect(locks.at(-1)).toBe(true);
+
+  await loop.handlePttEvent({ type: "capture-error", reason: "device-error" });
+  expect(loop.busy).toBe(false);
+  expect(locks.at(-1)).toBe(false);
+});
+
+test("onPttDown recovers from orphaned armed gate when no speech in flight", async () => {
+  const statuses: Array<string | null> = [];
+  const loop = createVoiceLoop({
+    speechPort: fakePort("turn left heading two seven zero"),
+    parseCommand,
+    dispatchCommand: () => {},
+    getSelectedCallsign: () => null,
+    onStatus: (event) => statuses.push(event?.code ?? null),
+  });
+
+  // First ptt-down arms the gate
+  await loop.handlePttEvent({ type: "ptt-down" });
+  expect(statuses.at(-1)).toBe("ptt_transmit");
+
+  // Second ptt-down without ptt-up: recovers and transmits rather than showing ptt_locked
+  await loop.handlePttEvent({ type: "ptt-down" });
+  expect(statuses.at(-1)).toBe("ptt_transmit");
+});
