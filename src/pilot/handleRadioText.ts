@@ -17,6 +17,7 @@ import {
   findOpenRadioRequest,
   handoffFor,
   isFlightPlanOperational,
+  performanceRegistry,
   regionalSatelliteIlsApproaches,
   resolveApproachContext,
   transitionRequestToApproved,
@@ -133,11 +134,28 @@ function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
 }
 
+function aircraftSpokenAliases(aircraft: Aircraft | undefined): readonly string[] | undefined {
+  if (!aircraft) return undefined;
+  if (aircraft.spokenAliases && aircraft.spokenAliases.length > 0) {
+    return aircraft.spokenAliases;
+  }
+  if (aircraft.aircraftType) {
+    const fromRegistry = performanceRegistry.getSpokenAliases(aircraft.aircraftType);
+    if (fromRegistry && fromRegistry.length > 0) {
+      return fromRegistry;
+    }
+  }
+  return undefined;
+}
+
 function callsignsFromWorld(world: World): CallsignCandidate[] {
-  return world.aircraft.map((ac) => ({
-    callsign: ac.callsign,
-    ...(ac.spokenAliases ? { aliases: ac.spokenAliases } : {}),
-  }));
+  return world.aircraft.map((ac) => {
+    const aliases = aircraftSpokenAliases(ac);
+    return {
+      callsign: ac.callsign,
+      ...(aliases && aliases.length > 0 ? { aliases } : {}),
+    };
+  });
 }
 
 function catalogFixEntriesFromWorld(world: World): CatalogFixEntry[] {

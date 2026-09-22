@@ -1725,11 +1725,125 @@ _CALLSIGN_DIGIT_WORDS: dict[str, str] = {
 }
 
 
+GA_ALIAS_VARIANTS: dict[str, list[str]] = {
+    "cirrus": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "cirru": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "siriu": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "sirius": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "skyhawk": ["skyhawk", "sky hawk", "sky"],
+    "skylane": ["skylane", "sky lane"],
+    "bonanza": ["bonanza", "banana", "bonansa"],
+    "caravan": ["caravan", "carevan", "car van"],
+    "archer": ["archer", "arch"],
+}
+
+_PHONETIC_LETTERS: dict[str, list[str]] = {
+    "A": ["alpha", "alfa"],
+    "B": ["bravo"],
+    "C": ["charlie"],
+    "D": ["delta"],
+    "E": ["echo"],
+    "F": ["foxtrot"],
+    "G": ["golf", "gulf"],
+    "H": ["hotel"],
+    "I": ["india"],
+    "J": ["juliet"],
+    "K": ["kilo"],
+    "L": ["lima"],
+    "M": ["mike"],
+    "N": ["november"],
+    "O": ["oscar"],
+    "P": ["papa"],
+    "Q": ["quebec"],
+    "R": ["romeo"],
+    "S": ["sierra"],
+    "T": ["tango"],
+    "U": ["uniform"],
+    "V": ["victor"],
+    "W": ["whiskey"],
+    "X": ["xray", "x ray"],
+    "Y": ["yankee"],
+    "Z": ["zulu"],
+}
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if len(a) < len(b):
+        a, b = b, a
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for ca in a:
+        curr = [0] * (len(b) + 1)
+        curr[0] = prev[0] + 1
+        for j, cb in enumerate(b):
+            cost = 0 if ca == cb else 1
+            curr[j + 1] = min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost)
+        prev = curr
+    return prev[len(b)]
+
+
+def _word_matches_fuzzy(spoken: str, target: str) -> bool:
+    if spoken == target:
+        return True
+    if len(target) < 4 or len(spoken) < 3:
+        return False
+    max_dist = 2 if len(target) >= 6 else 1
+    return _levenshtein(spoken, target) <= max_dist
+
+
 def _callsign_tail_patterns(callsign: str) -> list[str]:
-    match = re.fullmatch(r"(?:N|[A-Z]{3})(\d{1,5})[A-Z]{0,2}", callsign)
+    match = re.fullmatch(r"(?:N|[A-Z]{3})(\d{1,5})([A-Z]{0,2})", callsign)
     if match is None:
         return []
     digits = match.group(1)
+    suffix = match.group(2)
     words = " ".join(
         {
             "0": "zero",
@@ -1745,23 +1859,61 @@ def _callsign_tail_patterns(callsign: str) -> list[str]:
         }[digit]
         for digit in digits
     )
-    return [digits, words]
+    patterns = [digits, words]
+    if suffix:
+        patterns.append(f"{digits}{suffix.lower()}")
+        patterns.append(f"{digits} {suffix.lower()}")
+        patterns.append(f"{words} {suffix.lower()}")
+        import itertools
+
+        suffix_phonetics = [_PHONETIC_LETTERS.get(letter, [letter.lower()]) for letter in suffix]
+        for combo in itertools.product(*suffix_phonetics):
+            phonetic_str = " ".join(combo)
+            patterns.append(f"{digits} {phonetic_str}")
+            patterns.append(f"{words} {phonetic_str}")
+    return patterns
 
 
 def _alias_evidence_owners(text: str, candidates: list[dict[str, Any]]) -> set[str]:
     normalized = normalize_evidence_text(text).casefold()
     owners: set[str] = set()
+    tokens = normalized.split()
     for candidate in candidates:
         callsign = str(candidate.get("callsign") or "").upper()
-        for alias in candidate.get("aliases") or []:
-            alias_text = " ".join(str(alias).strip().split()).casefold()
-            if not alias_text:
+        alias_list = candidate.get("aliases") or []
+        tail_patterns = _callsign_tail_patterns(callsign)
+        for alias in alias_list:
+            primary = " ".join(str(alias).strip().split()).casefold()
+            if not primary:
                 continue
-            for tail in _callsign_tail_patterns(callsign):
-                pattern = rf"\b{re.escape(alias_text)}\s+{re.escape(tail)}\b"
-                if re.search(pattern, normalized):
-                    owners.add(callsign)
+            variants = [primary] + list(GA_ALIAS_VARIANTS.get(primary, []))
+            matched = False
+            for variant in variants:
+                for tail in tail_patterns:
+                    pattern = rf"\b{re.escape(variant)}\s+{re.escape(tail)}\b"
+                    if re.search(pattern, normalized):
+                        owners.add(callsign)
+                        matched = True
+                        break
+                    glued_pattern = rf"\b{re.escape(variant)}{re.escape(tail)}\b"
+                    if re.search(glued_pattern, normalized):
+                        owners.add(callsign)
+                        matched = True
+                        break
+                if matched:
                     break
+            if not matched and tokens:
+                for variant in variants:
+                    if " " not in variant and _word_matches_fuzzy(tokens[0], variant):
+                        for tail in tail_patterns:
+                            tail_tokens = tail.split()
+                            if len(tokens) >= 1 + len(tail_tokens):
+                                if tokens[1 : 1 + len(tail_tokens)] == tail_tokens:
+                                    owners.add(callsign)
+                                    matched = True
+                                    break
+                    if matched:
+                        break
     return owners
 
 

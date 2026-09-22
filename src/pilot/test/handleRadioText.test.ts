@@ -490,3 +490,61 @@ test("approving flight following with destination updates destination and sets A
   expect(ac.ambientVfr?.waypoints?.[0]?.xNm).toBe(15);
   expect(ac.ambientVfr?.waypoints?.[0]?.yNm).toBe(20);
 });
+
+test.each([
+  ["siriu five three zero zero golf say request", "voice"],
+  ["cirru five three zero zero gulf say request", "voice"],
+  ["cirru 5300G say request", "voice"],
+  ["siriu 5300G say request", "voice"],
+  ["siriu five three zero zero golf say request", "text"],
+  ["cirru five three zero zero gulf say request", "text"],
+  ["cirru5300G say request", "text"],
+] as const)(
+  "handleRadioText '%s' with source '%s' resolves Cirrus SR22 without explicit spokenAliases",
+  async (phrase, source) => {
+    const ac = createAircraft({
+      id: "ac-cirrus-5300g",
+      callsign: "N5300G",
+      xNm: 0,
+      yNm: 12,
+      headingDeg: 180,
+      altitudeFt: 4500,
+      speedKt: 120,
+      aircraftType: "SR22",
+    });
+    const req = {
+      id: "req-cirrus",
+      aircraftId: ac.id,
+      callsign: ac.callsign,
+      kind: "FLIGHT_FOLLOWING" as const,
+      requestedAtSimMs: 1000,
+      status: "PENDING" as const,
+      details: {
+        aircraftType: "SR22",
+        destinationAirportId: "KPDK",
+        requestedAltitudeFt: 4500,
+      },
+    };
+    const world = createWorld({
+      aircraft: [ac],
+      radioRequests: [req],
+      regional: {
+        facilityId: "A80",
+        airports: [
+          {
+            icao: "KPDK",
+            arpNm: { xNm: 0, yNm: 0 },
+          },
+        ],
+        airspaces: [],
+      } as unknown as import("../../scenario/regional").RegionalFacility,
+      simTimeMs: 1000,
+    });
+    const log = new SessionLog();
+    const res = await handleRadioText(world, phrase, log, 0, { source });
+    expect(res.accepted).toBe(true);
+    expect(res.readback).toContain("5300G");
+    expect(res.readback).toContain("KPDK");
+    expect(req.status).toBe("PENDING");
+  },
+);

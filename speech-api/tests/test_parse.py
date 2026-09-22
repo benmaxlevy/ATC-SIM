@@ -59,6 +59,42 @@ def test_alias_context_is_structured_and_grounded_to_one_canonical_callsign() ->
     assert guard_catalog_ids("Citation 123 turn left heading 270", context, valid).error == "PARSE_MISS"
 
 
+def test_alias_variants_fuzzy_prefix_and_phonetic_tail_ground_to_canonical() -> None:
+    from parse_engine import guard_catalog_ids
+
+    context = {"callsigns": [{"callsign": "N5300G", "aliases": ["Cirrus"]}]}
+    valid = ParseOutcome(
+        ok=True,
+        callsign_token="N5300G",
+        instructions=[{"type": "REQUEST_DETAILS"}],
+    )
+    for phrase in [
+        "siriu five three zero zero golf say request",
+        "cirru five three zero zero gulf say request",
+        "cirru 5300G say request",
+        "siriu 5300G say request",
+        "cirru 5300 golf say request",
+        "siriu 5300 golf say request",
+        "cirru 5300 gulf say request",
+        "siriu 5300 gulf say request",
+        "cirru 5300 say request",
+        "siriu 5300 say request",
+        "cirru5300G say request",
+        "siriu5300G say request",
+    ]:
+        res = guard_catalog_ids(phrase, context, valid)
+        assert res.ok, f"expected {phrase} to be ok, got {res.error}"
+        assert res.callsign_token == "N5300G"
+
+    # Invalid near-misses must fail closed
+    for phrase in [
+        "siriu nine nine nine golf say request",
+        "xyzcirrus five three zero zero golf say request",
+        "turn five three zero zero golf say request",
+    ]:
+        assert guard_catalog_ids(phrase, context, valid).error == "PARSE_MISS"
+
+
 def test_alias_context_rejects_ambiguous_tail_and_accepts_five_digit_n_number() -> None:
     from parse_engine import guard_catalog_ids
 
