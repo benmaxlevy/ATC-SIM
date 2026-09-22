@@ -15,6 +15,7 @@ import argparse
 import importlib
 import json
 import math
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -219,9 +220,20 @@ def populate_dataset(
     return data
 
 
+def collapse_short_arrays(text: str) -> str:
+    """Format short primitive arrays inline on a single line to match Prettier formatting."""
+
+    def repl(match: re.Match[str]) -> str:
+        items = [line.strip().rstrip(",") for line in match.group(1).splitlines() if line.strip()]
+        return "[" + ", ".join(items) + "]"
+
+    return re.sub(r'\[\n((?:\s*"[^"\n]+",?\n)+)\s*\]', repl, text)
+
+
 def format_dataset(data: dict[str, Any]) -> str:
     """Format dataset as deterministic JSON with 2-space indentation and trailing newline."""
-    return json.dumps(data, indent=2, sort_keys=False) + "\n"
+    text = json.dumps(data, indent=2, sort_keys=False)
+    return collapse_short_arrays(text) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
