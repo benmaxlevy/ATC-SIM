@@ -5950,3 +5950,57 @@ Execution authorized by the user on `feature/sattelite-traffic` after the T04-10
 planning update. The captain runs T04-104 with one isolated worker, enforces the
 merge lock, runs required tests, and stops at the phase boundary. No push.
 
+## Eighty-second swarm planned — F6 and F9 origin, destination, and route derivation (2026-09-22)
+
+Human approved deriving flight plan origin, destination, and route from asterisk-delimited
+fix tokens in `<F6>` (FLT DATA) and `<F9>` (VFR DATA) entries. The first element is
+departure airport (origin), the last element is destination airport, and any
+intermediate elements become the filed route.
+
+| Key | Value |
+| --- | --- |
+| Goal | Populate `departureAirport`, `airportId`, and `route` from asterisk-delimited route tokens in `<F6>` and `<F9>` commands, and reflect them in `<F7>FP` modal. |
+| Phase | `phases/02-scope/` |
+| Include | T02-203 |
+| Merge target | `feature/sattelite-traffic` |
+| Worker limit/model | 1 sequential worker; `inherit` |
+| Merge lock | Captain-only; workers never merge or spawn |
+| Stop | T02-203 plus focused tests, `npm run ci`, and push to remote |
+| Push | Authorized by user: push to remote after green CI |
+
+**Product law:** In `<F6>` and `<F9>`, asterisk tokens (`[origin]*[fixes...]*[dest]`)
+are parsed: first element is `departureAirport` (origin; undefined if omitted e.g. `*KPIM`),
+last element is `airportId` (destination), and any intermediate elements are joined with
+spaces into `route`. Raw token remains in `fixes` for backwards compatibility.
+`PreviewArmedAction`, `createFlightPlan`, and `FlightPlanModal` are kept synchronized.
+
+**Skip:** Unrelated STARS commands, datablock formatting changes, speech API changes,
+and cloud inference.
+
+**Waves:**
+- Wave A: T02-203 — F6/F9 origin, destination, and route derivation, Preview action sync, and tests.
+
+**Ticket ownership:**
+- T02-203 owns `deriveOriginDestRoute`, `parseFlightPlanCreation`, `parseVfrFlightPlanCommand`, `PreviewArmedAction`, `createFlightPlan` call in `scopeKeys.ts`, and test coverage.
+
+**Ticket paths/branches:**
+- `ticket/T02-203-f6-f9-flight-plan-origin-dest-route-derivation` → `phases/02-scope/tickets/T02-203-f6-f9-flight-plan-origin-dest-route-derivation.md`
+
+**Captain return:**
+
+```text
+PHASE EXIT GREEN
+Phase: F6 and F9 origin, destination, and route derivation T02-203
+Merge target: feature/sattelite-traffic
+Merged: T02-203
+Tests: focused tests, npm run ci
+Notes: origin/dest/route populated from asterisk tokens; push feature/sattelite-traffic
+```
+
+## Eighty-second swarm started — F6 and F9 origin, destination, and route derivation (2026-09-22)
+
+Execution authorized by the user on `feature/sattelite-traffic` after the T02-203
+planning update. The captain runs T02-203 with one isolated worker, enforces the
+merge lock, runs required tests, and pushes to remote upon completion.
+
+
