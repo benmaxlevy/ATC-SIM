@@ -259,6 +259,13 @@ class ProfileBuilderTests(unittest.TestCase):
             self.assertEqual(res.returncode, 2)
             self.assertIn("unknown aircraft type", res.stderr)
 
+    def test_format_dataset_collapses_short_arrays(self) -> None:
+        """Format dataset preserves single-line primitive arrays to match Prettier."""
+        data = {"aliases": ["Bonanza", "Skyhawk"], "nested": {"single": ["Cirrus"]}}
+        formatted = builder.format_dataset(data)
+        self.assertIn('"aliases": ["Bonanza", "Skyhawk"]', formatted)
+        self.assertIn('"single": ["Cirrus"]', formatted)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,10 @@
-import { createAircraft, type Aircraft, type AircraftInit, type World } from "@core";
+import {
+  createAircraft,
+  isFlightPlanOperational,
+  type Aircraft,
+  type AircraftInit,
+  type World,
+} from "@core";
 import { allocateSquawkCode } from "./callsigns";
 
 export interface SpawnAircraftParams extends AircraftInit {
@@ -16,7 +22,7 @@ export function usedSquawks(world: World): string[] {
       ),
     ),
     ...world.flightPlans.flatMap((plan) =>
-      plan.status !== "deleted" && plan.assignedBeacon ? [plan.assignedBeacon] : [],
+      isFlightPlanOperational(plan) && plan.assignedBeacon ? [plan.assignedBeacon] : [],
     ),
   ];
 }

@@ -1,0 +1,104 @@
+{
+  "airportId": "KFFC",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -22.306289,
+      "yNm": -44.548167,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 36.292336,
+      "yNm": 16.410167,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": 3.268348,
+      "yNm": 33.415833,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 8.03542,
+      "yNm": 16.5505,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 46.373849,
+      "yNm": -39.992167,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 13.717234,
+      "yNm": 31.0745,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": -73.677323,
+      "yNm": 13.045833,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": -54.965966,
+      "yNm": -52.371167,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    },
+    {
+      "id": "IFFCDME",
+      "kind": "DME",
+      "name": "ATLANTA RGNL FALCON FLD",
+      "xNm": -0.467185,
+      "yNm": 0.304,
+      "latDeg": 33.36278888888889,
+      "lonDeg": -84.58185,
+      "freqMhz": 111.95,
+      "class": "T"
+    }
+  ]
+}

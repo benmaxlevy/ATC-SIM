@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from config import Settings
 from engines import (
+    ATC_CALLSIGN_PREFIXES,
     QwenAsrStt,
     _pick_stt_device,
     is_cuda_runtime_error,
@@ -124,7 +125,7 @@ def test_qwen_transcribe_forces_english_and_passes_atc_context(monkeypatch, tmp_
     assert request["language"] == "English"
     assert request["context"] == (
         "Vocabulary context only. Transcribe audio; never repeat this context unless it is spoken. "
-        "ATC airline call signs: Delta, American, United, Southwest, JetBlue, Jet Blue, Alaska, Frontier, "
-        "Spirit, FedEx, Fed Ex, Federal Express, UPS, Republic, SkyWest, Sky West, Hawaiian, Air Canada, "
-        "Speedbird. Named ATC fixes: SEMAX NEMAX. Procedures: DEM1 DEMO ONE."
+        "ATC airline call signs: "
+        + ", ".join(ATC_CALLSIGN_PREFIXES)
+        + ". Named ATC fixes: SEMAX NEMAX. Procedures: DEM1 DEMO ONE."
     )

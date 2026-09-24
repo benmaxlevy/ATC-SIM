@@ -9,12 +9,21 @@
 
 import type { Aircraft } from "../aircraft";
 import type { SessionLog } from "../events/session-log";
+import { courseChangeDeg } from "../nav/geometry";
+import { resolveApproachContext } from "../nav/approachContext";
 import { locAxisForApproach, locDeviation, type LocAxis } from "../nav/localizer";
 import type { World } from "../world";
+import {
+  closeFlightPlan,
+  flightPlanForAircraft,
+  isFlightPlanOperational,
+  type FlightPlan,
+} from "../flightPlan";
+import type { RegionalFacility } from "../../scenario/regional";
 import { isLandingInhibited, isOnMissed, missedApproachId, missedSpecFor } from "./missed";
 
 /** Offer HO from this along-track inward (documented gate). */
-export const TOWER_HANDOFF_GATE_NM = 5;
+export const TOWER_HANDOFF_GATE_NM = 10;
 /**
  * Advertised inner edge of the HO window. Passing this without HO does not
  * lock out the stub — they can still HO until DA.
@@ -35,10 +44,11 @@ function locAxisForAircraft(ac: Aircraft, world: World): LocAxis | undefined {
   if (!approachId) {
     return undefined;
   }
+  const ctx = resolveApproachContext(ac, world);
   return locAxisForApproach(
     approachId,
-    world.catalog,
-    world.fixRegistry,
+    ctx.catalog ?? world.catalog,
+    ctx.fixRegistry ?? world.fixRegistry,
     world.navigation.magVarDeg,
   );
 }
@@ -51,15 +61,34 @@ export function isTowerHandoffEligible(ac: Aircraft, world: World): boolean {
   if (isLandingInhibited(ac) || isOnMissed(ac)) {
     return false;
   }
-  const lat = ac.intent.lateral?.type;
-  const vert = ac.intent.vertical?.type;
-  if (lat !== "LOC" && vert !== "GS") {
+  const hasApproach =
+    Boolean(ac.intent.clearedApproachId) ||
+    ac.intent.lateral?.type === "LOC" ||
+    ac.intent.lateral?.type === "INTERCEPT_LOC" ||
+    ac.intent.lateral?.type === "VISUAL_FINAL";
+  if (!hasApproach) {
     return false;
   }
-  const approachId = missedApproachId(ac);
-  if (!approachId) {
-    return false;
+
+  if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+    const lat = ac.intent.lateral;
+    const fieldElevFt = lat.fieldElevFt ?? 0;
+    const headingRad = (lat.headingDeg * Math.PI) / 180;
+    const dx = ac.xNm - lat.threshold.xNm;
+    const dy = ac.yNm - lat.threshold.yNm;
+    const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+    const distNm = Math.hypot(dx, dy);
+    const distGate = alongTrackNm > 0 ? alongTrackNm : distNm;
+    if (distGate > TOWER_HANDOFF_GATE_NM || distGate <= 0) {
+      return false;
+    }
+    if (courseChangeDeg(ac.headingDeg, lat.headingDeg) > 45) {
+      return false;
+    }
+    return ac.altitudeFt > fieldElevFt;
   }
+
+  const approachId = missedApproachId(ac) ?? ac.intent.clearedApproachId;
   const axis = locAxisForAircraft(ac, world);
   if (!axis) {
     return false;
@@ -68,7 +97,14 @@ export function isTowerHandoffEligible(ac: Aircraft, world: World): boolean {
   if (along > TOWER_HANDOFF_GATE_NM || along <= 0) {
     return false;
   }
-  const spec = missedSpecFor(approachId, world.catalog);
+  const course = axis.publishedCourseMagneticDeg ?? axis.courseDeg;
+  const isAligned =
+    ac.intent.lateral?.type === "LOC" || courseChangeDeg(ac.headingDeg, course) <= 45;
+  if (!isAligned) {
+    return false;
+  }
+  const ctx = resolveApproachContext(ac, world);
+  const spec = missedSpecFor(approachId!, ctx.catalog ?? world.catalog);
   return ac.altitudeFt > spec.daFt;
 }
 
@@ -85,7 +121,9 @@ export function acceptTowerHandoff(ac: Aircraft, ctx: LandingFmsContext): boolea
     return false;
   }
   ac.intent.landingCleared = true;
-  ac.intent.lateral = { type: "LANDING", approachId };
+  if (ac.intent.lateral?.type !== "VISUAL_FINAL") {
+    ac.intent.lateral = { type: "LANDING", approachId };
+  }
   ctx.log?.append({
     type: "handoff.tower",
     atSimMs: ctx.simTimeMs,
@@ -120,6 +158,52 @@ function emitLanded(ac: Aircraft, approachId: string, ctx: LandingFmsContext): v
   });
 }
 
+function landingDestinationId(ac: Aircraft, plan?: FlightPlan): string | undefined {
+  return (
+    ac.activeClearance?.limitId ??
+    ac.destinationAirport ??
+    ac.destination ??
+    ac.flightPlan?.destination ??
+    ac.fp?.destination ??
+    plan?.airportId
+  )
+    ?.trim()
+    .toUpperCase();
+}
+
+/** FAA AIM §5-1-15 trainer rule: only IFR at a functioning towered airport closes on landing. */
+export function closeIfrFlightPlanOnLanding(world: World, ac: Aircraft): boolean {
+  const correlated = flightPlanForAircraft(world, ac.id);
+  const plan =
+    correlated ??
+    world.flightPlans.find(
+      (candidate) =>
+        isFlightPlanOperational(candidate) &&
+        candidate.acid.trim().toUpperCase() === ac.callsign.trim().toUpperCase(),
+    );
+  if (
+    !plan ||
+    plan.status !== "active" ||
+    (ac.flightRules !== "IFR" && plan.flightType !== "IFR" && plan.flightRules !== "I")
+  ) {
+    return false;
+  }
+  const regional = world.regional as RegionalFacility | undefined;
+  const destinationId = landingDestinationId(ac, plan);
+  const airport = destinationId ? regional?.getAirport(destinationId) : undefined;
+  if (
+    !airport ||
+    airport.eligible !== true ||
+    airport.publicUse !== true ||
+    airport.towered !== true ||
+    airport.runways.length === 0
+  ) {
+    return false;
+  }
+  Object.assign(plan, closeFlightPlan(plan, world.simTimeMs));
+  return true;
+}
+
 /**
  * After kinematics: despawn LANDING / landingCleared arrivals that reached
  * the threshold. Mutates `world.aircraft`. Strips/PPI must tolerate missing ids.
@@ -131,6 +215,25 @@ export function despawnLandedAircraft(world: World): void {
     simTimeMs: world.simTimeMs,
   };
   for (const ac of world.aircraft) {
+    if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+      const lat = ac.intent.lateral;
+      const distNm = Math.hypot(ac.xNm - lat.threshold.xNm, ac.yNm - lat.threshold.yNm);
+      const headingRad = (lat.headingDeg * Math.PI) / 180;
+      const dx = ac.xNm - lat.threshold.xNm;
+      const dy = ac.yNm - lat.threshold.yNm;
+      const alongTrackNm = -(dx * Math.sin(headingRad) + dy * Math.cos(headingRad));
+      const crossTrackNm = Math.abs(dx * Math.cos(headingRad) - dy * Math.sin(headingRad));
+      const fieldElevFt = lat.fieldElevFt ?? 0;
+      const reachedThreshold =
+        (alongTrackNm <= 0 && alongTrackNm >= -0.5 && crossTrackNm <= 0.2) ||
+        distNm < LANDING_RW_DIST_NM;
+      if (reachedThreshold && ac.altitudeFt <= fieldElevFt + LANDING_ALT_MAX_FT) {
+        emitLanded(ac, ac.intent.clearedApproachId ?? `VISUAL_${lat.runwayId}`, ctx);
+        closeIfrFlightPlanOnLanding(world, ac);
+        gone.add(ac.id);
+        continue;
+      }
+    }
     if (!isLandingInhibited(ac)) {
       continue;
     }
@@ -143,6 +246,7 @@ export function despawnLandedAircraft(world: World): void {
       continue;
     }
     emitLanded(ac, approachId, ctx);
+    closeIfrFlightPlanOnLanding(world, ac);
     gone.add(ac.id);
   }
   if (gone.size === 0) {

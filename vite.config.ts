@@ -21,7 +21,12 @@ const weatherProxies = {
 
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: weatherProxies },
+  server: {
+    proxy: weatherProxies,
+    watch: {
+      ignored: ["**/speech-api/**"],
+    },
+  },
   preview: { proxy: weatherProxies },
   resolve: {
     alias: {

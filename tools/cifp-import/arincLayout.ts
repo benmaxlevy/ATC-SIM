@@ -10,7 +10,7 @@
  * 56/65. Terminal NDB (PN) uses subsection N at column 6, not column 13.
  */
 
-import type { CifpDialect } from "./types.ts";
+import type { BoundaryViaType, CifpDialect, NormalizedAirspaceAltitude } from "./types.ts";
 
 export const ARINC_RECORD_LENGTH = 132;
 
@@ -31,6 +31,64 @@ export const ARINC_COL = {
   DME_LON: 65,
   CONT_PROCEDURE: 39,
   NAME: 94,
+} as const;
+
+export const ARINC_COL_UC = {
+  SECTION: 5,
+  SUBSECTION: 6,
+  ICAO_CODE: 7,
+  AIRSPACE_TYPE: 9,
+  AIRSPACE_CENTER: 10,
+  AIRSPACE_CLASS: 17,
+  MULTIPLE_CODE: 20,
+  SEQUENCE: 21,
+  CONTINUATION: 25,
+  LEVEL: 26,
+  TIME_CODE: 27,
+  NOTAM: 28,
+  BOUNDARY_VIA: 31,
+  LAT: 33,
+  LON: 42,
+  ARC_ORIGIN_LAT: 52,
+  ARC_ORIGIN_LON: 61,
+  ARC_DISTANCE: 71,
+  ARC_BEARING: 75,
+  RNP: 79,
+  LOWER_LIMIT: 82,
+  LOWER_LIMIT_UNIT: 87,
+  UPPER_LIMIT: 88,
+  UPPER_LIMIT_UNIT: 93,
+  AIRSPACE_NAME: 94,
+  FILE_RECORD_NUMBER: 124,
+  CYCLE: 129,
+} as const;
+
+export const ARINC_COL_UR = {
+  SECTION: 5,
+  SUBSECTION: 6,
+  ICAO_CODE: 7,
+  RESTRICTION_TYPE: 9,
+  DESIGNATION: 10,
+  MULTIPLE_CODE: 20,
+  SEQUENCE: 21,
+  CONTINUATION: 25,
+  LEVEL: 26,
+  TIME_CODE: 27,
+  NOTAM: 28,
+  BOUNDARY_VIA: 31,
+  LAT: 33,
+  LON: 42,
+  ARC_ORIGIN_LAT: 52,
+  ARC_ORIGIN_LON: 61,
+  ARC_DISTANCE: 71,
+  ARC_BEARING: 75,
+  LOWER_LIMIT: 82,
+  LOWER_LIMIT_UNIT: 87,
+  UPPER_LIMIT: 88,
+  UPPER_LIMIT_UNIT: 93,
+  RESTRICTED_NAME: 94,
+  FILE_RECORD_NUMBER: 124,
+  CYCLE: 129,
 } as const;
 
 /** ARINC 424-style: N/S + DD + MM + SS + hundredths (9 chars). */
@@ -223,4 +281,118 @@ export function parseFeet(text: string, context: string): number | undefined {
     throw new Error(`${context}: invalid altitude/elevation ${text}`);
   }
   return Number(packed);
+}
+
+export function parseAirspaceAltitude(
+  rawAlt: string,
+  rawUnit: string,
+  _context?: string,
+): NormalizedAirspaceAltitude {
+  const trimmedAlt = rawAlt.trim();
+  const trimmedUnit = rawUnit.trim();
+
+  if (trimmedAlt.length === 0) {
+    return {
+      rawAltitude: trimmedAlt,
+      rawUnit: trimmedUnit,
+      altitudeFt: undefined,
+      unit: "NOT_SPECIFIED",
+      reference: "UNKNOWN",
+    };
+  }
+
+  if (trimmedAlt === "GND" || trimmedAlt === "SFC") {
+    return {
+      rawAltitude: trimmedAlt,
+      rawUnit: trimmedUnit,
+      altitudeFt: 0,
+      unit: "GND",
+      reference: "SURFACE",
+    };
+  }
+
+  if (/^FL\d{3}$/i.test(trimmedAlt)) {
+    return {
+      rawAltitude: trimmedAlt,
+      rawUnit: trimmedUnit,
+      altitudeFt: Number(trimmedAlt.slice(2)) * 100,
+      unit: "MSL",
+      reference: "MSL",
+    };
+  }
+
+  if (/^-?\d+$/.test(trimmedAlt)) {
+    const feet = Number(trimmedAlt);
+    if (feet === 0 && (trimmedUnit === "A" || trimmedUnit === "G")) {
+      return {
+        rawAltitude: trimmedAlt,
+        rawUnit: trimmedUnit,
+        altitudeFt: 0,
+        unit: "AGL",
+        reference: "SURFACE",
+      };
+    }
+    if (trimmedUnit === "M") {
+      return {
+        rawAltitude: trimmedAlt,
+        rawUnit: trimmedUnit,
+        altitudeFt: feet,
+        unit: "MSL",
+        reference: "MSL",
+      };
+    }
+    if (trimmedUnit === "A") {
+      return {
+        rawAltitude: trimmedAlt,
+        rawUnit: trimmedUnit,
+        altitudeFt: feet,
+        unit: "AGL",
+        reference: "AGL",
+      };
+    }
+    return {
+      rawAltitude: trimmedAlt,
+      rawUnit: trimmedUnit,
+      altitudeFt: feet,
+      unit: "UNKNOWN",
+      reference: "UNKNOWN",
+    };
+  }
+
+  return {
+    rawAltitude: trimmedAlt,
+    rawUnit: trimmedUnit,
+    altitudeFt: undefined,
+    unit: "UNKNOWN",
+    reference: "UNKNOWN",
+  };
+}
+
+export function parseBoundaryVia(code: string): BoundaryViaType | "UNSUPPORTED" {
+  const trimmed = code.trim().toUpperCase();
+  // FAA CIFP UC/UR boundary-via is a 2-char field: geometry + optional "E"
+  // end-of-volume flag (e.g. "GE", "CE", "RE", "LE", "HE" observed nationally).
+  let base = trimmed;
+  if (base.length === 2 && base[1] === "E" && base[0] !== "E") {
+    base = base[0]!;
+  }
+  if (base === "G" || base === "") {
+    return "GREAT_CIRCLE";
+  }
+  if (base === "H") {
+    return "RHUMB_LINE";
+  }
+  if (base === "C") {
+    return "CIRCLE";
+  }
+  if (base === "L") {
+    return "COUNTER_CLOCKWISE_ARC";
+  }
+  if (base === "R") {
+    return "CLOCKWISE_ARC";
+  }
+  if (base === "E") {
+    return "END";
+  }
+  return "UNSUPPORTED";
 }

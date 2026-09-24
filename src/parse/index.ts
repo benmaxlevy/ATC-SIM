@@ -11,10 +11,17 @@
 
 export type { ParseResult } from "./parseRadioText";
 export { parseRadioText } from "./parseRadioText";
-export { PARSE_ERROR } from "./tokens";
+export {
+  PARSE_ERROR,
+  FULL_CALLSIGN,
+  GA_CALLSIGN,
+  SUFFIX_CALLSIGN,
+  isCallsignToken,
+} from "./tokens";
 export type { ParseErrorCode } from "./tokens";
 export { parseCommand } from "./parse-command";
 export type { ParseCommandOpts } from "./parse-command";
+export type { CallsignCandidate, CallsignRosterEntry } from "./spoken/telephony";
 export { normalizeSpoken } from "./spoken/normalizer";
 export { repairSpokenLexemes } from "./spoken/lexical-repair";
 export { matchSpokenPatterns } from "./spoken/pattern-matcher";
@@ -49,11 +56,13 @@ export {
   PATH_C_SCHEMA_VERSION,
   createParsePathC,
   fetchParsePathC,
+  isCanonicalCallsignToken,
   schemaCheckPathC,
 } from "./path-c";
 export type {
   ParsePathCFn,
   PathCContext,
+  PathCCallsignCandidate,
   PathCProcedureCandidate,
   PathCRouteCandidate,
   PathCRouteCandidateInput,

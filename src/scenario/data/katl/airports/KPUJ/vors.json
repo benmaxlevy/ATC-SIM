@@ -1,0 +1,49 @@
+{
+  "airportId": "KPUJ",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 80.459705,
+      "yNm": 2.133,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -56.911158,
+      "yNm": 3.8615,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -13.225345,
+      "yNm": -51.7755,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -8.902561,
+      "yNm": 15.031167,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    }
+  ]
+}

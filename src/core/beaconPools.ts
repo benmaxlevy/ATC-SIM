@@ -162,12 +162,12 @@ export function beaconPoolFor(
 
 /** Normalize assigned plan and aircraft values into one occupancy set. */
 export function occupiedBeaconCodes(
-  flightPlans: ReadonlyArray<{ status: string; assignedBeacon?: string }>,
+  flightPlans: ReadonlyArray<{ status: string; assignedBeacon?: string; closedAtSimMs?: number }>,
   aircraft: ReadonlyArray<{ assignedSquawk?: string }> = [],
 ): Set<string> {
   const occupied = new Set<string>();
   for (const plan of flightPlans) {
-    if (plan.status !== "deleted" && plan.assignedBeacon) {
+    if (plan.status !== "deleted" && plan.closedAtSimMs === undefined && plan.assignedBeacon) {
       occupied.add(normalizedCode(plan.assignedBeacon));
     }
   }

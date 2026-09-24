@@ -228,8 +228,33 @@ export interface FlightPlan {
    * `route` are retained as read/display compatibility projections.
    */
   routeRecord?: FlightPlanRoute;
+  /** Sim time when an IFR plan completed on landing; terminal and read-only. */
+  closedAtSimMs?: number;
   /** Local trainer record of the latest VFR exit-fix retransmit. */
   vfrRetransmit?: { amendedFix: string; requestedAtMs: number };
+}
+
+/** Closed plans remain historical records but are absent from live operations. */
+export function isFlightPlanClosed(plan: Pick<FlightPlan, "closedAtSimMs">): boolean {
+  return plan.closedAtSimMs !== undefined;
+}
+
+/** A plan usable by active correlation, lists, and operational editors. */
+export function isFlightPlanOperational(
+  plan: Pick<FlightPlan, "status" | "closedAtSimMs">,
+): boolean {
+  return plan.status !== "deleted" && !isFlightPlanClosed(plan);
+}
+
+/** Mark a plan complete without erasing its historical record. */
+export function closeFlightPlan(plan: FlightPlan, simTimeMs: number): FlightPlan {
+  if (!Number.isFinite(simTimeMs)) {
+    throw new Error("flight plan close time must be finite");
+  }
+  if (isFlightPlanClosed(plan)) {
+    return plan;
+  }
+  return { ...plan, closedAtSimMs: simTimeMs };
 }
 
 export type FlightPlanErrorCode =
@@ -311,8 +336,7 @@ const BEACON_PATTERN = /^[0-7]{4}$/;
 const BEACON_SELECTOR_PATTERN = /^(?:\+|\/|\/[1-4]|A)$/;
 const ETA_PTD_PATTERN = /^(?:[01]\d|2[0-3])[0-5]\dE$/;
 const TCP_PATTERN = /^[A-Z0-9]{1,2}$/;
-const FIX_PAIR_PATTERN =
-  /^(?:[A-Z0-9]{1,4}\*[A-Z0-9]{1,4}|[A-Z0-9]{1,4}\*|\*[A-Z0-9]{1,4})(?:\*[APE])?$/;
+const FIX_PAIR_PATTERN = /^(?:[A-Z0-9]{1,5}\*|(?:[A-Z0-9]{1,5})?(?:\*[A-Z0-9]{1,5})+)(?:\*[APE])?$/;
 const SCRATCHPAD_PATTERN = /^[A-Z0-9+/. *]{0,4}$/;
 const SCRATCHPAD_FORBIDDEN = /^(?:NAT|CST|AMB|RDR|ADB|XXX|\d{3})/;
 
@@ -373,7 +397,9 @@ export function validateFlightPlan(
         "ACID must be one letter followed by 1–6 alphanumerics; two-character ACIDs end in a digit",
       ),
     );
-  } else if (plansOf(existing).some((item) => item.acid === acid && item.status !== "deleted")) {
+  } else if (
+    plansOf(existing).some((item) => item.acid === acid && isFlightPlanOperational(item))
+  ) {
     errors.push(error("DUPLICATE_ACID", "acid", acid, `ACID ${acid} already exists`));
   }
 
@@ -389,7 +415,7 @@ export function validateFlightPlan(
   } else if (
     assignedBeacon !== undefined &&
     plansOf(existing).some(
-      (item) => normalized(item.assignedBeacon) === assignedBeacon && item.status !== "deleted",
+      (item) => normalized(item.assignedBeacon) === assignedBeacon && isFlightPlanOperational(item),
     )
   ) {
     errors.push(
@@ -471,6 +497,17 @@ export function transitionFlightPlan(
   status: Exclude<FlightPlanStatus, "deleted">,
   suspensionReason?: FlightPlanSuspensionReason,
 ): FlightPlanResult<FlightPlan> {
+  if (isFlightPlanClosed(plan)) {
+    return {
+      ok: false,
+      error: error(
+        "INVALID_STATUS_TRANSITION",
+        "status",
+        `${plan.status}->${status}`,
+        "closed flight plan is read-only",
+      ),
+    };
+  }
   const allowedNextStatus: Partial<Record<FlightPlanStatus, readonly FlightPlanStatus[]>> = {
     pending: ["active"],
     active: ["suspended"],
@@ -497,6 +534,9 @@ export function transitionFlightPlan(
 }
 
 export function deleteFlightPlan(plan: FlightPlan): FlightPlan {
+  if (isFlightPlanClosed(plan)) {
+    return plan;
+  }
   return {
     ...plan,
     status: "deleted",
@@ -529,7 +569,7 @@ export function modifyFlightPlan(
   value: FlightPlanModificationValue,
 ): FlightPlanModificationResult {
   const plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan || plan.status === "deleted") {
+  if (!plan || !isFlightPlanOperational(plan)) {
     return {
       ok: false,
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
@@ -685,7 +725,7 @@ export function modifyFlightPlan(
   }
 
   const duplicate = world.flightPlans.find(
-    (item) => item.id !== plan.id && item.status !== "deleted" && item.acid === candidate.acid,
+    (item) => item.id !== plan.id && isFlightPlanOperational(item) && item.acid === candidate.acid,
   );
   if (duplicate) {
     return {
@@ -702,7 +742,7 @@ export function modifyFlightPlan(
     const duplicateBeacon = world.flightPlans.find(
       (item) =>
         item.id !== plan.id &&
-        item.status !== "deleted" &&
+        isFlightPlanOperational(item) &&
         item.assignedBeacon === candidate.assignedBeacon,
     );
     if (duplicateBeacon) {
@@ -746,7 +786,7 @@ export function releaseAssignedBeacon(
   planId: string,
 ): FlightPlanModificationResult {
   const plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan || plan.status === "deleted") {
+  if (!plan || !isFlightPlanOperational(plan)) {
     return {
       ok: false,
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
@@ -776,7 +816,7 @@ export function deleteFlightPlanFromWorld(
   planId: string,
 ): FlightPlanModificationResult {
   const plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan || plan.status === "deleted") {
+  if (!plan || !isFlightPlanOperational(plan)) {
     return {
       ok: false,
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
@@ -792,7 +832,7 @@ export function disassociateFlightPlan(
   planId: string,
 ): FlightPlanModificationResult {
   const plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan || plan.status === "deleted") {
+  if (!plan || !isFlightPlanOperational(plan)) {
     return {
       ok: false,
       error: modificationError("PLAN_NOT_FOUND", "plan", planId, `flight plan ${planId} not found`),
@@ -847,7 +887,7 @@ export function resolveFlightPlanCorrelation(
   const candidates = world.flightPlans.filter((plan) => {
     const assignedBeacon = normalized(plan.assignedBeacon);
     return (
-      plan.status !== "deleted" &&
+      isFlightPlanOperational(plan) &&
       assignedBeacon !== undefined &&
       isValidBeaconCode(assignedBeacon) &&
       assignedBeacon !== "1200" &&
@@ -911,7 +951,7 @@ export function associateFlightPlan(
   aircraftId: string,
 ): FlightPlanCorrelationResult {
   const plan = world.flightPlans.find((item) => item.id === planId);
-  if (!plan || plan.status === "deleted") {
+  if (!plan || !isFlightPlanOperational(plan)) {
     return {
       ok: false,
       error: correlationError("PLAN_NOT_FOUND", planId, `flight plan ${planId} not found`),

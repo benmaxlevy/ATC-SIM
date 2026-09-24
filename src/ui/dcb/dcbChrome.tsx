@@ -17,15 +17,7 @@ import {
   dcbActionCapPressed,
   dcbLeaderDirReadout,
   DCB_ACTION_FLASH_MS,
-  HISTORY_DOT_COUNTS,
-  HISTORY_RATE_STEPS,
-  CURSOR_SPEED_STEPS,
-  LEADER_LENGTH_STEPS_PX,
-  PTL_MINUTE_PRESETS,
-  RANGE_PRESETS_NM,
-  RR_INTERVALS_NM,
   SSA_FILTER_FIELDS,
-  TPA_RADIUS_NM,
   activeDcbPrefName,
   formatDcbBriteReadout,
   formatDcbCharReadout,
@@ -42,28 +34,22 @@ import {
   formatDcbTpaMiReadout,
   formatFilterBand,
   isDcbMapSlotEnabled,
-  isLeaderDir,
   isRangeRingOffViewCenter,
   isVideoMapOn,
   isViewOffAirport,
   openDcbMenu,
-  setHistoryDotCount,
-  snapBriteLevel,
+  stepDcbSpinner,
   toggleVideoMap,
   toggleWxLevel,
   vipMaskHasPixels,
   videoMapByDcbNumber,
   effectiveSurveillanceMode,
   setSurveillanceMode,
+  setLeaderDirForId,
   siteDcbChoices,
   surveillanceModeWord,
   surveillanceModesEqual,
-  type BriteChannel,
   type DcbSpinnerCell,
-  type LeaderLengthPx,
-  type PtlMinutes,
-  type RangeNm,
-  type RrIntervalNm,
   type ScopeView,
   type SsaFilterField,
 } from "@scope";
@@ -127,16 +113,16 @@ export function cancelFilterIfEntering(view: ScopeView): void {
 }
 
 export function setPressed(el: Element | null, pressed: boolean): void {
-  if (!(el instanceof HTMLElement)) {
+  if (!el || (typeof HTMLElement !== "undefined" && !(el instanceof HTMLElement))) {
     return;
   }
   if (
-    el.getAttribute("data-dcb-flashing") === "true" ||
-    el.getAttribute("data-dcb-pointer-down") === "true"
+    el.getAttribute?.("data-dcb-flashing") === "true" ||
+    el.getAttribute?.("data-dcb-pointer-down") === "true"
   ) {
     return;
   }
-  el.setAttribute("aria-pressed", pressed ? "true" : "false");
+  el.setAttribute?.("aria-pressed", pressed ? "true" : "false");
 }
 
 export function setText(id: string, text: string): void {
@@ -147,96 +133,75 @@ export function setText(id: string, text: string): void {
 }
 
 export function spinnerArmed(view: ScopeView, cell: DcbSpinnerCell): boolean {
-  return view.dcbSpinner.armed && view.dcbSpinner.cell === cell;
+  if (!view.dcbSpinner.armed) return false;
+  return (
+    view.dcbSpinner.cell === cell ||
+    (cell === "LDR_LENGTH" && view.dcbSpinner.cell === "LDR_LEN") ||
+    (cell === "LDR_LEN" && view.dcbSpinner.cell === "LDR_LENGTH")
+  );
 }
 
-export function toggleSpinner(view: ScopeView, onChange: () => void, cell: DcbSpinnerCell): void {
+export function armedSpinnerBuffer(view: ScopeView, cell: DcbSpinnerCell): string | null {
+  if (!view.dcbSpinner.armed || view.dcbSpinner.buffer.length === 0) {
+    return null;
+  }
+  if (
+    view.dcbSpinner.cell === cell ||
+    (cell === "LDR_LENGTH" && view.dcbSpinner.cell === "LDR_LEN") ||
+    (cell === "LDR_LEN" && view.dcbSpinner.cell === "LDR_LENGTH")
+  ) {
+    return view.dcbSpinner.buffer;
+  }
+  return null;
+}
+
+export function formatSpinnerCellReadout(
+  view: ScopeView,
+  cell: DcbSpinnerCell,
+  defaultReadout: string | number,
+): string | number {
+  const buf = armedSpinnerBuffer(view, cell);
+  return buf !== null ? buf : defaultReadout;
+}
+
+export function toggleSpinner(
+  view: ScopeView,
+  onChange: () => void,
+  cell: DcbSpinnerCell,
+  world?: Parameters<typeof applyDcbLeaderDir>[1],
+): void {
   cancelFilterIfEntering(view);
   if (spinnerArmed(view, cell)) {
     commitDcbSpinner(view);
   } else {
-    armDcbSpinner(view, cell);
+    const leaderSnapshot =
+      cell === "LDR_DIR"
+        ? new Map([...view.tracks.entries()].map(([id, track]) => [id, track.leaderDir] as const))
+        : undefined;
+    const priorLeaderDefault = cell === "LDR_DIR" ? view.defaultLeaderDir : undefined;
+    armDcbSpinner(view, cell, {
+      onCancel:
+        cell === "LDR_DIR"
+          ? () => {
+              for (const [id, dir] of leaderSnapshot ?? []) {
+                if (world) setLeaderDirForId(view.tracks, world, id, dir);
+              }
+              if (priorLeaderDefault !== undefined) view.defaultLeaderDir = priorLeaderDefault;
+            }
+          : undefined,
+      onCommit:
+        cell === "LDR_DIR" && world
+          ? (_cell, value) =>
+              applyDcbLeaderDir(view, world, value as Parameters<typeof applyDcbLeaderDir>[2])
+          : undefined,
+    });
   }
   afterCell(onChange);
 }
 
-function nearestPreset<T extends number>(presets: readonly T[], num: number): T {
-  let closest = presets[0]!;
-  let minDiff = Math.abs(num - closest);
-  for (const preset of presets) {
-    const diff = Math.abs(num - preset);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = preset;
-    }
-  }
-  return closest;
-}
-
-function snapRangeToPreset(num: number): RangeNm {
-  return nearestPreset(RANGE_PRESETS_NM, num);
-}
-
-function snapRrToPreset(num: number): RrIntervalNm {
-  return nearestPreset(RR_INTERVALS_NM, num);
-}
-
-function snapPtlToPreset(num: number): PtlMinutes {
-  return nearestPreset(PTL_MINUTE_PRESETS, num);
-}
-
-function snapLeaderLength(num: number): LeaderLengthPx {
-  const step = Math.max(0, Math.min(7, Math.round(num)));
-  return LEADER_LENGTH_STEPS_PX[step] ?? LEADER_LENGTH_STEPS_PX[0];
-}
-
-export function applyDirectNumericInput(view: ScopeView, cell: DcbSpinnerCell, num: number): void {
-  switch (cell) {
-    case "RANGE":
-      view.camera.rangeNm = snapRangeToPreset(num);
-      break;
-    case "RR":
-      view.ringIntervalNm = snapRrToPreset(num);
-      view.showRings = view.ringIntervalNm > 0;
-      break;
-    case "LDR_DIR":
-      if (isLeaderDir(num)) {
-        view.defaultLeaderDir = num;
-      }
-      break;
-    case "LDR_LENGTH":
-      view.leaderLengthPx = snapLeaderLength(num);
-      break;
-    case "HISTORY":
-      setHistoryDotCount(view, nearestPreset(HISTORY_DOT_COUNTS, num));
-      break;
-    case "H_RATE":
-      view.historyRateSec = nearestPreset(HISTORY_RATE_STEPS, num);
-      break;
-    case "CSR_SPD":
-      view.cursorSpeed = nearestPreset(CURSOR_SPEED_STEPS, num);
-      break;
-    case "PTL":
-      view.ptlMinutes = snapPtlToPreset(num);
-      view.ptlOn = true;
-      break;
-    case "TPA_MI":
-      view.tpa.radiusNm = nearestPreset(TPA_RADIUS_NM, num);
-      break;
-    default:
-      if (cell.startsWith("BRITE_")) {
-        const channel = cell.slice(6).toLowerCase() as BriteChannel;
-        if (channel in view.brite) {
-          view.brite[channel] = snapBriteLevel(num);
-        }
-      }
-      break;
-  }
-}
-
 export function onSpinnerWheel(
-  _view: ScopeView,
-  _cell: DcbSpinnerCell,
+  view: ScopeView,
+  cell: DcbSpinnerCell,
   event: WheelEvent<HTMLButtonElement>,
   apply: (delta: -1 | 1) => void,
   onChange: () => void,
@@ -244,7 +209,11 @@ export function onSpinnerWheel(
   event.preventDefault();
   event.stopPropagation();
   const delta: -1 | 1 = event.deltaY < 0 ? 1 : -1;
-  apply(delta);
+  if (spinnerArmed(view, cell)) {
+    stepDcbSpinner(view, delta, apply);
+  } else {
+    apply(delta);
+  }
   afterCell(onChange);
 }
 
@@ -293,12 +262,28 @@ export function syncDisplayControlBar(
   if (!doc) {
     return;
   }
-  setText(DCB_RANGE_READOUT_ID, String(view.camera.rangeNm));
+  setText(
+    DCB_RANGE_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "RANGE", view.camera.rangeNm)),
+  );
   setText(DCB_FILTER_BAND_ID, formatFilterBand(view.altitudeFilter, view.filterEntry));
-  setText(DCB_RR_READOUT_ID, formatDcbRrReadout(view.ringIntervalNm, view.showRings));
+  setText(
+    DCB_RR_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "RR", formatDcbRrReadout(view.ringIntervalNm, view.showRings)),
+    ),
+  );
   setPressed(doc.querySelector('[data-dcb-cell="rr"]'), spinnerArmed(view, "RR"));
-  setText(DCB_LDR_READOUT_ID, dcbLeaderDirReadout(view, world));
-  setText(DCB_LDR_LENGTH_READOUT_ID, formatDcbLdrLengthReadout(view.leaderLengthPx));
+  setText(
+    DCB_LDR_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "LDR_DIR", dcbLeaderDirReadout(view, world))),
+  );
+  setText(
+    DCB_LDR_LENGTH_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "LDR_LENGTH", formatDcbLdrLengthReadout(view.leaderLengthPx)),
+    ),
+  );
   setText(DCB_CHAR_READOUT_ID, formatDcbCharReadout(view.charSizes.dataBlocks));
   setText(DCB_BRITE_READOUT_ID, formatDcbBriteReadout(view.brite.mpa));
   for (const el of doc.querySelectorAll("[data-dcb-map-id]")) {
@@ -309,9 +294,20 @@ export function syncDisplayControlBar(
   }
   setPressed(doc.querySelector("[data-dcb-ptl]"), view.ptlOn);
   setPressed(doc.querySelector("[data-dcb-hist]"), view.historyEnabled);
-  setText(DCB_HISTORY_READOUT_ID, formatDcbHistoryReadout(view.historyDotCount));
-  setText(DCB_PTL_MINUTES_READOUT_ID, formatDcbPtlMinutesReadout(view.ptlMinutes));
-  setText(DCB_TPA_MI_READOUT_ID, formatDcbTpaMiReadout(view.tpa.radiusNm));
+  setText(
+    DCB_HISTORY_READOUT_ID,
+    String(
+      formatSpinnerCellReadout(view, "HISTORY", formatDcbHistoryReadout(view.historyDotCount)),
+    ),
+  );
+  setText(
+    DCB_PTL_MINUTES_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "PTL", formatDcbPtlMinutesReadout(view.ptlMinutes))),
+  );
+  setText(
+    DCB_TPA_MI_READOUT_ID,
+    String(formatSpinnerCellReadout(view, "TPA_MI", formatDcbTpaMiReadout(view.tpa.radiusNm))),
+  );
   setPressed(doc.querySelector('[data-dcb-cell="ptl-own"]'), view.ptlOwn);
   setPressed(doc.querySelector('[data-dcb-cell="ptl-all"]'), view.ptlOn);
   setPressed(doc.querySelector('[data-dcb-cell="hist"]'), historySpinnerArmed(view));
@@ -822,6 +818,7 @@ export function runCell(view: ScopeView, onChange: () => void, fn: () => void): 
 
 export function runAuxCell(view: ScopeView, onChange: () => void, fn: () => void): void {
   cancelFilterIfEntering(view);
+  commitDcbSpinner(view);
   fn();
   afterCell(onChange);
 }

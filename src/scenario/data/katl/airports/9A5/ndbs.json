@@ -1,0 +1,55 @@
+{
+  "airportId": "9A5",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -31.614645,
+      "yNm": -69.220667,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": 6.566182,
+      "yNm": 28.711333,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": 7.868373,
+      "yNm": -67.3355,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "HEM",
+      "kind": "NDB",
+      "name": "HUCHN",
+      "xNm": -14.59517,
+      "yNm": 77.998667,
+      "latDeg": 35.987994444444446,
+      "lonDeg": -85.58629722222221,
+      "freqKhz": 233
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": 70.432041,
+      "yNm": -40.086,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    }
+  ]
+}

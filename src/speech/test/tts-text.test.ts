@@ -65,9 +65,75 @@ test("groups headings, runways, flight levels, and callsign numbers", () => {
 
 test("spells aviation identifiers for TTS without changing display readbacks", () => {
   expect(readbackForTts("Delta 123 cleared to KATL via direct")).toBe(
-    "Delta one twenty three cleared to K A T L via direct",
+    "Delta one twenty three cleared to Kilo Alfa Tango Lima via direct",
   );
   expect(readbackForTts("Delta 123 cleared ILS runway 27 approach")).toBe(
     "Delta one twenty three cleared I L S runway twenty seven approach",
+  );
+});
+
+test("VFR N-numbers speak digit-by-digit with phonetics", () => {
+  expect(readbackForTts("N127S, request flight following")).toBe(
+    "November one two seven Sierra, request flight following",
+  );
+  expect(readbackForTts("N172SP, canceling IFR")).toBe(
+    "November one seven two Sierra Papa, canceling I F R",
+  );
+  // Already-expanded callsigns in controller readbacks keep single digits.
+  expect(readbackForTts("November 127 Sierra heading 270")).toBe(
+    "November one two seven Sierra heading two seventy",
+  );
+  // Airline callsign grouping is unchanged.
+  expect(readbackForTts("Delta 123 heading 270")).toBe(
+    "Delta one twenty three heading two seventy",
+  );
+});
+
+test("airport, fix, and navaid codes speak as phonetics in identifier positions", () => {
+  expect(
+    readbackForTts("N123, 15 miles north of KPDK, C172, request flight following to KFTY at 4500"),
+  ).toBe(
+    "November one two three, fifteen miles north of Kilo Papa Delta Kilo, " +
+      "C one seven two, request flight following to Kilo Foxtrot Tango Yankee " +
+      "at forty five hundred",
+  );
+  expect(readbackForTts("N456, SR22, request flight following")).toBe(
+    "November four five six, S R two two, request flight following",
+  );
+  expect(readbackForTts("Delta 123 radar contact 5 miles from DEM")).toBe(
+    "Delta one twenty three radar contact five miles from Delta Echo Mike",
+  );
+  expect(readbackForTts("Delta 123 roger")).toBe("Delta one twenty three roger");
+  expect(readbackForTts("Delta 123 direct NEMAX")).toBe(
+    "Delta one twenty three direct November Echo Mike Alfa X-ray",
+  );
+  expect(readbackForTts("Delta 123 squawk VFR")).toBe("Delta one twenty three squawk V F R");
+  expect(readbackForTts("Skyhawk 172SP, 15 miles north of KPDK, C172, request IFR to KFTY")).toBe(
+    "Skyhawk one seven two Sierra Papa, fifteen miles north of Kilo Papa Delta Kilo, " +
+      "C one seven two, request I F R to Kilo Foxtrot Tango Yankee",
+  );
+  expect(readbackForTts("Skyhawk 172SP")).toBe("Skyhawk one seven two Sierra Papa");
+});
+
+test("procedure names are never phoneticized", () => {
+  expect(readbackForTts("descending via DEMO ONE arrival")).toBe("descending via Demo ONE arrival");
+  expect(readbackForTts("NEMAX is not an N-number without a digit after N")).toContain("NEMAX");
+});
+
+test("squawk codes expand to single digits", () => {
+  expect(readbackForTts("squawk 0342")).toBe("squawk zero three four two");
+  expect(readbackForTts("squawk 1200")).toBe("squawk one two zero zero");
+  expect(readbackForTts("Delta 123 squawk 0342")).toBe(
+    "Delta one twenty three squawk zero three four two",
+  );
+});
+
+test("4-letter ICAO airports speak phonetically", () => {
+  expect(readbackForTts("cleared to KLZU via direct")).toBe(
+    "cleared to Kilo Lima Zulu Uniform via direct",
+  );
+  expect(readbackForTts("contact KLZU tower")).toBe("contact Kilo Lima Zulu Uniform tower");
+  expect(readbackForTts("N123 cleared to KATL")).toBe(
+    "November one two three cleared to Kilo Alfa Tango Lima",
   );
 });

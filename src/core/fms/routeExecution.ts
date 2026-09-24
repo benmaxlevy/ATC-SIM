@@ -5,7 +5,7 @@
  */
 
 import type { Aircraft, LateralMode } from "../aircraft";
-import type { FlightPlan, FlightPlanRoute } from "../flightPlan";
+import { isFlightPlanOperational, type FlightPlan, type FlightPlanRoute } from "../flightPlan";
 
 export type RouteExecutionAccess = "ROUTE" | "RADAR_VECTORS";
 
@@ -99,7 +99,9 @@ export function startFlightPlanRoute(
   access: RouteExecutionAccess = "ROUTE",
   aircraftId?: string,
 ): RouteExecutionResult {
-  const plan = world.flightPlans.find((item) => item.id === planId && item.status !== "deleted");
+  const plan = world.flightPlans.find(
+    (item) => item.id === planId && isFlightPlanOperational(item),
+  );
   if (!plan) {
     return {
       ok: false,

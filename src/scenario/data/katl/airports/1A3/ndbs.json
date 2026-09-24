@@ -1,0 +1,45 @@
+{
+  "airportId": "1A3",
+  "ndbs": [
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": 37.215892,
+      "yNm": -64.8275,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": -39.82971,
+      "yNm": 9.043333,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "HEM",
+      "kind": "NDB",
+      "name": "HUCHN",
+      "xNm": -60.906922,
+      "yNm": 58.330667,
+      "latDeg": 35.987994444444446,
+      "lonDeg": -85.58629722222221,
+      "freqKhz": 233
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": 23.782211,
+      "yNm": -59.754,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    }
+  ]
+}

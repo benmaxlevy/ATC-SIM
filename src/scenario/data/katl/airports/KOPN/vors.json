@@ -1,0 +1,104 @@
+{
+  "airportId": "KOPN",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 47.291286,
+      "yNm": 59.5555,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "DBN",
+      "kind": "VORDME",
+      "name": "DUBLIN",
+      "xNm": 72.198093,
+      "yNm": -23.4925,
+      "latDeg": 32.56346111111111,
+      "lonDeg": -82.83004444444444,
+      "freqMhz": 113.1,
+      "class": "T"
+    },
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": -43.619393,
+      "yNm": -60.285167,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -47.432674,
+      "yNm": 5.647,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": -36.703687,
+      "yNm": -37.3625,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "PZD",
+      "kind": "VORDME",
+      "name": "PECAN",
+      "xNm": -1.46073,
+      "yNm": -77.987833,
+      "latDeg": 31.655205555555554,
+      "lonDeg": -84.2931,
+      "freqMhz": 116.1,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -43.061952,
+      "yNm": 72.453667,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": 38.606761,
+      "yNm": -44.493667,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 33.908511,
+      "yNm": -18.840167,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

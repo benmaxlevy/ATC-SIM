@@ -276,9 +276,11 @@ test("VFR uses V marker while IFR and unsupported rules stay blank", () => {
   const unsupported = makeTestAircraft({ callsign: "RULE1", speedKt: 110, flightRules: "E" });
 
   expect(formatDatablockFields(vfr, { timeSharePhase: 0 }).field5).toBe("11V");
-  expect(formatDatablockFields(vfr, { timeSharePhase: 1 }).field5).toBe("V");
+  expect(formatDatablockFields(vfr, { timeSharePhase: 1 }).field5).toBe("11V");
+  expect(formatDatablockFields(vfr, { groundSpeedVisible: false }).field5).toBe("V");
   expect(formatDatablockFields(ifr, { timeSharePhase: 0 }).field5).toBe("11");
   expect(formatDatablockFields(ifr, { timeSharePhase: 1 }).field5).toBe("11");
+  expect(formatDatablockFields(ifr, { groundSpeedVisible: false }).field5).toBe("");
   expect(formatDatablockFields(unsupported, { timeSharePhase: 0 }).field5).toBe("11");
 });
 
@@ -498,7 +500,11 @@ test("limited Field 0 omits arbitrary explicit SPC while FDB SPC projection rema
   });
 
   expect(getSpecialPurposeCode(ac)).toBe("CUSTOM");
-  expect(formatLimitedDatablock(ac)).toEqual({ line1: "1200", line2: "045" });
+  expect(formatLimitedDatablock(ac)).toEqual({ line1: "045" });
+  expect(formatLimitedDatablock(ac, { beaconVisible: true })).toEqual({
+    line1: "1200",
+    line2: "045",
+  });
   expect(formatDatablockFields(ac).field0).toBe("CUST");
 });
 
@@ -521,12 +527,19 @@ test("limited Field 0 persists across queried and beacon-inhibited output", () =
     squawk: "1200",
   });
 
+  expect(formatLimitedDatablock(ac, { queried: true })).toEqual({
+    line1: "1200",
+    line2: "045 18",
+  });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["CA"], queried: true })).toEqual({
     line0: "CA",
     line1: "1200",
     line2: "045 18",
   });
   expect(formatLimitedDatablock(ac, { field0Indicators: ["LA"], beaconVisible: false })).toEqual({
+    line1: "045",
+  });
+  expect(formatLimitedDatablock(ac, { field0Indicators: ["LA"] })).toEqual({
     line1: "045",
   });
 });
@@ -825,4 +838,53 @@ test("Fields 6–8 omit unsupported and absent values", () => {
   expect(
     formatDatablockFields(ac, { pointoutAcceptCount: 4, pointoutInhibited: true }).field8,
   ).toBe("");
+});
+
+test("aircraft type is only projected when present in associated flight plan", () => {
+  const ac = makeTestAircraft({
+    id: "ac-plan-notype",
+    callsign: "NOTYPE",
+    aircraftType: "C172",
+    squawk: "4321",
+  });
+  const plan = {
+    id: "fp-notype",
+    status: "active" as const,
+    acid: "NOTYPE",
+    assignedBeacon: "4321",
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan] });
+  const source = datablockSourceFromWorld(world, ac);
+
+  expect(source.aircraftType).toBeUndefined();
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).toBe("22");
+  expect(formatDatablockFields(source, { timeSharePhase: 1 }).field5).toBe("22");
+  expect(formatDatablockFields(source, { timeSharePhase: 1 }).field5).not.toContain("C172");
+});
+
+test("associated IFR flight plan overrides underlying VFR flight rules", () => {
+  const ac = makeTestAircraft({
+    id: "ac-vfr-to-ifr",
+    callsign: "VFR2IFR",
+    speedKt: 120,
+    flightRules: "VFR",
+    squawk: "4322",
+  });
+  const plan = {
+    id: "fp-ifr-plan",
+    status: "active" as const,
+    acid: "VFR2IFR",
+    assignedBeacon: "4322",
+    flightType: "IFR" as const,
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan] });
+  const source = datablockSourceFromWorld(world, ac);
+
+  expect(source.flightRules).toBe("IFR");
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).toBe("12");
+  expect(formatDatablockFields(source, { timeSharePhase: 0 }).field5).not.toContain("V");
 });

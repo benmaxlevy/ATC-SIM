@@ -1,0 +1,82 @@
+{
+  "airportId": "KPDK",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 48.68257,
+      "yNm": 4.2955,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 75.586271,
+      "yNm": 32.591,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -88.746359,
+      "yNm": 6.024,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -45.042081,
+      "yNm": -49.613,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "ODF",
+      "kind": "VORDME",
+      "name": "FOOTHILLS",
+      "xNm": 50.032412,
+      "yNm": 49.192167,
+      "latDeg": 34.69587222222222,
+      "lonDeg": -83.29766111111111,
+      "freqMhz": 113.4,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -40.717469,
+      "yNm": 17.193667,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 35.44098,
+      "yNm": -74.100167,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

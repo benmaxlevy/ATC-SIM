@@ -2,7 +2,7 @@
  * Analog: CRC STARS RANGE / CENTER / HISTORY / FDB-LDB / PTL / L1–L9 **leader** /
  * altitude filter (docs.virtualnas.net/crc/stars — R07; FOA STARS display data — R05).
  * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE is a spinner
- * that steps the same 8 presets. Esc closes a DCB submenu / disarms a spinner
+ * that steps the same 17 presets (5–512 NM). Esc closes a DCB submenu / disarms a spinner
  * (`preventDefault` so it does not type into the command line). Home/End instead of
  * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
@@ -29,8 +29,10 @@ import {
   createFlightPlan,
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
+  isFlightPlanOperational,
   modifyFlightPlan,
   releaseAssignedBeacon,
+  synchronizeFlightPlanRoute,
   withAllocatedBeacon,
   type FlightPlan,
   type World,
@@ -88,13 +90,23 @@ import {
 } from "./previewArea";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
-import { applyDcbShift, armDcbSpinner, handleDcbEscape, openDcbMenu } from "./dcb/dcbMenu";
+import {
+  applyDcbShift,
+  armDcbSpinner,
+  backspaceDcbSpinner,
+  cancelDcbSpinner,
+  commitDcbSpinner,
+  handleDcbEscape,
+  inputDcbSpinnerKey,
+  openDcbMenu,
+} from "./dcb/dcbMenu";
 
 function vfrCreationPool(world: World): readonly string[] {
   return beaconPoolFor(world.beaconPools, "vfr");
 }
 
 import {
+  applyDcbLeaderDir,
   applyRrCenter,
   armPlaceCenter,
   armPlaceRangeRing,
@@ -134,7 +146,12 @@ import {
   terminateTrackWithPlan,
 } from "./trackDisplay";
 import { applyHandoffToSelection } from "./ownership";
-import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock, type LeaderLengthPx } from "./leader";
+import {
+  DEFAULT_LEADER_DIR,
+  leaderDirFromStarsClock,
+  type LeaderDir,
+  type LeaderLengthPx,
+} from "./leader";
 import { resolveScopeFlid } from "./previewArea";
 import {
   canonicalSystemListId,
@@ -212,11 +229,17 @@ export interface ScopeKeyUi {
 }
 
 function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
-  return (
-    typeof HTMLElement !== "undefined" &&
-    target instanceof HTMLElement &&
-    target.closest('[role="dialog"][aria-modal="true"]') !== null
-  );
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target.isContentEditable
+  ) {
+    return true;
+  }
+  return target.closest('[role="dialog"][aria-modal="true"]') !== null;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -359,7 +382,9 @@ function applyPreviewArmedAction(
       if (action.creationMode === "vfr") {
         const existing = world.flightPlans.find(
           (plan) =>
-            plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === action.acid,
+            isFlightPlanOperational(plan) &&
+            plan.flightRules === "VFR" &&
+            plan.acid === action.acid,
         );
         if (existing) {
           if (!existing.assignedBeacon) {
@@ -406,6 +431,19 @@ function applyPreviewArmedAction(
               }
             }
           }
+          if (action.departureAirport !== undefined) {
+            existing.departureAirport = action.departureAirport;
+          }
+          if (action.airportId !== undefined) {
+            existing.airportId = action.airportId;
+          }
+          if (action.route !== undefined) {
+            existing.route = action.route;
+            existing.filedRoute = undefined;
+            existing.routeRecord = undefined;
+            const synchronized = synchronizeFlightPlanRoute(existing);
+            Object.assign(existing, synchronized);
+          }
           if (action.fixes?.length) {
             existing.vfrRetransmit = {
               amendedFix: action.fixes[0]!,
@@ -415,7 +453,7 @@ function applyPreviewArmedAction(
           return;
         }
       }
-      if (world.flightPlans.filter((plan) => plan.status !== "deleted").length >= 100) {
+      if (world.flightPlans.filter((plan) => isFlightPlanOperational(plan)).length >= 100) {
         view.preview.rejection = "CAPACITY — FP";
         return;
       }
@@ -426,7 +464,9 @@ function applyPreviewArmedAction(
           acid: action.acid,
           assignedBeacon: action.assignedBeacon,
           tcp: action.tcp,
+          departureAirport: action.departureAirport,
           airportId: action.airportId,
+          route: action.route,
           scratchpads: action.scratchpads,
           aircraftType: action.aircraftType,
           aircraftCount: action.aircraftCount,
@@ -491,7 +531,8 @@ function applyPreviewArmedAction(
       const callsigns = getVfrListCallsigns(world, view);
       const callsign = /^\d{1,2}$/.test(id) ? callsigns[Number(id) - 1] : id;
       const plans = world.flightPlans.filter(
-        (plan) => plan.status !== "deleted" && plan.flightRules === "VFR" && plan.acid === callsign,
+        (plan) =>
+          isFlightPlanOperational(plan) && plan.flightRules === "VFR" && plan.acid === callsign,
       );
       if (plans.length !== 1) {
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "FORMAT";
@@ -532,7 +573,7 @@ function applyPreviewArmedAction(
       if (!world) return;
       const plans = world.flightPlans.filter(
         (plan) =>
-          plan.status !== "deleted" &&
+          isFlightPlanOperational(plan) &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
       if (/^\d{1,2}$/.test(action.flid)) {
@@ -542,7 +583,7 @@ function applyPreviewArmedAction(
         const plan = entry?.planId
           ? world.flightPlans.find((item) => item.id === entry.planId)
           : undefined;
-        if (plan && plan.status !== "deleted") plans.push(plan);
+        if (plan && isFlightPlanOperational(plan)) plans.push(plan);
       }
       const uniquePlans = [...new Map(plans.map((plan) => [plan.id, plan])).values()];
       if (uniquePlans.length !== 1) {
@@ -599,7 +640,7 @@ function applyPreviewArmedAction(
       if (!world) return;
       const plans = world.flightPlans.filter(
         (plan) =>
-          plan.status !== "deleted" &&
+          isFlightPlanOperational(plan) &&
           (plan.acid === action.flid || plan.assignedBeacon === action.flid),
       );
       if (/^\d{1,2}$/.test(action.flid)) {
@@ -609,7 +650,7 @@ function applyPreviewArmedAction(
         const plan = entry?.planId
           ? world.flightPlans.find((item) => item.id === entry.planId)
           : undefined;
-        if (plan && plan.status !== "deleted") plans.push(plan);
+        if (plan && isFlightPlanOperational(plan)) plans.push(plan);
       }
       if (plans.length !== 1) {
         view.preview.rejection = plans.length === 0 ? "NO FLIGHT" : "DUP ID";
@@ -956,6 +997,57 @@ export function handleScopeKeyDown(
     view.helpOpen = false;
     ui?.onHandled?.();
     return true;
+  }
+
+  if (view.dcbSpinner.armed) {
+    if (event.key === "Escape" || event.code === "Escape" || event.key === "Clear") {
+      consume(event);
+      cancelDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      const cell = view.dcbSpinner.cell;
+      const buffer = view.dcbSpinner.buffer;
+      commitDcbSpinner(view);
+      if (cell === "LDR_DIR" && world && buffer.trim().length > 0) {
+        const dir = Number(buffer);
+        if (Number.isInteger(dir) && dir !== 5) {
+          applyDcbLeaderDir(view, world, dir as LeaderDir);
+        }
+      }
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace" || event.code === "Backspace") {
+      consume(event);
+      backspaceDcbSpinner(view);
+      ui?.onHandled?.();
+      return true;
+    }
+    const numericSpinnerKey =
+      /^[0-9]$/.test(event.key) ||
+      event.key === "." ||
+      /^Numpad[0-9]$/.test(event.code ?? "") ||
+      event.code === "NumpadDecimal";
+    if (numericSpinnerKey && (event.shiftKey || event.ctrlKey || event.altKey)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (numericSpinnerKey) {
+      consume(event);
+      const ch =
+        event.key === "." || event.code === "NumpadDecimal"
+          ? "."
+          : /^Numpad[0-9]$/.test(event.code ?? "")
+            ? event.code!.slice(6)
+            : event.key;
+      inputDcbSpinnerKey(view, ch);
+      ui?.onHandled?.();
+      return true;
+    }
   }
 
   // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11

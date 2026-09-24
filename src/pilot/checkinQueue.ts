@@ -22,6 +22,7 @@ export { formatDepartureCheckIn, type FormatDepartureCheckInArgs } from "./telep
 
 export interface FormatCheckInArgs {
   callsign: string;
+  spokenAliases?: readonly string[];
   starName: string;
   altitudeFt: number;
   isHeavy?: boolean;
@@ -36,7 +37,10 @@ export interface StarNameCatalog {
  * `starName` is the catalog spoken name (`DEMO ONE`), never `DEM1`.
  */
 export function formatCheckIn(args: FormatCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy });
+  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+    isHeavy: args.isHeavy,
+    spokenAliases: args.spokenAliases,
+  });
   const altitudeSpeech = formatAltitude(args.altitudeFt);
   return `Approach, ${callsignSpeech}, descending via ${args.starName} arrival through ${altitudeSpeech}`;
 }
@@ -255,6 +259,7 @@ export class CheckInQueue {
         const starName = starSpokenName(world.catalog, starId);
         const text = formatCheckIn({
           callsign: aircraft.callsign,
+          spokenAliases: aircraft.spokenAliases,
           starName,
           altitudeFt: aircraft.altitudeFt,
           isHeavy: aircraft.wakeCategory === "H",
@@ -286,6 +291,7 @@ export class CheckInQueue {
         const sidName = sidId ? sidSpokenName(world.catalog, sidId) : undefined;
         const text = formatDepartureCheckIn({
           callsign: aircraft.callsign,
+          spokenAliases: aircraft.spokenAliases,
           sidName,
           currentAltitudeFt: aircraft.altitudeFt,
           assignedAltitudeFt: aircraft.intent.assignedAltitudeFt,

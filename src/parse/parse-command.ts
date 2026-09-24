@@ -18,7 +18,12 @@ import { formatParseError, PARSE_ERROR } from "./tokens";
 import { parseSpokenGrammar, repairHeadingVsTurnDegrees } from "./spoken/grammar";
 import { normalizeSpoken } from "./spoken/normalizer";
 import { repairSpokenLexemes } from "./spoken/lexical-repair";
-import { groundCallsignToRoster, spokenCallsignToken } from "./spoken/telephony";
+import {
+  groundCallsignToRoster,
+  rewriteLeadingAliasCallsign,
+  spokenCallsignToken,
+  type CallsignRosterEntry,
+} from "./spoken/telephony";
 import { rewriteSpokenToTyped } from "./spoken/typed-fuzzy";
 import { matchSpokenPatterns } from "./spoken/pattern-matcher";
 import {
@@ -52,9 +57,12 @@ import {
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
   schemaCheckPathC,
+  pathCHasSelfContainedCue,
   pathCResultIsComplete,
   type ParsePathCFn,
   type PathCContext,
+  isCanonicalCallsignToken,
+  type PathCCallsignCandidate,
   type PathCProcedureCandidate,
   type PathCRouteCandidate,
   type PathCRouteCandidateInput,
@@ -68,8 +76,8 @@ import {
 export interface ParseCommandOpts {
   source: "text" | "voice";
   selectedCallsign?: string | null;
-  /** Live ICAO roster for Path C prompt grounding. Parse stays World-free. */
-  callsigns?: readonly string[];
+  /** Live roster for deterministic callsign grounding. Strings remain canonical-only input. */
+  callsigns?: readonly CallsignRosterEntry[];
   /**
    * Facility fix/navaid vocabulary for DIRECT/CROSS snap and Path C `fixes=`
    * prompt grounding. Not kinematics. Parse stays World-free.
@@ -101,6 +109,7 @@ const IDENT_TRIGGERS = new Set([
   "direct",
   "cross",
   "from",
+  "of",
   "via",
   "cleared",
   "clear",
@@ -133,8 +142,17 @@ function isIfrClearanceCandidate(normalized: string): boolean {
   return (
     tokens.includes("clr") ||
     tokens.some(
-      (token, index) => (token === "cleared" || token === "clear") && tokens[index + 1] === "to",
-    )
+      (token, index) =>
+        (token === "cleared" || token === "clear") &&
+        tokens[index + 1] === "to" &&
+        tokens[index + 2] !== "enter",
+    ) ||
+    tokens.some(
+      (token, index) => (token === "cleared" || token === "clear") && tokens[index + 1] === "via",
+    ) ||
+    (tokens.includes("via") &&
+      (tokens.includes("radar") || tokens.includes("vectors") || tokens.includes("vector")) &&
+      tokens.includes("to"))
   );
 }
 
@@ -154,15 +172,39 @@ function airportKey(raw: string): string {
 /** Replace only the airport-limit slot; airport ids never enter fix grounding. */
 function rewriteIfrAirportLimit(normalized: string, airports: readonly CatalogAirport[]): string {
   const tokens = normalized.split(/\s+/).filter(Boolean);
-  const start = tokens.findIndex(
+  const clearToIndex = tokens.findIndex(
     (token, index) =>
       (token === "clr" || token === "clear" || token === "cleared") && tokens[index + 1] === "to",
   );
-  if (start < 0) return normalized;
-  const limitStart = start + 2;
-  const access = new Set(["via", "asfiled", "as"]);
-  const limitEnd = tokens.findIndex((token, index) => index >= limitStart && access.has(token));
-  const end = limitEnd < 0 ? tokens.length : limitEnd;
+  let limitStart = -1;
+  let end = tokens.length;
+  if (clearToIndex >= 0) {
+    limitStart = clearToIndex + 2;
+    const access = new Set(["via", "asfiled", "as"]);
+    const limitEnd = tokens.findIndex((token, index) => index >= limitStart && access.has(token));
+    end = limitEnd < 0 ? tokens.length : limitEnd;
+  } else {
+    const viaIndex = tokens.findIndex(
+      (token, index) =>
+        token === "via" ||
+        ((token === "clr" || token === "clear" || token === "cleared") &&
+          tokens[index + 1] === "via"),
+    );
+    if (viaIndex >= 0) {
+      const actualVia = tokens[viaIndex] === "via" ? viaIndex : viaIndex + 1;
+      const toIndex = tokens.findIndex((token, index) => index > actualVia && token === "to");
+      if (toIndex >= 0) {
+        limitStart = toIndex + 1;
+        const stopWords = new Set(["alt", "maintain", "cvia", "freq", "frequency", "sq", "squawk"]);
+        const limitEnd = tokens.findIndex(
+          (token, index) => index >= limitStart && stopWords.has(token),
+        );
+        end = limitEnd < 0 ? tokens.length : limitEnd;
+      }
+    }
+  }
+  if (limitStart < 0) return normalized;
+
   let winner: { icao: string; length: number } | null = null;
   for (const airport of sanitizeCatalogAirports(airports)) {
     for (const name of [airport.icao, airport.name, ...(airport.aliases ?? [])]) {
@@ -219,22 +261,116 @@ const SLOT_SKIP = new Set([
   "then",
 ]);
 
-function rosterFromOpts(opts: ParseCommandOpts): string[] {
+function rosterFromOpts(opts: ParseCommandOpts): CallsignRosterEntry[] {
   const raw = opts.callsigns ?? [];
-  const out: string[] = [];
+  const out: CallsignRosterEntry[] = [];
   const seen = new Set<string>();
-  for (const cs of raw) {
-    const up = cs.trim().toUpperCase();
+  for (const entry of raw) {
+    const callsign = (typeof entry === "string" ? entry : entry.callsign).trim().toUpperCase();
+    const up = callsign;
     if (!up || seen.has(up)) {
       continue;
     }
     seen.add(up);
-    out.push(up);
+    out.push(typeof entry === "string" ? up : { callsign: up, aliases: entry.aliases });
     if (out.length >= MAX_ROSTER) {
       break;
     }
   }
   return out;
+}
+
+function rosterCallsigns(roster: readonly CallsignRosterEntry[]): string[] {
+  return roster.map((entry) => (typeof entry === "string" ? entry : entry.callsign));
+}
+
+function pathCCallsignCandidates(roster: readonly CallsignRosterEntry[]): PathCCallsignCandidate[] {
+  return roster.map((entry) => {
+    if (typeof entry === "string") {
+      return { callsign: entry, aliases: [] };
+    }
+    const aliases = [
+      ...new Set(
+        (entry.aliases ?? []).map((alias) => alias.trim()).filter((alias) => alias.length > 0),
+      ),
+    ].slice(0, 8);
+    return { callsign: entry.callsign, aliases };
+  });
+}
+
+const PATH_C_CALLSIGN_DIGITS: Readonly<Record<string, string>> = {
+  zero: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
+const PATH_C_CALLSIGN_TELEPHONY = new Set([
+  "november",
+  "delta",
+  "southwest",
+  "american",
+  "united",
+  "jetblue",
+  "alaska",
+  "frontier",
+  "spirit",
+  "fedex",
+  "ups",
+]);
+
+function pathCCallsignAliasEvidenceSafe(
+  normalized: string,
+  token: string,
+  candidates: readonly PathCCallsignCandidate[],
+): boolean {
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const canonical = token.trim().toUpperCase();
+  if (!candidates.some((candidate) => candidate.callsign === canonical)) {
+    return false;
+  }
+  const owners = new Set<string>();
+  for (const candidate of candidates) {
+    const match = /^(?:N|[A-Z]{3})(\d{1,5})[A-Z]{0,2}$/.exec(candidate.callsign);
+    if (!match) continue;
+    const tail = match[1]!;
+    const tailWords = [...tail].map(
+      (digit) =>
+        Object.entries(PATH_C_CALLSIGN_DIGITS).find(([, value]) => value === digit)?.[0] ?? digit,
+    );
+    for (const alias of candidate.aliases) {
+      const aliasWords = normalizeSpoken(alias).split(/\s+/).filter(Boolean);
+      if (aliasWords.length === 0) continue;
+      const prefixMatches = aliasWords.every((word, index) => words[index] === word);
+      if (!prefixMatches) continue;
+      const remaining = words.slice(aliasWords.length);
+      const compactMatch = remaining[0] === tail;
+      const spokenMatch = remaining.slice(0, tailWords.length).join(" ") === tailWords.join(" ");
+      if (compactMatch || spokenMatch) owners.add(candidate.callsign);
+      else return false;
+    }
+  }
+  if (owners.size > 0) {
+    return owners.size === 1 && owners.has(canonical);
+  }
+  const first = words[0];
+  const aliasPrefix = candidates.some((candidate) =>
+    candidate.aliases.some((alias) => {
+      const aliasWords = normalizeSpoken(alias).split(/\s+/).filter(Boolean);
+      return aliasWords.length > 0 && aliasWords.every((word, index) => words[index] === word);
+    }),
+  );
+  if (aliasPrefix) return false;
+  if (first === canonical.toLowerCase()) return true;
+  if (words.length > 1 && !PATH_C_CALLSIGN_TELEPHONY.has(first ?? "")) {
+    if (/^\d+$/.test(words[1]!) || words[1]! in PATH_C_CALLSIGN_DIGITS) return false;
+  }
+  return true;
 }
 
 function isIdentPart(tok: string): boolean {
@@ -887,7 +1023,7 @@ function clearanceLimitCandidates(
 }
 
 function pathCContext(
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
   selected: string | null,
   catalog: readonly CatalogFixInput[],
   procedures: readonly CatalogProcedure[],
@@ -902,10 +1038,12 @@ function pathCContext(
   const fixes = pathCFixIds(catalog, queryTokens, retrieved);
   const pathProcedures = pathCProcedureList(procedures, queryTokens);
   const pathApproaches = pathCApproachList(approaches, queryTokens);
-  const pathAirports = (route ? clearanceAirports : airports)
+  const candidateAirports = route ? clearanceAirports : airports;
+  const pathAirports = candidateAirports
     .filter(
       (airport) =>
         route !== undefined ||
+        candidateAirports.length <= MAX_PATH_C_FIXES ||
         queryTokens.some((token) => groundAirportToCatalog(token, [airport]) !== null),
     )
     .slice(0, MAX_PATH_C_FIXES)
@@ -924,7 +1062,7 @@ function pathCContext(
   }
   if (route !== undefined) {
     return {
-      callsigns: [...roster],
+      callsigns: pathCCallsignCandidates(roster),
       selectedCallsign: selected,
       routeWindow: route,
       ...(limits.length > 0 ? { clearanceLimits: [...limits] } : {}),
@@ -932,7 +1070,7 @@ function pathCContext(
     };
   }
   return {
-    callsigns: [...roster],
+    callsigns: pathCCallsignCandidates(roster),
     selectedCallsign: selected,
     ...(fixes.length > 0 ? { fixes } : {}),
     ...(pathProcedures.length > 0 ? { procedures: pathProcedures } : {}),
@@ -944,7 +1082,7 @@ function pathCContext(
 function groundLocalCallsign(
   parsed: ParseResult,
   normalized: string,
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
   selected: string | null,
 ): ParseResult {
   if (!parsed.ok || !parsed.callsignToken) {
@@ -1219,6 +1357,22 @@ function pathCIdentifierListed(
         return false;
       }
     }
+    if (inst.type === "RADAR_CONTACT" && inst.referenceId !== undefined) {
+      if (inst.referenceKind === "AIRPORT") {
+        if (!airports.has(inst.referenceId)) {
+          return false;
+        }
+      } else {
+        if (airports.has(inst.referenceId) || !fixes.has(inst.referenceId)) {
+          return false;
+        }
+      }
+    }
+    if (inst.type === "CLASS_B_CLEARANCE" && inst.route !== undefined) {
+      if (fixes.size === 0 || inst.route.some((leg) => !fixes.has(leg.fixId))) {
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -1245,6 +1399,7 @@ export async function parseCommand(
     repairSpokenLexemes(normalizeSpoken(sourceText)),
     airports,
   );
+  const typedNormalized = rewriteLeadingAliasCallsign(normalized, roster);
   const ifrCandidate = isIfrClearanceCandidate(normalized);
   const routeInfo = ifrCandidate
     ? routeWindowContext(normalized, catalog, opts.routeCandidates ?? [], procedures, airports)
@@ -1268,7 +1423,7 @@ export async function parseCommand(
 
   const typed = tryGroundedLocal(
     groundLocalCallsign(
-      parseRadioText(normalized, { fixes: catalog, procedures }),
+      parseRadioText(typedNormalized, { fixes: catalog, procedures, airports }),
       normalized,
       roster,
       selected,
@@ -1292,6 +1447,8 @@ export async function parseCommand(
     catalog,
     procedures,
     clearanceLimitIds,
+    airports,
+    roster,
   );
   const pathA = tryGroundedLocal(
     groundLocalCallsign(spoken, normalized, roster, selected),
@@ -1311,7 +1468,7 @@ export async function parseCommand(
   if (rewritten !== null) {
     const pathB = tryGroundedLocal(
       groundLocalCallsign(
-        parseRadioText(rewritten, { fixes: catalog, procedures }),
+        parseRadioText(rewritten, { fixes: catalog, procedures, airports }),
         normalized,
         roster,
         selected,
@@ -1337,6 +1494,8 @@ export async function parseCommand(
     procedures,
     approaches,
     clearanceLimitIds,
+    airports,
+    roster,
   );
   const island = tryGroundedLocal(
     groundLocalCallsign(islandParsed, normalized, roster, selected),
@@ -1374,7 +1533,9 @@ export async function parseCommand(
 
   if (
     opts.pathC &&
-    (routeFallbackHasEvidence || !emptyIdentifierRetrieve) &&
+    (routeFallbackHasEvidence ||
+      !emptyIdentifierRetrieve ||
+      pathCHasSelfContainedCue(normalized)) &&
     (!ifrCandidate ||
       routeFallbackHasEvidence ||
       localIfrClearanceSyntaxIsValid(normalized, selected, catalog, procedures, clearanceLimitIds))
@@ -1414,9 +1575,21 @@ export async function parseCommand(
       ) {
         const rawCallsign = checkedHit.callsignToken ?? spokenCallsignToken(normalized) ?? selected;
         const grounded = groundCallsignToRoster(rawCallsign, normalized, roster);
+        const outputCallsignEvidenceSafe =
+          checkedHit.callsignToken === null ||
+          roster.length === 0 ||
+          pathCCallsignAliasEvidenceSafe(
+            normalized,
+            checkedHit.callsignToken,
+            context?.callsigns ?? [],
+          );
+        const canonicalListed =
+          rawCallsign === null ||
+          (context?.callsigns ?? []).some((candidate) => candidate.callsign === rawCallsign) ||
+          (context === undefined && isCanonicalCallsignToken(rawCallsign));
         const callsignSafe =
           roster.length === 0 ||
-          (grounded !== null && roster.includes(grounded)) ||
+          (canonicalListed && grounded !== null && rosterCallsigns(roster).includes(grounded)) ||
           (rawCallsign === null && selected === null);
         const pathFixes = [
           ...(context?.fixes ?? []),
@@ -1447,6 +1620,7 @@ export async function parseCommand(
         const ungrounded = salvaged.ungroundedFixes ?? [];
         if (
           callsignSafe &&
+          outputCallsignEvidenceSafe &&
           ungrounded.length === 0 &&
           (!ifrCandidate || isSoleIfrClearance(salvaged)) &&
           pathCIdentifierListed(salvaged.instructions, context) &&
@@ -1460,11 +1634,6 @@ export async function parseCommand(
     }
   }
 
-  const error =
-    !spoken.ok && spoken.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
-      ? spoken.error
-      : !islandParsed.ok && islandParsed.error.startsWith(PARSE_ERROR.UNKNOWN_TELEPHONY)
-        ? islandParsed.error
-        : formatParseError(PARSE_ERROR.PARSE_MISS);
+  const error = formatParseError(PARSE_ERROR.PARSE_MISS);
   return { ok: false, error, sourceText };
 }

@@ -33,7 +33,7 @@ export type ClearanceRouteSegment =
 /** Canonical IFR clearance access representation. */
 export type IfrClearanceAccess =
   | { type: "AS_FILED" }
-  | { type: "RADAR_VECTORS" }
+  | { type: "RADAR_VECTORS"; thenDirect?: boolean }
   /** An empty segment list means direct to the clearance limit. */
   | { type: "EXPLICIT_ROUTE"; segments: ClearanceRouteSegment[] };
 
@@ -64,6 +64,10 @@ export const INSTRUCTION_TYPES = [
   "CANCEL_APPROACH",
   "ASSIGN_SQUAWK",
   "MAINTAIN_VFR",
+  "CLASS_B_CLEARANCE",
+  "REMAIN_OUTSIDE_BRAVO",
+  "RESUME_APPROPRIATE_VFR_ALTITUDES",
+  "CLASS_B_CLEARANCE_AS_REQUESTED",
   "IFR_CLEARANCE",
   "IDENT",
   "SAY_HEADING",
@@ -74,9 +78,22 @@ export const INSTRUCTION_TYPES = [
   "CROSS",
   "GO_AROUND",
   "DELETE_SPEED_RESTRICTIONS",
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CONTACT_TOWER",
+  "CONTACT_CENTER",
+  "CLEARED_VISUAL",
 ] as const;
 
 export type Instruction =
+  | { type: "ACKNOWLEDGE_IFR_CANCELLATION" }
+  | { type: "CONTACT_TOWER"; facilityName: string }
+  | { type: "CONTACT_CENTER"; facilityName: string }
   | { type: "FLY_HEADING"; headingDeg: number; turn: TurnDir }
   | { type: "TURN_DEGREES"; direction: "LEFT" | "RIGHT"; degrees: number }
   | { type: "PRESENT_HEADING" }
@@ -107,6 +124,15 @@ export type Instruction =
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
   | {
+      type: "CLASS_B_CLEARANCE";
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+      route?: Array<{ type: "DIRECT"; fixId: string }>;
+      altitudeFt?: number;
+    }
+  | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "CLASS_B_CLEARANCE_AS_REQUESTED" }
+  | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
+  | {
       type: "IFR_CLEARANCE";
       limitId: string;
       access: IfrClearanceAccess | LegacyIfrClearanceAccess;
@@ -129,4 +155,20 @@ export type Instruction =
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
   | { type: "GO_AROUND" }
-  | { type: "DELETE_SPEED_RESTRICTIONS" };
+  | { type: "DELETE_SPEED_RESTRICTIONS" }
+  | { type: "REQUEST_DETAILS" }
+  | { type: "STANDBY_REQUEST" }
+  | { type: "APPROVE_FLIGHT_FOLLOWING" }
+  | {
+      type: "DECLINE_REQUEST";
+      service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS";
+    }
+  | {
+      type: "RADAR_CONTACT";
+      /** Optional informational position reference. All-or-nothing with referenceId/referenceKind. */
+      distanceNm?: number;
+      referenceId?: string;
+      referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
+    }
+  | { type: "TERMINATE_RADAR_SERVICE" }
+  | { type: "CLEARED_VISUAL"; runwayId: string };

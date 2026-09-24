@@ -4,7 +4,7 @@
  */
 
 import telephonyTable from "./telephony.json";
-import { FULL_CALLSIGN, SUFFIX_CALLSIGN } from "../tokens";
+import { FULL_CALLSIGN, GA_CALLSIGN, SUFFIX_CALLSIGN } from "../tokens";
 import { singleDigit, TEENS, TENS } from "./numbers";
 
 export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
@@ -16,6 +16,7 @@ export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
   echo: "E",
   foxtrot: "F",
   golf: "G",
+  gulf: "G",
   hotel: "H",
   india: "I",
   juliett: "J",
@@ -33,6 +34,7 @@ export const PHONETIC_TO_LETTER: Readonly<Record<string, string>> = {
   uniform: "U",
   victor: "V",
   whiskey: "W",
+  whisky: "W",
   "x-ray": "X",
   xray: "X",
   yankee: "Y",
@@ -92,6 +94,12 @@ export const RESERVED_SPOKEN: ReadonlySet<string> = new Set([
   "mile",
   "airport",
   "transition",
+  "stand",
+  "standby",
+  "approve",
+  "unable",
+  "radar",
+  "following",
 ]);
 
 const TABLE = { ...telephonyTable, giant: "GTI" } as Record<string, string>;
@@ -102,8 +110,17 @@ const TELEPHONY_ENTRIES = Object.entries(TABLE).sort(
 
 export type CallsignAttempt =
   | { kind: "none" }
-  | { kind: "ok"; callsign: string; next: number }
+  | { kind: "ok"; callsign: string; next: number; alias?: boolean }
+  | { kind: "invalid_alias" }
   | { kind: "unknown_telephony"; word: string };
+
+/** Canonical live identity plus authored spoken names. Aliases never leave the parser. */
+export interface CallsignCandidate {
+  callsign: string;
+  aliases?: readonly string[];
+}
+
+export type CallsignRosterEntry = string | CallsignCandidate;
 
 function phoneticLetter(tok: string | undefined): string | null {
   if (tok === undefined) {
@@ -330,9 +347,14 @@ function parseNovemberTail(
   }
   let j = i + 1;
   const chars: string[] = [];
-  while (j < tokens.length && chars.length < 6) {
+  let digits = 0;
+  while (j < tokens.length && chars.length < 7) {
     const d = singleDigit(tokens[j]);
     if (d !== null) {
+      if (digits >= 5) {
+        break;
+      }
+      digits += 1;
       chars.push(String(d));
       j += 1;
       continue;
@@ -351,13 +373,297 @@ function parseNovemberTail(
   return { callsign: `N${chars.join("")}`, next: j };
 }
 
+function normalizedAliasWords(alias: string): string[] {
+  return alias.trim().toLowerCase().replace(/\s+/g, " ").split(" ").filter(Boolean);
+}
+
+function canonicalTail(callsign: string): string | null {
+  const match = callsign
+    .trim()
+    .toUpperCase()
+    .match(/^N(\d{1,5}[A-Z]{0,2})$/);
+  return match?.[1] ?? null;
+}
+
+function parseAliasTail(
+  tokens: readonly string[],
+  i: number,
+): { tail: string; next: number } | null {
+  const compact = tokens[i]?.match(/^(\d{1,5})([a-z]{0,2})$/i);
+  if (compact) {
+    return { tail: `${compact[1]}${compact[2]}`.toUpperCase(), next: i + 1 };
+  }
+
+  let j = i;
+  let digits = "";
+  while (j < tokens.length && digits.length < 5) {
+    const digit = singleDigit(tokens[j]);
+    if (digit === null) break;
+    digits += String(digit);
+    j += 1;
+  }
+  if (digits.length === 0) return null;
+
+  let letters = "";
+  while (j < tokens.length && letters.length < 2) {
+    const letter = phoneticLetter(tokens[j]);
+    if (letter === null || letter === "N") break;
+    letters += letter;
+    j += 1;
+  }
+  return { tail: `${digits}${letters}`, next: j };
+}
+
+export const GA_ALIAS_VARIANTS: Readonly<Record<string, readonly string[]>> = {
+  cirrus: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  cirru: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  siriu: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  sirius: [
+    "cirrus",
+    "sirius",
+    "serious",
+    "cyrus",
+    "sir",
+    "sirs",
+    "service",
+    "cirus",
+    "cirru",
+    "siriu",
+  ],
+  skyhawk: ["skyhawk", "sky hawk", "sky"],
+  skylane: ["skylane", "sky lane"],
+  bonanza: ["bonanza", "banana", "bonansa"],
+  caravan: ["caravan", "carevan", "car van"],
+  archer: ["archer", "arch"],
+  diamond: ["diamond", "dimon", "diomand"],
+  cessna: ["cessna", "sesna"],
+  piper: ["piper", "pipe"],
+  beechcraft: ["beechcraft", "beech craft", "beech"],
+  mooney: ["mooney", "money", "muni"],
+};
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  let prev = Array.from({ length: b.length + 1 }, (_, idx) => idx);
+  let curr = new Array(b.length + 1).fill(0);
+
+  for (let idx = 0; idx < a.length; idx++) {
+    curr[0] = idx + 1;
+    for (let j = 0; j < b.length; j++) {
+      const cost = a.charCodeAt(idx) === b.charCodeAt(j) ? 0 : 1;
+      curr[j + 1] = Math.min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost);
+    }
+    const temp = prev;
+    prev = curr;
+    curr = temp;
+  }
+  return prev[b.length]!;
+}
+
+function wordMatchesFuzzy(spoken: string, target: string): boolean {
+  if (spoken === target) return true;
+  if (
+    RESERVED_SPOKEN.has(spoken) ||
+    singleDigit(spoken) !== null ||
+    spoken in TEENS ||
+    spoken in TENS ||
+    /^\d+$/.test(spoken)
+  ) {
+    return false;
+  }
+  // Guard against short words causing spurious collisions (e.g. "sky", "sir")
+  if (target.length < 4 || spoken.length < 3) return false;
+  const maxDistance = target.length >= 6 ? 2 : 1;
+  return levenshteinDistance(spoken, target) <= maxDistance;
+}
+
+function aliasCallsignAt(
+  tokens: readonly string[],
+  i: number,
+  roster: readonly CallsignRosterEntry[],
+): { kind: "none" | "invalid" | "ambiguous" | "ok"; callsign?: string; next?: number } {
+  const candidates = roster.flatMap((entry) => {
+    const callsign = typeof entry === "string" ? entry : entry.callsign;
+    const aliases = typeof entry === "string" ? [] : (entry.aliases ?? []);
+    return aliases.map((alias) => ({ callsign: callsign.trim().toUpperCase(), alias }));
+  });
+  let aliasPrefix = false;
+  const aliasOwners = new Set<string>();
+  const matches: Array<{ callsign: string; next: number; score: number }> = [];
+
+  const gluedMatch = tokens[i]?.match(/^([a-z]+)(\d{1,5}[a-z]{0,2})$/i);
+
+  for (const candidate of candidates) {
+    const primary = candidate.alias.trim().toLowerCase();
+    const variants = [candidate.alias, ...(GA_ALIAS_VARIANTS[primary] ?? [])];
+    // Sort variants by word length descending so multi-word variants match first
+    const variantWordLists = variants
+      .map((v) => normalizedAliasWords(v))
+      .filter((w) => w.length > 0)
+      .sort((a, b) => b.length - a.length);
+
+    let matchedWordsLen = 0;
+    let isExact = false;
+    for (const words of variantWordLists) {
+      if (tokens.slice(i, i + words.length).join(" ") === words.join(" ")) {
+        matchedWordsLen = words.length;
+        isExact = true;
+        break;
+      }
+    }
+    if (matchedWordsLen === 0) {
+      for (const words of variantWordLists) {
+        if (i + words.length <= tokens.length) {
+          let allMatch = true;
+          for (let k = 0; k < words.length; k++) {
+            if (!wordMatchesFuzzy(tokens[i + k]!, words[k]!)) {
+              allMatch = false;
+              break;
+            }
+          }
+          if (allMatch) {
+            matchedWordsLen = words.length;
+            isExact = false;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matchedWordsLen > 0) {
+      aliasPrefix = true;
+      aliasOwners.add(candidate.callsign);
+      const tail = parseAliasTail(tokens, i + matchedWordsLen);
+      const expected = canonicalTail(candidate.callsign);
+      if (tail && expected !== null) {
+        const baseScore = isExact ? 2 : 1;
+        if (tail.tail === expected) {
+          matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore + 2 });
+        } else {
+          const expectedDigits = expected.replace(/\D/g, "");
+          const expectedSuffix = expected.replace(/\d/g, "");
+          const tailDigits = tail.tail.replace(/\D/g, "");
+          const tailSuffix = tail.tail.replace(/\d/g, "");
+          if (
+            tailDigits.length > 0 &&
+            tailDigits === expectedDigits &&
+            (tailSuffix === "" || tailSuffix === expectedSuffix)
+          ) {
+            matches.push({ callsign: candidate.callsign, next: tail.next, score: baseScore });
+          }
+        }
+      }
+    } else if (gluedMatch) {
+      const prefix = gluedMatch[1]!.toLowerCase();
+      const tailStr = gluedMatch[2]!.toUpperCase();
+      let gluedPrefixMatch = false;
+      let gluedExact = false;
+      for (const words of variantWordLists) {
+        if (words.length === 1) {
+          if (prefix === words[0]) {
+            gluedPrefixMatch = true;
+            gluedExact = true;
+            break;
+          } else if (wordMatchesFuzzy(prefix, words[0]!)) {
+            gluedPrefixMatch = true;
+            gluedExact = false;
+            break;
+          }
+        }
+      }
+      if (gluedPrefixMatch) {
+        aliasPrefix = true;
+        aliasOwners.add(candidate.callsign);
+        const expected = canonicalTail(candidate.callsign);
+        if (expected !== null) {
+          const baseScore = gluedExact ? 2 : 1;
+          if (tailStr === expected) {
+            matches.push({ callsign: candidate.callsign, next: i + 1, score: baseScore + 2 });
+          } else {
+            const expectedDigits = expected.replace(/\D/g, "");
+            const expectedSuffix = expected.replace(/\d/g, "");
+            const tailDigits = tailStr.replace(/\D/g, "");
+            const tailSuffix = tailStr.replace(/\d/g, "");
+            if (
+              tailDigits.length > 0 &&
+              tailDigits === expectedDigits &&
+              (tailSuffix === "" || tailSuffix === expectedSuffix)
+            ) {
+              matches.push({ callsign: candidate.callsign, next: i + 1, score: baseScore });
+            }
+          }
+        }
+      }
+    }
+  }
+  if (aliasOwners.size > 1) return { kind: "ambiguous" };
+  if (matches.length === 0) return { kind: aliasPrefix ? "invalid" : "none" };
+  const maxScore = Math.max(...matches.map((m) => m.score));
+  const bestMatches = matches.filter((m) => m.score === maxScore);
+  const unique = [...new Map(bestMatches.map((match) => [match.callsign, match])).values()];
+  if (unique.length === 1) return { kind: "ok", ...unique[0] };
+  if (unique.length > 1) return { kind: "ambiguous" };
+  return { kind: "invalid" };
+}
+
+/** Rewrite only a complete leading alias for the typed tokenizer. */
+export function rewriteLeadingAliasCallsign(
+  normalized: string,
+  roster: readonly CallsignRosterEntry[],
+): string {
+  const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
+  const alias = aliasCallsignAt(tokens, 0, roster);
+  if (alias.kind !== "ok") return normalized;
+  return [alias.callsign!, ...tokens.slice(alias.next!)].join(" ");
+}
+
 /**
  * Optional callsign at the start of a spoken utterance.
  * Canonical flight number is digit-by-digit (`one two three` → `123`).
  * Compact ASR digits (`203`) are accepted after telephony (`Southwest 203` → `SWA203`).
  * Glued ASR (`American201`) is the same mapping without a space.
  */
-export function parseSpokenCallsign(tokens: readonly string[], i: number): CallsignAttempt {
+export function parseSpokenCallsign(
+  tokens: readonly string[],
+  i: number,
+  roster: readonly CallsignRosterEntry[] = [],
+): CallsignAttempt {
   const afterCallsign = (next: number): number => (tokens[next] === "heavy" ? next + 1 : next);
   const first = tokens[i];
   if (first === undefined || RESERVED_SPOKEN.has(first)) {
@@ -365,7 +671,7 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
   }
 
   const compact = first.toUpperCase();
-  if (FULL_CALLSIGN.test(compact) || SUFFIX_CALLSIGN.test(compact)) {
+  if (FULL_CALLSIGN.test(compact) || GA_CALLSIGN.test(compact) || SUFFIX_CALLSIGN.test(compact)) {
     return { kind: "ok", callsign: compact, next: afterCallsign(i + 1) };
   }
 
@@ -376,6 +682,21 @@ export function parseSpokenCallsign(tokens: readonly string[], i: number): Calls
       callsign: november.callsign,
       next: afterCallsign(november.next),
     };
+  }
+
+  // FAA identity analog: model/manufacturer plus complete registration tail.
+  // Trainer delta: alias tails must be exact; no session abbreviation or fuzzy repair.
+  const alias = aliasCallsignAt(tokens, i, roster);
+  if (alias.kind === "ok") {
+    return {
+      kind: "ok",
+      callsign: alias.callsign!,
+      next: afterCallsign(alias.next!),
+      alias: true,
+    };
+  }
+  if (alias.kind === "invalid" || alias.kind === "ambiguous") {
+    return { kind: "invalid_alias" };
   }
 
   const tel = matchTelephony(tokens, i);
@@ -443,10 +764,14 @@ export function spokenFlightNumberHint(normalized: string): string | null {
 export function groundCallsignToRoster(
   token: string | null,
   normalized: string,
-  roster: readonly string[],
+  roster: readonly CallsignRosterEntry[],
 ): string | null {
   const list = [
-    ...new Set(roster.map((cs) => cs.trim().toUpperCase()).filter((cs) => cs.length > 0)),
+    ...new Set(
+      roster
+        .map((entry) => (typeof entry === "string" ? entry : entry.callsign).trim().toUpperCase())
+        .filter((cs) => cs.length > 0),
+    ),
   ];
   function uniqueSuffix(hint: string | null): string | null {
     if (!hint) {
@@ -474,6 +799,18 @@ export function groundCallsignToRoster(
     if (fromToken) {
       return fromToken;
     }
+  }
+
+  const alias = aliasCallsignAt(
+    normalized.split(" ").filter((tok) => tok.length > 0),
+    0,
+    roster,
+  );
+  if (alias.kind === "ok") {
+    return alias.callsign!;
+  }
+  if (alias.kind === "ambiguous" || alias.kind === "invalid") {
+    return null;
   }
 
   const spoken = spokenCallsignToken(normalized);

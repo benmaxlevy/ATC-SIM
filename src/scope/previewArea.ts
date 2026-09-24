@@ -12,7 +12,7 @@
  * slew apply, and key handling. Not NAS STARS.
  */
 
-import { flightPlanForAircraft, type World } from "@core";
+import { flightPlanForAircraft, isFlightPlanOperational, type World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
 import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
@@ -28,6 +28,7 @@ import {
 } from "./trackDisplay";
 import {
   FULL_CALLSIGN,
+  GA_CALLSIGN,
   SQUAWK_CODE,
   SUFFIX_CALLSIGN,
   isTrackingSlewAction,
@@ -101,13 +102,13 @@ function planIdentityMatches(
     );
     if (entry?.planId) {
       const plan = world.flightPlans.find((item) => item.id === entry.planId);
-      return plan && plan.status !== "deleted" && matchesOptions(plan) ? [plan] : [];
+      return plan && isFlightPlanOperational(plan) && matchesOptions(plan) ? [plan] : [];
     }
     return [];
   }
   return world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" &&
+      isFlightPlanOperational(plan) &&
       (plan.acid === normalized || plan.assignedBeacon === normalized) &&
       matchesOptions(plan),
   );
@@ -135,7 +136,7 @@ export function resolveScopeFlid(token: string, world: World, view?: ScopeView):
     }
   }
   const ids = new Set<string>();
-  if (FULL_CALLSIGN.test(normalized)) {
+  if (FULL_CALLSIGN.test(normalized) || GA_CALLSIGN.test(normalized)) {
     for (const ac of world.aircraft) {
       if (ac.callsign === normalized || flightPlanForAircraft(world, ac.id)?.acid === normalized) {
         ids.add(ac.id);

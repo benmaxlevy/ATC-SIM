@@ -1,0 +1,95 @@
+{
+  "airportId": "7A5",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -28.090247,
+      "yNm": 24.279667,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BH",
+      "kind": "NDB",
+      "name": "MCDEN",
+      "xNm": -74.031413,
+      "yNm": 22.910667,
+      "latDeg": 33.511522222222226,
+      "lonDeg": -86.84559166666666,
+      "freqKhz": 224
+    },
+    {
+      "id": "CS",
+      "kind": "NDB",
+      "name": "FENIX",
+      "xNm": 16.59351,
+      "yNm": -40.664333,
+      "latDeg": 32.45193888888889,
+      "lonDeg": -85.04197222222221,
+      "freqKhz": 355
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": 33.109557,
+      "yNm": 7.636,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": 44.507476,
+      "yNm": 10.2745,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": 12.121324,
+      "yNm": 26.164833,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "LKG",
+      "kind": "NDB",
+      "name": "LINDBERGH",
+      "xNm": 63.514057,
+      "yNm": -57.312,
+      "latDeg": 32.174477777777774,
+      "lonDeg": -84.10815833333332,
+      "freqKhz": 242
+    },
+    {
+      "id": "MG",
+      "kind": "NDB",
+      "name": "MARRA",
+      "xNm": -57.201048,
+      "yNm": -49.083667,
+      "latDeg": 32.311616666666666,
+      "lonDeg": -86.51063333333333,
+      "freqKhz": 245
+    },
+    {
+      "id": "TOI",
+      "kind": "NDB",
+      "name": "BLOOD",
+      "xNm": -36.867271,
+      "yNm": -77.932833,
+      "latDeg": 31.830797222222223,
+      "lonDeg": -86.10594999999999,
+      "freqKhz": 365
+    }
+  ]
+}

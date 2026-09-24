@@ -205,6 +205,8 @@ describe("T02-144 flight-plan creation", () => {
         beacon: { kind: "code", code: "2341" },
         assignedBeacon: "2341",
         tcp: "1R",
+        departureAirport: "KDEM",
+        airportId: "RW27",
         fixes: ["KDEM*RW27"],
         eta: "1630E",
         scratchpads: ["TST", "ORH"],
@@ -504,5 +506,60 @@ describe("T02-144 flight-plan creation", () => {
       status: "pending",
     });
     expect(aircraft.callsign).toBe("UNTRK");
+  });
+  it("populates departureAirport, airportId, and route on F6 creation", () => {
+    // Two-element KLZU*KPIM
+    const twoElement = parseFlightPlanCreation("N123 KLZU*KPIM 250 B738", false, true);
+    expect(twoElement).toMatchObject({
+      kind: "action",
+      action: {
+        departureAirport: "KLZU",
+        airportId: "KPIM",
+        fixes: ["KLZU*KPIM"],
+      },
+    });
+    if (twoElement.kind === "action") expect(twoElement.action.route).toBeUndefined();
+
+    // Multi-element KLZU*AJAAY*PDK*KPIM
+    const multiElement = parseFlightPlanCreation("N123 KLZU*AJAAY*PDK*KPIM 250 B738", false, true);
+    expect(multiElement).toMatchObject({
+      kind: "action",
+      action: {
+        departureAirport: "KLZU",
+        airportId: "KPIM",
+        route: "AJAAY PDK",
+        fixes: ["KLZU*AJAAY*PDK*KPIM"],
+      },
+    });
+
+    // Omitted departure *KPIM
+    const omittedDeparture = parseFlightPlanCreation("N123 *KPIM 250 B738", false, true);
+    expect(omittedDeparture).toMatchObject({
+      kind: "action",
+      action: {
+        airportId: "KPIM",
+        fixes: ["*KPIM"],
+      },
+    });
+    if (omittedDeparture.kind === "action") {
+      expect(omittedDeparture.action.departureAirport).toBeUndefined();
+      expect(omittedDeparture.action.route).toBeUndefined();
+    }
+
+    // End-to-end via scope keys: F6 populates world.flightPlans
+    const world = createWorld();
+    const view = createScopeView();
+    handleScopeKeyDown(key("F6"), view, "scope", world);
+    for (const ch of "N123 2341 KLZU*AJAAY*PDK*KPIM B738 250 .A") {
+      handleScopeKeyDown(key(ch), view, "scope", world);
+    }
+    handleScopeKeyDown(key("Enter"), view, "scope", world);
+    expect(world.flightPlans).toHaveLength(1);
+    expect(world.flightPlans[0]).toMatchObject({
+      acid: "N123",
+      departureAirport: "KLZU",
+      airportId: "KPIM",
+      route: "AJAAY PDK",
+    });
   });
 });

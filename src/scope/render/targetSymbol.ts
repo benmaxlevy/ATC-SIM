@@ -52,7 +52,7 @@ export const TARGET_PUCK_BG = "#175dc7";
 export const UNOWNED_TRACK_COLOR = PALETTE.unowned;
 /** Owned FDB / leader / target text after F3. CRC owned white. */
 export const OWNED_TRACK_COLOR = PALETTE.owned;
-/** Selected accent / IDENT flash. Frozen phase-2 selected yellow. */
+/** Selected accent. SPI/IDENT never drives this; it is datablock "ID" text only. */
 export const SELECTED_ACCENT_COLOR = PALETTE.selected;
 /** Search/fusion position symbol background blue. */
 export const POSITION_SYMBOL_COLOR = PALETTE.positionSymbol;

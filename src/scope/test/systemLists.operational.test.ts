@@ -11,6 +11,7 @@ import {
   buildVfrList,
   deleteFlightPlanEntry,
   getFlightPlanEntries,
+  getVfrListCallsigns,
   handleFlightPlanListClick,
   handleVideoMapsListClick,
   relocateSystemList,
@@ -458,6 +459,26 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
   describe("3. VFR List (VL) Formatting & Fields", () => {
     it("formats VFR LIST header, callsign, 4-digit beacon code, and altitude hundreds", () => {
       const world = createWorld();
+      world.flightPlans.push(
+        {
+          id: "fp-vfr-1",
+          status: "active",
+          acid: "N12345",
+          flightRules: "VFR",
+          assignedBeacon: "1200",
+          fixes: [],
+          scratchpads: [],
+        },
+        {
+          id: "fp-vfr-2",
+          status: "active",
+          acid: "N982B",
+          flightRules: "VFR",
+          assignedBeacon: "4215",
+          fixes: [],
+          scratchpads: [],
+        },
+      );
       world.aircraft.push(
         makeTestAircraft({
           id: "vfr-1",
@@ -480,6 +501,24 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       expect(lines[0]).toBe("VFR LIST");
       expect(lines[1]).toBe("N12345  1200  045");
       expect(lines[2]).toBe("N982B   4215  025");
+    });
+
+    it("unassociated target squawking 1200 with no filed plan never appears in VFR list", () => {
+      const world = createWorld();
+      world.aircraft.push(
+        makeTestAircraft({
+          id: "ambient-1",
+          callsign: "N1200A",
+          squawk: "1200",
+          assignedSquawk: "1200",
+          altitudeFt: 3500,
+          flightRules: "VFR",
+        }),
+      );
+
+      const lines = buildVfrList(world, 10);
+      expect(lines).toEqual(["VFR LIST"]);
+      expect(getVfrListCallsigns(world)).toEqual([]);
     });
   });
 

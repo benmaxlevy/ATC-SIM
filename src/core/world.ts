@@ -1,5 +1,6 @@
 import type { Aircraft } from "./aircraft";
 import type { TrackHandoff } from "./handoff";
+import type { RadioRequest } from "./radio/requests";
 import {
   atpaPairKey,
   evaluateAtpa,
@@ -35,15 +36,22 @@ import {
   handoffFor,
 } from "./handoff";
 import { applyLateralFms } from "./fms/lateral";
-import { applyMissedFms, isLandingInhibited } from "./fms/missed";
+import { applyMissedFms, isLandingInhibited, missedApproachId } from "./fms/missed";
 import { despawnLandedAircraft } from "./fms/landing";
+import { resolveApproachContext, type ApproachContext } from "./nav/approachContext";
 import {
   applyGlidepathFms,
   applyVerticalFms,
   type CatalogSid,
   type CatalogStar,
 } from "./fms/vertical";
-import { locAxisForApproach, locDeviation, type LocAxis } from "./nav/localizer";
+import {
+  locAxisForApproach,
+  locDeviation,
+  type LocAxis,
+  type LocCatalog,
+  type LocCatalogApproach,
+} from "./nav/localizer";
 import { alongTrackNm } from "./nav/geometry";
 import { gsParamsForApproach } from "./nav/glidepath";
 import { performanceRegistry } from "./performance/registry";
@@ -51,11 +59,14 @@ import { resolvePerformanceRegime } from "./performance/regime";
 import type { AircraftPerformanceProfile } from "./performance/types";
 import {
   routeFixIds,
+  isFlightPlanOperational,
   synchronizeFlightPlanRoute,
   updateAircraftSquawk,
   type FlightPlan,
 } from "./flightPlan";
 import { DEFAULT_BEACON_POOL_CONFIG, type BeaconPoolConfig } from "./beaconPools";
+import { aircraftInsideClassB, handleClassBBoundary } from "./vfrClassBClearance";
+import type { RegionalFacility } from "../scenario/regional";
 
 /** Generic world navigation context. Variation is never facility-special-cased. */
 export interface WorldNavigationContext {
@@ -171,6 +182,28 @@ export interface World {
   departureSpawner?: (world: World) => Aircraft[];
   /** Optional deterministic scenario arrival scheduler. */
   arrivalScheduler?: { drain: (world: World) => Aircraft[] };
+  /** Optional generic ambient VFR traffic manager (T04-71). */
+  vfrTrafficManager?: { step: (world: World, dtS: number) => void };
+  /** Optional regional facility metadata (T04-70). */
+  regional?: unknown;
+  /** Authoritative radio requests (flight following, IFR pickup) (T04-73). */
+  radioRequests?: RadioRequest[];
+  /** Optional pilot VFR request and cancellation scheduler (T04-72). */
+  vfrRequestQueue?: {
+    scheduleIfrCancellationCandidate?: (
+      aircraft: Aircraft,
+      simTimeMs: number,
+      options?: { delayMs?: number; log?: SessionLog },
+    ) => unknown;
+  };
+  /** Optional pilot VFR request configuration (T04-76). */
+  vfrRequestConfig?: unknown;
+  /** Optional cancellation scheduler hook (T04-74). */
+  scheduleIfrCancellationCandidate?: (
+    aircraft: Aircraft,
+    simTimeMs: number,
+    options?: { delayMs?: number; log?: SessionLog },
+  ) => unknown;
 }
 
 export interface ScheduledDeparture {
@@ -302,6 +335,13 @@ export function createWorld(partial?: Partial<World>): World {
     scheduledDepartures: partial?.scheduledDepartures,
     departureSpawner: partial?.departureSpawner,
     arrivalScheduler: partial?.arrivalScheduler,
+    vfrTrafficManager: partial?.vfrTrafficManager,
+    radioRequests: partial?.radioRequests ?? [],
+    ...(partial?.regional !== undefined ? { regional: partial.regional } : {}),
+    ...(partial?.vfrRequestQueue !== undefined ? { vfrRequestQueue: partial.vfrRequestQueue } : {}),
+    ...(partial?.scheduleIfrCancellationCandidate !== undefined
+      ? { scheduleIfrCancellationCandidate: partial.scheduleIfrCancellationCandidate }
+      : {}),
   };
 }
 
@@ -592,7 +632,7 @@ function synchronizeRouteCursor(
 ): void {
   const plan = world.flightPlans.find(
     (item) =>
-      item.status !== "deleted" &&
+      isFlightPlanOperational(item) &&
       item.acid.trim().toUpperCase() === aircraft.callsign.trim().toUpperCase() &&
       item.routeRecord?.lifecycle === "active",
   );
@@ -647,17 +687,21 @@ function computeApproachAlongTrackNm(
   approachId: string,
   world: World,
   axis?: LocAxis,
+  catalog?: LocCatalog | null,
+  fixRegistry?: FixRegistry | null,
 ): number | undefined {
   if (axis) {
     return locDeviation(point, axis).alongTrackNm;
   }
-  const approach = world.catalog?.approaches?.find(
-    (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+  const effectiveCatalog = catalog ?? world.catalog;
+  const effectiveRegistry = fixRegistry ?? world.fixRegistry;
+  const approach = effectiveCatalog?.approaches?.find(
+    (a: LocCatalogApproach) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
   );
   if (!approach) return undefined;
   const thresholdPoint =
-    approach.thresholdFixId && world.fixRegistry?.has(approach.thresholdFixId)
-      ? world.fixRegistry.get(approach.thresholdFixId)!
+    approach.thresholdFixId && effectiveRegistry?.has(approach.thresholdFixId)
+      ? effectiveRegistry.get(approach.thresholdFixId)!
       : { xNm: 0, yNm: 0 };
   let courseDeg = approach.publishedCourseMagneticDeg ?? approach.courseDeg;
   if (courseDeg === undefined) {
@@ -672,6 +716,7 @@ function updateApproachSpeedAssignments(
   world: World,
   locAxisFor: (approachId: string) => LocAxis | undefined,
   profile: AircraftPerformanceProfile,
+  approachCtx?: ApproachContext,
 ): void {
   if (ac.intent.controllerAssignedSpeedKt === undefined && ac.intent.speedUntil === undefined) {
     return;
@@ -691,12 +736,23 @@ function updateApproachSpeedAssignments(
     return;
   }
 
-  const approach = world.catalog?.approaches?.find(
+  const ctx = approachCtx ?? resolveApproachContext(ac, world);
+  const catalog = ctx.catalog ?? world.catalog;
+  const fixRegistry = ctx.fixRegistry ?? world.fixRegistry;
+
+  const approach = catalog?.approaches?.find(
     (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
   );
 
   const axis = locAxisFor(approachId);
-  const alongTrackDistance = computeApproachAlongTrackNm(ac, approachId, world, axis);
+  const alongTrackDistance = computeApproachAlongTrackNm(
+    ac,
+    approachId,
+    world,
+    axis,
+    catalog,
+    fixRegistry,
+  );
   if (alongTrackDistance === undefined) {
     return;
   }
@@ -720,7 +776,7 @@ function updateApproachSpeedAssignments(
       }
       const fixPoint = findFixPoint(until.fixId, world);
       const fixDist = fixPoint
-        ? computeApproachAlongTrackNm(fixPoint, approachId, world, axis)
+        ? computeApproachAlongTrackNm(fixPoint, approachId, world, axis, catalog, fixRegistry)
         : undefined;
       gateReached = fixSequenced || (fixDist !== undefined && alongTrackDistance <= fixDist);
     }
@@ -754,20 +810,32 @@ export function stepWorld(world: World, dtS: number): World {
   applyDueSquawkReports(world);
   world.arrivalScheduler?.drain(world);
   world.departureSpawner?.(world);
+  world.vfrTrafficManager?.step(world, dtS);
   acceptDueOutboundHandoffs(world);
-  const locAxisFor = (approachId: string) =>
-    locAxisForApproach(approachId, world.catalog, world.fixRegistry, world.navigation.magVarDeg);
   for (const ac of world.aircraft) {
+    const regionalFacility = world.regional as RegionalFacility | undefined;
+    const wasInsideClassB = aircraftInsideClassB(ac, regionalFacility);
     const previousLateral = ac.intent.lateral;
+    const approachCtx = resolveApproachContext(ac, world);
+    const effectiveCatalog = approachCtx.catalog ?? world.catalog;
+    const effectiveRegistry = approachCtx.fixRegistry ?? world.fixRegistry;
+    const locAxisFor = (approachId: string) =>
+      locAxisForApproach(
+        approachId,
+        effectiveCatalog,
+        effectiveRegistry,
+        world.navigation.magVarDeg,
+      );
+
     applyMissedFms(ac, {
-      catalog: world.catalog,
+      catalog: effectiveCatalog,
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
     });
     const profile = performanceRegistry.getProfile(ac.aircraftType);
     const regime = profile.regimes ? resolvePerformanceRegime(ac) : undefined;
     const performance = regime && profile.regimes ? profile.regimes[regime] : undefined;
-    updateApproachSpeedAssignments(ac, world, locAxisFor, profile);
+    updateApproachSpeedAssignments(ac, world, locAxisFor, profile, approachCtx);
     let effectivePerformance = performance;
     if (performance && ac.intent.controllerAssignedSpeedKt !== undefined) {
       effectivePerformance = {
@@ -786,14 +854,14 @@ export function stepWorld(world: World, dtS: number): World {
       registry: clearanceRouteRegistry(world),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
-      catalog: world.catalog,
+      catalog: effectiveCatalog,
       locAxisFor,
       magVarDeg: world.navigation.magVarDeg,
       performance: effectivePerformance,
     });
     const gsCommandedFt = applyGlidepathFms(ac, dtS, {
       locAxisFor,
-      gsParamsFor: (approachId) => gsParamsForApproach(approachId, world.catalog),
+      gsParamsFor: (approachId) => gsParamsForApproach(approachId, effectiveCatalog),
       log: world.sessionLog,
       simTimeMs: world.simTimeMs,
       maxDescentFpm: performance?.nominalDescentFpm,
@@ -810,6 +878,10 @@ export function stepWorld(world: World, dtS: number): World {
       profile.limits,
     );
     synchronizeRouteCursor(world, ac, previousLateral);
+    if (ac.classBClearance && ac.intent.lateral?.type === "PROCEDURE") {
+      ac.classBClearance.routeIndex = ac.intent.lateral.toFixIndex;
+    }
+    handleClassBBoundary(world, ac, wasInsideClassB, aircraftInsideClassB(ac, regionalFacility));
     if (ac.identUntilSimMs > 0 && world.simTimeMs >= ac.identUntilSimMs) {
       ac.identUntilSimMs = 0;
     }
@@ -824,7 +896,41 @@ export function stepWorld(world: World, dtS: number): World {
   if (world.mvaChart) {
     syncMsawAlerts(
       world,
-      evaluateMsaw(world.aircraft, world.mvaChart, world.msawInhibit ?? DEFAULT_MSAW_INHIBIT),
+      evaluateMsaw(
+        world.aircraft,
+        world.mvaChart,
+        world.msawInhibit ?? DEFAULT_MSAW_INHIBIT,
+        (ac) => {
+          if (ac.intent.lateral?.type === "VISUAL_FINAL") {
+            return {
+              xNm: ac.intent.lateral.threshold.xNm,
+              yNm: ac.intent.lateral.threshold.yNm,
+              fafDistanceNm: 3.0,
+            };
+          }
+          const approachId =
+            missedApproachId(ac) ?? ac.intent.clearedApproachId ?? ac.intent.locInterceptApproachId;
+          if (!approachId) return undefined;
+          const approachCtx = resolveApproachContext(ac, world);
+          const effectiveCatalog = approachCtx.catalog ?? world.catalog;
+          const effectiveRegistry = approachCtx.fixRegistry ?? world.fixRegistry;
+          const axis = locAxisForApproach(
+            approachId,
+            effectiveCatalog,
+            effectiveRegistry,
+            world.navigation.magVarDeg,
+          );
+          if (!axis) return undefined;
+          const app = effectiveCatalog?.approaches?.find(
+            (a) => a.id.trim().toUpperCase() === approachId.trim().toUpperCase(),
+          );
+          return {
+            xNm: axis.thresholdXNm,
+            yNm: axis.thresholdYNm,
+            fafDistanceNm: app?.fafDistanceNm,
+          };
+        },
+      ),
     );
   } else {
     syncMsawAlerts(world, []);

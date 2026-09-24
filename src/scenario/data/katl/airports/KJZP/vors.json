@@ -1,0 +1,71 @@
+{
+  "airportId": "KJZP",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 56.028824,
+      "yNm": -30.352667,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 82.749117,
+      "yNm": -2.057167,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -80.463227,
+      "yNm": -28.624167,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "HCH",
+      "kind": "VORDME",
+      "name": "HINCH MOUNTAIN",
+      "xNm": -25.787961,
+      "yNm": 79.6525,
+      "latDeg": 35.781013888888886,
+      "lonDeg": -84.97845277777778,
+      "freqMhz": 117.6,
+      "class": "L"
+    },
+    {
+      "id": "ODF",
+      "kind": "VORDME",
+      "name": "FOOTHILLS",
+      "xNm": 57.369463,
+      "yNm": 14.544,
+      "latDeg": 34.69587222222222,
+      "lonDeg": -83.29766111111111,
+      "freqMhz": 113.4,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -32.761759,
+      "yNm": -17.4545,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    }
+  ]
+}

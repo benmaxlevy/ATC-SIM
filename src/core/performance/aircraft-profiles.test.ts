@@ -2,7 +2,12 @@ import { describe, expect, test } from "vitest";
 import { createAircraft } from "../aircraft";
 import { createWorld, stepWorld } from "../world";
 import profilesJson from "./aircraft-profiles.json";
-import { isAircraftProfileDataset, performanceRegistry, DEFAULT_PROFILE } from "./registry";
+import {
+  isAircraftProfileDataset,
+  normalizeSpokenAliases,
+  performanceRegistry,
+  DEFAULT_PROFILE,
+} from "./registry";
 import type { AircraftProfileDataset, PerformanceRegime } from "./types";
 
 const dataset = profilesJson as unknown as AircraftProfileDataset;
@@ -15,6 +20,16 @@ const ALL_REGIMES: readonly PerformanceRegime[] = [
   "missedApproach",
   "landing",
 ];
+
+const EXPECTED_GA_ALIASES = {
+  BE36: ["Bonanza"],
+  C172: ["Skyhawk"],
+  C182: ["Skylane"],
+  C208: ["Caravan"],
+  DA40: ["Diamond"],
+  PA28: ["Archer"],
+  SR22: ["Cirrus"],
+} as const;
 
 describe("unified aircraft profiles dataset contract", () => {
   test("dataset satisfies isAircraftProfileDataset schema guard", () => {
@@ -48,7 +63,7 @@ describe("unified aircraft profiles dataset contract", () => {
       expect(typeof override).toBe("object");
 
       if (override.source) {
-        expect(override.source).toBe("openap");
+        expect(["openap", "manufacturer-specs"]).toContain(override.source);
       }
 
       if (override.limits) {
@@ -80,6 +95,61 @@ describe("unified aircraft profiles dataset contract", () => {
         }
       }
     }
+  });
+
+  test("generalAviation object holds only GA types with manufacturer specs", () => {
+    const gaKeys = Object.keys(dataset.generalAviation ?? {});
+    expect(gaKeys).toEqual(["BE36", "C172", "C182", "C208", "DA40", "PA28", "SR22"]);
+    expect(gaKeys.every((k) => !(k in dataset.aircraft))).toBe(true);
+
+    for (const icao of gaKeys) {
+      const override = dataset.generalAviation![icao]!;
+      expect(override.source).toBe("manufacturer-specs");
+      expect(override.limits?.serviceCeilingFt).toBeGreaterThan(0);
+      expect(override.limits!.serviceCeilingFt).toBeLessThanOrEqual(25000);
+    }
+    // GA ceilings come from the GA object, never the 41000 ft jet default.
+    expect(performanceRegistry.getProfile("C172").limits?.serviceCeilingFt).toBe(14000);
+    expect(performanceRegistry.getProfile("C208").limits?.serviceCeilingFt).toBe(25000);
+    expect(performanceRegistry.listGeneralAviationTypes()).toEqual(gaKeys);
+  });
+
+  test("every current VFR profile has explicit preferred spoken alias data", () => {
+    for (const [aircraftType, aliases] of Object.entries(EXPECTED_GA_ALIASES)) {
+      expect(dataset.generalAviation?.[aircraftType]?.spokenAliases).toEqual(aliases);
+      expect(performanceRegistry.getSpokenAliases(aircraftType)).toEqual(aliases);
+      expect(performanceRegistry.getProfile(aircraftType).spokenAliases).toEqual(aliases);
+      expect(Object.isFrozen(performanceRegistry.getProfile(aircraftType).spokenAliases)).toBe(
+        true,
+      );
+    }
+  });
+
+  test("alias validation allows omission and multiple authored aliases", () => {
+    expect(normalizeSpokenAliases(undefined)).toEqual([]);
+    expect(normalizeSpokenAliases(["  Skyhawk  ", "172S"])).toEqual(["Skyhawk", "172S"]);
+    expect(
+      isAircraftProfileDataset({
+        defaults: dataset.defaults,
+        aircraft: { SYNTH: {} },
+        generalAviation: { SYNTH: { spokenAliases: ["Trainer", "Four Twenty"] } },
+      }),
+    ).toBe(true);
+  });
+
+  test.each([
+    ["empty", { spokenAliases: [] }],
+    ["blank", { spokenAliases: ["   "] }],
+    ["duplicate", { spokenAliases: ["Skyhawk", "skyhawk"] }],
+    ["malformed", { spokenAliases: ["Skyhawk!"] }],
+  ])("alias validation rejects %s values", (_label, override) => {
+    expect(
+      isAircraftProfileDataset({
+        defaults: dataset.defaults,
+        aircraft: { SYNTH: override },
+      }),
+    ).toBe(false);
+    expect(() => normalizeSpokenAliases(override.spokenAliases)).toThrow();
   });
 });
 

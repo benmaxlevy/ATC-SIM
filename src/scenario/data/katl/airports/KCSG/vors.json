@@ -1,0 +1,126 @@
+{
+  "airportId": "KCSG",
+  "vors": [
+    {
+      "id": "EDN",
+      "kind": "VORDME",
+      "name": "ENTERPRISE",
+      "xNm": -48.766157,
+      "yNm": -73.197333,
+      "latDeg": 31.296372222222224,
+      "lonDeg": -85.90273611111111,
+      "freqMhz": 116.6,
+      "class": "T"
+    },
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": -9.69443,
+      "yNm": -33.964667,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "HEY",
+      "kind": "VORDME",
+      "name": "HANCHEY",
+      "xNm": -36.119691,
+      "yNm": -68.5315,
+      "latDeg": 31.374136111111113,
+      "lonDeg": -85.65277777777779,
+      "freqMhz": 110.6,
+      "class": "T"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -13.526526,
+      "yNm": 31.9675,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": -2.7446,
+      "yNm": -11.042,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "MGM",
+      "kind": "VORDME",
+      "name": "MONTGOMERY",
+      "xNm": -69.863558,
+      "yNm": -17.642833,
+      "latDeg": 32.22228055555556,
+      "lonDeg": -86.31972777777777,
+      "freqMhz": 112.1,
+      "class": "T"
+    },
+    {
+      "id": "OZR",
+      "kind": "VORDME",
+      "name": "CAIRNS",
+      "xNm": -39.840058,
+      "yNm": -74.842833,
+      "latDeg": 31.26894722222222,
+      "lonDeg": -85.72631111111112,
+      "freqMhz": 111.2,
+      "class": "L"
+    },
+    {
+      "id": "PZD",
+      "kind": "VORDME",
+      "name": "PECAN",
+      "xNm": 32.672252,
+      "yNm": -51.667333,
+      "latDeg": 31.655205555555554,
+      "lonDeg": -84.2931,
+      "freqMhz": 116.1,
+      "class": "H"
+    },
+    {
+      "id": "RRS",
+      "kind": "VORDME",
+      "name": "WIREGRASS",
+      "xNm": -24.909681,
+      "yNm": -73.9045,
+      "latDeg": 31.284586111111114,
+      "lonDeg": -85.43121111111111,
+      "freqMhz": 111.6,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": 72.937442,
+      "yNm": -18.173167,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 68.216011,
+      "yNm": 7.480333,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

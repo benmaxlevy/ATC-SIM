@@ -1,0 +1,95 @@
+{
+  "airportId": "KFTY",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -70.345595,
+      "yNm": -14.746833,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": 46.440931,
+      "yNm": 9.314333,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": -31.75084,
+      "yNm": 83.185167,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "CS",
+      "kind": "NDB",
+      "name": "FENIX",
+      "xNm": -25.995767,
+      "yNm": -79.690833,
+      "latDeg": 32.45193888888889,
+      "lonDeg": -85.04197222222221,
+      "freqKhz": 355
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": -9.603147,
+      "yNm": -31.3905,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": 1.709593,
+      "yNm": -28.752,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": -30.434532,
+      "yNm": -12.861667,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": 32.807405,
+      "yNm": 14.387833,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    },
+    {
+      "id": "VV",
+      "kind": "NDB",
+      "name": "JUNNE",
+      "xNm": 74.75319,
+      "yNm": -8.0225,
+      "latDeg": 33.646411111111114,
+      "lonDeg": -83.02176666666666,
+      "freqKhz": 353
+    }
+  ]
+}

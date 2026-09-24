@@ -1,0 +1,7008 @@
+{
+  "schemaVersion": 1,
+  "airports": [
+    {
+      "icao": "00GA",
+      "name": "LT WORLD",
+      "arp": {
+        "latDeg": 33.7675,
+        "lonDeg": -84.06833333333333
+      },
+      "fieldElevFt": 700,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "00GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "02GA",
+      "name": "DOUG BOLTON FLD",
+      "arp": {
+        "latDeg": 34.20260833333334,
+        "lonDeg": -83.42905
+      },
+      "fieldElevFt": 884,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "02GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "02GE",
+      "name": "ETOWAH FIELDS",
+      "arp": {
+        "latDeg": 34.17527777777777,
+        "lonDeg": -84.92444444444445
+      },
+      "fieldElevFt": 710,
+      "magVarDeg": -5.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "02GE"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "07GA",
+      "name": "ALCOVY",
+      "arp": {
+        "latDeg": 33.675,
+        "lonDeg": -83.76305555555555
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "07GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "09GE",
+      "name": "ELLIOTT FLD",
+      "arp": {
+        "latDeg": 34.458419444444445,
+        "lonDeg": -84.18037222222223
+      },
+      "fieldElevFt": 1497,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "09GE"
+      },
+      "runways": [
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 34.46374166666667,
+            "lonDeg": -84.18712222222223
+          },
+          "headingTrueDeg": 135.6,
+          "headingMagDeg": 137.6,
+          "lengthFt": 5619
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 34.453094444444446,
+            "lonDeg": -84.17361944444445
+          },
+          "headingTrueDeg": 315.6,
+          "headingMagDeg": 317.6,
+          "lengthFt": 5619
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GA0",
+      "name": "HALLS FLYING RANCH",
+      "arp": {
+        "latDeg": 33.356225,
+        "lonDeg": -84.36714722222221
+      },
+      "fieldElevFt": 800,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GA0"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GA2",
+      "name": "AIRNAUTIQUE, INC",
+      "arp": {
+        "latDeg": 34.38226944444445,
+        "lonDeg": -82.94548611111111
+      },
+      "fieldElevFt": 720,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GA2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GA3",
+      "name": "AYRESOUTH",
+      "arp": {
+        "latDeg": 33.77010555555555,
+        "lonDeg": -85.06078055555555
+      },
+      "fieldElevFt": 1287,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GA3"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GA6",
+      "name": "SUNSET STRIP",
+      "arp": {
+        "latDeg": 33.733447222222225,
+        "lonDeg": -83.81879166666667
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GA6"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GA9",
+      "name": "GENTLE LANDINGS AIR PARK",
+      "arp": {
+        "latDeg": 32.713597222222226,
+        "lonDeg": -84.02853888888889
+      },
+      "fieldElevFt": 505,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GA9"
+      },
+      "runways": [
+        {
+          "id": "07",
+          "threshold": {
+            "latDeg": 32.711708333333334,
+            "lonDeg": -84.03377222222223
+          },
+          "headingTrueDeg": 68.9,
+          "headingMagDeg": 70.9,
+          "lengthFt": 3500
+        },
+        {
+          "id": "25",
+          "threshold": {
+            "latDeg": 32.71548333333334,
+            "lonDeg": -84.02330555555555
+          },
+          "headingTrueDeg": 248.9,
+          "headingMagDeg": 250.9,
+          "lengthFt": 3500
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GE0",
+      "name": "PINEWOOD",
+      "arp": {
+        "latDeg": 33.78205,
+        "lonDeg": -84.80077222222222
+      },
+      "fieldElevFt": 1085,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GE0"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GE4",
+      "name": "PECAN PATCH AIRSTRIP",
+      "arp": {
+        "latDeg": 33.331388888888895,
+        "lonDeg": -84.26666666666667
+      },
+      "fieldElevFt": 860,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GE4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "0GE5",
+      "name": "MOUNTAIN AIRPARK",
+      "arp": {
+        "latDeg": 34.56176388888888,
+        "lonDeg": -83.7135138888889
+      },
+      "fieldElevFt": 1438,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "0GE5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "10GA",
+      "name": "BEAVERBROOK AERODROME",
+      "arp": {
+        "latDeg": 33.32511388888889,
+        "lonDeg": -84.29825555555556
+      },
+      "fieldElevFt": 910,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "10GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "17GA",
+      "name": "PANTHER CREEK",
+      "arp": {
+        "latDeg": 33.46666666666667,
+        "lonDeg": -84.86566666666666
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "17GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "18A",
+      "name": "FRANKLIN-HART",
+      "arp": {
+        "latDeg": 34.340361111111115,
+        "lonDeg": -83.13080555555555
+      },
+      "fieldElevFt": 890,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "18A"
+      },
+      "runways": [
+        {
+          "id": "08",
+          "threshold": {
+            "latDeg": 34.33823888888889,
+            "lonDeg": -83.13869166666667
+          },
+          "headingTrueDeg": 77,
+          "headingMagDeg": 82,
+          "lengthFt": 5000
+        },
+        {
+          "id": "26",
+          "threshold": {
+            "latDeg": 34.34245833333333,
+            "lonDeg": -83.12293055555556
+          },
+          "headingTrueDeg": 257,
+          "headingMagDeg": 262,
+          "lengthFt": 5000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/18A"
+    },
+    {
+      "icao": "18GA",
+      "name": "SLEEPY HOLLOW",
+      "arp": {
+        "latDeg": 33.693175,
+        "lonDeg": -83.65767222222223
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "18GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "19GA",
+      "name": "WILLOW POND AVIATION INC",
+      "arp": {
+        "latDeg": 33.42372777777778,
+        "lonDeg": -84.49992777777778
+      },
+      "fieldElevFt": 868,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "19GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1A3",
+      "name": "MARTIN CAMPBELL FLD",
+      "arp": {
+        "latDeg": 35.015816666666666,
+        "lonDeg": -84.34683055555556
+      },
+      "fieldElevFt": 1789,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1A3"
+      },
+      "runways": [
+        {
+          "id": "02",
+          "threshold": {
+            "latDeg": 35.01139166666667,
+            "lonDeg": -84.34817222222222
+          },
+          "headingTrueDeg": 19,
+          "headingMagDeg": 24,
+          "lengthFt": 3500
+        },
+        {
+          "id": "20",
+          "threshold": {
+            "latDeg": 35.02010833333333,
+            "lonDeg": -84.34553055555556
+          },
+          "headingTrueDeg": 199,
+          "headingMagDeg": 204,
+          "lengthFt": 3500
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/1A3"
+    },
+    {
+      "icao": "1GA2",
+      "name": "FLYING N ESTATES",
+      "arp": {
+        "latDeg": 33.177344444444444,
+        "lonDeg": -84.74854166666667
+      },
+      "fieldElevFt": 870,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GA2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GA9",
+      "name": "AERIE",
+      "arp": {
+        "latDeg": 33.76150555555556,
+        "lonDeg": -83.65267222222222
+      },
+      "fieldElevFt": 830,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GE2",
+      "name": "C & W AIR PARK",
+      "arp": {
+        "latDeg": 32.84444444444445,
+        "lonDeg": -84.54388888888889
+      },
+      "fieldElevFt": 1306,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GE2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GE3",
+      "name": "ANSWERED PRAYER",
+      "arp": {
+        "latDeg": 33.25388888888889,
+        "lonDeg": -85.17027777777778
+      },
+      "fieldElevFt": 890,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GE3"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GE5",
+      "name": "FLYING D",
+      "arp": {
+        "latDeg": 33.10123611111111,
+        "lonDeg": -84.39353333333334
+      },
+      "fieldElevFt": 838,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GE5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GE7",
+      "name": "HAY FLD",
+      "arp": {
+        "latDeg": 33.51722222222222,
+        "lonDeg": -83.43972222222223
+      },
+      "fieldElevFt": 650,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GE7"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "1GE9",
+      "name": "WAVERLY LANDING",
+      "arp": {
+        "latDeg": 32.714444444444446,
+        "lonDeg": -84.71805555555555
+      },
+      "fieldElevFt": 675,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "1GE9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "20GA",
+      "name": "EARL L SMALL JR  FLD/STOCKMAR",
+      "arp": {
+        "latDeg": 33.75655555555556,
+        "lonDeg": -84.8850638888889
+      },
+      "fieldElevFt": 1110,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "20GA"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 33.756766666666664,
+            "lonDeg": -84.89246111111112
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 98,
+          "lengthFt": 4500
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 33.756344444444444,
+            "lonDeg": -84.87766388888888
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 278,
+          "lengthFt": 4500
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "22GA",
+      "name": "RIVERSIDE",
+      "arp": {
+        "latDeg": 34.42925555555556,
+        "lonDeg": -85.05439166666666
+      },
+      "fieldElevFt": 620,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "22GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "25GA",
+      "name": "JJ'S RANCH",
+      "arp": {
+        "latDeg": 33.659552777777776,
+        "lonDeg": -84.66298888888889
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "25GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "26A",
+      "name": "ASHLAND/LINEVILLE",
+      "arp": {
+        "latDeg": 33.28419722222222,
+        "lonDeg": -85.80896666666666
+      },
+      "fieldElevFt": 1065,
+      "magVarDeg": -1,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "26A"
+      },
+      "runways": [
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.28419722222222,
+            "lonDeg": -85.80238333333332
+          },
+          "headingTrueDeg": 271,
+          "headingMagDeg": 272,
+          "lengthFt": 4023
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "26GA",
+      "name": "LITTLE",
+      "arp": {
+        "latDeg": 34.40260833333333,
+        "lonDeg": -85.28674444444444
+      },
+      "fieldElevFt": 776,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "26GA"
+      },
+      "runways": [
+        {
+          "id": "04",
+          "threshold": {
+            "latDeg": 34.40199444444444,
+            "lonDeg": -85.28727777777777
+          },
+          "headingTrueDeg": 40.9,
+          "headingMagDeg": 46,
+          "lengthFt": 550
+        },
+        {
+          "id": "22",
+          "threshold": {
+            "latDeg": 34.403219444444446,
+            "lonDeg": -85.28621111111111
+          },
+          "headingTrueDeg": 220.9,
+          "headingMagDeg": 226,
+          "lengthFt": 550
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "27GA",
+      "name": "WILSON AIRSTRIP",
+      "arp": {
+        "latDeg": 33.65844166666667,
+        "lonDeg": -85.00994444444444
+      },
+      "fieldElevFt": 1050,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "27GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "29GA",
+      "name": "ROLLING MEADOWS AIRFIELD",
+      "arp": {
+        "latDeg": 33.384283333333336,
+        "lonDeg": -84.63194444444444
+      },
+      "fieldElevFt": 808,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "29GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2AL5",
+      "name": "FLYING H RANCH",
+      "arp": {
+        "latDeg": 34.39277777777778,
+        "lonDeg": -85.665
+      },
+      "fieldElevFt": 1430,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2AL5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2AL8",
+      "name": "FINKLEY FARM",
+      "arp": {
+        "latDeg": 32.42111111111111,
+        "lonDeg": -85.24805555555555
+      },
+      "fieldElevFt": 413,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2AL8"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GA0",
+      "name": "KENNEDY INTRANATIONAL",
+      "arp": {
+        "latDeg": 33.52678611111111,
+        "lonDeg": -83.63879722222222
+      },
+      "fieldElevFt": 695,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GA0"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 33.52768611111111,
+            "lonDeg": -83.6449638888889
+          },
+          "headingTrueDeg": 103,
+          "headingMagDeg": 106,
+          "lengthFt": 3816
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 33.52588333333333,
+            "lonDeg": -83.63262777777777
+          },
+          "headingTrueDeg": 283,
+          "headingMagDeg": 286,
+          "lengthFt": 3816
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GA1",
+      "name": "POOLE FARM",
+      "arp": {
+        "latDeg": 33.68066944444444,
+        "lonDeg": -83.85268333333333
+      },
+      "fieldElevFt": 830,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GA1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GA5",
+      "name": "WINDRIFT AERODROME",
+      "arp": {
+        "latDeg": 33.04179444444444,
+        "lonDeg": -84.43214444444445
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GA5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GA8",
+      "name": "SHANNON FLIGHT STRIP",
+      "arp": {
+        "latDeg": 34.34981388888889,
+        "lonDeg": -85.07689166666667
+      },
+      "fieldElevFt": 677,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GA8"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GA9",
+      "name": "LENORA",
+      "arp": {
+        "latDeg": 33.80916666666666,
+        "lonDeg": -83.99972222222222
+      },
+      "fieldElevFt": 940,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "2GE8",
+      "name": "ANDY FIELDS",
+      "arp": {
+        "latDeg": 33.46416666666667,
+        "lonDeg": -84.66333333333334
+      },
+      "fieldElevFt": 980,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "2GE8"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "30GA",
+      "name": "COX FLD",
+      "arp": {
+        "latDeg": 33.28288611111111,
+        "lonDeg": -83.90136666666668
+      },
+      "fieldElevFt": 697,
+      "magVarDeg": -5.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "30GA"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 33.28288611111111,
+            "lonDeg": -83.90629722222222
+          },
+          "headingTrueDeg": 95.9,
+          "headingMagDeg": 101.8,
+          "lengthFt": 3014
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.28288611111111,
+            "lonDeg": -83.89643611111111
+          },
+          "headingTrueDeg": 275.9,
+          "headingMagDeg": 281.8,
+          "lengthFt": 3014
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "30GE",
+      "name": "PAPAS PLACE",
+      "arp": {
+        "latDeg": 34.19401944444444,
+        "lonDeg": -83.19462777777778
+      },
+      "fieldElevFt": 720,
+      "magVarDeg": -6.4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "30GE"
+      },
+      "runways": [
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 34.19595555555555,
+            "lonDeg": -83.19731111111112
+          },
+          "headingTrueDeg": 137.4,
+          "headingMagDeg": 143.8,
+          "lengthFt": 2150
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 34.19208333333333,
+            "lonDeg": -83.19194166666666
+          },
+          "headingTrueDeg": 317.4,
+          "headingMagDeg": 323.8,
+          "lengthFt": 2150
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "31GE",
+      "name": "TAILWIND RANCH",
+      "arp": {
+        "latDeg": 32.81923888888889,
+        "lonDeg": -83.40780833333334
+      },
+      "fieldElevFt": 392,
+      "magVarDeg": -6.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "31GE"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 32.81740277777778,
+            "lonDeg": -83.41124722222223
+          },
+          "headingTrueDeg": 63.8,
+          "headingMagDeg": 69.9,
+          "lengthFt": 2500
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 32.82107777777778,
+            "lonDeg": -83.40437222222222
+          },
+          "headingTrueDeg": 243.8,
+          "headingMagDeg": 249.9,
+          "lengthFt": 2500
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "32GA",
+      "name": "SEBASTIAN COVE",
+      "arp": {
+        "latDeg": 33.45416666666667,
+        "lonDeg": -83.27777777777777
+      },
+      "fieldElevFt": 490,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "32GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "33GA",
+      "name": "HUDSON RIVER LANDING",
+      "arp": {
+        "latDeg": 34.26,
+        "lonDeg": -83.28666666666666
+      },
+      "fieldElevFt": 665,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "33GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3AL5",
+      "name": "EDWARDS FARM",
+      "arp": {
+        "latDeg": 33.83530555555556,
+        "lonDeg": -85.76391666666666
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3AL5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA0",
+      "name": "GRANT",
+      "arp": {
+        "latDeg": 33.527499999999996,
+        "lonDeg": -84.15694444444445
+      },
+      "fieldElevFt": 790,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA0"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA1",
+      "name": "PRATTSBURG",
+      "arp": {
+        "latDeg": 32.72833333333333,
+        "lonDeg": -84.35694444444444
+      },
+      "fieldElevFt": 554,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA3",
+      "name": "WARREN FLD",
+      "arp": {
+        "latDeg": 34.87111111111111,
+        "lonDeg": -85.4375
+      },
+      "fieldElevFt": 1866,
+      "magVarDeg": -5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA3"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA6",
+      "name": "ERLEN",
+      "arp": {
+        "latDeg": 33.57055555555556,
+        "lonDeg": -84.89833333333334
+      },
+      "fieldElevFt": 1044,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA6"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA7",
+      "name": "THOMAS RIDGE",
+      "arp": {
+        "latDeg": 32.450833333333335,
+        "lonDeg": -84.24918055555555
+      },
+      "fieldElevFt": 515,
+      "magVarDeg": -5.6,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA7"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 32.450833333333335,
+            "lonDeg": -84.254
+          },
+          "headingTrueDeg": 95.6,
+          "headingMagDeg": 101.2,
+          "lengthFt": 2974
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 32.450833333333335,
+            "lonDeg": -84.24436111111112
+          },
+          "headingTrueDeg": 275.6,
+          "headingMagDeg": 281.2,
+          "lengthFt": 2974
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GA9",
+      "name": "VINTAGE FLD",
+      "arp": {
+        "latDeg": 33.13345555555556,
+        "lonDeg": -84.37742222222222
+      },
+      "fieldElevFt": 873,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "3GE3",
+      "name": "BROAD RIVER AIR PARK",
+      "arp": {
+        "latDeg": 34.412416666666665,
+        "lonDeg": -83.18044444444445
+      },
+      "fieldElevFt": 690,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "3GE3"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "47GA",
+      "name": "EVERIDGE",
+      "arp": {
+        "latDeg": 32.219722222222224,
+        "lonDeg": -83.85527777777777
+      },
+      "fieldElevFt": 450,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "47GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "47GE",
+      "name": "FLYLANDER FARM",
+      "arp": {
+        "latDeg": 34.48216666666667,
+        "lonDeg": -85.304375
+      },
+      "fieldElevFt": 748,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "47GE"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 34.47987777777778,
+            "lonDeg": -85.30569166666666
+          },
+          "headingTrueDeg": 30.6,
+          "headingMagDeg": 35.7,
+          "lengthFt": 1846
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 34.484458333333336,
+            "lonDeg": -85.30305833333333
+          },
+          "headingTrueDeg": 210.6,
+          "headingMagDeg": 215.7,
+          "lengthFt": 1846
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "49A",
+      "name": "GILMER COUNTY",
+      "arp": {
+        "latDeg": 34.628194444444446,
+        "lonDeg": -84.52655555555556
+      },
+      "fieldElevFt": 1486,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "49A"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 34.62395277777778,
+            "lonDeg": -84.52930833333333
+          },
+          "headingTrueDeg": 33.3,
+          "headingMagDeg": 38.3,
+          "lengthFt": 3507
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 34.63243888888889,
+            "lonDeg": -84.52378888888889
+          },
+          "headingTrueDeg": 213.3,
+          "headingMagDeg": 218.3,
+          "lengthFt": 3507
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/49A"
+    },
+    {
+      "icao": "4A4",
+      "name": "POLK COUNTY/CORNELIUS MOORE FL",
+      "arp": {
+        "latDeg": 34.018525,
+        "lonDeg": -85.14472777777779
+      },
+      "fieldElevFt": 979,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4A4"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 34.01937222222222,
+            "lonDeg": -85.15298333333334
+          },
+          "headingTrueDeg": 102,
+          "headingMagDeg": 107,
+          "lengthFt": 5041
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 34.01767777777778,
+            "lonDeg": -85.13647222222222
+          },
+          "headingTrueDeg": 282,
+          "headingMagDeg": 287,
+          "lengthFt": 5041
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/4A4"
+    },
+    {
+      "icao": "4A9",
+      "name": "ISBELL FLD",
+      "arp": {
+        "latDeg": 34.47369444444445,
+        "lonDeg": -85.7213888888889
+      },
+      "fieldElevFt": 877,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4A9"
+      },
+      "runways": [
+        {
+          "id": "04",
+          "threshold": {
+            "latDeg": 34.46840277777778,
+            "lonDeg": -85.72668333333334
+          },
+          "headingTrueDeg": 44,
+          "headingMagDeg": 48,
+          "lengthFt": 5001
+        },
+        {
+          "id": "22",
+          "threshold": {
+            "latDeg": 34.478991666666666,
+            "lonDeg": -85.7161138888889
+          },
+          "headingTrueDeg": 224,
+          "headingMagDeg": 228,
+          "lengthFt": 5001
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/4A9"
+    },
+    {
+      "icao": "4GA1",
+      "name": "THACKER FLD",
+      "arp": {
+        "latDeg": 33.044847222222224,
+        "lonDeg": -84.39825555555556
+      },
+      "fieldElevFt": 920,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4GA1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "4GA4",
+      "name": "R M HARRIS",
+      "arp": {
+        "latDeg": 34.84674722222223,
+        "lonDeg": -84.7546611111111
+      },
+      "fieldElevFt": 770,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4GA4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "4GA6",
+      "name": "CHATTAHOOCHEE AIR PARK",
+      "arp": {
+        "latDeg": 33.662052777777774,
+        "lonDeg": -84.68048888888889
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4GA6"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "4GA7",
+      "name": "KITCHENS FLD",
+      "arp": {
+        "latDeg": 33.13456388888889,
+        "lonDeg": -84.25408888888889
+      },
+      "fieldElevFt": 800,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4GA7"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "4GA9",
+      "name": "LARRY WATSON MEML",
+      "arp": {
+        "latDeg": 34.24231944444445,
+        "lonDeg": -84.05713333333333
+      },
+      "fieldElevFt": 1230,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "4GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "52A",
+      "name": "MADISON MUNI",
+      "arp": {
+        "latDeg": 33.612125,
+        "lonDeg": -83.46044444444445
+      },
+      "fieldElevFt": 694,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "52A"
+      },
+      "runways": [
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 33.616166666666665,
+            "lonDeg": -83.46439722222223
+          },
+          "headingTrueDeg": 145,
+          "headingMagDeg": 149,
+          "lengthFt": 3806
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 33.610480555555554,
+            "lonDeg": -83.45883611111111
+          },
+          "headingTrueDeg": 325,
+          "headingMagDeg": 329,
+          "lengthFt": 3806
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/52A"
+    },
+    {
+      "icao": "53A",
+      "name": "DR C P SAVAGE SR",
+      "arp": {
+        "latDeg": 32.303063888888886,
+        "lonDeg": -84.00746944444444
+      },
+      "fieldElevFt": 345,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "53A"
+      },
+      "runways": [
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 32.307788888888886,
+            "lonDeg": -84.00741666666667
+          },
+          "headingTrueDeg": 185,
+          "headingMagDeg": 189,
+          "lengthFt": 5003
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 32.296188888888885,
+            "lonDeg": -84.00754166666667
+          },
+          "headingTrueDeg": 5,
+          "headingMagDeg": 9,
+          "lengthFt": 5003
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/53A"
+    },
+    {
+      "icao": "53GA",
+      "name": "DAWSON FLD",
+      "arp": {
+        "latDeg": 34.16895833333333,
+        "lonDeg": -85.25698611111112
+      },
+      "fieldElevFt": 680,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "53GA"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 34.16583333333333,
+            "lonDeg": -85.26222222222222
+          },
+          "headingTrueDeg": 56.3,
+          "headingMagDeg": 58.3,
+          "lengthFt": 3900
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 34.17208333333333,
+            "lonDeg": -85.25175
+          },
+          "headingTrueDeg": 236.3,
+          "headingMagDeg": 238.3,
+          "lengthFt": 3900
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "55GE",
+      "name": "ROSTEX",
+      "arp": {
+        "latDeg": 34.98063333333334,
+        "lonDeg": -84.74160555555555
+      },
+      "fieldElevFt": 887,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "55GE"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "57GA",
+      "name": "BLUE RIDGE SKYPORT",
+      "arp": {
+        "latDeg": 34.85766944444445,
+        "lonDeg": -84.3830111111111
+      },
+      "fieldElevFt": 1946,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "57GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5A2",
+      "name": "WARNER ROBINS AIR PARK",
+      "arp": {
+        "latDeg": 32.56063888888889,
+        "lonDeg": -83.67675
+      },
+      "fieldElevFt": 409,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5A2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5A9",
+      "name": "ROOSEVELT MEML",
+      "arp": {
+        "latDeg": 32.9385,
+        "lonDeg": -84.69644444444445
+      },
+      "fieldElevFt": 882,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5A9"
+      },
+      "runways": [
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 32.945277777777775,
+            "lonDeg": -84.69775555555556
+          },
+          "headingTrueDeg": 172.8,
+          "headingMagDeg": 174.8,
+          "lengthFt": 5004
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 32.93170277777777,
+            "lonDeg": -84.69515833333334
+          },
+          "headingTrueDeg": 352.8,
+          "headingMagDeg": 354.8,
+          "lengthFt": 5004
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GA2",
+      "name": "LYONS LANDING",
+      "arp": {
+        "latDeg": 33.572925000000005,
+        "lonDeg": -84.91107500000001
+      },
+      "fieldElevFt": 1080,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GA2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GA3",
+      "name": "EAGLES LANDING",
+      "arp": {
+        "latDeg": 33.15495277777778,
+        "lonDeg": -84.37167222222222
+      },
+      "fieldElevFt": 932,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GA3"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.15694444444444,
+            "lonDeg": -84.375
+          },
+          "headingTrueDeg": 127.5,
+          "headingMagDeg": 129.5,
+          "lengthFt": 2500
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.15295833333333,
+            "lonDeg": -84.36834722222221
+          },
+          "headingTrueDeg": 307.5,
+          "headingMagDeg": 309.5,
+          "lengthFt": 2500
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GA4",
+      "name": "AIR ACRES",
+      "arp": {
+        "latDeg": 34.10593055555556,
+        "lonDeg": -84.44853888888889
+      },
+      "fieldElevFt": 918,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GA4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GA5",
+      "name": "PINEBROOK ESTATES",
+      "arp": {
+        "latDeg": 33.259838888888886,
+        "lonDeg": -84.34936944444443
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GA5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GA9",
+      "name": "RAYWORTH LANDING",
+      "arp": {
+        "latDeg": 33.60125,
+        "lonDeg": -84.91486111111112
+      },
+      "fieldElevFt": 1259,
+      "magVarDeg": -5.2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GA9"
+      },
+      "runways": [
+        {
+          "id": "15",
+          "threshold": {
+            "latDeg": 33.60277777777778,
+            "lonDeg": -84.91638888888889
+          },
+          "headingTrueDeg": 145.3,
+          "headingMagDeg": 150.5,
+          "lengthFt": 1450
+        },
+        {
+          "id": "33",
+          "threshold": {
+            "latDeg": 33.599722222222226,
+            "lonDeg": -84.91333333333334
+          },
+          "headingTrueDeg": 325.3,
+          "headingMagDeg": 330.5,
+          "lengthFt": 1450
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "5GE1",
+      "name": "PEACHTREE LANDINGS",
+      "arp": {
+        "latDeg": 32.57027777777778,
+        "lonDeg": -83.72194444444445
+      },
+      "fieldElevFt": 447,
+      "magVarDeg": -5.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "5GE1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "60GE",
+      "name": "FLYING B FARM",
+      "arp": {
+        "latDeg": 33.943666666666665,
+        "lonDeg": -83.23706944444444
+      },
+      "fieldElevFt": 776,
+      "magVarDeg": -6.4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "60GE"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 33.942388888888885,
+            "lonDeg": -83.23769444444444
+          },
+          "headingTrueDeg": 28.6,
+          "headingMagDeg": 35,
+          "lengthFt": 1004
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 33.94494444444444,
+            "lonDeg": -83.23644444444444
+          },
+          "headingTrueDeg": 208.6,
+          "headingMagDeg": 215,
+          "lengthFt": 1004
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "62GA",
+      "name": "SEVEN LAKES",
+      "arp": {
+        "latDeg": 33.32456388888889,
+        "lonDeg": -83.91629722222223
+      },
+      "fieldElevFt": 630,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "62GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "64GA",
+      "name": "BIG 'T'",
+      "arp": {
+        "latDeg": 33.283452777777775,
+        "lonDeg": -84.53881666666666
+      },
+      "fieldElevFt": 900,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "64GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "64GE",
+      "name": "WCC",
+      "arp": {
+        "latDeg": 33.72694166666667,
+        "lonDeg": -85.31188333333333
+      },
+      "fieldElevFt": 956,
+      "magVarDeg": -5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "64GE"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 33.72632777777778,
+            "lonDeg": -85.31909722222221
+          },
+          "headingTrueDeg": 89.2,
+          "headingMagDeg": 94.2,
+          "lengthFt": 4409
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.72755277777778,
+            "lonDeg": -85.30467222222222
+          },
+          "headingTrueDeg": 269.2,
+          "headingMagDeg": 274.2,
+          "lengthFt": 4409
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "67GA",
+      "name": "APPALACHEE BLUFF RIVERFRONT AI",
+      "arp": {
+        "latDeg": 33.85928333333334,
+        "lonDeg": -83.58766666666666
+      },
+      "fieldElevFt": 735,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "67GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6A1",
+      "name": "BUTLER MUNI",
+      "arp": {
+        "latDeg": 32.56823611111111,
+        "lonDeg": -84.24668888888888
+      },
+      "fieldElevFt": 667,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6A1"
+      },
+      "runways": [
+        {
+          "id": "01",
+          "threshold": {
+            "latDeg": 32.56289722222222,
+            "lonDeg": -84.24517777777778
+          },
+          "headingTrueDeg": 5,
+          "headingMagDeg": 10,
+          "lengthFt": 5002
+        },
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 32.56353333333333,
+            "lonDeg": -84.25330277777778
+          },
+          "headingTrueDeg": 68,
+          "headingMagDeg": 73,
+          "lengthFt": 2405
+        },
+        {
+          "id": "19",
+          "threshold": {
+            "latDeg": 32.57664444444445,
+            "lonDeg": -84.24517222222222
+          },
+          "headingTrueDeg": 185,
+          "headingMagDeg": 190,
+          "lengthFt": 5002
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 32.56655277777777,
+            "lonDeg": -84.24635833333333
+          },
+          "headingTrueDeg": 248,
+          "headingMagDeg": 253,
+          "lengthFt": 2405
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/6A1"
+    },
+    {
+      "icao": "6A2",
+      "name": "GRIFFIN-SPALDING COUNTY",
+      "arp": {
+        "latDeg": 33.22697222222222,
+        "lonDeg": -84.27494444444444
+      },
+      "fieldElevFt": 958,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6A2"
+      },
+      "runways": [
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 33.23029722222223,
+            "lonDeg": -84.27862222222222
+          },
+          "headingTrueDeg": 141,
+          "headingMagDeg": 145,
+          "lengthFt": 3701
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 33.22366944444445,
+            "lonDeg": -84.27125
+          },
+          "headingTrueDeg": 321,
+          "headingMagDeg": 325,
+          "lengthFt": 3701
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/6A2"
+    },
+    {
+      "icao": "6AL0",
+      "name": "FLYING TIGERS WINERY & RESORT",
+      "arp": {
+        "latDeg": 33.62722222222222,
+        "lonDeg": -85.42962222222222
+      },
+      "fieldElevFt": 883,
+      "magVarDeg": -4.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6AL0"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 33.62722222222222,
+            "lonDeg": -85.43258055555556
+          },
+          "headingTrueDeg": 94.9,
+          "headingMagDeg": 99.8,
+          "lengthFt": 1800
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.62722222222222,
+            "lonDeg": -85.42666666666668
+          },
+          "headingTrueDeg": 274.9,
+          "headingMagDeg": 279.8,
+          "lengthFt": 1800
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GA0",
+      "name": "STONEY POINT FLD",
+      "arp": {
+        "latDeg": 34.13259722222222,
+        "lonDeg": -84.1993638888889
+      },
+      "fieldElevFt": 1150,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GA0"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GA1",
+      "name": "FAGUNDES FLD",
+      "arp": {
+        "latDeg": 33.199011111111105,
+        "lonDeg": -84.58381666666666
+      },
+      "fieldElevFt": 864,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GA1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GA4",
+      "name": "SPRING VALLEY FARM",
+      "arp": {
+        "latDeg": 33.79705555555555,
+        "lonDeg": -83.85129166666665
+      },
+      "fieldElevFt": 920,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GA4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GA5",
+      "name": "KOLIBRI",
+      "arp": {
+        "latDeg": 33.57816666666667,
+        "lonDeg": -84.90688333333334
+      },
+      "fieldElevFt": 1100,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GA5"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GA8",
+      "name": "FLYING W FARMS",
+      "arp": {
+        "latDeg": 33.507777777777775,
+        "lonDeg": -85.18555555555555
+      },
+      "fieldElevFt": 1010,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GA8"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GE2",
+      "name": "RAINBOW FLD",
+      "arp": {
+        "latDeg": 32.83277777777778,
+        "lonDeg": -84.53777777777778
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -5.4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GE2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "6GE4",
+      "name": "M K FLD",
+      "arp": {
+        "latDeg": 33.16869444444444,
+        "lonDeg": -84.8303611111111
+      },
+      "fieldElevFt": 866,
+      "magVarDeg": -5.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "6GE4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "74GA",
+      "name": "JOHNSON",
+      "arp": {
+        "latDeg": 33.225722222222224,
+        "lonDeg": -84.6658888888889
+      },
+      "fieldElevFt": 830,
+      "magVarDeg": -5.4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "74GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "75GA",
+      "name": "LAKE TOBESOFKEE",
+      "arp": {
+        "latDeg": 32.84396666666667,
+        "lonDeg": -83.82402222222221
+      },
+      "fieldElevFt": 360,
+      "magVarDeg": -5.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "75GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "77GA",
+      "name": "TOLAND",
+      "arp": {
+        "latDeg": 33.164008333333335,
+        "lonDeg": -84.21353055555556
+      },
+      "fieldElevFt": 800,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "77GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "78GA",
+      "name": "C&R FARM",
+      "arp": {
+        "latDeg": 33.50427777777778,
+        "lonDeg": -85.01716388888889
+      },
+      "fieldElevFt": 1013,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "78GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "7A3",
+      "name": "LANETT RGNL",
+      "arp": {
+        "latDeg": 32.81184444444444,
+        "lonDeg": -85.22948611111111
+      },
+      "fieldElevFt": 631,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7A3"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 32.807316666666665,
+            "lonDeg": -85.23645
+          },
+          "headingTrueDeg": 57,
+          "headingMagDeg": 62,
+          "lengthFt": 5400
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 32.81636944444444,
+            "lonDeg": -85.22252222222222
+          },
+          "headingTrueDeg": 237,
+          "headingMagDeg": 242,
+          "lengthFt": 5400
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/7A3"
+    },
+    {
+      "icao": "7A5",
+      "name": "ROANOKE MUNI ENLOE",
+      "arp": {
+        "latDeg": 33.12967777777778,
+        "lonDeg": -85.37221666666666
+      },
+      "fieldElevFt": 907,
+      "magVarDeg": -1,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7A5"
+      },
+      "runways": [
+        {
+          "id": "12",
+          "threshold": {
+            "latDeg": 33.131172222222226,
+            "lonDeg": -85.37643333333332
+          },
+          "headingTrueDeg": 113.8,
+          "headingMagDeg": 114.8,
+          "lengthFt": 3561
+        },
+        {
+          "id": "30",
+          "threshold": {
+            "latDeg": 33.12826111111111,
+            "lonDeg": -85.36821666666665
+          },
+          "headingTrueDeg": 293.8,
+          "headingMagDeg": 294.8,
+          "lengthFt": 3561
+        }
+      ],
+      "hasPublishedApproaches": false,
+      "catalogRef": "airports/7A5"
+    },
+    {
+      "icao": "7GA4",
+      "name": "DANVILLE AIRPARK",
+      "arp": {
+        "latDeg": 32.58098888888889,
+        "lonDeg": -83.26766111111111
+      },
+      "fieldElevFt": 459,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7GA4"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "7GA7",
+      "name": "BERRY HILL",
+      "arp": {
+        "latDeg": 33.535555555555554,
+        "lonDeg": -84.17905555555556
+      },
+      "fieldElevFt": 770,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7GA7"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "7GA9",
+      "name": "SMISSON FLD",
+      "arp": {
+        "latDeg": 33.57055555555556,
+        "lonDeg": -84.89777777777779
+      },
+      "fieldElevFt": 1044,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "7GE7",
+      "name": "ROUGH COUNTRY",
+      "arp": {
+        "latDeg": 33.046388888888885,
+        "lonDeg": -84.66111111111111
+      },
+      "fieldElevFt": 840,
+      "magVarDeg": -5.4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "7GE7"
+      },
+      "runways": [
+        {
+          "id": "16",
+          "threshold": {
+            "latDeg": 33.051111111111105,
+            "lonDeg": -84.66277777777778
+          },
+          "headingTrueDeg": 168.8,
+          "headingMagDeg": 174.2,
+          "lengthFt": 3585
+        },
+        {
+          "id": "34",
+          "threshold": {
+            "latDeg": 33.041666666666664,
+            "lonDeg": -84.65944444444445
+          },
+          "headingTrueDeg": 348.8,
+          "headingMagDeg": 354.2,
+          "lengthFt": 3585
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "80GA",
+      "name": "MURPHY'S LANDING",
+      "arp": {
+        "latDeg": 33.25873055555556,
+        "lonDeg": -84.84465833333333
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "80GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "81GA",
+      "name": "LUCKY LAIRDS LANDING",
+      "arp": {
+        "latDeg": 33.64094166666666,
+        "lonDeg": -84.90493888888889
+      },
+      "fieldElevFt": 1130,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "81GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "82A",
+      "name": "MARION COUNTY",
+      "arp": {
+        "latDeg": 32.282805555555555,
+        "lonDeg": -84.50369444444445
+      },
+      "fieldElevFt": 682,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "82A"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "85GA",
+      "name": "AIKEN FLD",
+      "arp": {
+        "latDeg": 34.172327777777774,
+        "lonDeg": -83.73100555555556
+      },
+      "fieldElevFt": 1020,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "85GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "86GA",
+      "name": "FLYING G RANCH",
+      "arp": {
+        "latDeg": 34.86785555555556,
+        "lonDeg": -85.0610611111111
+      },
+      "fieldElevFt": 845,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "86GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "88GA",
+      "name": "EPIC FLD",
+      "arp": {
+        "latDeg": 32.75235277777778,
+        "lonDeg": -84.80182777777777
+      },
+      "fieldElevFt": 774,
+      "magVarDeg": -5.2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "88GA"
+      },
+      "runways": [
+        {
+          "id": "02",
+          "threshold": {
+            "latDeg": 32.74967777777778,
+            "lonDeg": -84.80257499999999
+          },
+          "headingTrueDeg": 18.5,
+          "headingMagDeg": 23.7,
+          "lengthFt": 2000
+        },
+        {
+          "id": "20",
+          "threshold": {
+            "latDeg": 32.75502777777778,
+            "lonDeg": -84.80108333333332
+          },
+          "headingTrueDeg": 198.5,
+          "headingMagDeg": 203.7,
+          "lengthFt": 2000
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8AL3",
+      "name": "FRICKS FLD",
+      "arp": {
+        "latDeg": 34.14176666666667,
+        "lonDeg": -86.08856666666667
+      },
+      "fieldElevFt": 1000,
+      "magVarDeg": -4.5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8AL3"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8GA1",
+      "name": "GUM CREEK",
+      "arp": {
+        "latDeg": 33.421225,
+        "lonDeg": -85.1618888888889
+      },
+      "fieldElevFt": 1070,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8GA1"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8GA6",
+      "name": "S & S LANDING STRIP",
+      "arp": {
+        "latDeg": 33.16222222222222,
+        "lonDeg": -84.32055555555556
+      },
+      "fieldElevFt": 900,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8GA6"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8GA7",
+      "name": "ETOWAH BEND",
+      "arp": {
+        "latDeg": 34.20203888888889,
+        "lonDeg": -84.97716666666666
+      },
+      "fieldElevFt": 620,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8GA7"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8GA8",
+      "name": "FALCONS AERIE",
+      "arp": {
+        "latDeg": 33.577333333333335,
+        "lonDeg": -85.00299722222222
+      },
+      "fieldElevFt": 1180,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8GA8"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "8GA9",
+      "name": "BROOK BRIDGE AERODROME",
+      "arp": {
+        "latDeg": 33.276783333333334,
+        "lonDeg": -84.41075833333333
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "8GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "91GA",
+      "name": "FLYING FROG FLD",
+      "arp": {
+        "latDeg": 33.27361111111111,
+        "lonDeg": -84.79333333333334
+      },
+      "fieldElevFt": 910,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "91GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "95GA",
+      "name": "MCINTOSH FLD",
+      "arp": {
+        "latDeg": 33.45594722222223,
+        "lonDeg": -84.94299444444445
+      },
+      "fieldElevFt": 771,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "95GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "96GA",
+      "name": "3-M'S",
+      "arp": {
+        "latDeg": 33.18583333333333,
+        "lonDeg": -84.36805555555554
+      },
+      "fieldElevFt": 890,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "96GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "97GA",
+      "name": "B TREE FARMS",
+      "arp": {
+        "latDeg": 34.26816111111111,
+        "lonDeg": -83.67211388888889
+      },
+      "fieldElevFt": 1000,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "97GA"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "98GA",
+      "name": "CIRCLE T",
+      "arp": {
+        "latDeg": 33.20724166666667,
+        "lonDeg": -83.91541944444445
+      },
+      "fieldElevFt": 545,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "98GA"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.209497222222225,
+            "lonDeg": -83.91952777777779
+          },
+          "headingTrueDeg": 126.1,
+          "headingMagDeg": 129.1,
+          "lengthFt": 3000
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.20498888888889,
+            "lonDeg": -83.9113138888889
+          },
+          "headingTrueDeg": 306.1,
+          "headingMagDeg": 309.1,
+          "lengthFt": 3000
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "9A0",
+      "name": "LUMPKIN COUNTY-WIMPYS",
+      "arp": {
+        "latDeg": 34.58309166666667,
+        "lonDeg": -84.01995833333334
+      },
+      "fieldElevFt": 1329,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9A0"
+      },
+      "runways": [
+        {
+          "id": "16",
+          "threshold": {
+            "latDeg": 34.58423611111111,
+            "lonDeg": -84.02075277777777
+          },
+          "headingTrueDeg": 153,
+          "headingMagDeg": 156,
+          "lengthFt": 3024
+        },
+        {
+          "id": "34",
+          "threshold": {
+            "latDeg": 34.58054166666667,
+            "lonDeg": -84.01819444444445
+          },
+          "headingTrueDeg": 333,
+          "headingMagDeg": 336,
+          "lengthFt": 3024
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "9A5",
+      "name": "BARWICK LAFAYETTE",
+      "arp": {
+        "latDeg": 34.68801666666666,
+        "lonDeg": -85.2904638888889
+      },
+      "fieldElevFt": 776,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9A5"
+      },
+      "runways": [
+        {
+          "id": "02",
+          "threshold": {
+            "latDeg": 34.68390833333333,
+            "lonDeg": -85.292225
+          },
+          "headingTrueDeg": 23,
+          "headingMagDeg": 26,
+          "lengthFt": 4999
+        },
+        {
+          "id": "20",
+          "threshold": {
+            "latDeg": 34.69382222222222,
+            "lonDeg": -85.287975
+          },
+          "headingTrueDeg": 202,
+          "headingMagDeg": 205,
+          "lengthFt": 4999
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/9A5"
+    },
+    {
+      "icao": "9GA0",
+      "name": "BROWN FLD",
+      "arp": {
+        "latDeg": 33.057069444444444,
+        "lonDeg": -84.34242222222221
+      },
+      "fieldElevFt": 864,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9GA0"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "9GA6",
+      "name": "BROOKLINE - MEADOWMERE",
+      "arp": {
+        "latDeg": 33.09777777777778,
+        "lonDeg": -83.40472222222223
+      },
+      "fieldElevFt": 500,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9GA6"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "9GA9",
+      "name": "DEERFIELD LANDING",
+      "arp": {
+        "latDeg": 33.21805555555556,
+        "lonDeg": -83.31722222222221
+      },
+      "fieldElevFt": 445,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9GA9"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "9GE7",
+      "name": "NEELY FARMS",
+      "arp": {
+        "latDeg": 33.53138888888889,
+        "lonDeg": -83.79194444444444
+      },
+      "fieldElevFt": 720,
+      "magVarDeg": -6,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "9GE7"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL09",
+      "name": "CLOUDMONT AIRPARK",
+      "arp": {
+        "latDeg": 34.54085833333333,
+        "lonDeg": -85.59229444444443
+      },
+      "fieldElevFt": 1692,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL09"
+      },
+      "runways": [
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 34.544225,
+            "lonDeg": -85.59235555555556
+          },
+          "headingTrueDeg": 181,
+          "headingMagDeg": 182,
+          "lengthFt": 2450
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 34.53748888888889,
+            "lonDeg": -85.59223055555555
+          },
+          "headingTrueDeg": 1,
+          "headingMagDeg": 2,
+          "lengthFt": 2450
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL27",
+      "name": "HEADQUARTERS",
+      "arp": {
+        "latDeg": 34.10565277777778,
+        "lonDeg": -85.56579444444444
+      },
+      "fieldElevFt": 610,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL27"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL32",
+      "name": "FLYING BK RANCH",
+      "arp": {
+        "latDeg": 34.322588888888895,
+        "lonDeg": -85.6437138888889
+      },
+      "fieldElevFt": 670,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL32"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL51",
+      "name": "FLYING C'S PLANTATION",
+      "arp": {
+        "latDeg": 32.41611111111111,
+        "lonDeg": -85.29916666666666
+      },
+      "fieldElevFt": 395,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL51"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL60",
+      "name": "DUGGER'S FLD",
+      "arp": {
+        "latDeg": 33.83871111111112,
+        "lonDeg": -86.21136666666666
+      },
+      "fieldElevFt": 560,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL60"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "AL89",
+      "name": "SOMMERSET STRIP",
+      "arp": {
+        "latDeg": 32.718741666666666,
+        "lonDeg": -85.36689166666666
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AL89"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "D73",
+      "name": "CY NUNNALLY MEML",
+      "arp": {
+        "latDeg": 33.78252777777778,
+        "lonDeg": -83.69280555555557
+      },
+      "fieldElevFt": 875,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "D73"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 33.77666111111111,
+            "lonDeg": -83.6970888888889
+          },
+          "headingTrueDeg": 35,
+          "headingMagDeg": 39,
+          "lengthFt": 5000
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 33.78838333333333,
+            "lonDeg": -83.68850833333333
+          },
+          "headingTrueDeg": 215,
+          "headingMagDeg": 219,
+          "lengthFt": 5000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/D73"
+    },
+    {
+      "icao": "GA00",
+      "name": "KINTAIL FARM",
+      "arp": {
+        "latDeg": 33.82555555555556,
+        "lonDeg": -83.63972222222223
+      },
+      "fieldElevFt": 810,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA00"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA01",
+      "name": "THE FLYING W RANCH",
+      "arp": {
+        "latDeg": 34.176944444444445,
+        "lonDeg": -83.93583333333333
+      },
+      "fieldElevFt": 1160,
+      "magVarDeg": -5.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA01"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA03",
+      "name": "WILSON",
+      "arp": {
+        "latDeg": 34.86952222222222,
+        "lonDeg": -85.199675
+      },
+      "fieldElevFt": 795,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA03"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA04",
+      "name": "MALLARDS LANDING",
+      "arp": {
+        "latDeg": 33.36566944444444,
+        "lonDeg": -84.16519722222223
+      },
+      "fieldElevFt": 837,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA04"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA06",
+      "name": "MONTICELLO SKY RANCH",
+      "arp": {
+        "latDeg": 33.3325,
+        "lonDeg": -83.72694444444444
+      },
+      "fieldElevFt": 690,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA06"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA10",
+      "name": "RIDGEVIEW FARM",
+      "arp": {
+        "latDeg": 33.06895277777778,
+        "lonDeg": -84.35195277777777
+      },
+      "fieldElevFt": 854,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA10"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA16",
+      "name": "TAYLOR FLD",
+      "arp": {
+        "latDeg": 33.72428611111111,
+        "lonDeg": -83.56683333333334
+      },
+      "fieldElevFt": 710,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA16"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA18",
+      "name": "BIG CREEK FLYING RANCH",
+      "arp": {
+        "latDeg": 34.83286944444445,
+        "lonDeg": -83.40960555555556
+      },
+      "fieldElevFt": 1650,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA18"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA2",
+      "name": "PEACH STATE AERODROME",
+      "arp": {
+        "latDeg": 33.183452777777774,
+        "lonDeg": -84.37159166666666
+      },
+      "fieldElevFt": 926,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA2"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA23",
+      "name": "WYATT",
+      "arp": {
+        "latDeg": 34.57833333333333,
+        "lonDeg": -85.38388888888889
+      },
+      "fieldElevFt": 720,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA23"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA29",
+      "name": "WELLERS LANDING",
+      "arp": {
+        "latDeg": 33.15623333333333,
+        "lonDeg": -84.43103611111111
+      },
+      "fieldElevFt": 843,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA29"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA30",
+      "name": "ROCKIN R",
+      "arp": {
+        "latDeg": 34.675916666666666,
+        "lonDeg": -83.42428055555555
+      },
+      "fieldElevFt": 1545,
+      "magVarDeg": -6.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA30"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA31",
+      "name": "TWO ROCKS",
+      "arp": {
+        "latDeg": 33.46978888888889,
+        "lonDeg": -84.66854722222223
+      },
+      "fieldElevFt": 964,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA31"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA44",
+      "name": "RICHARDS",
+      "arp": {
+        "latDeg": 33.07928888888889,
+        "lonDeg": -85.03160555555556
+      },
+      "fieldElevFt": 650,
+      "magVarDeg": -1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA44"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA45",
+      "name": "ARRENDALE FOREST",
+      "arp": {
+        "latDeg": 34.660180555555556,
+        "lonDeg": -83.5011
+      },
+      "fieldElevFt": 1386,
+      "magVarDeg": -6.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA45"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA50",
+      "name": "DREAM TEAM",
+      "arp": {
+        "latDeg": 33.597500000000004,
+        "lonDeg": -83.51777777777778
+      },
+      "fieldElevFt": 604,
+      "magVarDeg": -4,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA50"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA53",
+      "name": "ROLLINS",
+      "arp": {
+        "latDeg": 33.815105555555554,
+        "lonDeg": -84.37186944444444
+      },
+      "fieldElevFt": 810,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA53"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA61",
+      "name": "KENLEY FLD",
+      "arp": {
+        "latDeg": 33.26900833333333,
+        "lonDeg": -84.49714722222222
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA61"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA62",
+      "name": "CEDAR RIDGE",
+      "arp": {
+        "latDeg": 33.255116666666666,
+        "lonDeg": -84.40020277777778
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA62"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA65",
+      "name": "HOME FLD",
+      "arp": {
+        "latDeg": 33.607911111111115,
+        "lonDeg": -83.35525833333332
+      },
+      "fieldElevFt": 488,
+      "magVarDeg": -6.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA65"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 33.607911111111115,
+            "lonDeg": -83.35773333333333
+          },
+          "headingTrueDeg": 96.3,
+          "headingMagDeg": 102.6,
+          "lengthFt": 1508
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.607911111111115,
+            "lonDeg": -83.35278055555555
+          },
+          "headingTrueDeg": 276.3,
+          "headingMagDeg": 282.6,
+          "lengthFt": 1508
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA67",
+      "name": "KING SKY RANCH",
+      "arp": {
+        "latDeg": 34.76815,
+        "lonDeg": -83.59295
+      },
+      "fieldElevFt": 1840,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA67"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA68",
+      "name": "FLYING 'H' RANCH",
+      "arp": {
+        "latDeg": 33.114847222222224,
+        "lonDeg": -84.44909166666667
+      },
+      "fieldElevFt": 800,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA68"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA72",
+      "name": "PRATERMILL FLIGHT PARK",
+      "arp": {
+        "latDeg": 34.88166666666667,
+        "lonDeg": -84.88972222222223
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA72"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA73",
+      "name": "SHADE TREE",
+      "arp": {
+        "latDeg": 33.161788888888886,
+        "lonDeg": -84.45325833333334
+      },
+      "fieldElevFt": 850,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA73"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA74",
+      "name": "TAKLE FLD",
+      "arp": {
+        "latDeg": 33.04179444444444,
+        "lonDeg": -84.41242222222223
+      },
+      "fieldElevFt": 850,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA74"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA75",
+      "name": "MEADOWLARK",
+      "arp": {
+        "latDeg": 33.08734722222223,
+        "lonDeg": -84.40520000000001
+      },
+      "fieldElevFt": 784,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA75"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA76",
+      "name": "BROKEN RANCH",
+      "arp": {
+        "latDeg": 33.154849999999996,
+        "lonDeg": -83.89879444444445
+      },
+      "fieldElevFt": 620,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA76"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA77",
+      "name": "TWIN FORKS",
+      "arp": {
+        "latDeg": 34.872083333333336,
+        "lonDeg": -85.2503611111111
+      },
+      "fieldElevFt": 780,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA77"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA80",
+      "name": "WHISPERING PINES",
+      "arp": {
+        "latDeg": 33.78233055555555,
+        "lonDeg": -83.9888
+      },
+      "fieldElevFt": 940,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA80"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA81",
+      "name": "BIG DOG - CAMERON FLD",
+      "arp": {
+        "latDeg": 32.547777777777775,
+        "lonDeg": -83.82694444444444
+      },
+      "fieldElevFt": 380,
+      "magVarDeg": -5.8,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA81"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA83",
+      "name": "WINDY HILL",
+      "arp": {
+        "latDeg": 33.54678333333333,
+        "lonDeg": -83.80545833333333
+      },
+      "fieldElevFt": 740,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA83"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA86",
+      "name": "LITTLE TOBESOFKEE CREEK RANCH",
+      "arp": {
+        "latDeg": 32.98388888888889,
+        "lonDeg": -84.09555555555555
+      },
+      "fieldElevFt": 755,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA86"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA87",
+      "name": "HIGH VALLEY AIRPARK",
+      "arp": {
+        "latDeg": 34.69814444444444,
+        "lonDeg": -84.01269166666667
+      },
+      "fieldElevFt": 2800,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA87"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA89",
+      "name": "DIAMOND S",
+      "arp": {
+        "latDeg": 33.475833333333334,
+        "lonDeg": -84.27694444444444
+      },
+      "fieldElevFt": 910,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA89"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA90",
+      "name": "WALKER FLD",
+      "arp": {
+        "latDeg": 33.45205833333333,
+        "lonDeg": -84.40936944444445
+      },
+      "fieldElevFt": 875,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA90"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA92",
+      "name": "BECK FLD",
+      "arp": {
+        "latDeg": 33.519444444444446,
+        "lonDeg": -84.51444444444445
+      },
+      "fieldElevFt": 990,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA92"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA94",
+      "name": "MC LENDON",
+      "arp": {
+        "latDeg": 33.491502777777775,
+        "lonDeg": -84.48937222222223
+      },
+      "fieldElevFt": 900,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA94"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA95",
+      "name": "COLEMAN FLD",
+      "arp": {
+        "latDeg": 33.526225,
+        "lonDeg": -84.50215
+      },
+      "fieldElevFt": 1010,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA95"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA98",
+      "name": "GRAYHILL",
+      "arp": {
+        "latDeg": 32.948611111111106,
+        "lonDeg": -85.05388888888889
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA98"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GA99",
+      "name": "MIAMI VALLEY FARM",
+      "arp": {
+        "latDeg": 32.54875833333333,
+        "lonDeg": -83.80185277777778
+      },
+      "fieldElevFt": 468,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GA99"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE04",
+      "name": "MCLENDON FLD",
+      "arp": {
+        "latDeg": 32.66694444444444,
+        "lonDeg": -84.96555555555555
+      },
+      "fieldElevFt": 650,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE04"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE05",
+      "name": "GIBSON FLD",
+      "arp": {
+        "latDeg": 34.61555555555556,
+        "lonDeg": -85.34305555555555
+      },
+      "fieldElevFt": 750,
+      "magVarDeg": -5.1,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE05"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE11",
+      "name": "HOGJOWL",
+      "arp": {
+        "latDeg": 34.60583333333334,
+        "lonDeg": -85.46194444444444
+      },
+      "fieldElevFt": 1790,
+      "magVarDeg": -5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE11"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE27",
+      "name": "SMITH FLD",
+      "arp": {
+        "latDeg": 32.602222222222224,
+        "lonDeg": -83.75416666666666
+      },
+      "fieldElevFt": 475,
+      "magVarDeg": -5.9,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE27"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE33",
+      "name": "RIVER BEND",
+      "arp": {
+        "latDeg": 33.30444444444444,
+        "lonDeg": -84.13666666666667
+      },
+      "fieldElevFt": 718,
+      "magVarDeg": -5.7,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE33"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE35",
+      "name": "SOUTHERN OAKS",
+      "arp": {
+        "latDeg": 33.731388888888894,
+        "lonDeg": -83.46972222222223
+      },
+      "fieldElevFt": 695,
+      "magVarDeg": -6.2,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE35"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE53",
+      "name": "CHIGGER HILL",
+      "arp": {
+        "latDeg": 33.31666666666667,
+        "lonDeg": -84.15027777777779
+      },
+      "fieldElevFt": 800,
+      "magVarDeg": -5.7,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE53"
+      },
+      "runways": [],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE56",
+      "name": "SMITH FLD",
+      "arp": {
+        "latDeg": 33.67601388888889,
+        "lonDeg": -83.26124166666666
+      },
+      "fieldElevFt": 511,
+      "magVarDeg": -6.3,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE56"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 33.672752777777774,
+            "lonDeg": -83.26296388888889
+          },
+          "headingTrueDeg": 30.1,
+          "headingMagDeg": 36.4,
+          "lengthFt": 2594
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 33.679275,
+            "lonDeg": -83.25952222222222
+          },
+          "headingTrueDeg": 210.1,
+          "headingMagDeg": 216.4,
+          "lengthFt": 2594
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE61",
+      "name": "BROWNSTONE AIRPARK",
+      "arp": {
+        "latDeg": 34.10251388888889,
+        "lonDeg": -85.38390833333334
+      },
+      "fieldElevFt": 752,
+      "magVarDeg": -5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE61"
+      },
+      "runways": [
+        {
+          "id": "01",
+          "threshold": {
+            "latDeg": 34.101147222222224,
+            "lonDeg": -85.38408055555556
+          },
+          "headingTrueDeg": 11,
+          "headingMagDeg": 16,
+          "lengthFt": 1000
+        },
+        {
+          "id": "19",
+          "threshold": {
+            "latDeg": 34.103880555555556,
+            "lonDeg": -85.38373611111112
+          },
+          "headingTrueDeg": 191,
+          "headingMagDeg": 196,
+          "lengthFt": 1000
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "GE72",
+      "name": "HANNAH CREEK",
+      "arp": {
+        "latDeg": 34.23555833333334,
+        "lonDeg": -83.15310000000001
+      },
+      "fieldElevFt": 728,
+      "magVarDeg": -6.5,
+      "publicUse": false,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GE72"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 34.23533888888889,
+            "lonDeg": -83.15360555555556
+          },
+          "headingTrueDeg": 97.2,
+          "headingMagDeg": 103.7,
+          "lengthFt": 834
+        },
+        {
+          "id": "12",
+          "threshold": {
+            "latDeg": 34.236472222222226,
+            "lonDeg": -83.15524722222223
+          },
+          "headingTrueDeg": 128.1,
+          "headingMagDeg": 134.6,
+          "lengthFt": 1002
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 34.23531111111111,
+            "lonDeg": -83.1508388888889
+          },
+          "headingTrueDeg": 277.2,
+          "headingMagDeg": 283.7,
+          "lengthFt": 834
+        },
+        {
+          "id": "30",
+          "threshold": {
+            "latDeg": 34.23502777777778,
+            "lonDeg": -83.15241666666667
+          },
+          "headingTrueDeg": 308.1,
+          "headingMagDeg": 314.6,
+          "lengthFt": 1002
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KAHN",
+      "name": "ATHENS/BEN EPPS",
+      "arp": {
+        "latDeg": 33.94864166666666,
+        "lonDeg": -83.32591388888889
+      },
+      "fieldElevFt": 812,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AHN"
+      },
+      "runways": [
+        {
+          "id": "02",
+          "threshold": {
+            "latDeg": 33.94271666666666,
+            "lonDeg": -83.32486944444445
+          },
+          "headingTrueDeg": 27,
+          "headingMagDeg": 33,
+          "lengthFt": 3995
+        },
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 33.94891111111111,
+            "lonDeg": -83.33820833333333
+          },
+          "headingTrueDeg": 94,
+          "headingMagDeg": 100,
+          "lengthFt": 6122
+        },
+        {
+          "id": "20",
+          "threshold": {
+            "latDeg": 33.95297777777778,
+            "lonDeg": -83.32019444444444
+          },
+          "headingTrueDeg": 207,
+          "headingMagDeg": 213,
+          "lengthFt": 3995
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 33.94940277777778,
+            "lonDeg": -83.31803333333333
+          },
+          "headingTrueDeg": 274,
+          "headingMagDeg": 280,
+          "lengthFt": 6122
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KAHN"
+    },
+    {
+      "icao": "KAJR",
+      "name": "HABERSHAM COUNTY",
+      "arp": {
+        "latDeg": 34.499852777777775,
+        "lonDeg": -83.55666388888889
+      },
+      "fieldElevFt": 1448,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AJR"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 34.497816666666665,
+            "lonDeg": -83.56044722222222
+          },
+          "headingTrueDeg": 63,
+          "headingMagDeg": 69,
+          "lengthFt": 5503
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 34.503972222222224,
+            "lonDeg": -83.54900833333333
+          },
+          "headingTrueDeg": 243,
+          "headingMagDeg": 249,
+          "lengthFt": 5503
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KAJR"
+    },
+    {
+      "icao": "KALX",
+      "name": "THOMAS C RUSSELL FLD",
+      "arp": {
+        "latDeg": 32.91475,
+        "lonDeg": -85.96294444444445
+      },
+      "fieldElevFt": 686,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "ALX"
+      },
+      "runways": [
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 32.920477777777776,
+            "lonDeg": -85.96324722222222
+          },
+          "headingTrueDeg": 182,
+          "headingMagDeg": 186,
+          "lengthFt": 5422
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 32.9073,
+            "lonDeg": -85.96256944444444
+          },
+          "headingTrueDeg": 2,
+          "headingMagDeg": 6,
+          "lengthFt": 5422
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KALX"
+    },
+    {
+      "icao": "KANB",
+      "name": "ANNISTON RGNL",
+      "arp": {
+        "latDeg": 33.588169444444446,
+        "lonDeg": -85.85811388888888
+      },
+      "fieldElevFt": 612,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "ANB"
+      },
+      "runways": [
+        {
+          "id": "05",
+          "threshold": {
+            "latDeg": 33.58179166666667,
+            "lonDeg": -85.86671944444444
+          },
+          "headingTrueDeg": 52,
+          "headingMagDeg": 56,
+          "lengthFt": 7002
+        },
+        {
+          "id": "23",
+          "threshold": {
+            "latDeg": 33.594547222222225,
+            "lonDeg": -85.84950833333333
+          },
+          "headingTrueDeg": 232,
+          "headingMagDeg": 236,
+          "lengthFt": 7002
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KANB"
+    },
+    {
+      "icao": "KASN",
+      "name": "TALLADEGA MUNI",
+      "arp": {
+        "latDeg": 33.56950555555556,
+        "lonDeg": -86.05120277777777
+      },
+      "fieldElevFt": 529,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "ASN"
+      },
+      "runways": [
+        {
+          "id": "04",
+          "threshold": {
+            "latDeg": 33.56274722222222,
+            "lonDeg": -86.05693333333333
+          },
+          "headingTrueDeg": 38,
+          "headingMagDeg": 41,
+          "lengthFt": 6032
+        },
+        {
+          "id": "22",
+          "threshold": {
+            "latDeg": 33.576261111111116,
+            "lonDeg": -86.04546944444444
+          },
+          "headingTrueDeg": 218,
+          "headingMagDeg": 221,
+          "lengthFt": 6032
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KASN"
+    },
+    {
+      "icao": "KATL",
+      "name": "HARTSFIELD/JACKSON ATLANTA INT",
+      "arp": {
+        "latDeg": 33.6367,
+        "lonDeg": -84.4278638888889
+      },
+      "fieldElevFt": 1026,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "ATL"
+      },
+      "runways": [
+        {
+          "id": "08L",
+          "threshold": {
+            "latDeg": 33.64953333333333,
+            "lonDeg": -84.439025
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 100,
+          "lengthFt": 9000
+        },
+        {
+          "id": "08R",
+          "threshold": {
+            "latDeg": 33.64678611111111,
+            "lonDeg": -84.43836111111112
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 100,
+          "lengthFt": 9999
+        },
+        {
+          "id": "09L",
+          "threshold": {
+            "latDeg": 33.634705555555556,
+            "lonDeg": -84.44796666666667
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 100,
+          "lengthFt": 12390
+        },
+        {
+          "id": "09R",
+          "threshold": {
+            "latDeg": 33.63181388888889,
+            "lonDeg": -84.44796666666667
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 100,
+          "lengthFt": 9000
+        },
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 33.62027222222222,
+            "lonDeg": -84.44787777777778
+          },
+          "headingTrueDeg": 95,
+          "headingMagDeg": 100,
+          "lengthFt": 9000
+        },
+        {
+          "id": "26L",
+          "threshold": {
+            "latDeg": 33.646794444444446,
+            "lonDeg": -84.40550833333334
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 280,
+          "lengthFt": 9999
+        },
+        {
+          "id": "26R",
+          "threshold": {
+            "latDeg": 33.649541666666664,
+            "lonDeg": -84.40945277777779
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 280,
+          "lengthFt": 9000
+        },
+        {
+          "id": "27L",
+          "threshold": {
+            "latDeg": 33.631822222222226,
+            "lonDeg": -84.4184
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 280,
+          "lengthFt": 9000
+        },
+        {
+          "id": "27R",
+          "threshold": {
+            "latDeg": 33.634702777777775,
+            "lonDeg": -84.40890833333334
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 280,
+          "lengthFt": 12390
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 33.62028611111111,
+            "lonDeg": -84.41831666666667
+          },
+          "headingTrueDeg": 275,
+          "headingMagDeg": 280,
+          "lengthFt": 9000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "."
+    },
+    {
+      "icao": "KAUO",
+      "name": "AUBURN UNIVERSITY RGNL",
+      "arp": {
+        "latDeg": 32.61511111111111,
+        "lonDeg": -85.434
+      },
+      "fieldElevFt": 777,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "AUO"
+      },
+      "runways": [
+        {
+          "id": "11",
+          "threshold": {
+            "latDeg": 32.61958055555556,
+            "lonDeg": -85.43735000000001
+          },
+          "headingTrueDeg": 111,
+          "headingMagDeg": 115,
+          "lengthFt": 4000
+        },
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 32.6202,
+            "lonDeg": -85.43603611111112
+          },
+          "headingTrueDeg": 185,
+          "headingMagDeg": 189,
+          "lengthFt": 5264
+        },
+        {
+          "id": "29",
+          "threshold": {
+            "latDeg": 32.61655277777778,
+            "lonDeg": -85.42587222222222
+          },
+          "headingTrueDeg": 291,
+          "headingMagDeg": 295,
+          "lengthFt": 4000
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 32.60573611111111,
+            "lonDeg": -85.43634444444444
+          },
+          "headingTrueDeg": 5,
+          "headingMagDeg": 9,
+          "lengthFt": 5264
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KAUO"
+    },
+    {
+      "icao": "KCCO",
+      "name": "NEWNAN COWETA COUNTY",
+      "arp": {
+        "latDeg": 33.311566666666664,
+        "lonDeg": -84.76975555555555
+      },
+      "fieldElevFt": 970,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CCO"
+      },
+      "runways": [
+        {
+          "id": "15",
+          "threshold": {
+            "latDeg": 33.31730833333334,
+            "lonDeg": -84.77560555555556
+          },
+          "headingTrueDeg": 142,
+          "headingMagDeg": 145,
+          "lengthFt": 5500
+        },
+        {
+          "id": "33",
+          "threshold": {
+            "latDeg": 33.30582222222222,
+            "lonDeg": -84.76390555555555
+          },
+          "headingTrueDeg": 322,
+          "headingMagDeg": 325,
+          "lengthFt": 5500
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCCO"
+    },
+    {
+      "icao": "KCNI",
+      "name": "CHEROKEE COUNTY RGNL",
+      "arp": {
+        "latDeg": 34.31219722222222,
+        "lonDeg": -84.42212222222223
+      },
+      "fieldElevFt": 1220,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CNI"
+      },
+      "runways": [
+        {
+          "id": "05",
+          "threshold": {
+            "latDeg": 34.30707222222222,
+            "lonDeg": -84.42764444444445
+          },
+          "headingTrueDeg": 47,
+          "headingMagDeg": 52,
+          "lengthFt": 5003
+        },
+        {
+          "id": "23",
+          "threshold": {
+            "latDeg": 34.31731944444445,
+            "lonDeg": -84.4166
+          },
+          "headingTrueDeg": 227,
+          "headingMagDeg": 232,
+          "lengthFt": 5003
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCNI"
+    },
+    {
+      "icao": "KCPP",
+      "name": "GREENE COUNTY RGNL",
+      "arp": {
+        "latDeg": 33.597969444444445,
+        "lonDeg": -83.13826111111112
+      },
+      "fieldElevFt": 689,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "catalog_error",
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CPP"
+      },
+      "runways": [
+        {
+          "id": "07",
+          "threshold": {
+            "latDeg": 33.59478888888889,
+            "lonDeg": -83.1460888888889
+          },
+          "headingTrueDeg": 69,
+          "headingMagDeg": 74,
+          "lengthFt": 5500
+        },
+        {
+          "id": "25",
+          "threshold": {
+            "latDeg": 33.60126944444445,
+            "lonDeg": -83.13013888888888
+          },
+          "headingTrueDeg": 249,
+          "headingMagDeg": 254,
+          "lengthFt": 5500
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KCSG",
+      "name": "COLUMBUS",
+      "arp": {
+        "latDeg": 32.516327777777775,
+        "lonDeg": -84.93886944444445
+      },
+      "fieldElevFt": 398,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CSG"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 32.51116666666667,
+            "lonDeg": -84.94531666666667
+          },
+          "headingTrueDeg": 56,
+          "headingMagDeg": 58,
+          "lengthFt": 6997
+        },
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 32.51873611111111,
+            "lonDeg": -84.9488
+          },
+          "headingTrueDeg": 129,
+          "headingMagDeg": 131,
+          "lengthFt": 3997
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 32.52251111111111,
+            "lonDeg": -84.92699166666667
+          },
+          "headingTrueDeg": 236,
+          "headingMagDeg": 238,
+          "lengthFt": 6997
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 32.512372222222226,
+            "lonDeg": -84.93883333333333
+          },
+          "headingTrueDeg": 309,
+          "headingMagDeg": 311,
+          "lengthFt": 3997
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCSG"
+    },
+    {
+      "icao": "KCTJ",
+      "name": "WEST GEORGIA RGNL/O V GRAY FLD",
+      "arp": {
+        "latDeg": 33.63169722222222,
+        "lonDeg": -85.1522638888889
+      },
+      "fieldElevFt": 1165,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CTJ"
+      },
+      "runways": [
+        {
+          "id": "17",
+          "threshold": {
+            "latDeg": 33.638958333333335,
+            "lonDeg": -85.15478055555556
+          },
+          "headingTrueDeg": 168,
+          "headingMagDeg": 172,
+          "lengthFt": 5503
+        },
+        {
+          "id": "35",
+          "threshold": {
+            "latDeg": 33.624433333333336,
+            "lonDeg": -85.14974722222223
+          },
+          "headingTrueDeg": 348,
+          "headingMagDeg": 352,
+          "lengthFt": 5503
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCTJ"
+    },
+    {
+      "icao": "KCVC",
+      "name": "COVINGTON MUNI",
+      "arp": {
+        "latDeg": 33.632247222222226,
+        "lonDeg": -83.84661944444444
+      },
+      "fieldElevFt": 820,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CVC"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 33.63303333333334,
+            "lonDeg": -83.85643055555555
+          },
+          "headingTrueDeg": 100,
+          "headingMagDeg": 105,
+          "lengthFt": 6000
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 33.631591666666665,
+            "lonDeg": -83.83844444444443
+          },
+          "headingTrueDeg": 280,
+          "headingMagDeg": 285,
+          "lengthFt": 6000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCVC"
+    },
+    {
+      "icao": "KCZL",
+      "name": "TOM B DAVID FLD",
+      "arp": {
+        "latDeg": 34.45540277777778,
+        "lonDeg": -84.93915555555556
+      },
+      "fieldElevFt": 656,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "CZL"
+      },
+      "runways": [
+        {
+          "id": "17",
+          "threshold": {
+            "latDeg": 34.46351666666667,
+            "lonDeg": -84.94120833333334
+          },
+          "headingTrueDeg": 173,
+          "headingMagDeg": 178,
+          "lengthFt": 6034
+        },
+        {
+          "id": "35",
+          "threshold": {
+            "latDeg": 34.44832777777778,
+            "lonDeg": -84.9373638888889
+          },
+          "headingTrueDeg": 353,
+          "headingMagDeg": 358,
+          "lengthFt": 6034
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KCZL"
+    },
+    {
+      "icao": "KDNN",
+      "name": "DALTON MUNI",
+      "arp": {
+        "latDeg": 34.72293888888889,
+        "lonDeg": -84.87024166666666
+      },
+      "fieldElevFt": 709,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "DNN"
+      },
+      "runways": [
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 34.72850277777778,
+            "lonDeg": -84.876425
+          },
+          "headingTrueDeg": 140,
+          "headingMagDeg": 143,
+          "lengthFt": 5496
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 34.717375000000004,
+            "lonDeg": -84.86405833333333
+          },
+          "headingTrueDeg": 320,
+          "headingMagDeg": 323,
+          "lengthFt": 5496
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KDNN"
+    },
+    {
+      "icao": "KDZJ",
+      "name": "BLAIRSVILLE",
+      "arp": {
+        "latDeg": 34.85443055555556,
+        "lonDeg": -83.99731944444444
+      },
+      "fieldElevFt": 1907,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "DZJ"
+      },
+      "runways": [
+        {
+          "id": "08",
+          "threshold": {
+            "latDeg": 34.85322777777778,
+            "lonDeg": -84.00215277777778
+          },
+          "headingTrueDeg": 76,
+          "headingMagDeg": 79,
+          "lengthFt": 5004
+        },
+        {
+          "id": "26",
+          "threshold": {
+            "latDeg": 34.855875000000005,
+            "lonDeg": -83.991525
+          },
+          "headingTrueDeg": 256,
+          "headingMagDeg": 259,
+          "lengthFt": 5004
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KDZJ"
+    },
+    {
+      "icao": "KEBA",
+      "name": "ELBERT COUNTY-PATZ FLD",
+      "arp": {
+        "latDeg": 34.09540277777778,
+        "lonDeg": -82.81749166666667
+      },
+      "fieldElevFt": 615,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "EBA"
+      },
+      "runways": [
+        {
+          "id": "11",
+          "threshold": {
+            "latDeg": 34.096447222222224,
+            "lonDeg": -82.8256611111111
+          },
+          "headingTrueDeg": 105,
+          "headingMagDeg": 111,
+          "lengthFt": 5004
+        },
+        {
+          "id": "29",
+          "threshold": {
+            "latDeg": 34.09435833333333,
+            "lonDeg": -82.809325
+          },
+          "headingTrueDeg": 285,
+          "headingMagDeg": 291,
+          "lengthFt": 5004
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KEBA"
+    },
+    {
+      "icao": "KFFC",
+      "name": "ATLANTA RGNL FALCON FLD",
+      "arp": {
+        "latDeg": 33.35772222222222,
+        "lonDeg": -84.57252777777778
+      },
+      "fieldElevFt": 808,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "FFC"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.36167777777778,
+            "lonDeg": -84.57854444444445
+          },
+          "headingTrueDeg": 133,
+          "headingMagDeg": 138,
+          "lengthFt": 5768
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.35315833333333,
+            "lonDeg": -84.56561666666667
+          },
+          "headingTrueDeg": 313,
+          "headingMagDeg": 318,
+          "lengthFt": 5768
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KFFC"
+    },
+    {
+      "icao": "KFGU",
+      "name": "COLLEGEDALE MUNI",
+      "arp": {
+        "latDeg": 35.044422222222224,
+        "lonDeg": -85.02006666666666
+      },
+      "fieldElevFt": 860,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": false,
+      "eligible": false,
+      "exclusionReason": "untowered",
+      "serviceMetadata": {
+        "publicUse": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "FGU"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 35.03930555555555,
+            "lonDeg": -85.02326388888889
+          },
+          "headingTrueDeg": 29.2,
+          "headingMagDeg": 31.2,
+          "lengthFt": 4986
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 35.05051388888889,
+            "lonDeg": -85.01625833333334
+          },
+          "headingTrueDeg": 209.2,
+          "headingMagDeg": 211.2,
+          "lengthFt": 4986
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KFTY",
+      "name": "FULTON COUNTY EXEC/CHARLIE BRO",
+      "arp": {
+        "latDeg": 33.780119444444445,
+        "lonDeg": -84.52070833333333
+      },
+      "fieldElevFt": 841,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "FTY"
+      },
+      "runways": [
+        {
+          "id": "08",
+          "threshold": {
+            "latDeg": 33.77869166666667,
+            "lonDeg": -84.53009166666666
+          },
+          "headingTrueDeg": 85,
+          "headingMagDeg": 90,
+          "lengthFt": 5797
+        },
+        {
+          "id": "26",
+          "threshold": {
+            "latDeg": 33.78154722222222,
+            "lonDeg": -84.51132222222222
+          },
+          "headingTrueDeg": 265,
+          "headingMagDeg": 270,
+          "lengthFt": 5797
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KFTY"
+    },
+    {
+      "icao": "KGAD",
+      "name": "NORTHEAST ALABAMA RGNL",
+      "arp": {
+        "latDeg": 33.97040555555556,
+        "lonDeg": -86.09128888888888
+      },
+      "fieldElevFt": 569,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GAD"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 33.96583888888889,
+            "lonDeg": -86.101075
+          },
+          "headingTrueDeg": 64,
+          "headingMagDeg": 67,
+          "lengthFt": 6802
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 33.97497222222223,
+            "lonDeg": -86.08149999999999
+          },
+          "headingTrueDeg": 244,
+          "headingMagDeg": 247,
+          "lengthFt": 6802
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KGAD"
+    },
+    {
+      "icao": "KGVL",
+      "name": "LEE GILMER MEML",
+      "arp": {
+        "latDeg": 34.27262777777778,
+        "lonDeg": -83.830225
+      },
+      "fieldElevFt": 1277,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "GVL"
+      },
+      "runways": [
+        {
+          "id": "05",
+          "threshold": {
+            "latDeg": 34.267069444444445,
+            "lonDeg": -83.83793055555554
+          },
+          "headingTrueDeg": 44,
+          "headingMagDeg": 47,
+          "lengthFt": 5496
+        },
+        {
+          "id": "11",
+          "threshold": {
+            "latDeg": 34.27398888888889,
+            "lonDeg": -83.83378055555555
+          },
+          "headingTrueDeg": 111,
+          "headingMagDeg": 114,
+          "lengthFt": 4003
+        },
+        {
+          "id": "23",
+          "threshold": {
+            "latDeg": 34.27764444444444,
+            "lonDeg": -83.82685277777777
+          },
+          "headingTrueDeg": 224,
+          "headingMagDeg": 227,
+          "lengthFt": 5496
+        },
+        {
+          "id": "29",
+          "threshold": {
+            "latDeg": 34.27087222222222,
+            "lonDeg": -83.82187499999999
+          },
+          "headingTrueDeg": 291,
+          "headingMagDeg": 294,
+          "lengthFt": 4003
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KGVL"
+    },
+    {
+      "icao": "KHMP",
+      "name": "ATLANTA SPEEDWAY",
+      "arp": {
+        "latDeg": 33.38990277777778,
+        "lonDeg": -84.3310361111111
+      },
+      "fieldElevFt": 882,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "HMP"
+      },
+      "runways": [
+        {
+          "id": "06",
+          "threshold": {
+            "latDeg": 33.3855,
+            "lonDeg": -84.33837777777778
+          },
+          "headingTrueDeg": 60,
+          "headingMagDeg": 66,
+          "lengthFt": 5509
+        },
+        {
+          "id": "24",
+          "threshold": {
+            "latDeg": 33.394302777777774,
+            "lonDeg": -84.32369722222222
+          },
+          "headingTrueDeg": 240,
+          "headingMagDeg": 246,
+          "lengthFt": 5509
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KHMP"
+    },
+    {
+      "icao": "KIIY",
+      "name": "WASHINGTON/WILKES COUNTY",
+      "arp": {
+        "latDeg": 33.778597222222224,
+        "lonDeg": -82.81449722222222
+      },
+      "fieldElevFt": 646,
+      "magVarDeg": -7,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "IIY"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.782647222222224,
+            "lonDeg": -82.82118333333332
+          },
+          "headingTrueDeg": 133,
+          "headingMagDeg": 140,
+          "lengthFt": 5020
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.77616111111111,
+            "lonDeg": -82.810475
+          },
+          "headingTrueDeg": 313,
+          "headingMagDeg": 320,
+          "lengthFt": 5020
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KIIY"
+    },
+    {
+      "icao": "KJCA",
+      "name": "JACKSON COUNTY",
+      "arp": {
+        "latDeg": 34.176138888888886,
+        "lonDeg": -83.56169444444444
+      },
+      "fieldElevFt": 951,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "JCA"
+      },
+      "runways": [
+        {
+          "id": "17",
+          "threshold": {
+            "latDeg": 34.182725,
+            "lonDeg": -83.5640611111111
+          },
+          "headingTrueDeg": 168,
+          "headingMagDeg": 173,
+          "lengthFt": 5010
+        },
+        {
+          "id": "35",
+          "threshold": {
+            "latDeg": 34.169533333333334,
+            "lonDeg": -83.559325
+          },
+          "headingTrueDeg": 348,
+          "headingMagDeg": 353,
+          "lengthFt": 5010
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KJCA"
+    },
+    {
+      "icao": "KJZP",
+      "name": "PICKENS COUNTY",
+      "arp": {
+        "latDeg": 34.453472222222224,
+        "lonDeg": -84.45722222222223
+      },
+      "fieldElevFt": 1535,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "JZP"
+      },
+      "runways": [
+        {
+          "id": "16",
+          "threshold": {
+            "latDeg": 34.45988055555556,
+            "lonDeg": -84.46022500000001
+          },
+          "headingTrueDeg": 163,
+          "headingMagDeg": 167,
+          "lengthFt": 5000
+        },
+        {
+          "id": "34",
+          "threshold": {
+            "latDeg": 34.447086111111105,
+            "lonDeg": -84.4541888888889
+          },
+          "headingTrueDeg": 343,
+          "headingMagDeg": 347,
+          "lengthFt": 5000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KJZP"
+    },
+    {
+      "icao": "KLGC",
+      "name": "LAGRANGE/CALLAWAY",
+      "arp": {
+        "latDeg": 33.00915,
+        "lonDeg": -85.07320555555555
+      },
+      "fieldElevFt": 694,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "LGC"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 33.00429722222222,
+            "lonDeg": -85.07681666666666
+          },
+          "headingTrueDeg": 28,
+          "headingMagDeg": 32,
+          "lengthFt": 5000
+        },
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.01340833333333,
+            "lonDeg": -85.08151388888888
+          },
+          "headingTrueDeg": 131,
+          "headingMagDeg": 135,
+          "lengthFt": 6499
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 33.01681111111111,
+            "lonDeg": -85.07008055555555
+          },
+          "headingTrueDeg": 208,
+          "headingMagDeg": 212,
+          "lengthFt": 5000
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.00273333333333,
+            "lonDeg": -85.06451944444444
+          },
+          "headingTrueDeg": 310,
+          "headingMagDeg": 314,
+          "lengthFt": 6499
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KLGC"
+    },
+    {
+      "icao": "KLSF",
+      "name": "LAWSON AAF (FORT BENNING)",
+      "arp": {
+        "latDeg": 32.33178055555556,
+        "lonDeg": -84.98715277777778
+      },
+      "fieldElevFt": 227,
+      "magVarDeg": -5,
+      "publicUse": false,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "LSF"
+      },
+      "runways": [
+        {
+          "id": "15",
+          "threshold": {
+            "latDeg": 32.343,
+            "lonDeg": -84.99650555555556
+          },
+          "headingTrueDeg": 149.7,
+          "headingMagDeg": 154.7,
+          "lengthFt": 10002
+        },
+        {
+          "id": "33",
+          "threshold": {
+            "latDeg": 32.32213055555556,
+            "lonDeg": -84.97910555555556
+          },
+          "headingTrueDeg": 329.7,
+          "headingMagDeg": 334.7,
+          "lengthFt": 10002
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KLZU",
+      "name": "GWINNETT COUNTY/BRISCOE FLD",
+      "arp": {
+        "latDeg": 33.97809166666667,
+        "lonDeg": -83.96236388888889
+      },
+      "fieldElevFt": 1062,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "LZU"
+      },
+      "runways": [
+        {
+          "id": "07",
+          "threshold": {
+            "latDeg": 33.97443888888889,
+            "lonDeg": -83.97123611111111
+          },
+          "headingTrueDeg": 69,
+          "headingMagDeg": 74,
+          "lengthFt": 6001
+        },
+        {
+          "id": "25",
+          "threshold": {
+            "latDeg": 33.981744444444445,
+            "lonDeg": -83.95349166666666
+          },
+          "headingTrueDeg": 249,
+          "headingMagDeg": 254,
+          "lengthFt": 6001
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KLZU"
+    },
+    {
+      "icao": "KMAC",
+      "name": "MACON DOWNTOWN",
+      "arp": {
+        "latDeg": 32.821763888888896,
+        "lonDeg": -83.56193611111111
+      },
+      "fieldElevFt": 437,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "catalog_error",
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "MAC"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 32.822900000000004,
+            "lonDeg": -83.57013055555555
+          },
+          "headingTrueDeg": 102,
+          "headingMagDeg": 108,
+          "lengthFt": 4694
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 32.82169444444445,
+            "lonDeg": -83.55658333333334
+          },
+          "headingTrueDeg": 282,
+          "headingMagDeg": 288,
+          "lengthFt": 4694
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KMCN",
+      "name": "MIDDLE GEORGIA RGNL",
+      "arp": {
+        "latDeg": 32.69283333333333,
+        "lonDeg": -83.64922222222224
+      },
+      "fieldElevFt": 354,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "MCN"
+      },
+      "runways": [
+        {
+          "id": "05",
+          "threshold": {
+            "latDeg": 32.68601944444444,
+            "lonDeg": -83.66063333333334
+          },
+          "headingTrueDeg": 54,
+          "headingMagDeg": 60,
+          "lengthFt": 6500
+        },
+        {
+          "id": "14",
+          "threshold": {
+            "latDeg": 32.69836944444444,
+            "lonDeg": -83.65077777777779
+          },
+          "headingTrueDeg": 136,
+          "headingMagDeg": 142,
+          "lengthFt": 5000
+        },
+        {
+          "id": "23",
+          "threshold": {
+            "latDeg": 32.69798333333333,
+            "lonDeg": -83.64494444444445
+          },
+          "headingTrueDeg": 234,
+          "headingMagDeg": 240,
+          "lengthFt": 6500
+        },
+        {
+          "id": "32",
+          "threshold": {
+            "latDeg": 32.689522222222216,
+            "lonDeg": -83.63834166666668
+          },
+          "headingTrueDeg": 316,
+          "headingMagDeg": 322,
+          "lengthFt": 5000
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KMCN"
+    },
+    {
+      "icao": "KMGE",
+      "name": "DOBBINS ARB",
+      "arp": {
+        "latDeg": 33.91444166666667,
+        "lonDeg": -84.51424722222222
+      },
+      "fieldElevFt": 1069,
+      "magVarDeg": -3,
+      "publicUse": false,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "MGE"
+      },
+      "runways": [
+        {
+          "id": "11",
+          "threshold": {
+            "latDeg": 33.91912222222222,
+            "lonDeg": -84.53218055555556
+          },
+          "headingTrueDeg": 109,
+          "headingMagDeg": 112,
+          "lengthFt": 10002
+        },
+        {
+          "id": "110",
+          "threshold": {
+            "latDeg": 33.91338611111111,
+            "lonDeg": -84.51374722222222
+          },
+          "headingTrueDeg": 109,
+          "headingMagDeg": 112,
+          "lengthFt": 3495
+        },
+        {
+          "id": "29",
+          "threshold": {
+            "latDeg": 33.91143888888889,
+            "lonDeg": -84.50052777777778
+          },
+          "headingTrueDeg": 289,
+          "headingMagDeg": 292,
+          "lengthFt": 10002
+        },
+        {
+          "id": "290",
+          "threshold": {
+            "latDeg": 33.91070277777778,
+            "lonDeg": -84.50268611111112
+          },
+          "headingTrueDeg": 289,
+          "headingMagDeg": 292,
+          "lengthFt": 3495
+        }
+      ],
+      "hasPublishedApproaches": false
+    },
+    {
+      "icao": "KMLJ",
+      "name": "BALDWIN COUNTY RGNL",
+      "arp": {
+        "latDeg": 33.154225,
+        "lonDeg": -83.24140833333334
+      },
+      "fieldElevFt": 385,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "MLJ"
+      },
+      "runways": [
+        {
+          "id": "10",
+          "threshold": {
+            "latDeg": 33.154488888888885,
+            "lonDeg": -83.25039722222222
+          },
+          "headingTrueDeg": 96,
+          "headingMagDeg": 100,
+          "lengthFt": 5506
+        },
+        {
+          "id": "28",
+          "threshold": {
+            "latDeg": 33.15396944444444,
+            "lonDeg": -83.23268611111111
+          },
+          "headingTrueDeg": 276,
+          "headingMagDeg": 280,
+          "lengthFt": 5506
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KMLJ"
+    },
+    {
+      "icao": "KOKZ",
+      "name": "KAOLIN FLD",
+      "arp": {
+        "latDeg": 32.966375,
+        "lonDeg": -82.83748888888888
+      },
+      "fieldElevFt": 439,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "OKZ"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 32.97020555555556,
+            "lonDeg": -82.84521944444444
+          },
+          "headingTrueDeg": 125,
+          "headingMagDeg": 130,
+          "lengthFt": 5501
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 32.96322222222223,
+            "lonDeg": -82.831125
+          },
+          "headingTrueDeg": 305,
+          "headingMagDeg": 310,
+          "lengthFt": 5501
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KOKZ"
+    },
+    {
+      "icao": "KOPN",
+      "name": "THOMASTON-UPSON COUNTY",
+      "arp": {
+        "latDeg": 32.95500277777778,
+        "lonDeg": -84.26408611111111
+      },
+      "fieldElevFt": 798,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "OPN"
+      },
+      "runways": [
+        {
+          "id": "12",
+          "threshold": {
+            "latDeg": 32.95823611111111,
+            "lonDeg": -84.271375
+          },
+          "headingTrueDeg": 121,
+          "headingMagDeg": 124,
+          "lengthFt": 6350
+        },
+        {
+          "id": "30",
+          "threshold": {
+            "latDeg": 32.95183333333333,
+            "lonDeg": -84.25694444444444
+          },
+          "headingTrueDeg": 301,
+          "headingMagDeg": 304,
+          "lengthFt": 6350
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KOPN"
+    },
+    {
+      "icao": "KPDK",
+      "name": "DEKALB-PEACHTREE",
+      "arp": {
+        "latDeg": 33.87600277777778,
+        "lonDeg": -84.30203055555555
+      },
+      "fieldElevFt": 998,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "PDK"
+      },
+      "runways": [
+        {
+          "id": "03L",
+          "threshold": {
+            "latDeg": 33.868944444444445,
+            "lonDeg": -84.30559444444444
+          },
+          "headingTrueDeg": 26,
+          "headingMagDeg": 31,
+          "lengthFt": 3746
+        },
+        {
+          "id": "03R",
+          "threshold": {
+            "latDeg": 33.86859166666667,
+            "lonDeg": -84.30399166666666
+          },
+          "headingTrueDeg": 26,
+          "headingMagDeg": 31,
+          "lengthFt": 6001
+        },
+        {
+          "id": "16",
+          "threshold": {
+            "latDeg": 33.882675,
+            "lonDeg": -84.30549166666667
+          },
+          "headingTrueDeg": 162,
+          "headingMagDeg": 167,
+          "lengthFt": 3968
+        },
+        {
+          "id": "21L",
+          "threshold": {
+            "latDeg": 33.88145,
+            "lonDeg": -84.29822777777778
+          },
+          "headingTrueDeg": 206,
+          "headingMagDeg": 211,
+          "lengthFt": 6001
+        },
+        {
+          "id": "21R",
+          "threshold": {
+            "latDeg": 33.87858333333333,
+            "lonDeg": -84.30126944444444
+          },
+          "headingTrueDeg": 206,
+          "headingMagDeg": 211,
+          "lengthFt": 3746
+        },
+        {
+          "id": "34",
+          "threshold": {
+            "latDeg": 33.87261111111111,
+            "lonDeg": -84.30046388888888
+          },
+          "headingTrueDeg": 342,
+          "headingMagDeg": 347,
+          "lengthFt": 3968
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KPDK"
+    },
+    {
+      "icao": "KPIM",
+      "name": "HARRIS COUNTY",
+      "arp": {
+        "latDeg": 32.840694444444445,
+        "lonDeg": -84.88244444444443
+      },
+      "fieldElevFt": 902,
+      "magVarDeg": -3,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "PIM"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 32.84050555555556,
+            "lonDeg": -84.89057500000001
+          },
+          "headingTrueDeg": 91,
+          "headingMagDeg": 94,
+          "lengthFt": 5002
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 32.84088888888889,
+            "lonDeg": -84.87429722222221
+          },
+          "headingTrueDeg": 271,
+          "headingMagDeg": 274,
+          "lengthFt": 5002
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KPIM"
+    },
+    {
+      "icao": "KPUJ",
+      "name": "PAULDING NORTHWEST ATLANTA",
+      "arp": {
+        "latDeg": 33.91204444444444,
+        "lonDeg": -84.94061944444445
+      },
+      "fieldElevFt": 1289,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "PUJ"
+      },
+      "runways": [
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.91664166666666,
+            "lonDeg": -84.94782222222223
+          },
+          "headingTrueDeg": 131,
+          "headingMagDeg": 135,
+          "lengthFt": 5505
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.907444444444444,
+            "lonDeg": -84.93341666666667
+          },
+          "headingTrueDeg": 311,
+          "headingMagDeg": 315,
+          "lengthFt": 5505
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KPUJ"
+    },
+    {
+      "icao": "KPXE",
+      "name": "PERRY-HOUSTON COUNTY",
+      "arp": {
+        "latDeg": 32.510580555555556,
+        "lonDeg": -83.76734722222223
+      },
+      "fieldElevFt": 418,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "PXE"
+      },
+      "runways": [
+        {
+          "id": "18",
+          "threshold": {
+            "latDeg": 32.51745833333333,
+            "lonDeg": -83.76741944444444
+          },
+          "headingTrueDeg": 185,
+          "headingMagDeg": 191,
+          "lengthFt": 5004
+        },
+        {
+          "id": "36",
+          "threshold": {
+            "latDeg": 32.503705555555555,
+            "lonDeg": -83.76727222222222
+          },
+          "headingTrueDeg": 5,
+          "headingMagDeg": 11,
+          "lengthFt": 5004
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KPXE"
+    },
+    {
+      "icao": "KPYP",
+      "name": "CENTRE PIEDMONT/CHEROKEE COUNT",
+      "arp": {
+        "latDeg": 34.08991666666667,
+        "lonDeg": -85.61008333333332
+      },
+      "fieldElevFt": 595,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "PYP"
+      },
+      "runways": [
+        {
+          "id": "07",
+          "threshold": {
+            "latDeg": 34.086486111111114,
+            "lonDeg": -85.61816388888889
+          },
+          "headingTrueDeg": 67,
+          "headingMagDeg": 71,
+          "lengthFt": 5500
+        },
+        {
+          "id": "25",
+          "threshold": {
+            "latDeg": 34.09335,
+            "lonDeg": -85.60198055555556
+          },
+          "headingTrueDeg": 247,
+          "headingMagDeg": 251,
+          "lengthFt": 5500
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KPYP"
+    },
+    {
+      "icao": "KRMG",
+      "name": "RICHARD B RUSSELL RGNL - J H T",
+      "arp": {
+        "latDeg": 34.35163888888889,
+        "lonDeg": -85.158575
+      },
+      "fieldElevFt": 644,
+      "magVarDeg": -2,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "RMG"
+      },
+      "runways": [
+        {
+          "id": "01",
+          "threshold": {
+            "latDeg": 34.34277222222222,
+            "lonDeg": -85.15945277777779
+          },
+          "headingTrueDeg": 7,
+          "headingMagDeg": 9,
+          "lengthFt": 7007
+        },
+        {
+          "id": "07",
+          "threshold": {
+            "latDeg": 34.3485,
+            "lonDeg": -85.16540833333335
+          },
+          "headingTrueDeg": 72,
+          "headingMagDeg": 74,
+          "lengthFt": 4495
+        },
+        {
+          "id": "19",
+          "threshold": {
+            "latDeg": 34.361955555555554,
+            "lonDeg": -85.15745000000001
+          },
+          "headingTrueDeg": 187,
+          "headingMagDeg": 189,
+          "lengthFt": 7007
+        },
+        {
+          "id": "25",
+          "threshold": {
+            "latDeg": 34.352627777777776,
+            "lonDeg": -85.151775
+          },
+          "headingTrueDeg": 252,
+          "headingMagDeg": 254,
+          "lengthFt": 4495
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KRMG"
+    },
+    {
+      "icao": "KRYY",
+      "name": "COBB COUNTY INTL/MCCOLLUM FLD",
+      "arp": {
+        "latDeg": 34.01316666666666,
+        "lonDeg": -84.59702777777777
+      },
+      "fieldElevFt": 1040,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "RYY"
+      },
+      "runways": [
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 34.01303333333333,
+            "lonDeg": -84.6039111111111
+          },
+          "headingTrueDeg": 93,
+          "headingMagDeg": 97,
+          "lengthFt": 6295
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 34.01334444444444,
+            "lonDeg": -84.58664722222221
+          },
+          "headingTrueDeg": 273,
+          "headingMagDeg": 277,
+          "lengthFt": 6295
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KRYY"
+    },
+    {
+      "icao": "KTOC",
+      "name": "TOCCOA RG LETOURNEAU FLD",
+      "arp": {
+        "latDeg": 34.59281111111111,
+        "lonDeg": -83.29637222222222
+      },
+      "fieldElevFt": 996,
+      "magVarDeg": -6,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "TOC"
+      },
+      "runways": [
+        {
+          "id": "03",
+          "threshold": {
+            "latDeg": 34.58486944444444,
+            "lonDeg": -83.30098611111111
+          },
+          "headingTrueDeg": 27,
+          "headingMagDeg": 33,
+          "lengthFt": 5008
+        },
+        {
+          "id": "09",
+          "threshold": {
+            "latDeg": 34.59523888888889,
+            "lonDeg": -83.29848055555556
+          },
+          "headingTrueDeg": 94,
+          "headingMagDeg": 100,
+          "lengthFt": 2951
+        },
+        {
+          "id": "21",
+          "threshold": {
+            "latDeg": 34.59772777777778,
+            "lonDeg": -83.29506388888889
+          },
+          "headingTrueDeg": 207,
+          "headingMagDeg": 213,
+          "lengthFt": 5008
+        },
+        {
+          "id": "27",
+          "threshold": {
+            "latDeg": 34.59547777777778,
+            "lonDeg": -83.28868055555556
+          },
+          "headingTrueDeg": 274,
+          "headingMagDeg": 280,
+          "lengthFt": 2951
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KTOC"
+    },
+    {
+      "icao": "KVPC",
+      "name": "CARTERSVILLE",
+      "arp": {
+        "latDeg": 34.12314722222222,
+        "lonDeg": -84.84870555555555
+      },
+      "fieldElevFt": 759,
+      "magVarDeg": -4,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "VPC"
+      },
+      "runways": [
+        {
+          "id": "01",
+          "threshold": {
+            "latDeg": 34.11727777777778,
+            "lonDeg": -84.84913611111111
+          },
+          "headingTrueDeg": 7,
+          "headingMagDeg": 11,
+          "lengthFt": 5760
+        },
+        {
+          "id": "19",
+          "threshold": {
+            "latDeg": 34.13104722222222,
+            "lonDeg": -84.84812777777778
+          },
+          "headingTrueDeg": 187,
+          "headingMagDeg": 191,
+          "lengthFt": 5760
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KVPC"
+    },
+    {
+      "icao": "KWDR",
+      "name": "BARROW COUNTY",
+      "arp": {
+        "latDeg": 33.98288055555556,
+        "lonDeg": -83.66741388888889
+      },
+      "fieldElevFt": 934,
+      "magVarDeg": -5,
+      "publicUse": true,
+      "towered": true,
+      "eligible": true,
+      "serviceMetadata": {
+        "publicUse": true,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "WDR"
+      },
+      "runways": [
+        {
+          "id": "05",
+          "threshold": {
+            "latDeg": 33.97780277777778,
+            "lonDeg": -83.67309166666666
+          },
+          "headingTrueDeg": 51,
+          "headingMagDeg": 56,
+          "lengthFt": 3607
+        },
+        {
+          "id": "13",
+          "threshold": {
+            "latDeg": 33.98814166666667,
+            "lonDeg": -83.67279722222223
+          },
+          "headingTrueDeg": 134,
+          "headingMagDeg": 139,
+          "lengthFt": 5505
+        },
+        {
+          "id": "23",
+          "threshold": {
+            "latDeg": 33.984722222222224,
+            "lonDeg": -83.664575
+          },
+          "headingTrueDeg": 231,
+          "headingMagDeg": 236,
+          "lengthFt": 3607
+        },
+        {
+          "id": "31",
+          "threshold": {
+            "latDeg": 33.980250000000005,
+            "lonDeg": -83.66094722222223
+          },
+          "headingTrueDeg": 314,
+          "headingMagDeg": 319,
+          "lengthFt": 5505
+        }
+      ],
+      "hasPublishedApproaches": true,
+      "catalogRef": "airports/KWDR"
+    },
+    {
+      "icao": "KWRB",
+      "name": "ROBINS AFB",
+      "arp": {
+        "latDeg": 32.64017222222222,
+        "lonDeg": -83.59192222222222
+      },
+      "fieldElevFt": 294,
+      "magVarDeg": -2,
+      "publicUse": false,
+      "towered": true,
+      "eligible": false,
+      "exclusionReason": "private_use",
+      "serviceMetadata": {
+        "publicUse": false,
+        "towered": true,
+        "sourceFile": "APT.csv",
+        "sourceRecordId": "WRB"
+      },
+      "runways": [
+        {
+          "id": "15",
+          "threshold": {
+            "latDeg": 32.65352222222222,
+            "lonDeg": -83.603375
+          },
+          "headingTrueDeg": 146,
+          "headingMagDeg": 148,
+          "lengthFt": 12001
+        },
+        {
+          "id": "33",
+          "threshold": {
+            "latDeg": 32.626825000000004,
+            "lonDeg": -83.58048333333333
+          },
+          "headingTrueDeg": 326,
+          "headingMagDeg": 328,
+          "lengthFt": 12001
+        }
+      ],
+      "hasPublishedApproaches": false
+    }
+  ]
+}

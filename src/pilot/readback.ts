@@ -12,15 +12,17 @@
 import type { Aircraft, Instruction } from "@core";
 import {
   formatAltitude,
-  formatCallsignSpeech,
+  formatCallsignDisplay,
   formatDigitString,
   formatHeadingDigits,
-  speakDigitString,
 } from "./telephony";
 
-export { formatCallsignSpeech } from "./telephony";
+export { formatCallsignDisplay, formatCallsignSpeech } from "./telephony";
 
-export type ReadbackAircraft = Pick<Aircraft, "headingDeg" | "altitudeFt" | "wakeCategory">;
+export type ReadbackAircraft = Pick<
+  Aircraft,
+  "headingDeg" | "altitudeFt" | "wakeCategory" | "spokenAliases"
+>;
 
 export type RejectReason =
   | "UNKNOWN_CALLSIGN"
@@ -42,7 +44,12 @@ export type RejectReason =
   | "NOT_ON_APPROACH"
   | "SQUAWK"
   | "CLEARANCE"
-  | "UNABLE_ROUTE";
+  | "UNABLE_ROUTE"
+  | "REQUEST"
+  | "RADAR_CONTACT"
+  | "RUNWAY"
+  | "CONTACT_TOWER"
+  | "CONTACT_CENTER";
 
 const REJECT_FIXED: Record<string, string> = {
   UNKNOWN_CALLSIGN: "Unable, unknown callsign",
@@ -67,6 +74,12 @@ const REJECT_AFTER_CALLSIGN: Record<string, string> = {
   SQUAWK: "unable squawk",
   CLEARANCE: "unable clearance",
   UNABLE_ROUTE: "unable route",
+  REQUEST: "unable request",
+  RADAR_CONTACT: "unable radar contact",
+  CANCELLATION: "unable cancellation",
+  RUNWAY: "unable runway",
+  CONTACT_TOWER: "unable contact tower",
+  CONTACT_CENTER: "unable contact center",
 };
 
 function capitalizeFirst(text: string): string {
@@ -161,11 +174,31 @@ function formatInstructionClause(
     case "IDENT":
       return "ident";
     case "ASSIGN_SQUAWK":
-      return instruction.source === "VFR"
-        ? "squawk VFR"
-        : `squawk ${speakDigitString(instruction.code)}`;
+      return instruction.source === "VFR" ? "squawk VFR" : `squawk ${instruction.code}`;
     case "MAINTAIN_VFR":
       return "maintain VFR";
+    case "CLASS_B_CLEARANCE": {
+      const operation =
+        instruction.operation === "TO_ENTER"
+          ? "to enter"
+          : instruction.operation === "OUT_OF"
+            ? "out of"
+            : "through";
+      const route = instruction.route?.length
+        ? ` via ${instruction.route.map((leg) => leg.fixId).join(" then ")}`
+        : "";
+      const altitude =
+        instruction.altitudeFt === undefined
+          ? ""
+          : `, maintain ${formatAltitude(instruction.altitudeFt)} while in Bravo airspace`;
+      return `cleared ${operation} Bravo airspace${route}${altitude}`;
+    }
+    case "CLASS_B_CLEARANCE_AS_REQUESTED":
+      return "cleared as requested";
+    case "REMAIN_OUTSIDE_BRAVO":
+      return "remain outside Bravo airspace";
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
+      return "resume appropriate VFR altitudes";
     case "IFR_CLEARANCE": {
       const access = formatIfrClearanceAccess(instruction.access);
       const optional = [
@@ -174,7 +207,7 @@ function formatInstructionClause(
           : `maintain ${formatAltitude(instruction.altitudeFt)}`,
         instruction.climbVia ? "climb via" : null,
         instruction.frequency ? `frequency ${instruction.frequency}` : null,
-        instruction.squawk ? `squawk ${speakDigitString(instruction.squawk)}` : null,
+        instruction.squawk ? `squawk ${instruction.squawk}` : null,
       ].filter((value): value is string => value !== null);
       return [`cleared to ${instruction.limitId} ${access}`, ...optional].join(", ");
     }
@@ -184,6 +217,8 @@ function formatInstructionClause(
       return formatAltitude(aircraft.altitudeFt);
     case "CLEARED_APPROACH":
       return `cleared ${speakApproachNav(instruction.approachId)} approach`;
+    case "CLEARED_VISUAL":
+      return `cleared visual approach runway ${instruction.runwayId.replace(/^RW/i, "").toUpperCase()}`;
     case "INTERCEPT_LOCALIZER":
       return `intercept the ${speakRunwayLocalizer(instruction.approachId)}`;
     case "CANCEL_APPROACH":
@@ -213,6 +248,26 @@ function formatInstructionClause(
       return "going around";
     case "DELETE_SPEED_RESTRICTIONS":
       return "delete speed restrictions";
+    case "REQUEST_DETAILS":
+      return "";
+    case "STANDBY_REQUEST":
+      return "standby";
+    case "APPROVE_FLIGHT_FOLLOWING":
+      return "flight following approved";
+    case "DECLINE_REQUEST":
+      if (instruction.service === "FLIGHT_FOLLOWING") return "unable flight following";
+      if (instruction.service === "IFR_PICKUP") return "unable IFR pickup";
+      return "unable class B clearance";
+    case "RADAR_CONTACT":
+      return "roger";
+    case "TERMINATE_RADAR_SERVICE":
+      return "radar service terminated";
+    case "ACKNOWLEDGE_IFR_CANCELLATION":
+      return "IFR cancellation received";
+    case "CONTACT_TOWER":
+      return `contact ${instruction.facilityName.toLowerCase()} tower`;
+    case "CONTACT_CENTER":
+      return `contact ${instruction.facilityName.toLowerCase()} center`;
     default: {
       const _exhaustive: never = instruction;
       return _exhaustive;
@@ -227,7 +282,7 @@ function formatIfrClearanceAccess(
     case "AS_FILED":
       return "as filed";
     case "RADAR_VECTORS":
-      return "via radar vectors";
+      return access.thenDirect ? "via radar vectors then direct" : "via radar vectors";
     case "DIRECT":
       return "via direct";
     case "FIX_THEN_DIRECT":
@@ -275,17 +330,18 @@ export function formatReadback(args: {
   aircraft: ReadbackAircraft;
   procedureNames?: Readonly<Record<string, string>>;
 }): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+  const callsignDisplay = formatCallsignDisplay(args.callsign, {
     isHeavy: args.aircraft.wakeCategory === "H",
+    spokenAliases: args.aircraft.spokenAliases,
   });
-  const clauses = args.instructions.map((instruction) =>
-    formatInstructionClause(instruction, args.aircraft, args.procedureNames),
-  );
+  const clauses = args.instructions
+    .map((instruction) => formatInstructionClause(instruction, args.aircraft, args.procedureNames))
+    .filter((clause) => clause.length > 0);
   if (clauses.length === 0) {
-    return callsignSpeech;
+    return callsignDisplay;
   }
   const body = clauses.join(", ");
-  return capitalizeFirst(callsignSpeech ? `${callsignSpeech} ${body}` : body);
+  return capitalizeFirst(callsignDisplay ? `${callsignDisplay} ${body}` : body);
 }
 
 /** Error readbacks for rejects. Omit callsign speech when it is unknown. */
@@ -294,6 +350,7 @@ export function formatRejectReadback(args: {
   reason: string;
   detail?: string;
   isHeavy?: boolean;
+  spokenAliases?: readonly string[];
 }): string {
   const reason = args.reason.trim().toUpperCase();
   const fixed = REJECT_FIXED[reason];
@@ -306,6 +363,11 @@ export function formatRejectReadback(args: {
   } else if ((reason === "SPEED" || reason === "ALTITUDE") && args.detail) {
     after = args.detail;
   }
-  const cs = args.callsign ? formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy }) : "";
+  const cs = args.callsign
+    ? formatCallsignDisplay(args.callsign, {
+        isHeavy: args.isHeavy,
+        spokenAliases: args.spokenAliases,
+      })
+    : "";
   return capitalizeFirst(cs ? `${cs} ${after}` : after);
 }

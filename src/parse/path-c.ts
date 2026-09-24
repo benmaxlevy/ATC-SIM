@@ -12,10 +12,11 @@ import {
 } from "@core";
 import type { CatalogFixMatchMethod } from "./spoken/catalog-ground";
 import { cancelApproachSequenceError } from "./instruction-order";
+import { parseFacilityName } from "./contact";
 
 export const PATH_C_SCHEMA_VERSION = "command-ir-v0" as const;
 /** Browser/service semantic guard contract. Bump when Path C safety rules change. */
-export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-1" as const;
+export const PATH_C_CONTRACT_VERSION = "command-ir-v0-safe-3" as const;
 export const DEFAULT_PARSE_URL = "http://127.0.0.1:8090/parse";
 /** Path C is optional salvage; it must not hold the radio loop indefinitely. */
 export const DEFAULT_PARSE_TIMEOUT_MS = 3000;
@@ -77,7 +78,8 @@ export interface PathCRouteWindow {
 }
 
 export interface PathCContext {
-  callsigns: string[];
+  /** Canonical live identities plus authored alias evidence. Aliases never enter Command IR. */
+  callsigns: PathCCallsignCandidate[];
   selectedCallsign?: string | null;
   /** Facility catalog ids. Optional; never kinematics, n-best, or STT confidence. */
   fixes?: string[];
@@ -91,6 +93,11 @@ export interface PathCContext {
   routeWindow?: PathCRouteWindow;
   /** Non-airport clearance-limit candidates, separately scoped from route legs. */
   clearanceLimits?: PathCRouteCandidate[];
+}
+
+export interface PathCCallsignCandidate {
+  callsign: string;
+  aliases: string[];
 }
 
 export interface PathCRequest {
@@ -120,6 +127,19 @@ const ALT_VERBS = new Set(["CLIMB", "DESCEND", "MAINTAIN"]);
 const SPEED_VERBS = new Set(["MAINTAIN", "INCREASE", "REDUCE"]);
 const CROSS_RESTRICTIONS = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 const LEGAL_TYPES = new Set<string>(INSTRUCTION_TYPES);
+const SINGLE_INSTRUCTION_TYPES = new Set([
+  "CLASS_B_CLEARANCE",
+  "CLASS_B_CLEARANCE_AS_REQUESTED",
+  "REQUEST_DETAILS",
+  "STANDBY_REQUEST",
+  "APPROVE_FLIGHT_FOLLOWING",
+  "DECLINE_REQUEST",
+  "RADAR_CONTACT",
+  "TERMINATE_RADAR_SERVICE",
+  "ACKNOWLEDGE_IFR_CANCELLATION",
+  "CONTACT_TOWER",
+  "CONTACT_CENTER",
+]);
 const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
   "exact",
   "alias",
@@ -127,6 +147,14 @@ const ROUTE_FIX_MATCH_METHODS = new Set<CatalogFixMatchMethod>([
   "levenshtein",
 ]);
 const ROUTE_CONNECTORS = new Set(["direct", "then"]);
+const CANONICAL_N_NUMBER = /^N\d{1,5}[A-Z]{0,2}$/;
+const CANONICAL_ICAO_CALLSIGN = /^[A-Z]{3}\d{1,4}[A-Z]?$/;
+
+/** Path C output identity is canonical ICAO/N-number, never an authored alias. */
+export function isCanonicalCallsignToken(value: string): boolean {
+  const token = value.trim().toUpperCase();
+  return CANONICAL_N_NUMBER.test(token) || CANONICAL_ICAO_CALLSIGN.test(token);
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -157,6 +185,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function hasSingleInstructionConflict(instructions: readonly Instruction[]): boolean {
+  return (
+    instructions.some((instruction) => SINGLE_INSTRUCTION_TYPES.has(instruction.type)) &&
+    instructions.length !== 1
+  );
 }
 
 /** Closed Instruction union. Extra keys or unknown type → miss. */
@@ -192,9 +227,52 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     type === "SAY_ALTITUDE" ||
     type === "GO_AROUND" ||
     type === "CANCEL_APPROACH" ||
-    type === "MAINTAIN_VFR"
+    type === "MAINTAIN_VFR" ||
+    type === "REQUEST_DETAILS" ||
+    type === "STANDBY_REQUEST" ||
+    type === "APPROVE_FLIGHT_FOLLOWING" ||
+    type === "TERMINATE_RADAR_SERVICE" ||
+    type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    type === "CLASS_B_CLEARANCE_AS_REQUESTED"
   ) {
     return keysOk(obj, ["type"]);
+  }
+  if (type === "REMAIN_OUTSIDE_BRAVO" || type === "RESUME_APPROPRIATE_VFR_ALTITUDES") {
+    return keysOk(obj, ["type"]);
+  }
+  if (type === "DECLINE_REQUEST") {
+    return (
+      keysOk(obj, ["type", "service"]) &&
+      typeof obj.service === "string" &&
+      (obj.service === "FLIGHT_FOLLOWING" ||
+        obj.service === "IFR_PICKUP" ||
+        obj.service === "CLASS_B_ACCESS")
+    );
+  }
+  if (type === "CONTACT_TOWER" || type === "CONTACT_CENTER") {
+    return (
+      keysOk(obj, ["type", "facilityName"]) &&
+      typeof obj.facilityName === "string" &&
+      parseFacilityName(obj.facilityName.split(/\s+/)) !== null
+    );
+  }
+  if (type === "RADAR_CONTACT") {
+    // Bare `radar contact` (identification, no position report) or the full
+    // all-or-nothing position form. A partial position never validates.
+    if (keysOk(obj, ["type"])) {
+      return true;
+    }
+    return (
+      keysOk(obj, ["type", "distanceNm", "referenceId", "referenceKind"]) &&
+      isFiniteNumber(obj.distanceNm) &&
+      obj.distanceNm > 0 &&
+      typeof obj.referenceId === "string" &&
+      obj.referenceId.length > 0 &&
+      typeof obj.referenceKind === "string" &&
+      (obj.referenceKind === "FIX" ||
+        obj.referenceKind === "NAVAID" ||
+        obj.referenceKind === "AIRPORT")
+    );
   }
   if (type === "ALTITUDE") {
     if (
@@ -224,11 +302,43 @@ export function isLegalInstruction(value: unknown): value is Instruction {
   if (type === "DIRECT") {
     return keysOk(obj, ["type", "fixId"]) && typeof obj.fixId === "string" && obj.fixId.length > 0;
   }
+  if (type === "CLASS_B_CLEARANCE") {
+    if (
+      !keysOk(obj, ["type", "operation"], ["route", "altitudeFt"]) ||
+      typeof obj.operation !== "string" ||
+      !new Set(["THROUGH", "TO_ENTER", "OUT_OF"]).has(obj.operation)
+    ) {
+      return false;
+    }
+    if (obj.route !== undefined) {
+      if (!Array.isArray(obj.route) || obj.route.length === 0) return false;
+      for (const leg of obj.route) {
+        const row = asRecord(leg);
+        if (
+          row === null ||
+          !keysOk(row, ["type", "fixId"]) ||
+          row.type !== "DIRECT" ||
+          typeof row.fixId !== "string" ||
+          row.fixId.length === 0
+        ) {
+          return false;
+        }
+      }
+    }
+    return obj.altitudeFt === undefined || isFiniteNumber(obj.altitudeFt);
+  }
   if (type === "EXPECT_APPROACH" || type === "CLEARED_APPROACH" || type === "INTERCEPT_LOCALIZER") {
     return (
       keysOk(obj, ["type", "approachId"]) &&
       typeof obj.approachId === "string" &&
       obj.approachId.length > 0
+    );
+  }
+  if (type === "CLEARED_VISUAL") {
+    return (
+      keysOk(obj, ["type", "runwayId"]) &&
+      typeof obj.runwayId === "string" &&
+      /^\d{1,2}[LRC]?$/i.test(obj.runwayId)
     );
   }
   if (type === "ASSIGN_SQUAWK") {
@@ -255,8 +365,11 @@ export function isLegalInstruction(value: unknown): value is Instruction {
     const access = asRecord(obj.access);
     if (access === null || typeof access.type !== "string") return false;
     const accessType = access.type;
-    if (accessType === "AS_FILED" || accessType === "DIRECT" || accessType === "RADAR_VECTORS") {
+    if (accessType === "AS_FILED" || accessType === "DIRECT") {
       if (!keysOk(access, ["type"])) return false;
+    } else if (accessType === "RADAR_VECTORS") {
+      if (!keysOk(access, ["type"], ["thenDirect"])) return false;
+      if (access.thenDirect !== undefined && typeof access.thenDirect !== "boolean") return false;
     } else if (accessType === "FIX_THEN_DIRECT") {
       if (!keysOk(access, ["type", "fixId"]) || typeof access.fixId !== "string") return false;
     } else if (accessType === "SID") {
@@ -336,7 +449,11 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
   if (tokenRaw !== null && tokenRaw !== undefined && typeof tokenRaw !== "string") {
     return null;
   }
-  const callsignToken = typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw : null;
+  const callsignToken =
+    typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw.trim().toUpperCase() : null;
+  if (callsignToken !== null && !isCanonicalCallsignToken(callsignToken)) {
+    return null;
+  }
   const list = obj.instructions;
   if (!Array.isArray(list) || list.length === 0) {
     return null;
@@ -346,9 +463,16 @@ export function schemaCheckPathC(body: unknown): PathCSuccess | null {
     if (!isLegalInstruction(item)) {
       return null;
     }
-    instructions.push(item);
+    if (item.type === "CONTACT_TOWER" || item.type === "CONTACT_CENTER") {
+      instructions.push({ ...item, facilityName: item.facilityName.toUpperCase() });
+    } else {
+      instructions.push(item);
+    }
   }
   if (cancelApproachSequenceError(instructions) !== null) {
+    return null;
+  }
+  if (hasSingleInstructionConflict(instructions)) {
     return null;
   }
   return { callsignToken, instructions };
@@ -576,15 +700,66 @@ function requestHasContext(context: PathCContext | undefined): boolean {
 }
 
 /**
+ * Unambiguous cues for self-contained commands: instructions whose acceptance
+ * needs no catalog retrieval (bare request-control types, `roger`-answer
+ * radar contact, visual runway). A transcript carrying one may engage Path C
+ * even when identifier retrieval comes back empty, so a noisy miss on these
+ * forms still reaches the model. Engagement is not acceptance: schema,
+ * completeness, grounding, and identifier-listed guards still apply.
+ */
+const SELF_CONTAINED_CUES: RegExp[] = [
+  /\bradar\s+contact\b/,
+  /\bsay\s+request\b/,
+  /\bstand\s*by\b/,
+  /\bapprove\s+flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/,
+  /\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/,
+  /\bcleared\s+as\s+requested\b/,
+  /\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b/,
+  /\bradar\s+service\s+terminated\b/,
+  /\bifr\s+cancellation\s+received\b/,
+  /\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+(?:tower|center)\b/,
+  /\bmaintain\s+vfr\b/,
+  /\b(?:cleared|clear)\s+visual\b/,
+  /\b(?:cleared|clear)\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+  /\bremain\s+outside\s+bravo\s+airspace\b/,
+  /\bresume\s+appropriate\s+vfr\s+altitudes\b/,
+];
+
+export function pathCHasSelfContainedCue(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return SELF_CONTAINED_CUES.some((pattern) => pattern.test(normalized));
+}
+
+/**
  * Reject a model result that silently drops an independent supported clause.
  * This is intentionally conservative: it only requires an instruction when
  * the transcript contains an unambiguous command cue for that instruction.
  */
-export function pathCResultIsComplete(text: string, instructions: readonly Instruction[]): boolean {
-  const normalized = text.toLowerCase();
-  const has = (pattern: RegExp): boolean => pattern.test(normalized);
-  const hasType = (...types: Instruction["type"][]): boolean =>
+export function pathCResultIsComplete(
+  sourceText: string,
+  instructions: readonly Instruction[],
+): boolean {
+  const text = sourceText.toLowerCase();
+  const has = (pattern: RegExp) => pattern.test(text);
+  const hasType = (...types: string[]) =>
     instructions.some((instruction) => types.includes(instruction.type));
+  if (hasSingleInstructionConflict(instructions)) return false;
+  const classBClearances = instructions.filter(
+    (instruction): instruction is Extract<Instruction, { type: "CLASS_B_CLEARANCE" }> =>
+      instruction.type === "CLASS_B_CLEARANCE",
+  );
+  if (classBClearances.length > 0) {
+    if (instructions.length !== 1) return false;
+    const clearance = classBClearances[0];
+    const hasVia = has(/\bvia\b/);
+    if (hasVia !== (clearance.route !== undefined)) return false;
+    if (hasVia && clearance.route?.length === 0) return false;
+  }
+  const hasNonCanonicalClassBCue = has(
+    /\bclear\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/,
+  );
+  if (hasNonCanonicalClassBCue) return false;
   if (has(/\b(?:fly|turn|heading|vector)\b/) && !hasType("FLY_HEADING", "TURN_DEGREES")) {
     return false;
   }
@@ -606,15 +781,126 @@ export function pathCResultIsComplete(text: string, instructions: readonly Instr
   if (
     has(/\b(?:approach|localizer|ils|cleared\s+(?:the\s+)?runway)\b/) &&
     !has(/\bcancel\s+approach\s+clearance\b/) &&
-    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER")
+    !hasType("EXPECT_APPROACH", "CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "CLEARED_VISUAL")
   ) {
+    return false;
+  }
+  if (has(/\b(?:cleared|clear)\s+visual\b/) && !hasType("CLEARED_VISUAL")) {
     return false;
   }
   if (has(/\b(?:go\s+around|going\s+around)\b/) && !hasType("GO_AROUND")) {
     return false;
   }
+  if (has(/\b(?:ident|iden)\b/) && !hasType("IDENT")) {
+    return false;
+  }
+  if (has(/\bsay\s+heading\b/) && !hasType("SAY_HEADING")) {
+    return false;
+  }
+  if (has(/\bsay\s+altitude\b/) && !hasType("SAY_ALTITUDE")) {
+    return false;
+  }
   if (has(/\bcancel\s+approach\s+clearance\b/) && !hasType("CANCEL_APPROACH")) {
     return false;
+  }
+  if (
+    has(/\bcleared\s+(?:(?:to\s+enter|into)|through|out\s+of)\b[\s\S]*\bbravo\s+airspace\b/) &&
+    !hasType("CLASS_B_CLEARANCE")
+  ) {
+    return false;
+  }
+  if (has(/\bcleared\s+as\s+requested\b/) && !hasType("CLASS_B_CLEARANCE_AS_REQUESTED")) {
+    return false;
+  }
+  if (has(/\bremain\s+outside\s+bravo\s+airspace\b/) && !hasType("REMAIN_OUTSIDE_BRAVO")) {
+    return false;
+  }
+  if (
+    has(/\bresume\s+appropriate\s+vfr\s+altitudes\b/) &&
+    !hasType("RESUME_APPROPRIATE_VFR_ALTITUDES")
+  ) {
+    return false;
+  }
+  if (has(/\bsay\s+request\b/) && !hasType("REQUEST_DETAILS")) {
+    return false;
+  }
+  if (has(/\bstand\s*by\b/) && !hasType("STANDBY_REQUEST")) {
+    return false;
+  }
+  if (has(/\bapprove\s+flight\s+following\b/) && !hasType("APPROVE_FLIGHT_FOLLOWING")) {
+    return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?flight\s+following\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "FLIGHT_FOLLOWING") return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "IFR_PICKUP") return false;
+  }
+  if (has(/\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b/)) {
+    const dec = instructions.find(
+      (instruction): instruction is Extract<Instruction, { type: "DECLINE_REQUEST" }> =>
+        instruction.type === "DECLINE_REQUEST",
+    );
+    if (!dec || dec.service !== "CLASS_B_ACCESS") return false;
+  }
+  if (has(/\bradar\s+contact\b/) && !hasType("RADAR_CONTACT")) {
+    return false;
+  }
+  const radarContact = instructions.find(
+    (instruction): instruction is Extract<Instruction, { type: "RADAR_CONTACT" }> =>
+      instruction.type === "RADAR_CONTACT",
+  );
+  // Position-report radar contact (`radar contact <N> miles [direction]
+  // from|of <reference>`); bare `radar contact` needs only its cue. Either
+  // form still requires the cue above.
+  const hasRadarPositionCue = has(
+    /\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b/,
+  );
+  if (radarContact) {
+    const hasPositionFields =
+      radarContact.distanceNm !== undefined ||
+      radarContact.referenceId !== undefined ||
+      radarContact.referenceKind !== undefined;
+    if (hasPositionFields && !hasRadarPositionCue) {
+      return false;
+    }
+    if (
+      hasRadarPositionCue &&
+      (radarContact.distanceNm === undefined || radarContact.referenceId === undefined)
+    ) {
+      return false;
+    }
+  }
+  if (has(/\bradar\s+service\s+terminated\b/) && !hasType("TERMINATE_RADAR_SERVICE")) {
+    return false;
+  }
+  if (has(/\bifr\s+cancellation\s+received\b/) && !hasType("ACKNOWLEDGE_IFR_CANCELLATION")) {
+    return false;
+  }
+  const contactMatch = text.match(
+    /\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+(tower|center)\s*$/,
+  );
+  if (has(/\bcontact\b/) && !has(/\bradar\s+contact\b/) && contactMatch === null) {
+    return false;
+  }
+  if (contactMatch) {
+    const expected = contactMatch[2] === "tower" ? "CONTACT_TOWER" : "CONTACT_CENTER";
+    const contact = instructions.find((instruction) => instruction.type === expected);
+    if (
+      !contact ||
+      contact.type !== expected ||
+      contact.facilityName.toLowerCase() !== contactMatch[1]!.toLowerCase()
+    ) {
+      return false;
+    }
   }
   return instructions.length > 0;
 }

@@ -7,6 +7,8 @@
 import {
   deleteFlightPlanFromWorld,
   flightPlanForAircraft,
+  getOperationalService,
+  isFlightPlanOperational,
   type Aircraft,
   type ScheduledDeparture,
   type World,
@@ -512,7 +514,11 @@ export function getFlightPlanEntries(world: World, view?: ScopeView): FlightPlan
 
   // 1. Authoritative local plans. Deleted plans are not list entries.
   for (const plan of world.flightPlans) {
-    if (plan.status === "deleted" || correlatedPlanIds.has(plan.id) || seenCallsigns.has(plan.acid))
+    if (
+      !isFlightPlanOperational(plan) ||
+      correlatedPlanIds.has(plan.id) ||
+      seenCallsigns.has(plan.acid)
+    )
       continue;
     seenCallsigns.add(plan.acid);
     rawItems.push({
@@ -735,7 +741,7 @@ export function getSystemListTotalEntries(view: ScopeView, listId: string, world
     }
     case "VL": {
       if (!world) return 0;
-      return getVfrListCallsigns(world, view).length;
+      return getVfrListEntries(world, view.vfrListDroppedCallsigns, view.tracks).length;
     }
     case "TL": {
       if (!world) return 0;
@@ -1308,6 +1314,9 @@ export function isVfrAircraft(
   tracks?: Map<string, TrackDisplay>,
   world?: World,
 ): boolean {
+  if (ac.activeClearance || ac.flightRules === "IFR") {
+    return false;
+  }
   if (ac.squawk === "1200" || ac.assignedSquawk === "1200") {
     return true;
   }
@@ -1322,7 +1331,81 @@ export function isVfrAircraft(
   if (track?.flightRules === "VFR") {
     return true;
   }
+  if (world) {
+    const op = getOperationalService(world, ac);
+    if (op.flightFollowingActive || op.activeRequest?.kind === "FLIGHT_FOLLOWING") {
+      return true;
+    }
+  }
   return false;
+}
+
+/**
+ * Resolve active entries for the VFR list (VL).
+ * Real STARS (§5.2, §5.3.3, §7.4): unassociated targets squawking 1200 with no
+ * filed flight plan never appear in the VFR list. Aircraft enter the VFR list
+ * only when there is a real associated or pre-departure VFR flight plan record.
+ */
+export function getVfrListEntries(
+  world: World,
+  droppedCallsigns?: Set<string> | string[],
+  tracks?: Map<string, TrackDisplay>,
+): Aircraft[] {
+  const droppedSet =
+    droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
+  const plansByAircraftId = new Map(
+    world.aircraft.map((aircraft) => {
+      const track = tracks?.get(aircraft.id);
+      const plan =
+        flightPlanForAircraft(world, aircraft.id) ??
+        (track?.derivedPlanId
+          ? world.flightPlans.find(
+              (p) => p.id === track.derivedPlanId && isFlightPlanOperational(p),
+            )
+          : undefined) ??
+        world.flightPlans.find(
+          (p) =>
+            isFlightPlanOperational(p) &&
+            p.acid === aircraft.callsign &&
+            (p.flightRules === "VFR" || p.flightType === "VFR"),
+        );
+      return [aircraft.id, plan];
+    }),
+  );
+  const correlatedPlanIds = new Set(
+    [...plansByAircraftId.values()].flatMap((plan) => (plan ? [plan.id] : [])),
+  );
+
+  const correlatedVfrAircraft = world.aircraft.filter((ac) => {
+    if (droppedSet.has(ac.callsign.trim().toUpperCase())) return false;
+    if (ac.flightFollowing?.active || getOperationalService(world, ac).flightFollowingActive) {
+      return true;
+    }
+    const plan = plansByAircraftId.get(ac.id);
+    if (!plan || !isFlightPlanOperational(plan)) return false;
+    return plan.flightRules === "VFR" || plan.flightType === "VFR";
+  });
+
+  const unassociatedVfrPlans = world.flightPlans
+    .filter(
+      (plan) =>
+        isFlightPlanOperational(plan) &&
+        (plan.flightRules === "VFR" || plan.flightType === "VFR") &&
+        !correlatedPlanIds.has(plan.id) &&
+        !droppedSet.has(plan.acid.toUpperCase()),
+    )
+    .map(
+      (plan) =>
+        ({
+          id: `plan:${plan.id}`,
+          callsign: plan.acid,
+          squawk: plan.assignedBeacon ?? "",
+          assignedSquawk: plan.assignedBeacon,
+          altitudeFt: plan.requestedAltitudeFt ?? 0,
+        }) as Aircraft,
+    );
+
+  return [...correlatedVfrAircraft, ...unassociatedVfrPlans];
 }
 
 export function buildVfrList(
@@ -1332,37 +1415,7 @@ export function buildVfrList(
   tracks?: Map<string, TrackDisplay>,
   offset?: number,
 ): string[] {
-  const droppedSet =
-    droppedCallsigns instanceof Set ? droppedCallsigns : new Set(droppedCallsigns ?? []);
-  const correlatedPlanIds = new Set(
-    world.aircraft.flatMap((aircraft) => {
-      const plan = flightPlanForAircraft(world, aircraft.id);
-      return plan ? [plan.id] : [];
-    }),
-  );
-  const vfrFlights = [
-    ...world.aircraft.filter(
-      (ac) => isVfrAircraft(ac, tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
-    ),
-    ...world.flightPlans
-      .filter(
-        (plan) =>
-          plan.status !== "deleted" &&
-          plan.flightRules === "VFR" &&
-          !correlatedPlanIds.has(plan.id) &&
-          !droppedSet.has(plan.acid.toUpperCase()),
-      )
-      .map(
-        (plan) =>
-          ({
-            id: `plan:${plan.id}`,
-            callsign: plan.acid,
-            squawk: plan.assignedBeacon ?? "",
-            assignedSquawk: plan.assignedBeacon,
-            altitudeFt: plan.requestedAltitudeFt ?? 0,
-          }) as Aircraft,
-      ),
-  ];
+  const vfrFlights = getVfrListEntries(world, droppedCallsigns, tracks);
 
   const formatter: ListFormatter = {
     title: "VFR LIST",
@@ -1388,18 +1441,10 @@ export function buildVfrList(
 
 export function getVfrListCallsigns(world: World, view?: ScopeView): string[] {
   const droppedSet = new Set(view?.vfrListDroppedCallsigns ?? []);
-  const callsigns = world.aircraft
-    .filter((ac) => isVfrAircraft(ac, view?.tracks, world))
-    .map((ac) => ac.callsign.toUpperCase());
-  for (const plan of world.flightPlans) {
-    const correlated = world.aircraft.some(
-      (aircraft) => flightPlanForAircraft(world, aircraft.id)?.id === plan.id,
-    );
-    if (plan.status !== "deleted" && plan.flightRules === "VFR" && !correlated) {
-      callsigns.push(plan.acid.toUpperCase());
-    }
-  }
-  return [...new Set(callsigns)].filter((callsign) => !droppedSet.has(callsign));
+  const entries = getVfrListEntries(world, droppedSet, view?.tracks);
+  return [...new Set(entries.map((ac) => ac.callsign.toUpperCase()))].filter(
+    (callsign) => !droppedSet.has(callsign),
+  );
 }
 
 export function dropTowerListEntry(view: ScopeView, callsign: string): boolean {

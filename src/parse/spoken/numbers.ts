@@ -278,3 +278,64 @@ export function countNumberWordsFrom(tokens: readonly string[], start: number): 
   }
   return n;
 }
+
+export function parseDistanceNmValue(
+  tokens: readonly string[],
+  i: number,
+): { value: number; next: number } | null {
+  const tok = tokens[i];
+  if (tok === undefined) return null;
+  if (/^\d+(?:\.\d+)?$/.test(tok)) {
+    const val = Number(tok);
+    if (Number.isFinite(val) && val > 0) {
+      return { value: val, next: i + 1 };
+    }
+  }
+
+  // 3-digit single digit sequence: "one two zero", "one zero five"
+  const d1 = singleDigit(tokens[i]);
+  const d2 = singleDigit(tokens[i + 1]);
+  const d3 = singleDigit(tokens[i + 2]);
+  if (d1 !== null && d2 !== null && d3 !== null) {
+    const val = d1 * 100 + d2 * 10 + d3;
+    if (val > 0) {
+      return { value: val, next: i + 3 };
+    }
+  }
+
+  // Group-form 3-digit: "one twenty", "two fifty five"
+  if (d1 !== null && d1 >= 1 && d1 <= 9) {
+    const tens = parseTurnDegreesValue(tokens, i + 1);
+    if (tens && tens.value >= 10 && tens.value <= 99) {
+      return { value: d1 * 100 + tens.value, next: tens.next };
+    }
+  }
+
+  // Spoken hundred: "one hundred [and] [twenty [five]]"
+  if (d1 !== null && tokens[i + 1] === "hundred") {
+    let next = i + 2;
+    if (tokens[next] === "and") next += 1;
+    let remainder = 0;
+    const rest = parseTurnDegreesValue(tokens, next);
+    if (rest) {
+      remainder = rest.value;
+      next = rest.next;
+    }
+    return { value: d1 * 100 + remainder, next };
+  }
+
+  const turnVal = parseTurnDegreesValue(tokens, i);
+  if (turnVal && turnVal.value > 0) {
+    if (
+      (tokens[turnVal.next] === "point" || tokens[turnVal.next] === "dot") &&
+      tokens[turnVal.next + 1] !== undefined
+    ) {
+      const dec = singleDigit(tokens[turnVal.next + 1]);
+      if (dec !== null) {
+        return { value: turnVal.value + dec / 10, next: turnVal.next + 2 };
+      }
+    }
+    return turnVal;
+  }
+  return null;
+}

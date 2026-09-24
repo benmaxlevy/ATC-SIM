@@ -26,7 +26,8 @@ describe("T02-176 squawk assignment", () => {
     const result = await handleRadioText(world, "DAL123 SQ 0342", log);
 
     expect(result.accepted).toBe(true);
-    expect(result.readback).toContain("squawk zero three four two");
+    expect(result.readback).toContain("squawk 0342");
+    expect(result.spokenReadback).toContain("squawk zero three four two");
     expect(ac.assignedSquawk).toBe("0342");
     expect(ac.reportedSquawk).toBeUndefined();
     expect(ac.pendingReportedSquawk).toMatchObject({ code: "0342", dueSimMs: 1000 });

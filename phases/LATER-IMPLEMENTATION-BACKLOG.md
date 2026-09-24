@@ -12,49 +12,52 @@ value. Items already shipped or limited to manual validation are excluded.
 ### P0 — core safety and runtime truth
 
 1. MCI evaluator, suppression state, and `CA M` command semantics.
-2. Predicted MSAW and flashing **LA** behavior.
+2. Predicted MSAW.
 3. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
 4. CSMM, duplicate-beacon world-level detection, and `NO FP` datablock indicator.
 5. Wake-aware live datablock output, including `NOWGT`.
-6. Manual Conflict Alert inhibit commands.
+6. Adapted ATPA eligibility and per-position adaptation.
 
 ### P1 — controller operations
 
 7. Departure exit-gate/fix resolution.
 8. Adapted 2.5 NM ATPA eligibility.
 9. Quicklook sector filtering and SSA status.
-10. Multi-controller networking and inter-facility handoffs.
-11. TCP sign-on/sign-off authentication and sector consolidation.
-12. Complete pointout-to-datablock binding.
-13. TSAS runtime.
-14. Flight-plan amendment modals and target-click deletion.
-15. Scratchpad and tactical altitude/heading/speed command chords.
-16. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+10. Complete pointout-to-datablock binding.
+11. TSAS runtime.
+12. Flight-plan amendment modals and target-click deletion.
+13. Scratchpad and tactical altitude/heading/speed command chords.
+14. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
+15. Clearance/plan synchronization, readback validation, route conformance, and audit state.
+16. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
 
 ### P2 — facility and display expansion
 
 17. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
 18. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
-19. Multi-airport tower slot sequencing and dynamic adaptation.
-20. Tower Display Mode and TDW-specific ATPA presentation.
-21. MOA and selected-beacon workflows.
-22. Expanded SPCs.
-23. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
-24. Pilot barometric corrections and weather-driven deviation behavior.
-25. Additional PTL prediction geometry and presets.
-26. Additional catalog-backed maps, map management, and AVL restyle.
-27. Handwritten strip annotations and cross-rack/window strip movement.
+19. MOA and selected-beacon workflows.
+20. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+21. Pilot barometric corrections and weather-driven deviation behavior.
+22. Additional PTL prediction geometry and presets.
+23. AVL restyle and remaining CRC-style DCB parity.
+24. Handwritten strip annotations and cross-rack/window strip movement.
 
 ### P3 — procedure and voice follow-ups
 
-28. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
-29. RNAV/hold/RF in-sim FMS guidance.
-30. FAA cycle update workflow; national source/index files remain local.
-31. KATL MAPS/GEO/BRITE visual operator validation.
-32. Live Path C tie salvage against real `speech-api` and Chrome PTT p50.
+25. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+26. Airways and richer route grammar; RNAV/hold/RF in-sim FMS guidance.
+27. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
+28. Frequency assignment, receiving-position simulation, and facility communications entities.
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
+
+Items removed from this list are shipped: flashing `LA`, manual CA inhibit,
+basic RNAV/fix-to-fix flying, climb-via/descend-via, SID/STAR transitions,
+CIFP parsing/closure/packing, KATL catalog/map integration, core TPA/PTL,
+WX mosaic, catalog map management, core DCB controls, typed strip annotations,
+handoff ownership, IFR clearance execution, VFR Class B, generic tower/center
+transfer, and pilot-side GA telephony.
 
 ## Scope and display
 
@@ -98,6 +101,27 @@ Constraints later work must keep:
 - World / FMS / CA / MSAW stay 20 Hz truth; display consumers keep last
   report pose. No 30 s coast.
 
+### Limited datablock beacon display commands (`*BE`, `*BI`, `*B [slew]`)
+
+Visible now: Unassociated tracks render a Limited Data Block (LDB) with Mode C
+altitude and reported beacon code. Slew queries ground speed in tens (`045  18`)
+without flight rules or category suffixes.
+
+Deliberately missing:
+- STARS §6.13.9 global LDB beacon display toggle: `*BE <ENTER>` to show beacon
+  codes in all LDBs, `*BI <ENTER>` to inhibit/remove beacon codes in all LDBs.
+- STARS §6.13.7 single-track LDB beacon display toggle: `*B [slew]` to toggle
+  beacon code display on a selected unassociated track.
+
+Shipped: `*B` click provides the five-second transient beacon and ground-speed
+readout. The remaining global and single-track toggles are still missing.
+
+Constraints later work must keep:
+- LDB Field 5 is strictly ground speed digits (tens or knots); no flight rules
+  (`V`) or wake/category suffix.
+- Slew query on unassociated 1200 targets must never promote to FDB or display
+  callsign.
+
 ### MSAW tag is alert-only
 
 Visible now: `evaluateMsaw` raises when MSL is strictly below the MVA
@@ -107,9 +131,8 @@ shipped a 300 ft yellow caution band (`alt < floor` but `>= floor - 300`);
 that band is unused.
 
 NAS/STARS color displays use flashing red **LA** (NTSB A-06-44; JO 7110.65
-5-14). CRC R07 names Low-Altitude / MSAW alert status. Predicted MSAW
-(look-ahead still showing **LA** in red) is still not modeled. Flashing
-**LA** is not modeled (tag is static, like CA).
+5-14). CRC R07 names Low-Altitude / MSAW alert status. The live tag now
+flashes; predicted MSAW (look-ahead still showing **LA** in red) is not modeled.
 
 Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
 no datablock/target tint from MSAW; CA remains the only conflict audio. Do
@@ -146,7 +169,7 @@ Later work must keep:
 - TPA J-rings and the `TPA_MI` spinner frozen as T02-28 (2 / 3 / 5 / 10 NM).
 
 Wake-category minima are now shipped by T02-125–128. Adapted 2.5 NM extras,
-per-position adaptation, TDW white monitor, and authored-vs-NAS volumes stay in
+per-position adaptation, and authored-vs-NAS volumes stay in
 **ATPA separation criteria not yet modeled** below.
 
 ### ATPA separation criteria not yet modeled
@@ -177,14 +200,8 @@ Deliberately missing, each of which later work must keep the JSON-minima path:
   authorization). Keep the volume JSON fields; extend the predicate, do
   not hardcode 2.5.
 - **Per-position ATPA adaptation.** We are a single TCP, so there is no
-  "adapted to display" matrix. A multi-controller trainer must not assume
-  every position sees the same volume enablement.
-- **TDW white monitor variant.** The tower display workstation paints the
-  monitor cone white; this trainer has no TDW. Scope ATPA monitor stays
-  TPA blue until a TDW surface exists.
-- **R07 24 s predicted Alert.** Shipped in T02-140: ATPA Alert applies when
-  already inside the required NM or predicted to lose it within 24 s; 24–45 s
-  remains Warning. Do not invent a third color.
+  "adapted to display" matrix. A multi-position trainer must not assume every
+  position sees the same volume enablement.
 - **Aural ATPA alerting.** No ATPA tone. CA (T04-09) remains the only
   conflict audio; do not reuse the CA tone for in-trail ATPA.
 - **Volumes as authored trainer geometry** rather than imported NAS
@@ -288,29 +305,10 @@ The following specialized or multi-subsystem command sets remain deliberately de
    - `+ R <ENTER> [Click Target]`: Reposition kinematic track coordinates.
    - `/ ALL <ENTER>`: Drop track on all owned targets simultaneously.
 
-4. **Multi-Controller Networking & Coordination:**
-   - `[Handoff ID] <ENTER> [Click Target]`: Initiate handoff to external TCP or sector.
-   - `[Handoff ID] <ENTER> [Click Target]`: Redirect incoming handoff to another controller.
-   - `/ <ENTER> [Click Target]`: Retract / cancel initiated handoff.
-   - `[TCP ID] * [Click Target]`: Initiate point out to specified controller.
-   - `/ * [Click Target]`: Reject / recall point out.
-   - `INIT CONSOL [Sector ID] <ENTER>` / `DECONSOL [Sector ID] <ENTER>`: Sector consolidation and de-consolidation.
-   - `DISP CONSOL <ENTER>`: Display active facility consolidations list.
-   - `QL [Sector ID] <ENTER>` / `QL OFF [Sector ID] <ENTER>`: Enable / disable Quick Look for specified sector.
-   - `ZDE [Callsign] <ENTER>` / `ZCL [Callsign] <ENTER>`: Electronic departure coordination messaging to Tower.
-
-5. **Converging Runway Display Aid (CRDA):**
+4. **Converging Runway Display Aid (CRDA):**
    - `* CRDA ON [Pair ID] <ENTER>`: Activate CRDA runway pair configuration.
    - `* CRDA OFF [Pair ID] <ENTER>`: Deactivate CRDA runway pair.
    - `* CRDA DISP <ENTER>`: Display active CRDA configuration matrix.
-
-6. **Tower Display Mode (TDM):**
-   - `* G [Click Data Block]`: Toggle TDM ground target data block format.
-   - `* G [1-8] [Click Data Block]`: Set TDM ground target leader line direction.
-
-7. **Conflict Alert Manual Inhibit:**
-   - `* K [Click Target]`: Inhibit Conflict Alert on specific target.
-   - `* K ALL <ENTER>`: Inhibit Conflict Alert on all targets.
 
 **Shipped vs deferred collisions (do not regress):**
 - Idle F is the altitude-filter chord (`beginFilterEntry`). `*F` Enter is T02-65 FILTER readout and does **not** open the deferred `*F [Callsign]` flight-plan modal.
@@ -319,7 +317,7 @@ The following specialized or multi-subsystem command sets remain deliberately de
 
 Constraints later work must keep: never Command IR; radio line isolated; reject unknown rather than no-op; data-first catalog; self-hosted speech.
 
-### Track lifecycle and multi-controller networking
+### Track lifecycle and handoff ownership
 
 The STARS CRC Scope Fidelity Addendum (T02-34–38) shipped the complete radar
 display fidelity model: target symbol shapes (`◇`, `*`, `V`, `□`, Sector IDs),
@@ -332,7 +330,6 @@ five-second receiver-TCP retention, single-position auto-accept, and explicit
 F4 return-to-unowned.
 
 Possible future follow-ups:
-- multi-controller peer networking / live inter-facility handoffs across multiple browser sessions;
 - quick-look multi-facility track filters;
 - host automated flight-plan amendments and route conformance monitoring.
 
@@ -352,14 +349,9 @@ turns the sender’s datablock green.
 ATC-SIM currently follows the manual’s white-FDB rule for accepted Center and
 Tower handoffs, retains the receiver TCP for five simulated seconds,
 auto-accepts supported destinations in the single-position trainer after five
-simulated seconds, and offers F4 as the explicit return-to-unowned action. It
-does not model a live receiving position,
-`FC`, or a separate communications-transfer state. Revisit whether the trainer
-needs a clearer persistent “transferred to Center” cue or a documented CRC-like
-confirmation interaction. Preserve the manual distinction between owned and
-previously owned, avoid implying that white proves local control, and do not
-claim real multi-controller or interfacility behavior without adding the
-underlying state model.
+simulated seconds, and offers F4 as the explicit return-to-unowned action.
+Preserve the manual distinction between owned and previously owned, and avoid
+implying that white proves local control.
 
 ### SSA and GI data beyond trainer stubs
 
@@ -369,10 +361,6 @@ Remaining possible follow-ups:
 - richer facility status and ATIS-style broadcasts;
 - pilot aircraft barometric kinematic corrections;
 - source timestamps, stale-data handling, and alerting.
-
-### Multi-Airport Satellite Altimeter Matrix in SSA
-
-Shipped in T02-78–80: `ssaWeatherAirports` in scenario JSON drives automated METAR fetching and decoding; primary airport altimeter renders on Line 3 alongside time (`1620/02  30.18`), and satellite airports render in 3-airport matrix rows below SSA (e.g. `KATL 30.18  FTY 30.18  PDK 30.18`), fully controlled by the `ALTSTG` SSA FILTER toggle.
 
 ### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
 
@@ -403,24 +391,13 @@ FILTER WX toggle). All settings are persisted in PREF v3.
 
 Remaining later implementations:
 - AVL 2×3 / half-height badge restyle;
-- additional catalog-backed maps and map management;
 - fuller CRC-style DCB workflows.
+
+Catalog-backed maps, map management, and the shipped DCB controls are complete;
+do not re-add them as generic backlog items.
 
 Do not fill empty map slots with OSM or add unvetted controls as an incidental
 change; each capability needs its own data and acceptance criteria.
-
-### Weather Radar / DCB WX chrome
-
-T02-68 ships IEM N0Q fetch/decode (`src/scope/wx/`), `ScopeView.wxLevels`
-(six false), and `vipAtNm`. T02-69 paints enabled VIP fills under tracks
-from `view.wxMosaic` via `weatherLayer.ts` (one cached `drawImage`, default
-levels off). T02-70 latches MAIN WX1–6 onto `view.wxLevels` and persists
-them in PREF v3. T02-71 ships scope-preview `*WX 1`–`6` / `ALL` / `OFF`
-(optional space after `*`) against the same bitmask. T02-72 ships live
-BRITE WX/WXC: fills tint with `brite.wx`, VIP band contours tint with
-`brite.wxc`. Vite `/wx-iem` proxies to IEM; CI uses `testdata/wx/` plus
-injected fetch. T02-82 ships live SSA WX status, timestamp, WX HIST age, and
-15-minute staleness alert indicator.
 
 ### WX mosaic leftovers (T02-72 / T02-82)
 
@@ -434,24 +411,11 @@ rejects the `nexrad-n0q` layer group.
 
 Still later:
 
-- AVL 2×3 / half-height badge restyle
 - Pilot deviate via `vipAtNm` (query exists; does not steer aircraft)
 
 Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
 operator in this worker worktree. Automated tests cover DCB / `*WX` /
 BRITE / cached paint / SSA WX telemetry. Do not invent a visual pass.
-
-### PREF SAVE AS named sets
-
-Shipped: SAVE AS collects a short alphanumeric name through the preview-area /
-status-line buffer (CRC analog, R07). Enter writes the first empty slot, or the
-last slot when the 32-slot table is full. Esc cancels with no write. Digit-only
-names are rejected (FIL reserved). MAIN shows the active set name; slot caps
-show the stored name. No `window.prompt`, no HTML `<input>`.
-
-Still not a NAS preference host. Slash names such as `22/27` are not typeable
-(alphanumeric only). Per-track PTL and TPA stay session state and are not
-persisted in PREF. WX `wxLevels` stay the other swarm.
 
 ### Manual Inhibit Commands and Safety Inhibit Glyphs
 
@@ -461,19 +425,13 @@ STARS CRC supports manual per-track inhibition commands via the `<MULTI FUNC>` (
 - `<MULTI FUNC>Q` / `<MULTI FUNC>V` are shipped as scope-local trainer controls: Q suppresses only a current LA alert and V toggles persistent per-track MSAW processing; both render the ACID `*`. They are not certified MSAW.
 - `<MULTI FUNC>Y(###)<SLEW>`: Enters a pilot-reported altitude (rendering `*` after altitude numbers).
 
-The remaining manual invocation commands and corresponding glyph extensions are skipped for now and preserved for later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is introduced. Typed Preview Area holes that include those chords are listed under **STARS preview area — commands not parsed** rather than duplicated here. Later work must preserve the distinct Q current-alert lifetime and V persistent per-track lifetime.
-
-### Tactical and Expanded Special Purpose Codes (SPCs)
-
-STARS CRC supports additional Special Purpose Codes beyond standard emergency squawks:
-- **Expanded Transponder SPCs**: `7777` (`MI` - Military Intercept) and `7400` (`LL` - Lost Link / UAS).
-- **Tactical Controller-Assigned SPCs**:
-  - `OD`: Opposite Direction operations (head-on runway operations).
-  - `ME`: Medical Emergency declared without transponder squawk.
-  - `MF`: Minimum Fuel status.
-  - `LN`: Medevac / LifeGuard priority flight.
-
-These expanded and tactical SPC codes are deferred for future specialized scenario modules. Existing core emergency squawks (`7700` `EM`, `7600` `RF`, `7500` `HJ`) remain fully active.
+Q/V controls are shipped as scope-local trainer behavior. The remaining M/C/Y
+manual invocation commands and corresponding glyph extensions are preserved for
+later implementation when a full STARS `<MULTI FUNC>` keyboard chord parser is
+introduced. Typed Preview Area holes that include those chords are listed under
+**STARS preview area — commands not parsed** rather than duplicated here. Later
+work must preserve the distinct Q current-alert lifetime and V persistent
+per-track lifetime.
 
 ### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
 
@@ -484,15 +442,6 @@ Deferred to future simulation phases:
 - **Stagger Cones & Tie Lines**: Dynamic display of spacing cones and connecting tie lines between real aircraft and projected ghosts for converging and dependent runway operations.
 - **STARS Table 26 CRDA Keyboard Grammar**: Keyboard commands for pairing activation/deactivation, spacing distance adjustment, and runway configuration switching.
 
-### Multi-Airport Tower Sequencing and Strip-Less Automation
-
-Visible now: In-scope `TOWER 1`, `TOWER 2`, and `TOWER 3` list panes rendering dynamic aircraft approach sequences sorted by distance to airport threshold.
-
-Deferred to future simulation phases:
-- **Automated Slot Sequencing**: Time-based metering and automated arrival slot management across multiple satellite airports.
-- **Tower Display Workstation (TDW) Inter-Facility Coordination**: Direct sequence handoffs between TRACON radar controller and Tower local/ground controllers without flight progress strips.
-- **Dynamic Multi-Airport Adaptation**: Auto-populating runway designations, ILS/RNAV approach identifiers, and tower list airport identifiers based on active scenario airport configuration.
-
 ### Surveillance Drop-Out Coast/Suspend Track Lifecycle (30s Timeout)
 
 Visible now: `COAST/SUSPEND` list formatting displaying track status (`C` for Coasting), transponder beacon code, and last received Mode C altitude in hundreds of feet.
@@ -501,14 +450,6 @@ Deferred to future simulation phases:
 - **30-Second Target Drop Timeout**: Automated detection of radar/ADS-B target signal loss, moving the track into the Coast list after 30 seconds of missing surveillance returns.
 - **Dead-Reckoning Extrapolation**: Kinematic position extrapolation along the last known ground track vector during the coast period.
 - **Automated Target Re-Correlation**: Seamless track resumption and full datablock restoration when radar returns resume on the assigned squawk code.
-
-### Terminal Control Position (TCP) Sign-On and Multi-Controller Authentication
-
-Visible now: `SIGN-ON` list rendering the current TCP display subset, sector ID, and Zulu sign-on timestamp (e.g., `1D  0311`).
-
-Deferred to future simulation phases:
-- **Sign-On/Sign-Off Keyboard Commands**: Formal controller authentication chords (`SO <TCP> <OPERATOR_ID>`) with session duration tracking and relief briefings.
-- **Multi-Position Sector Consolidation**: Dynamically combining or de-combining sector boundaries and transferring owned track lists between TCPs.
 
 ### SSA Multi-Sensor Fusion Telemetry and Network Health
 
@@ -560,8 +501,8 @@ silent straight-line TF conversion:
   climb-via and transition amendments are implemented in-sim (T04-19 / T04-44),
   but this offline tool only extracts and emits JSON catalog rows; verifying
   active route-following for all imported rows is not this tool.
-- **Live FAA cycle download, chart scrape, vendor APIs.** Input stays a local
-  path. Full CIFP/NASR cycles stay out of git (`.cifp/`).
+- **Chart scrape and vendor APIs.** Input stays a local path. Full CIFP/NASR
+  cycles stay out of git (`.cifp/`).
 
 Constraints later work must keep:
 
@@ -579,7 +520,7 @@ walk SID/STAR/approach references and does not contain every procedure leg.
 `buildSpatialIndex` keys records by ICAO and `identity.key`. Runtime `src/`
 does not import this tool.
 
-Deliberately missing:
+Repository boundary, not implementation backlog:
 
 - **National CIFP / derived national index in git.** A full cycle or a
   nationwide source/index dump must stay on disk under gitignored `.cifp/`
@@ -608,17 +549,11 @@ catalog `files` layout. Tests prove a far SID runway-transition fix outside
 the seed radius is present after closure, and that an unrelated airport
 procedure is excluded.
 
-Deliberately missing:
+Module boundary, not implementation backlog:
 
-- **Great-circle radius selection.** T04-32 owns `spatialIndex.ts`; this
-  T04-33 closure module does not compute NM distance or select the seed.
-  The generic pack CLI already wires radius selection to closure.
-- **Radius-based deletion after closure.** Once a procedure is selected, its
-  required fixes/navaids stay even when they sit outside the seed radius.
-- **Runtime national catalog or browser CIFP fetch.** Closure stays in the
-  developer tool. `src/` does not import it.
-- **New RNAV / hold / RF flying.** Unsupported path terminators remain
-  diagnostics, not catalog TF legs.
+The generic pack CLI already owns radius selection and wires it to closure.
+Closure intentionally keeps required out-of-radius references, remains a
+developer tool, and does not add new RNAV / hold / RF flying.
 
 Constraints later work must keep:
 
@@ -644,7 +579,7 @@ CRC conversion pack loaded through generic `loadVideoMapSet("KATL")` (T04-39),
 not CIFP-emitted. Authored trainer MVA is a uniform 3000 ft floor (not FAA
 source data).
 
-Deliberately missing:
+Trainer boundary, not CIFP implementation backlog:
 
 - **KATL ATPA, telephony.** Catalog JSON and authored scenario/spawn files
   are separate. Maps are not CIFP-emitted (CRC pack is T04-39). Never point
@@ -653,7 +588,9 @@ Deliberately missing:
   box over the ±60 NM training area, not source sector minima.
 - **Heading-only vector SID flying (`ATL2`).** Unsupported CIFP path
   terminators stay skipped; empty named-fix SIDs are omitted from the pack.
-- **RNAV / hold / RF FMS, heading-vector leg guidance, live FAA download, chart scrape.** (Standard TF SID climb-via and transition amendments are already operational in-sim via T04-19/T04-44).
+- **RNAV / hold / RF FMS and heading-vector leg guidance.** (Standard TF
+  SID climb-via and transition amendments are already operational in-sim via
+  T04-19/T04-44.)
 
 Constraints later work must keep:
 
@@ -679,15 +616,11 @@ flows from that catalog and are session-visible inventory entries. Maps and
 ATPA stay outside CIFP catalog JSON. Trainer MVA is a uniform 3000 ft floor,
 not FAA source data.
 
-Deliberately missing:
+Boundary and remaining procedure gap:
 
-- **`faa:update` live download.** Input stays a local path. CI and this
-  ticket did not regenerate from an official FAA cycle (no authorized
-  local CIFP in the environment). Record a skip-with-reason; do not claim
-  cycle regeneration was tested.
 - **RNAV / hold / RF flying** from imported CIFP. Unsupported path
   terminators stay diagnostics, not TF legs.
-- **Browser CIFP fetch, national dump in git, T04-11 wind, phase 5.**
+- **National dump in git, T04-11 wind, phase 5.**
 
 Constraints later work must keep:
 
@@ -709,12 +642,9 @@ including 17 GEO-only ULIDs in `mapsAbsentFromGroups`. `*D ALL` / `*D NONE` /
 CLR ALL / CURRENT walk the full inventory. CRC A/B is `map` / `mapDim`.
 Runtime does not read CRC or import the converter.
 
-Deliberately missing:
+Remaining procedure gap:
 
-- **Chrome visual leftover (T04-41 / T04-42).** Automated tests pass. The
-  operator MAPS / GEO / BRITE walk is `test.skip` skip-with-reason (no
-  visual operator). Do not invent a pass.
-- **`faa:update` live download, RNAV / hold / RF FMS.** CIFP catalog rows
+- **RNAV / hold / RF FMS.** CIFP catalog rows
   stay as T04-35. Unsupported path terminators stay diagnostics.
 
 Constraints later work must keep:
@@ -753,63 +683,125 @@ Constraints later work must keep:
 
 ## Voice
 
-### Live Path C tie salvage (T03-20)
+### Radio communications transfer to tower/center (no frequency)
 
-Visible now: unique Haynes / AJ / ILS 26R snap locally (`spoken_a` / `spoken_b`)
-against a synthetic catalog. A within-margin tie misses locally and, with
-`pathC: true`, an injected Path C receives the retrieved candidate cluster
-(cap 16), not file-order 64 and not the whole pack. STT `X-ATC-Fixes` is
-omitted or a tiny high-value prior (T03-19).
+Shipped in T04-101–103: typed, Path A/B/C, PTT, and speech-parser parity for
+`CONTACT_TOWER` and `CONTACT_CENTER`; generic tower/center transfer gates;
+VFR visual-final reuse; and landing-based IFR plan closure. Facility names are
+syntax/readback/log data only. No frequency field, facility lookup, individual
+tower/center entity, or Raytheon STARS behavior exists.
 
-Deliberately missing: live Path C tie salvage against a real `speech-api`
-`POST /parse` model on a Haynes-like **tie** (not unique snap) was not run
-this ticket. Chrome PTT p50 (T03-12 E10) was not measured.
+Still deliberately missing: live frequency assignment, facility-specific
+communications entities, tower-cab/ground coordination, receiving-position
+simulation, and real facility identity validation. The current trainer uses
+generic eligible-destination and outbound-handoff gates, and does not claim
+facility-specific operational fidelity.
+
+Constraints later work must keep:
+- Follow FAA JO 7110.65 §§2-1-15/16/17 and 7-6-8: transfer remains coordinated and
+  the named receiving function is distinct from radar-service termination.
+- Keep `CONTACT_TOWER` and `CONTACT_CENTER` generic across regional data; do not add
+  facility-specific branches or hardcoded facility identity validation.
+- Maintain Path C / Command IR synchronization for any later contract change.
+- Inbound pilot check-in, frequency assignment, and receiving-position behavior remain
+  decoupled from this trainer slice.
+
+### Controller VFR clearances through/into Class B
+
+Visible now: Ambient VFR traffic and post-cancellation autonomous navigation are guarded by
+the modeled three-dimensional Class B volumes. Outside-Bravo IFR cancellation deterministically
+replans an unsafe autonomous VFR suffix around Class B before the atomic IFR-to-VFR transition;
+cancellation inside Class B remains rejected. Controller-issued VFR `TO_ENTER`, `THROUGH`, and
+`OUT_OF` clearances now have active state, catalog-grounded 3D route validation, temporary
+altitude handling, boundary events, exact exit notification, and explicit
+`REMAIN_OUTSIDE_BRAVO` / `RESUME_APPROPRIATE_VFR_ALTITUDES` behavior. Flight following, radar
+contact, and `MAINTAIN_VFR` remain advisory/radio states only; none authorizes Class B entry.
+
+Pilot-initiated VFR Class B requests are now also implemented: geometry-driven
+ambient traffic requests `TO_ENTER` or `THROUGH` before a projected 3-D Bravo
+crossing, `say request` reports the stored intent, and exact approval/denial/
+standby responses resolve the request without adding a pilot `OUT_OF` path.
+`CLEARED AS REQUESTED` copies only the pending VFR request's operation, route,
+and requested altitude. No Raytheon STARS display/manual behavior is part of
+this slice.
+
+This slice deliberately does not add VFR-on-top, SVFR, Class C/D authorization, tower cab
+coordination, visual landmarks/corridors, certified separation, or implicit route repair from
+unrelated commands. Manual controller review of FAA phraseology and operational suitability
+remains outside automated acceptance.
 
 Constraints later work must keep:
 
-- one salvage model, same `POST /parse`, miss-only, schema-checked Command IR;
-- retrieved cluster 8–16, never `ids().slice(0, 64)` or the whole pack;
-- unique high-margin snap stays local;
-- self-hosted `speech-api` only; no paid STT/TTS/LLM hosts;
-- synthetic catalogs in generic tests; no KATL production counts.
+- VFR entry into Class B requires explicit controller clearance; ordinary flight following,
+  radar contact, `MAINTAIN_VFR`, or IFR cancellation never implies approval. FAA JO 7110.65
+  §7-9-2 specifies clearance to enter/through/out of Bravo, with route and altitude as
+  applicable.
+- IFR cancellation outside Class B must continue to produce and validate a deterministic safe
+  VFR continuation; cancellation inside Class B remains rejected and never implies Class B entry
+  authorization.
+- Validate complete 3D swept segments against grouped Class B geometry, and keep rejected
+  commands atomic. Preserve flight following, beacon state, and the editable flight plan
+  unless a later clearance contract explicitly changes them.
+- Use generic regional-airspace and catalog walkers; no KATL/KDEM branches. Keep frontend
+  parser, Command IR, Path A/B, Path C, `speech-api`, GBNF, prompt, readback, parity tests,
+  and documentation synchronized.
+- Do not add VFR-on-top, SVFR, Class C/D authorization, cloud speech, or implicit route
+  repair from an unrelated command.
+
+### General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB")
+
+Visible now: Pilot telephony and speech synthesis support GA aircraft make/model names (e.g.
+"Skyhawk 172SP", "Cherokee 4821V", "Cirrus 210AB"), title-casing the manufacturer/model and
+expanding the alphanumeric tail phonetically for initial check-ins and readbacks
+(`formatCallsignSpeech` in `src/pilot/telephony.ts`, `readbackForTts` in `src/speech/tts-text.ts`).
+In controller input, `N<digits>` ("November 1 2 3"), numeric suffixes ("123"), or track selection
+without callsign are accepted across typed commands and spoken paths (Path A, B, and C).
+
+Deliberately missing: Spoken input (STT) and typed commands do not accept GA aircraft make/model
+names followed by flight/tail numbers (e.g., controller speaking `"Skyhawk 172SP, turn left heading 270"`
+or `"Cirrus 210AB, squawk 0421"`). In the spoken frontend parser (Path A/B), non-airline prefixes
+trigger an `unknown_telephony` error because GA makes/models are absent from
+`src/parse/spoken/telephony.json`. In typed commands, space-separated tokens reject make words as
+`UNKNOWN_TOKEN`. In Path C (`speech-api/parse_engine.py`), `_CALLSIGN_RE` enforces single tokens
+`^[A-Z0-9]{2,8}$` without spaces, and prompt/normalization rules only map airline ICAO telephony to
+on-frequency callsigns.
+
+Constraints later work must keep:
+- Keep aircraft profiles, make/model aliases, and telephony data-first (e.g. extending aircraft
+  profiles or telephony catalogs, not hardcoded switch-cases or facility branches).
+- Synchronize across all paths: Path A (grammar), Path B (pattern matcher / spoken telephony),
+  Path C (`speech-api/parse_engine.py`, GBNF, prompt, few-shots, and evaluation corpus), and typed
+  command parser.
+- Grounding resolution must map make/model + tail/suffix (or abbreviated tail) to the matching
+  on-frequency target (e.g., `"Skyhawk 172SP"` or `"Skyhawk 2SP"` resolving to aircraft with callsign
+  `N172SP` or `Skyhawk 172SP`), without ambiguity or misidentifying other aircraft.
+- Self-hosted speech and parsing only; no cloud inference or metered SDKs.
 
 ## Explicit boundary
+
 
 This document does not pull in untouched phase work such as scoring/replay,
 constant-wind simulation, a licensed STARS typeface, or other
 features that have not been partially implemented in the shipped slices.
 
-### Pilot clearances and flight-plan execution remain later
+### Clearance and flight-plan execution — remaining tails
 
-The flight-plan lifecycle swarm covers local scope-side plan creation,
-association, editing, deletion, and datablock projection only. Later work must
-connect those records to the radio/pilot pipeline:
+Radio-issued tactical clearances, IFR route activation, supported SID/STAR FMS
+execution, controller squawk assignment, generic tower/center transfer, and
+VFR Class B clearance/request workflows are shipped. The remaining work is:
 
-- controller-issued squawk assignments and amendments through radio phraseology;
-- pilot readback/validation and reported-squawk changes after a clearance;
-- controller clearances for assigned altitude, heading, speed, route, SID/STAR,
-  and approach that execute through Command IR and pilot intent;
-- full route entry and amendment in the flight-plan editor, beyond the current
-  compact entry/exit `FIXES` pair;
-- route legs, airways, direct-to segments, and generic fix/procedure
-  validation backed by the loaded catalog;
-- SID/STAR selection and transitions linked from the authoritative flight plan
-  into the aircraft FMS, including runway and common/enroute legs;
-- synchronization from amended flight-plan route data into active aircraft
-  intent/FMS state, without facility-specific route branches;
-- authoritative filed route/procedure state driving the FMS after accepted
-  amendments, including conformance and mismatch handling;
-- pilot route execution, deviation detection, and controller-visible
-  route-conformance status;
-- rejected or misunderstood clearances, explicit readback errors, and audit
-  state linking the clearance to the plan.
-- future squawk update sources not yet routed through the aircraft-scoped
-  correlation hook: pilot clearance execution, live surveillance/transponder
-  input, remaining scenario import adapters, replay, and network/controller
-  feeds. Scheduled-departure spawning now routes an authored reported squawk
-  through the hook. Each future source must update reported squawk first and
-  may not scan or associate other aircraft.
+- synchronize amended filed-plan data with active clearance state without
+  silently retargeting an already-cleared aircraft;
+- add richer route grammar, including airways and additional route-leg forms;
+- validate pilot readbacks, mismatches, rejected or misunderstood clearances,
+  and audit state linking each clearance to its plan;
+- detect IFR route deviation and expose controller-visible conformance state;
+- add live frequency assignment, receiving-position identity, facility-specific
+  communications, and tower/ground coordination;
+- route future squawk sources through the aircraft-scoped correlation hook;
+  each source must update reported squawk first and may not scan or associate
+  other aircraft.
 
-These later flows must preserve the boundary: scope plan editing does not emit
+These flows must preserve the boundary: scope plan editing does not emit
 Command IR or mutate kinematics; radio clearances do. Keep pilot execution
 self-hosted and do not add metered speech services.

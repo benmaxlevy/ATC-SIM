@@ -16,7 +16,7 @@ test("package barrels import without circular init crash", () => {
   expect(new NullSpeechPort().id).toBe("null");
   expect(SCENARIO_PACKAGE).toBe("scenario");
   expect(App).toBeTypeOf("function");
-  expect(INSTRUCTION_TYPES).toHaveLength(22);
+  expect(INSTRUCTION_TYPES).toHaveLength(36);
 });
 
 test("World has simTimeMs, paused, simRate, and empty aircraft", () => {

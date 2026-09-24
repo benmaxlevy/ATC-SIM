@@ -1,0 +1,30 @@
+{
+  "airportId": "KMLJ",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R10",
+      "type": "RNAV",
+      "runway": "10",
+      "name": "RNAV RWY 10",
+      "thresholdFixId": "RW10",
+      "courseDeg": 95.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 785
+    },
+    {
+      "id": "R28",
+      "type": "RNAV",
+      "runway": "28",
+      "name": "RNAV RWY 28",
+      "thresholdFixId": "RW28",
+      "courseDeg": 276.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 680
+    }
+  ]
+}

@@ -745,6 +745,11 @@ function isEmergencyDatablockException(world: World, ac: Aircraft): boolean {
 
 function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: TrackDisplay) {
   const handoff = handoffFor(world, ac.id);
+  // SPI/IDENT (Fig. 2-23) forces the LDB RBC + Mode C display even when
+  // unassociated altitude/beacon filters would suppress them.
+  if (td && isIdentFlashing(td, world.simTimeMs)) {
+    return true;
+  }
   return shouldShowDatablockOutsideAltitudeFilter({
     inFilter: inAltitudeFilter(
       ac.altitudeFt,
@@ -777,8 +782,9 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
   if (isTracked && caSeverity) {
     return PALETTE.owned;
   }
-  const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
-  return targetStrokeColor(trackOwnership(view, ac.id), identActive);
+  // TI 6191.409: SPI/IDENT is datablock "ID" text only; the target symbol
+  // does not bloom, flash, or change color.
+  return targetStrokeColor(trackOwnership(view, ac.id), false);
 }
 
 type AlertGlyph = {
@@ -949,6 +955,9 @@ export function buildScopeDatablockPresentation(
   const mode = visual.mode;
   const field0Indicators =
     mode === "limited" ? ldbField0Indicators(view, world, ac, td) : undefined;
+  // TI 6191.409 SPI: FDB Line 2 Field 5 = GS + "ID", PDB Line 1 Field 4 = "ID",
+  // LDB Line 1 Field 1 = flashing "ID" next to the RBC. Symbol is unchanged.
+  const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
   const runtime = buildDatablockRuntimeState(world, ac, {
     track: td,
     mode,
@@ -960,8 +969,11 @@ export function buildScopeDatablockPresentation(
       trackEnabled: td?.atpaInTrailDistanceEnabled !== false,
     },
     fieldInputs: {
-      identIndicator:
-        mode === "partial" && td && isIdentFlashing(td, world.simTimeMs) ? "ID" : undefined,
+      identIndicator: mode === "partial" && identActive ? "ID" : undefined,
+      identActive: mode === "full" && identActive ? true : undefined,
+      ...(mode === "limited" && identActive
+        ? { identActive: true, identBlinkOn: isAlertBlinkOn(world.simTimeMs) }
+        : {}),
       field0Indicators,
     },
   });
@@ -1217,7 +1229,6 @@ export function drawTracks(
     const color = trackColor(view, world, ac);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
-    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const ho = handoffFor(world, ac.id);
     const isTracked = isTrackedTarget(view, world, ac);
     const bcnMult = (view.brite.bcn ?? 100) / 100;
@@ -1225,7 +1236,7 @@ export function drawTracks(
       ? view.brite.pri
       : Math.round((isTracked ? view.brite.pos : view.brite.oth) * bcnMult);
     const priMark = applyBrite(TARGET_PUCK_BG, view.brite.pri);
-    const targetSymbolColor = ownership === "unowned" && !identActive ? PALETTE.targetGreen : color;
+    const targetSymbolColor = ownership === "unowned" ? PALETTE.targetGreen : color;
     const squawk = td?.squawk ?? ac.squawk;
     let sectorId = td?.sectorId;
     if (!sectorId) {
@@ -1534,7 +1545,6 @@ export function drawPredictedTrackLines(
     );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
     const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
-    const identActive = td ? isIdentFlashing(td, world.simTimeMs) : false;
     const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
       ctx,
@@ -1542,7 +1552,7 @@ export function drawPredictedTrackLines(
       from.y,
       to.x,
       to.y,
-      applyBrite(identActive ? PALETTE.selected : PALETTE.ptl, view.brite.tls),
+      applyBrite(PALETTE.ptl, view.brite.tls),
       capTickPx,
     );
   }

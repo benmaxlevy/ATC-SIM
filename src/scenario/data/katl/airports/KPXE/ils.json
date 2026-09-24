@@ -1,0 +1,106 @@
+{
+  "airportId": "KPXE",
+  "components": [
+    {
+      "id": "AMG",
+      "kind": "DME",
+      "name": "ALMA",
+      "xNm": 63.715365,
+      "yNm": -58.4415,
+      "latDeg": 31.53655555555556,
+      "lonDeg": -82.50808888888889,
+      "freqMhz": 115.1,
+      "class": "T"
+    },
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -63.261111,
+      "yNm": 6.280333,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": -4.098541,
+      "yNm": 67.238667,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -32.627397,
+      "yNm": 67.379,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 6.079996,
+      "yNm": 10.836333,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "MGR",
+      "kind": "DME",
+      "name": "MOULTRIE",
+      "xNm": -1.865503,
+      "yNm": -85.698667,
+      "latDeg": 31.082269444444446,
+      "lonDeg": -83.80421666666666,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -26.890902,
+      "yNm": 81.903,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "IPXEGS",
+      "kind": "GS",
+      "name": "IPXE GS",
+      "xNm": 0.052003,
+      "yNm": -0.2775,
+      "latDeg": 32.50595555555556,
+      "lonDeg": -83.76631944444445,
+      "gsAngleDeg": 3,
+      "tchFt": 45
+    },
+    {
+      "id": "IPXE",
+      "kind": "LOC",
+      "name": "IPXE",
+      "xNm": -0.005903,
+      "yNm": 0.659,
+      "latDeg": 32.521563888888885,
+      "lonDeg": -83.76746388888888,
+      "freqMhz": 109.15,
+      "courseDeg": 5.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3
+    }
+  ]
+}

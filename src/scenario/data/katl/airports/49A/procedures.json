@@ -1,0 +1,30 @@
+{
+  "airportId": "49A",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R03",
+      "type": "RNAV",
+      "runway": "03",
+      "name": "RNAV RWY 03",
+      "thresholdFixId": "RW03",
+      "courseDeg": 100,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1731
+    },
+    {
+      "id": "R21",
+      "type": "RNAV",
+      "runway": "21",
+      "name": "RNAV RWY 21",
+      "thresholdFixId": "RW21",
+      "courseDeg": 213.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 2500
+    }
+  ]
+}

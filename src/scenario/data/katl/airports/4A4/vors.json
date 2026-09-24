@@ -1,0 +1,60 @@
+{
+  "airportId": "4A4",
+  "vors": [
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -46.689361,
+      "yNm": -2.527333,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -3.058205,
+      "yNm": -58.164333,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": 1.259172,
+      "yNm": 8.642333,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "RQZ",
+      "kind": "VORDME",
+      "name": "ROCKET",
+      "xNm": -74.056,
+      "yNm": 46.722833,
+      "latDeg": 34.797238888888884,
+      "lonDeg": -86.63384722222223,
+      "freqMhz": 112.2,
+      "class": "T"
+    },
+    {
+      "id": "VUZ",
+      "kind": "VORDME",
+      "name": "VULCAN",
+      "xNm": -87.284001,
+      "yNm": -20.9035,
+      "latDeg": 33.67013333333333,
+      "lonDeg": -86.89983611111111,
+      "freqMhz": 114.4,
+      "class": "T"
+    }
+  ]
+}

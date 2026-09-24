@@ -1,6 +1,7 @@
 import type { IfrClearanceAccess, SpeedUntil, TurnDir } from "./command/types";
 import type { FlightPlanRoute } from "./flightPlan";
 import { normalizeHeadingDeg } from "./nav/geometry";
+import type { RadioContactReport } from "./radio/requests";
 
 /** FAA JO 7110.65BB terminal CWT categories used by later ATPA adaptation. */
 export type CwtWakeCategory = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
@@ -16,6 +17,22 @@ export interface ActiveIfrClearance {
   frequency?: string;
   climbVia?: boolean;
   issuedAtSimMs: number;
+}
+
+export interface ClassBClearanceState {
+  operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+  routeFixIds?: string[];
+  routeMode: "CATALOG_ROUTE" | "OWN_NAVIGATION";
+  altitudeFt?: number;
+  priorVfrAltitudeFt?: number;
+  issuedAtSimMs: number;
+  routeIndex: number;
+  active: boolean;
+}
+
+export interface RemainOutsideBravoState {
+  issuedAtSimMs: number;
+  active: boolean;
 }
 
 const CWT_WAKE_CATEGORIES = new Set<CwtWakeCategory>(["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
@@ -71,7 +88,14 @@ export type LateralMode =
   | { type: "INTERCEPT_LOC"; approachId: string }
   | { type: "LOC"; approachId: string }
   | { type: "MISSED"; approachId: string }
-  | { type: "LANDING"; approachId: string };
+  | { type: "LANDING"; approachId: string }
+  | {
+      type: "VISUAL_FINAL";
+      runwayId: string;
+      threshold: { xNm: number; yNm: number };
+      headingDeg: number;
+      fieldElevFt?: number;
+    };
 
 /**
  * Result of a lateral DIRECT amendment.  The route is copied into the
@@ -103,6 +127,7 @@ export type VerticalMode =
   | { type: "VIA_STAR"; starId: string; sense?: "DESCEND" | "CLIMB" }
   | { type: "VIA_SID"; sidId: string }
   | { type: "GS"; approachId: string }
+  | { type: "GLIDEPATH"; approachId: string }
   | { type: "MISSED_CLIMB"; altitudeFt: number };
 
 /**
@@ -165,6 +190,8 @@ export interface Aircraft {
    * Display-only — kinematics ignore this.
    */
   aircraftType?: string;
+  /** Authored pilot names; canonical `callsign` remains the roster identity. */
+  spokenAliases?: readonly string[];
   /** Assigned or active 4-digit beacon/squawk code (e.g. "1200", "0342"). */
   squawk?: string;
   /** Transponder capability / mode ("primary", "mode_c", "mode_a", "mode_s", "none"). */
@@ -195,6 +222,12 @@ export interface Aircraft {
   clearanceFrequency?: string;
   /** Latest issued IFR clearance, independent of editable flight-plan state. */
   activeClearance?: ActiveIfrClearance;
+  classBClearance?: ClassBClearanceState;
+  remainOutsideBravo?: RemainOutsideBravoState;
+  classBAltitudeSnapshot?: {
+    assignedAltitudeFt: number;
+    priorVfrAltitudeFt: number;
+  };
   /** True if altitude is pilot-reported (displays *). */
   pilotReportedAltitude?: boolean;
   /** ATPA in-trail distance readout (Fig 38/39 two decimals, e.g. "2.40"). */
@@ -219,6 +252,52 @@ export interface Aircraft {
   destinationAirport?: string;
   /** Flight rules: e.g. "IFR" or "VFR". */
   flightRules?: string;
+  /** Ambient VFR traffic state marker (T04-71). */
+  ambientVfr?: AmbientVfrState;
+  /** VFR flight following advisory service state (T04-73). */
+  flightFollowing?: {
+    active: boolean;
+    approvedAtSimMs?: number;
+    requestId?: string;
+  };
+  /** Confirmed radar identification state from RADAR_CONTACT (T04-73). */
+  radarContact?: RadioContactReport;
+  /** True when aircraft is airborne. Omitted/inferred from altitudeFt > 0 if unset. */
+  airborne?: boolean;
+  /** True when aircraft is in radar vectors pending heading state. */
+  radarVectorPending?: boolean;
+  /** Pending pilot IFR cancellation report marker (T04-75). */
+  cancellationPending?: boolean;
+}
+
+export type AmbientVfrMission = "LOCAL" | "TRANSIT" | "AIRPORT_BOUND" | "SATELLITE_DEPARTURE";
+
+export interface AmbientVfrWaypoint {
+  xNm: number;
+  yNm: number;
+  /** Optional catalog fix identity used when a radio request reports a route. */
+  fixId?: string;
+  altitudeFt?: number;
+  speedKt?: number;
+  targetToleranceNm?: number;
+}
+
+export interface AmbientVfrState {
+  mission: AmbientVfrMission;
+  zoneId: string;
+  destinationAirportId?: string;
+  /** Seeded destination runway choice for AIRPORT_BOUND missions (T04-83). */
+  destinationRunwayId?: string;
+  /** Departure satellite airport for step()-driven entries (T04-79). Omitted on disc spawns. */
+  originAirportId?: string;
+  /** Seeded departure runway choice at the origin airport (T04-79). Omitted on disc spawns. */
+  departureRunwayId?: string;
+  spawnedAtSimMs: number;
+  alertEligibility: "AMBIENT_SUPPRESSED" | "CONTROLLED";
+  waypoints?: AmbientVfrWaypoint[];
+  waypointIndex?: number;
+  dwellUntilSimMs?: number;
+  phase?: "CRUISE" | "EXITING" | "HANDOFF_COMPLETED";
 }
 
 export interface AircraftInit {
@@ -230,6 +309,8 @@ export interface AircraftInit {
   altitudeFt: number;
   speedKt: number;
   aircraftType?: string;
+  /** Authored pilot names; never replace the canonical callsign. */
+  spokenAliases?: readonly string[];
   squawk?: string;
   transponder?: "primary" | "mode_c" | "mode_a" | "mode_s" | "none";
   primaryOnly?: boolean;
@@ -248,6 +329,12 @@ export interface AircraftInit {
   clearanceAccess?: ClearanceAccess;
   clearanceFrequency?: string;
   activeClearance?: ActiveIfrClearance;
+  classBClearance?: ClassBClearanceState;
+  remainOutsideBravo?: RemainOutsideBravoState;
+  classBAltitudeSnapshot?: {
+    assignedAltitudeFt: number;
+    priorVfrAltitudeFt: number;
+  };
   pilotReportedAltitude?: boolean;
   atpaDistance?: string;
   flightPlan?: {
@@ -267,6 +354,18 @@ export interface AircraftInit {
   destination?: string;
   destinationAirport?: string;
   flightRules?: string;
+  ambientVfr?: AmbientVfrState;
+  flightFollowing?: {
+    active: boolean;
+    approvedAtSimMs?: number;
+    requestId?: string;
+  };
+  radarContact?: unknown;
+  /** True when aircraft is airborne. Omitted/inferred from altitudeFt > 0 if unset. */
+  airborne?: boolean;
+  /** True when aircraft is in radar vectors pending heading state. */
+  radarVectorPending?: boolean;
+  cancellationPending?: boolean;
 }
 
 /** ICAO heavy transport types used by generated and authored traffic. */
@@ -322,6 +421,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
     },
     identUntilSimMs: 0,
     ...(init.aircraftType ? { aircraftType: init.aircraftType.toUpperCase() } : {}),
+    ...(init.spokenAliases?.length
+      ? { spokenAliases: Object.freeze([...init.spokenAliases]) }
+      : {}),
     ...(init.squawk ? { squawk: init.squawk } : {}),
     ...(init.transponder ? { transponder: init.transponder } : {}),
     ...(init.primaryOnly !== undefined ? { primaryOnly: init.primaryOnly } : {}),
@@ -346,6 +448,9 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.clearanceAccess ? { clearanceAccess: init.clearanceAccess } : {}),
     ...(init.clearanceFrequency ? { clearanceFrequency: init.clearanceFrequency } : {}),
     ...(init.activeClearance ? { activeClearance: init.activeClearance } : {}),
+    ...(init.classBClearance ? { classBClearance: init.classBClearance } : {}),
+    ...(init.remainOutsideBravo ? { remainOutsideBravo: init.remainOutsideBravo } : {}),
+    ...(init.classBAltitudeSnapshot ? { classBAltitudeSnapshot: init.classBAltitudeSnapshot } : {}),
     ...(init.pilotReportedAltitude !== undefined
       ? { pilotReportedAltitude: init.pilotReportedAltitude }
       : {}),
@@ -355,6 +460,16 @@ export function createAircraft(init: AircraftInit): Aircraft {
     ...(init.destination ? { destination: init.destination } : {}),
     ...(init.destinationAirport ? { destinationAirport: init.destinationAirport } : {}),
     ...(init.flightRules ? { flightRules: init.flightRules } : {}),
+    ...(init.ambientVfr ? { ambientVfr: init.ambientVfr } : {}),
+    ...(init.flightFollowing ? { flightFollowing: init.flightFollowing } : {}),
+    ...(init.radarContact ? { radarContact: init.radarContact as RadioContactReport } : {}),
+    ...(init.airborne !== undefined ? { airborne: init.airborne } : {}),
+    ...(init.radarVectorPending !== undefined
+      ? { radarVectorPending: init.radarVectorPending }
+      : {}),
+    ...(init.cancellationPending !== undefined
+      ? { cancellationPending: init.cancellationPending }
+      : {}),
   };
 }
 

@@ -126,6 +126,32 @@ describe("System Lists Multi-Page Scrolling & Pagination", () => {
 
     it("buildVfrList accepts and honors offset", () => {
       const world = createWorld();
+      world.flightPlans = [
+        {
+          id: "fp-1",
+          status: "active",
+          acid: "N1001",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+        {
+          id: "fp-2",
+          status: "active",
+          acid: "N1002",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+        {
+          id: "fp-3",
+          status: "active",
+          acid: "N1003",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+      ];
       world.aircraft = [
         makeTestAircraft({
           id: "1",
@@ -290,6 +316,32 @@ describe("System Lists Multi-Page Scrolling & Pagination", () => {
       // VFR List (VL)
       toggleSystemList(view, "VL");
       setSystemListMaxLines(view, "VL", 2);
+      world.flightPlans = [
+        {
+          id: "fp-1",
+          status: "active",
+          acid: "N1",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+        {
+          id: "fp-2",
+          status: "active",
+          acid: "N2",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+        {
+          id: "fp-3",
+          status: "active",
+          acid: "N3",
+          flightRules: "VFR",
+          fixes: [],
+          scratchpads: [],
+        },
+      ];
       world.aircraft = [
         makeTestAircraft({
           id: "1",

@@ -1,0 +1,125 @@
+{
+  "airportId": "KAUO",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -25.13131,
+      "yNm": 55.153667,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BH",
+      "kind": "NDB",
+      "name": "MCDEN",
+      "xNm": -71.33989,
+      "yNm": 53.784667,
+      "latDeg": 33.511522222222226,
+      "lonDeg": -86.84559166666666,
+      "freqKhz": 224
+    },
+    {
+      "id": "BVG",
+      "kind": "NDB",
+      "name": "BOLL WEEVIL",
+      "xNm": -27.692214,
+      "yNm": -76.543167,
+      "latDeg": 31.339391666666664,
+      "lonDeg": -85.98194166666667,
+      "freqKhz": 352
+    },
+    {
+      "id": "CS",
+      "kind": "NDB",
+      "name": "FENIX",
+      "xNm": 19.812541,
+      "yNm": -9.790333,
+      "latDeg": 32.45193888888889,
+      "lonDeg": -85.04197222222221,
+      "freqKhz": 355
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": 36.424725,
+      "yNm": 38.51,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": 47.888989,
+      "yNm": 41.1485,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": 15.314324,
+      "yNm": 57.038833,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "LKG",
+      "kind": "NDB",
+      "name": "LINDBERGH",
+      "xNm": 67.006203,
+      "yNm": -26.438,
+      "latDeg": 32.174477777777774,
+      "lonDeg": -84.10815833333332,
+      "freqKhz": 242
+    },
+    {
+      "id": "MG",
+      "kind": "NDB",
+      "name": "MARRA",
+      "xNm": -54.411559,
+      "yNm": -18.209667,
+      "latDeg": 32.311616666666666,
+      "lonDeg": -86.51063333333333,
+      "freqKhz": 245
+    },
+    {
+      "id": "OHY",
+      "kind": "NDB",
+      "name": "CONEY",
+      "xNm": 79.457234,
+      "yNm": -37.036,
+      "latDeg": 31.997844444444446,
+      "lonDeg": -83.86179166666666,
+      "freqKhz": 400
+    },
+    {
+      "id": "SE",
+      "kind": "NDB",
+      "name": "POLLK",
+      "xNm": -75.48195,
+      "yNm": -20.717167,
+      "latDeg": 32.269825,
+      "lonDeg": -86.92755000000001,
+      "freqKhz": 344
+    },
+    {
+      "id": "TOI",
+      "kind": "NDB",
+      "name": "BLOOD",
+      "xNm": -33.959423,
+      "yNm": -47.058833,
+      "latDeg": 31.830797222222223,
+      "lonDeg": -86.10594999999999,
+      "freqKhz": 365
+    }
+  ]
+}

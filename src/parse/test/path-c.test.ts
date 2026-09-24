@@ -5,6 +5,7 @@ import {
   DEFAULT_PARSE_URL,
   PATH_C_SCHEMA_VERSION,
   fetchParsePathC,
+  isCanonicalCallsignToken,
   isLegalInstruction,
   schemaCheckPathC,
   routePathCOutputIsGrounded,
@@ -55,6 +56,77 @@ test("pathC false never fetches", async () => {
   expect(parsePathC).not.toHaveBeenCalled();
   expect(fetchSpy).not.toHaveBeenCalled();
   vi.unstubAllGlobals();
+});
+
+test("Path C callsign schema is canonical-only through five-digit N-numbers", () => {
+  expect(isCanonicalCallsignToken("N12345")).toBe(true);
+  expect(isCanonicalCallsignToken("DAL123")).toBe(true);
+  expect(isCanonicalCallsignToken("Skyhawk 123")).toBe(false);
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: "Skyhawk 123",
+      instructions: [{ type: "RADAR_CONTACT" }],
+    }),
+  ).toBeNull();
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: "N12345",
+      instructions: [{ type: "RADAR_CONTACT" }],
+    }),
+  ).toMatchObject({ callsignToken: "N12345" });
+});
+
+test("Path C context carries canonical callsigns with authored aliases", async () => {
+  let captured: PathCRequest | undefined;
+  const parsePathC = vi.fn<ParsePathCFn>(async (request) => {
+    captured = request;
+    return HEADING;
+  });
+  const result = await parseCommand("pizza the runway", {
+    source: "voice",
+    callsigns: [{ callsign: "N123", aliases: ["Skyhawk"] }],
+    pathC: true,
+    parsePathC,
+  });
+  expect(result.ok).toBe(true);
+  expect(captured?.context?.callsigns).toEqual([{ callsign: "N123", aliases: ["Skyhawk"] }]);
+});
+
+test("local alias hit bypasses Path C", async () => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => HEADING);
+  const result = await parseCommand("Skyhawk 123 H270", {
+    source: "voice",
+    callsigns: [{ callsign: "N123", aliases: ["Skyhawk"] }],
+    pathC: true,
+    parsePathC,
+  });
+  expect(result.ok).toBe(true);
+  expect(parsePathC).not.toHaveBeenCalled();
+});
+
+test.each([
+  ["Citation 123 pizza", [{ callsign: "N123", aliases: ["Skyhawk"] }]],
+  [
+    "Skyhawk 123 pizza",
+    [
+      { callsign: "UAL123", aliases: ["Skyhawk"] },
+      { callsign: "DAL123", aliases: ["Skyhawk"] },
+    ],
+  ],
+] as const)("Path C alias evidence fails closed for %s", async (text, callsigns) => {
+  const parsePathC = vi.fn<ParsePathCFn>(async () => ({
+    callsignToken: callsigns[0]?.callsign === "N123" ? "N123" : "UAL123",
+    instructions: [{ type: "FLY_HEADING", headingDeg: 270, turn: "LEFT" }],
+  }));
+  const result = await parseCommand(text, {
+    source: "voice",
+    callsigns,
+    pathC: true,
+    parsePathC,
+  });
+  expect(result.ok).toBe(false);
 });
 
 test("Path C schema accepts exact discrete/VFR squawk IR and rejects malformed codes", () => {
@@ -143,6 +215,23 @@ test("Path C accepts ordered cancellation and rejects approach re-arm", () => {
         { type: "FLY_HEADING", headingDeg: 270, turn: "SHORTEST" },
         { type: "CANCEL_APPROACH" },
       ],
+    }),
+  ).toBeNull();
+});
+
+test("Path C accepts CLEARED_VISUAL with valid runway and rejects invalid shapes", () => {
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27L" })).toBe(true);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27l" })).toBe(true);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL" })).toBe(false);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "" })).toBe(false);
+  expect(isLegalInstruction({ type: "CLEARED_VISUAL", runwayId: "27L", extra: 1 })).toBe(false);
+
+  // Re-arm approach after cancel in same clearance is rejected
+  expect(
+    schemaCheckPathC({
+      ok: true,
+      callsignToken: null,
+      instructions: [{ type: "CANCEL_APPROACH" }, { type: "CLEARED_VISUAL", runwayId: "27L" }],
     }),
   ).toBeNull();
 });

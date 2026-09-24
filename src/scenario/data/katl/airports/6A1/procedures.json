@@ -1,0 +1,30 @@
+{
+  "airportId": "6A1",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R01",
+      "type": "RNAV",
+      "runway": "01",
+      "name": "RNAV RWY 01",
+      "thresholdFixId": "RW01",
+      "courseDeg": 5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 934
+    },
+    {
+      "id": "R19",
+      "type": "RNAV",
+      "runway": "19",
+      "name": "RNAV RWY 19",
+      "thresholdFixId": "RW19",
+      "courseDeg": 185,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 847
+    }
+  ]
+}

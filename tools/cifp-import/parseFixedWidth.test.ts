@@ -24,6 +24,8 @@ import {
   pf,
   pn,
   ndb,
+  uc,
+  ur,
   vhf,
   vhfDmeOnly,
 } from "./fixedWidthRecords.ts";
@@ -432,4 +434,384 @@ test("testdata/cifp/grouped-runway.cifp matches the in-memory grouped fixture", 
     "27L",
     "27R",
   ]);
+});
+
+test("parses supported UC Class B, C, and D records into normalized airspace (AC1)", () => {
+  const lines = [
+    // Class B volume: 3 points forming a shelf
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA CLASS B",
+      seq: 10,
+      lat: "N33382100",
+      lon: "W084254000",
+      boundaryVia: "G",
+      multipleCode: "A",
+      lowerLimit: "02500",
+      lowerLimitUnit: "M",
+      upperLimit: "10000",
+      upperLimitUnit: "M",
+    }),
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA CLASS B",
+      seq: 20,
+      lat: "N33390000",
+      lon: "W084200000",
+      boundaryVia: "R",
+      multipleCode: "A",
+      arcOriginLat: "N33382100",
+      arcOriginLon: "W084254000",
+      arcDistance: "0100",
+      arcBearing: "0900",
+      lowerLimit: "02500",
+      lowerLimitUnit: "M",
+      upperLimit: "10000",
+      upperLimitUnit: "M",
+    }),
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA CLASS B",
+      seq: 30,
+      lat: "N33300000",
+      lon: "W084200000",
+      boundaryVia: "G",
+      multipleCode: "A",
+      lowerLimit: "02500",
+      lowerLimitUnit: "M",
+      upperLimit: "10000",
+      upperLimitUnit: "M",
+    }),
+    // Class C volume: GND to 04000
+    uc({
+      center: "KSAV",
+      airspaceClass: "C",
+      name: "SAVANNAH CLASS C",
+      seq: 10,
+      lat: "N32073900",
+      lon: "W081120800",
+      boundaryVia: "C",
+      arcDistance: "0050",
+      lowerLimit: "GND  ",
+      lowerLimitUnit: "A",
+      upperLimit: "04000",
+      upperLimitUnit: "M",
+    }),
+    // Class D volume: SFC to 02500
+    uc({
+      center: "KFTY",
+      airspaceClass: "D",
+      name: "FULTON COUNTY CLASS D",
+      seq: 10,
+      lat: "N33464500",
+      lon: "W084311700",
+      boundaryVia: "C",
+      arcDistance: "0040",
+      lowerLimit: "SFC  ",
+      lowerLimitUnit: "A",
+      upperLimit: "02500",
+      upperLimitUnit: "M",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(3);
+
+  const atlB = source.airspaces.find((a) => a.centerAirportId === "KATL" && a.class === "B");
+  expect(atlB).toBeDefined();
+  expect(atlB?.type).toBe("CONTROLLED");
+  expect(atlB?.name).toBe("ATLANTA CLASS B");
+  expect(atlB?.lowerLimit.altitudeFt).toBe(2500);
+  expect(atlB?.lowerLimit.unit).toBe("MSL");
+  expect(atlB?.upperLimit.altitudeFt).toBe(10000);
+  expect(atlB?.upperLimit.unit).toBe("MSL");
+  expect(atlB?.segments).toHaveLength(3);
+  expect(atlB?.segments[0]?.sequence).toBe(10);
+  expect(atlB?.segments[0]?.boundaryViaType).toBe("GREAT_CIRCLE");
+  expect(atlB?.segments[1]?.boundaryViaType).toBe("CLOCKWISE_ARC");
+  expect(atlB?.segments[1]?.arcDistanceNm).toBe(10);
+  expect(atlB?.segments[1]?.arcBearingDeg).toBe(90);
+
+  const savC = source.airspaces.find((a) => a.centerAirportId === "KSAV");
+  expect(savC).toBeDefined();
+  expect(savC?.class).toBe("C");
+  expect(savC?.lowerLimit.altitudeFt).toBe(0);
+  expect(savC?.lowerLimit.unit).toBe("GND");
+  expect(savC?.lowerLimit.reference).toBe("SURFACE");
+  expect(savC?.upperLimit.altitudeFt).toBe(4000);
+
+  const ftyD = source.airspaces.find((a) => a.centerAirportId === "KFTY");
+  expect(ftyD).toBeDefined();
+  expect(ftyD?.class).toBe("D");
+  expect(ftyD?.lowerLimit.reference).toBe("SURFACE");
+  expect(ftyD?.upperLimit.altitudeFt).toBe(2500);
+});
+
+test("parses UR special-use records and inherits altitudes from first record (AC2)", () => {
+  const lines = [
+    // R2508: first record has altitudes, second record leaves them blank
+    ur({
+      restrictionType: "R",
+      designation: "R2508",
+      name: "COMPLEX",
+      seq: 10,
+      lat: "N35000000",
+      lon: "W117000000",
+      boundaryVia: "G",
+      lowerLimit: "02000",
+      lowerLimitUnit: "A",
+      upperLimit: "FL200",
+      upperLimitUnit: "M",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R2508",
+      name: "COMPLEX",
+      seq: 20,
+      lat: "N36000000",
+      lon: "W117000000",
+      boundaryVia: "G",
+      lowerLimit: "     ",
+      lowerLimitUnit: " ",
+      upperLimit: "     ",
+      upperLimitUnit: " ",
+    }),
+    // MOA record
+    ur({
+      restrictionType: "M",
+      designation: "MOJAVE",
+      name: "MOJAVE MOA",
+      seq: 10,
+      lat: "N34000000",
+      lon: "W116000000",
+      boundaryVia: "G",
+      lowerLimit: "00500",
+      lowerLimitUnit: "A",
+      upperLimit: "18000",
+      upperLimitUnit: "M",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(2);
+
+  const r2508 = source.airspaces.find((a) => a.designation === "R2508");
+  expect(r2508).toBeDefined();
+  expect(r2508?.type).toBe("SPECIAL_USE");
+  expect(r2508?.specialUseKind).toBe("RESTRICTED");
+  expect(r2508?.lowerLimit.altitudeFt).toBe(2000);
+  expect(r2508?.lowerLimit.unit).toBe("AGL");
+  expect(r2508?.upperLimit.altitudeFt).toBe(20000);
+  expect(r2508?.upperLimit.unit).toBe("MSL");
+  expect(r2508?.segments).toHaveLength(2);
+
+  const mojave = source.airspaces.find((a) => a.designation === "MOJAVE");
+  expect(mojave?.specialUseKind).toBe("MOA");
+  expect(mojave?.lowerLimit.unit).toBe("AGL");
+});
+
+test("unsupported geometry causes explicit skip diagnostic and is never emitted as straight segment (AC2)", () => {
+  const lines = [
+    uc({
+      center: "KBAD",
+      airspaceClass: "B",
+      name: "BAD GEOMETRY",
+      seq: 10,
+      lat: "N33000000",
+      lon: "W084000000",
+      boundaryVia: "Z", // unsupported code
+    }),
+    uc({
+      center: "KBAD",
+      airspaceClass: "B",
+      name: "BAD GEOMETRY",
+      seq: 20,
+      lat: "N33100000",
+      lon: "W084000000",
+      boundaryVia: "G",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  // Airspace should NOT be emitted
+  expect(source.airspaces).toHaveLength(0);
+  // Must have explicit skip diagnostic
+  const skips = source.diagnostics.filter((d) => d.code === "UNSUPPORTED_AIRSPACE_GEOMETRY");
+  expect(skips.length).toBeGreaterThanOrEqual(1);
+  expect(skips[0]?.message).toContain("unsupported boundary via 'Z'");
+});
+
+test("skips continuation records with UC-CONT and UR-CONT diagnostics", () => {
+  const lines = [
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA",
+      seq: 10,
+      lat: "N33382100",
+      lon: "W084254000",
+      continuation: "2",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R9999",
+      name: "TEST",
+      seq: 10,
+      lat: "N33382100",
+      lon: "W084254000",
+      continuation: "2",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(source.skippedByType["UC-CONT"]).toBe(1);
+  expect(source.skippedByType["UR-CONT"]).toBe(1);
+});
+
+test("national UC circle (CE) with blank LAT/LON uses arc-origin coordinate, zero errors", () => {
+  const line = uc({
+    center: "KBOI",
+    airspaceClass: "C",
+    name: "BOISE",
+    seq: 10,
+    lat: "         ",
+    lon: "          ",
+    boundaryVia: "CE",
+    arcOriginLat: "N43335170",
+    arcOriginLon: "W116132230",
+    arcDistance: "0050",
+    lowerLimit: "GND  ",
+    lowerLimitUnit: "A",
+    upperLimit: "06900",
+    upperLimitUnit: "M",
+  });
+
+  const source = parseFixedWidthCifp(line);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(1);
+  const seg = source.airspaces[0]?.segments[0];
+  expect(seg?.boundaryViaType).toBe("CIRCLE");
+  // Arc-origin center N43°33'51.70" W116°13'22.30"
+  expect(seg?.position.latDeg).toBeCloseTo(43.5643611, 4);
+  expect(seg?.position.lonDeg).toBeCloseTo(-116.2228611, 4);
+});
+
+test("two-char boundary-via end flag (GE) maps to base geometry, not unsupported", () => {
+  const lines = [
+    uc({
+      center: "KATL",
+      airspaceClass: "B",
+      name: "ATLANTA CLASS B",
+      seq: 10,
+      lat: "N33382100",
+      lon: "W084254000",
+      boundaryVia: "GE",
+      multipleCode: "A",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R0001",
+      name: "TEST",
+      seq: 10,
+      lat: "N34000000",
+      lon: "W116000000",
+      boundaryVia: "GE",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.diagnostics.filter((d) => d.code === "UNSUPPORTED_AIRSPACE_GEOMETRY")).toHaveLength(
+    0,
+  );
+  expect(source.airspaces).toHaveLength(2);
+  expect(source.airspaces[0]?.segments[0]?.boundaryViaType).toBe("GREAT_CIRCLE");
+});
+
+test("out-of-scope airspace class and missing coordinates become skip, never error", () => {
+  const lines = [
+    uc({
+      center: "KXYZ",
+      airspaceClass: "E",
+      name: "OUT OF SCOPE",
+      seq: 10,
+      lat: "N33000000",
+      lon: "W084000000",
+      boundaryVia: "G",
+    }),
+    ur({
+      restrictionType: "R",
+      designation: "R0002",
+      name: "NO COORD",
+      seq: 10,
+      lat: "         ",
+      lon: "          ",
+      boundaryVia: "G",
+    }),
+  ].join("\n");
+
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.airspaces).toHaveLength(0);
+  const skips = source.diagnostics.filter((d) => d.severity === "skip");
+  expect(skips.length).toBeGreaterThanOrEqual(2);
+});
+
+test("VOR approach recNav does not become locNavaidId (national RMG case)", () => {
+  const lines = [
+    pf({
+      icao: "KRYY",
+      appId: "D09",
+      routeType: "V",
+      seq: "010",
+      fixId: "RMG",
+      path: "TF",
+      recNav: "RMG",
+    }),
+  ].join("\n");
+  const source = parseFixedWidthCifp(lines);
+  const app = source.approaches.find((a) => a.id === "D09");
+  expect(app).toBeDefined();
+  expect(app?.locNavaidId).toBeUndefined();
+  expect(app?.gsNavaidId).toBeUndefined();
+});
+
+test("circling approach with no numeric runway is skipped, never emitted (national RNV-A case)", () => {
+  const lines = [
+    pf({
+      icao: "KPDK",
+      appId: "RNV-A",
+      routeType: "R",
+      seq: "010",
+      fixId: "JUDYY",
+      path: "TF",
+    }),
+  ].join("\n");
+  const source = parseFixedWidthCifp(lines);
+  expect(sourceErrorCount(source)).toBe(0);
+  expect(source.approaches.find((a) => a.id === "RNV-A")).toBeUndefined();
+  const skips = source.diagnostics.filter((d) => d.code === "SKIPPED_APPROACH_ROUTE");
+  expect(skips.length).toBeGreaterThanOrEqual(1);
+});
+
+test("malformed coordinates emit deterministic error diagnostic", () => {
+  const line = uc({
+    center: "KATL",
+    airspaceClass: "B",
+    name: "CORRUPT LAT",
+    seq: 10,
+    lat: "INVALID99",
+    lon: "W084254000",
+  });
+
+  const source = parseFixedWidthCifp(line);
+  const errors = source.diagnostics.filter((d) => d.severity === "error");
+  expect(errors.length).toBeGreaterThanOrEqual(1);
+  expect(errors[0]?.code).toBe("MALFORMED_AIRSPACE_RECORD");
+  expect(errors[0]?.lineNo).toBe(1);
 });

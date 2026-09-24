@@ -1,0 +1,82 @@
+{
+  "airportId": "7A5",
+  "vors": [
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": 12.146308,
+      "yNm": -70.765667,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -35.742176,
+      "yNm": 50.8035,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": 8.340581,
+      "yNm": -4.8335,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": 19.048313,
+      "yNm": -47.843,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "MGM",
+      "kind": "VORDME",
+      "name": "MONTGOMERY",
+      "xNm": -47.60878,
+      "yNm": -54.443833,
+      "latDeg": 32.22228055555556,
+      "lonDeg": -86.31972777777777,
+      "freqMhz": 112.1,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": 12.702644,
+      "yNm": 61.973167,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VUZ",
+      "kind": "VORDME",
+      "name": "VULCAN",
+      "xNm": -76.756987,
+      "yNm": 32.427333,
+      "latDeg": 33.67013333333333,
+      "lonDeg": -86.89983611111111,
+      "freqMhz": 114.4,
+      "class": "T"
+    }
+  ]
+}
