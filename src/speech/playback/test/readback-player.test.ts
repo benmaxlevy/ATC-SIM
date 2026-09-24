@@ -135,6 +135,7 @@ test("playPcm releases after the duration watchdog when onended is lost", async 
     source.start = () => {
       // Simulate the browser finishing audio without delivering `ended`.
     };
+    const stop = vi.spyOn(source, "stop");
     ctx.createBufferSource = () => {
       ctx.sources.push(source);
       return source as unknown as AudioBufferSourceNode;
@@ -148,6 +149,7 @@ test("playPcm releases after the duration watchdog when onended is lost", async 
 
     await vi.advanceTimersByTimeAsync(1600 / 16 + 250);
     await expect(pending).resolves.toEqual({ ok: true });
+    expect(stop).toHaveBeenCalledOnce();
     expect(player.playing).toBe(false);
   } finally {
     vi.useRealTimers();

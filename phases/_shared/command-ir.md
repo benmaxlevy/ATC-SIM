@@ -215,6 +215,12 @@ direct fixes.
 | `contact <facility-name> tower` | `CONTACT_TOWER { facilityName }` (T04-101–103; syntax/readback name only; no frequency or facility lookup; eligible arrival transfer only) |
 | `contact <facility-name> center` | `CONTACT_CENTER { facilityName }` (T04-101–103; syntax/readback name only; no frequency or facility lookup; eligible outbound transfer only) |
 
+Path C transcript evidence binds `CLEARED_VISUAL.runwayId` to the visual-runway
+phrase, `RADAR_CONTACT` distance and reference to the same radar-contact
+position phrase, and `CONTACT_TOWER` / `CONTACT_CENTER.facilityName` to the
+spoken contact name. A spoken airport reference must select one airport from
+the supplied catalog by ICAO, name, or alias.
+
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 
 ## Validation (pilot agent)

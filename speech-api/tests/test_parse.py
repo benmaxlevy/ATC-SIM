@@ -763,7 +763,28 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert not guard_instruction_semantics("turn right heading 270", ParseOutcome(ok=True, instructions=[decline_ifr])).ok
 
     assert guard_instruction_semantics("radar contact 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert guard_instruction_semantics("radar contact, 5 miles from DEM", ParseOutcome(ok=True, instructions=[radar_contact])).ok
+    assert not guard_instruction_semantics(
+        "radar contact 5 miles from RIVVR",
+        ParseOutcome(ok=True, instructions=[radar_contact]),
+    ).ok
+    assert not guard_instruction_semantics(
+        "radar contact 8 miles from DEM",
+        ParseOutcome(ok=True, instructions=[radar_contact]),
+    ).ok
+    assert not guard_instruction_semantics(
+        "radar contact Delta 123, 5 miles from DEM",
+        ParseOutcome(ok=True, instructions=[radar_contact]),
+    ).ok
     assert guard_instruction_semantics("radar contact 25 miles southeast of KATL", ParseOutcome(ok=True, instructions=[airport_contact])).ok
+    assert guard_instruction_semantics(
+        "radar contact two five miles southeast of atlanta airport",
+        ParseOutcome(ok=True, instructions=[airport_contact]),
+    ).ok
+    assert guard_instruction_semantics(
+        "radar contact five miles from ATL VOR",
+        ParseOutcome(ok=True, instructions=[{"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "ATL", "referenceKind": "NAVAID"}]),
+    ).ok
     assert guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[bare_radar_contact])).ok
     assert not guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[radar_contact])).ok
     assert not guard_instruction_semantics("radar contact", ParseOutcome(ok=True, instructions=[airport_contact])).ok
@@ -780,6 +801,12 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
     assert not guard_instruction_semantics(
         "contact Atlanta tower 118.5", ParseOutcome(ok=True, instructions=[contact_tower])
     ).ok
+    assert not guard_instruction_semantics(
+        "contact Savannah tower", ParseOutcome(ok=True, instructions=[contact_tower])
+    ).ok
+    assert not guard_instruction_semantics(
+        "contact Savannah center", ParseOutcome(ok=True, instructions=[contact_center])
+    ).ok
 
     # Catalog guards for RADAR_CONTACT
     rc_outcome = ParseOutcome(ok=True, instructions=[radar_contact])
@@ -793,6 +820,19 @@ def test_path_c_validates_vfr_flight_following_and_radio_contact_instructions() 
         {"fixes": ["DEM"], "airports": [{"icao": "KATL", "name": "Atlanta International"}]},
         airport_outcome,
     ).ok
+    assert guard_catalog_ids(
+        "radar contact 25 miles southeast of atlanta airport",
+        {
+            "airports": [
+                {"icao": "KATL", "name": "Atlanta International"},
+                {"icao": "KSAV", "name": "Savannah Hilton Head International"},
+            ]
+        },
+        ParseOutcome(
+            ok=True,
+            instructions=[{"type": "RADAR_CONTACT", "distanceNm": 25, "referenceId": "KSAV", "referenceKind": "AIRPORT"}],
+        ),
+    ).error == "PARSE_MISS"
     assert not guard_catalog_ids(
         "radar contact 25 miles southeast of nowhere airport",
         {"fixes": ["DEM"], "airports": [{"icao": "KATL", "name": "Atlanta International"}]},
@@ -1148,6 +1188,21 @@ def test_semantic_guard_requires_evidence_for_every_instruction_type() -> None:
         outcome = ParseOutcome(ok=True, instructions=[instruction])
         assert guard_instruction_semantics(transcript, outcome).ok, instruction["type"]
         assert not guard_instruction_semantics("Delta 123 radio check", outcome).ok, instruction["type"]
+
+
+def test_path_c_visual_runway_must_follow_visual_runway_phrase() -> None:
+    from parse_engine import guard_instruction_semantics
+
+    instruction = {"type": "CLEARED_VISUAL", "runwayId": "09"}
+    assert guard_instruction_semantics(
+        "cleared visual approach runway zero niner, fly heading one eight",
+        ParseOutcome(ok=True, instructions=[instruction]),
+    ).ok
+    mismatched = {"type": "CLEARED_VISUAL", "runwayId": "18"}
+    assert not guard_instruction_semantics(
+        "cleared visual approach runway zero niner, fly heading one eight",
+        ParseOutcome(ok=True, instructions=[mismatched]),
+    ).ok
 
 
 def test_semantic_guard_accepts_fused_turn_without_the_word_heading() -> None:

@@ -1211,7 +1211,16 @@ def _runway_has_transcript_evidence(runway_id: str, text: str) -> bool:
     rwy = runway_id.strip().upper()
     if not rwy:
         return False
-    lower = text.lower()
+    # A heading or another number later in the clearance must not ground the
+    # visual approach runway. Only inspect a short span immediately after the
+    # runway cue (spoken forms use at most three tokens, e.g. "two seven left").
+    runway_cue = re.search(
+        r"\bvisual\s+(?:approach\s+)?runway\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,2})",
+        text.lower(),
+    )
+    if not runway_cue:
+        return False
+    lower = runway_cue.group(1)
     if rwy.lower() in lower:
         return True
     m = re.match(r"^0?(\d{1,2})([LCR])?$", rwy)
@@ -1255,6 +1264,65 @@ def _runway_has_transcript_evidence(runway_id: str, text: str) -> bool:
     if side == "C" and not re.search(r"\b(?:center|centre|c)\b", lower):
         return False
     return True
+
+
+def _spoken_distance_matches(spoken: str, distance: int | float) -> bool:
+    try:
+        return float(spoken) == float(distance)
+    except ValueError:
+        words = spoken.split()
+        digits = {
+            "zero": "0", "one": "1", "two": "2", "three": "3", "tree": "3",
+            "four": "4", "five": "5", "fife": "5", "six": "6", "seven": "7",
+            "eight": "8", "nine": "9", "niner": "9",
+        }
+        # ATC often says two-digit distances as separate digits ("two five"
+        # for 25); ordinary cardinal forms such as "twenty five" also work.
+        if len(words) == 2 and all(word in digits for word in words):
+            return int("".join(digits[word] for word in words)) == float(distance)
+        cardinal = {
+            0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+            6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven",
+            12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen", 16: "sixteen",
+            17: "seventeen", 18: "eighteen", 19: "nineteen", 20: "twenty", 30: "thirty",
+            40: "forty", 50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety",
+        }
+        numeric = int(distance) if float(distance).is_integer() else -1
+        expected = cardinal.get(numeric)
+        if expected is None and 21 <= numeric <= 99:
+            expected = f"{cardinal[numeric // 10 * 10]} {cardinal[numeric % 10]}"
+        return spoken == expected
+
+
+_RADAR_POSITION_RE = re.compile(
+    r"\bradar\s+contact,?\s+(?P<distance>\d+(?:\.\d+)?|(?:zero|one|two|three|tree|four|five|fife|six|seven|eight|nine|niner|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|"
+    r"thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine))?)"
+    r"\s+miles?\s+(?:(?:north|south|east|west|north\s+east|south\s+east|north\s+west|south\s+west|"
+    r"northeast|northwest|southeast|southwest)\s+)?(?:from|of)\s+(?P<reference>[^,.!?;]+)",
+    re.IGNORECASE,
+)
+
+
+def _airport_reference_matches(phrase: str, airport_id: str, airports: list[dict[str, Any]]) -> bool:
+    # Generic airport descriptors vary across catalogs and spoken phraseology.
+    # Compare distinctive words from each supplied name/alias, and require the
+    # phrase to identify exactly one catalog candidate.
+    generic = {"airport", "international", "intl", "regional", "municipal", "county", "field"}
+
+    def words(value: str) -> set[str]:
+        return {part for part in re.findall(r"[a-z0-9]+", value.lower()) if part not in generic}
+
+    spoken = words(phrase)
+    if not spoken:
+        return False
+    matches: set[str] = set()
+    for airport in airports:
+        names = [str(airport.get("icao") or ""), str(airport.get("name") or "")]
+        names.extend(str(alias) for alias in airport.get("aliases") or [])
+        if any(spoken.issubset(words(name)) for name in names if name):
+            matches.add(str(airport.get("icao") or "").upper())
+    return len(matches) == 1 and airport_id.upper() in matches
 
 
 def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str) -> bool:
@@ -1407,16 +1475,38 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         if not has(r"\bradar\s+contact\b"):
             return False
         if "distanceNm" in instruction or "referenceId" in instruction or "referenceKind" in instruction:
-            return has(r"\bmiles?\s+(?:(?:north|south|east|west|northeast|northwest|southeast|southwest|north\s+east|south\s+east|north\s+west|south\s+west)\s+)?(?:from|of)\b")
+            distance = instruction.get("distanceNm")
+            ref_id = str(instruction.get("referenceId") or "").strip().lower()
+            if not _is_finite_number(distance) or not ref_id:
+                return False
+            # Bind the distance and reference to one position phrase. In
+            # particular, a later unrelated "miles from" phrase cannot ground
+            # fields invented for this RADAR_CONTACT.
+            position = _RADAR_POSITION_RE.search(text)
+            if not position:
+                return False
+            if not _spoken_distance_matches(position.group("distance"), distance):
+                return False
+            # Airport identifiers are often spoken as airport names, so their
+            # exact name is checked by guard_catalog_ids when catalog context
+            # is available. Fixes/navaids must be named in this phrase.
+            if instruction.get("referenceKind") != "AIRPORT":
+                reference = position.group("reference")
+                if not re.search(rf"(?<![a-z0-9]){re.escape(ref_id)}(?![a-z0-9])", reference):
+                    return False
+            return True
         return True
     if instruction_type == "TERMINATE_RADAR_SERVICE":
         return has(r"\bradar\s+service\s+terminat\w*\b")
     if instruction_type == "ACKNOWLEDGE_IFR_CANCELLATION":
         return has(r"\bifr\s+cancellation\s+receiv\w*\b")
     if instruction_type == "CONTACT_TOWER":
-        return bool(re.search(r"\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+tower\s*$", text))
+        match = re.search(r"\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+tower\s*$", text)
+        return bool(match and match.group(1).upper() == str(instruction.get("facilityName", "")).upper())
     if instruction_type == "CONTACT_CENTER":
-        return bool(re.search(r"\bcontact\s+[a-z0-9-]+(?:\s+[a-z0-9-]+){0,3}\s+center\s*$", text))
+        match = re.search(r"\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+center\s*$", text)
+        emitted_name = str(instruction.get("facilityName", "")).upper()
+        return bool(match and emitted_name in {match.group(1).upper(), f"{match.group(1).upper()} CENTER"})
     return False
 
 
@@ -2016,6 +2106,16 @@ def guard_catalog_ids(
                 continue
             if instruction.get("referenceKind") == "AIRPORT":
                 if airports and ref_id not in airports:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                position = _RADAR_POSITION_RE.search(text)
+                if airports and (
+                    not position
+                    or not _airport_reference_matches(
+                        position.group("reference"),
+                        str(ref_id),
+                        ctx.get("airports") or [],
+                    )
+                ):
                     return ParseOutcome(ok=False, error="PARSE_MISS")
                 continue
             if roster and ref_id in roster:

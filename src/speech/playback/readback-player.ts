@@ -264,7 +264,20 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
           source.start();
           hooks?.onAudioStart?.(wallMs);
           if (Number.isFinite(buffer.duration)) {
-            watchdog = setTimeout(settle, buffer.duration * 1000 + PLAYBACK_END_WATCHDOG_MARGIN_MS);
+            watchdog = setTimeout(
+              () => {
+                // The ended event can be lost when the audio context suspends.
+                // Stop the source before releasing the transmit lock so it
+                // cannot resume under a later transmission.
+                try {
+                  source.stop();
+                } catch {
+                  // A source that has already stopped can reject stop().
+                }
+                settle();
+              },
+              buffer.duration * 1000 + PLAYBACK_END_WATCHDOG_MARGIN_MS,
+            );
           }
         } catch (err) {
           reject(err);

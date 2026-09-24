@@ -68,7 +68,9 @@ same closed-union and transcript-evidence rules.
 
 Typed `VIS <rwy>` and spoken `cleared visual approach runway <rwy>` emit
 `CLEARED_VISUAL { runwayId }` (T04-82). Spoken visual clearances require the
-runway designation; a near-miss without a runway remains `PARSE_MISS`.
+runway designation; a near-miss without a runway remains `PARSE_MISS`. Path C
+checks the emitted runway against the runway immediately following the visual
+approach cue, not a heading or other number elsewhere in the transcript.
 
 
 `say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
@@ -89,6 +91,11 @@ a parse miss. The pilot answer to `RADAR_CONTACT` is `roger`. Transcripts
 carrying one of these cues (plus `maintain vfr` and visual-runway cues) may
 engage Path C even when identifier retrieval comes back empty; schema,
 completeness, grounding, and identifier-listed guards still decide acceptance.
+Path C checks the reported distance and fix/navaid reference within the same
+radar-contact position phrase. For an airport reference, the spoken name,
+alias, or ICAO must uniquely identify the emitted airport in the supplied
+catalog. Path C also checks `CONTACT_TOWER` / `CONTACT_CENTER.facilityName`
+against the spoken contact name.
 
 After parser acceptance, `CONTACT_TOWER` and `CONTACT_CENTER` use generic
 runtime transfer gates. Tower contact reuses the existing IFR tower/landing or

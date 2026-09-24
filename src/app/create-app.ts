@@ -160,7 +160,10 @@ export function createApp(deps: AppDeps): AppHandles {
   let pathCActive = false;
 
   function emitVoiceStatus(status: string | null): void {
-    if (status === null && transientStatusTimer !== null) {
+    // Any newer status supersedes a pending transient voice error. Pilot
+    // queues use this same channel for callups, so an older timer must not
+    // clear their text while the callup is playing.
+    if (transientStatusTimer !== null) {
       clearTimeout(transientStatusTimer);
       transientStatusTimer = null;
     }
@@ -406,6 +409,7 @@ export function createApp(deps: AppDeps): AppHandles {
         regional: next.regional as RegionalFacility | undefined,
       });
       vfrRequestQueue.scheduleFromWorld(world);
+      world.vfrRequestQueue = vfrRequestQueue;
     },
   };
 }

@@ -5,6 +5,7 @@ import {
   createWorld,
   saveFlightPlanDraft,
   SessionLog,
+  stepVfrAircraftNavigation,
   type Aircraft,
   type RadioRequest,
   type World,
@@ -574,6 +575,39 @@ describe("Ticket T04-75: Pilot IFR Cancellation and VFR Continuation", () => {
       expect(aircraft.intent.lateral).toEqual({ type: "HEADING", headingDeg: aircraft.headingDeg });
       expect(aircraft.intent.vertical).toEqual({ type: "ASSIGNED" });
       expect(aircraft.intent.assignedAltitudeFt).toBe(aircraft.altitudeFt);
+    });
+
+    it("drops active IFR PROCEDURE guidance so the VFR continuation can steer", async () => {
+      const { world, aircraft } = setupTestWorld({
+        xNm: 20,
+        yNm: 20,
+        altitudeFt: 4500,
+        cancellationPending: true,
+      });
+      aircraft.intent.lateral = {
+        type: "PROCEDURE",
+        starId: "IFR-STAR",
+        toFixIndex: 0,
+        routeFixIds: ["IFR-FIX-1", "IFR-FIX-2"],
+      };
+
+      const res = await handleRadioText(
+        world,
+        "DAL123 IFR cancellation received",
+        new SessionLog(),
+      );
+
+      expect(res.accepted).toBe(true);
+      expect(aircraft.flightRules).toBe("VFR");
+      expect(aircraft.intent.lateral).toEqual({
+        type: "HEADING",
+        headingDeg: aircraft.headingDeg,
+      });
+      expect(aircraft.ambientVfr?.waypoints).toHaveLength(2);
+
+      stepVfrAircraftNavigation(aircraft, world.simTimeMs + 1000);
+      expect(aircraft.intent.assignedHeadingDeg).toBeDefined();
+      expect(aircraft.intent.lateral?.type).toBe("HEADING");
     });
   });
 

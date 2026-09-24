@@ -77,6 +77,8 @@ export function applyIfrCancellation(
     lateralType === "LOC" ||
     lateralType === "INTERCEPT_LOC" ||
     lateralType === "VECTOR_PENDING" ||
+    lateralType === "PROCEDURE" ||
+    lateralType === "DIRECT" ||
     lateralType === "VISUAL_FINAL" ||
     lateralType === "MISSED"
   ) {
