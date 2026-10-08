@@ -3,6 +3,8 @@ import { createAircraft, createWorld } from "@core";
 import { vi } from "vitest";
 import { DEFAULT_SCOPE_CAMERA, nmToScreen, type ScopeCamera } from "../camera";
 import { handlePpiCanvasPointerHover, handlePpiLeftClick } from "../ppi";
+import { armDcbSpinner } from "../dcb/dcbMenu";
+import { handleScopeWheel } from "../scopeKeys";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { createScopeView } from "../scopeView";
 import { syncTrackDisplays } from "../trackDisplay";
@@ -165,4 +167,19 @@ test("handlePpiCanvasPointerHover with dwellMode OFF does nothing", () => {
   const tick = nmToScreen(dal.xNm, dal.yNm, CAM, VIEW);
   handlePpiCanvasPointerHover(canvas, world, tick.x, tick.y, view);
   expect(view.dwellLockedAircraftId).toBeNull();
+});
+
+test("typed range is committed when returning to the scope or scrolling", () => {
+  const view = createScopeView();
+  const world = createWorld({ aircraft: [] });
+  armDcbSpinner(view, "RANGE");
+  typeChord(view, world, ["3", "7"]);
+  handlePpiLeftClick(view, world, 400, 400, CSS_W, CSS_H);
+  expect(view.camera.rangeNm).toBe(37);
+  expect(view.dcbSpinner.armed).toBe(false);
+  armDcbSpinner(view, "RANGE");
+  typeChord(view, world, ["4", "7"]);
+  handleScopeWheel({ deltaY: 1, preventDefault() {} }, view);
+  expect(view.camera.rangeNm).toBe(50);
+  expect(view.dcbSpinner.armed).toBe(false);
 });

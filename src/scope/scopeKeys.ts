@@ -983,7 +983,13 @@ export function handleScopeKeyDown(
   nowMs: number = Date.now(),
   ui?: ScopeKeyUi,
 ): boolean {
-  if (eventOwnedByNativeModal(event.target)) {
+  const spinnerOwnsRadioInput =
+    view.dcbSpinner.armed &&
+    typeof HTMLElement !== "undefined" &&
+    event.target instanceof HTMLElement &&
+    event.target.id === "command-line-input" &&
+    event.target.closest('[role="dialog"][aria-modal="true"]') === null;
+  if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput) {
     return false;
   }
   if (isHelpToggleKey(event)) {
@@ -1546,6 +1552,9 @@ export function handleScopeWheel(event: ScopeWheelEvent, view: ScopeView): boole
     return false;
   }
   event.preventDefault();
+  if (view.dcbSpinner.armed && view.dcbSpinner.cell === "RANGE") {
+    commitDcbSpinner(view);
+  }
   if (event.deltaY < 0) {
     stepRange(view.camera, -1);
   } else {

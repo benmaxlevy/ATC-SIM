@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createScopeView } from "../../scopeView";
 import { handleScopeKeyDown, type ScopeKeyEvent } from "../../scopeKeys";
 import {
@@ -542,4 +542,29 @@ describe("T02-200: Scope keyboard routing (handleScopeKeyDown)", () => {
 
     expect(validateDcbSpinnerValue("RANGE", NaN)).toBe(false);
   });
+});
+
+it("55 Enter updates range even when the radio input retains DOM focus", () => {
+  class ElementStub {
+    id = "command-line-input";
+    closest() {
+      return null;
+    }
+  }
+  class InputStub extends ElementStub {}
+  vi.stubGlobal("HTMLElement", ElementStub);
+  vi.stubGlobal("HTMLInputElement", InputStub);
+  vi.stubGlobal("HTMLTextAreaElement", class extends ElementStub {});
+  try {
+    const view = createScopeView();
+    armDcbSpinner(view, "RANGE");
+    const target = new InputStub() as unknown as EventTarget;
+    for (const key of ["5", "5", "Enter"]) {
+      expect(handleScopeKeyDown(makeKeyEvent(key, key, { target }), view, "radio")).toBe(true);
+    }
+    expect(view.camera.rangeNm).toBe(55);
+    expect(view.dcbSpinner.armed).toBe(false);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
