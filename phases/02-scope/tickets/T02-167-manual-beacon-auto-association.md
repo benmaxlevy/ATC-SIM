@@ -27,6 +27,12 @@ Authoritative source: `/home/ben/Documents/stars refs/full_manual.pdf`.
   from the flight list.
 - §5.4.1, p. 5-67: duplicate/invalid identity and already-associated track
   conditions remain rejection cases.
+- Appendix A Table A-1, p. 923: Parameter 112 `FP/TRACK_AUTO-ACQUISITION`
+  enables automatic acquisition of unassociated tracks by flight plan; upon
+  discrete squawk correlation, the track is auto-acquired by the local TCP
+  (white FDB, local TCP target symbol) when not subject to an external handoff.
+  Reverting squawk to 1200 drops correlation and returns the track to an unowned
+  limited datablock.
 
 This ticket adopts only the manual's beacon-match rule in the already-shipped
 pending-plan/runtime path. It does not implement the manual's unsupported
@@ -55,7 +61,9 @@ association. Manual INIT CNTL identity association is covered by T02-166.
 - **AC4:** Association preserves aircraft kinematics and reported squawk;
   assigned beacon remains plan data.
 - **AC5:** Successful pending-plan correlation activates the plan, upgrades the
-  target to FDB through existing projections, and removes the TAB entry.
+  target to owned white FDB (auto-acquired to local TCP when no external handoff
+  is pending), and removes the TAB entry. When squawking 1200, ownership reverts
+  to unowned limited datablock.
 - **AC6:** Already-associated, deleted, suspended-ineligible, and other
   existing lifecycle conditions retain their documented behavior.
 - **AC7:** CID is never used for automatic association. No INIT Enter path or

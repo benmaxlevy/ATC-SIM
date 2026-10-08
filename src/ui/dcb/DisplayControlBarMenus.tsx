@@ -71,6 +71,7 @@ import {
   DcbCell,
   afterCell,
   cancelFilterIfEntering,
+  formatSpinnerCellReadout,
   historySpinnerArmed,
   onSpinnerWheel,
   ptlSpinnerArmed,
@@ -125,7 +126,9 @@ export function renderAux(view: ScopeView, onChange: () => void) {
           }}
         >
           <span className="dcb-cell-line">VOL</span>
-          <span className="dcb-cell-line">{formatDcbVolReadout(view.vol ?? 2)}</span>
+          <span className="dcb-cell-line">
+            {formatSpinnerCellReadout(view, "VOL", formatDcbVolReadout(view.vol ?? 2))}
+          </span>
         </DcbCell>
       </div>
 
@@ -164,7 +167,11 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">HISTORY</span>
           <span id={DCB_HISTORY_READOUT_ID} className="dcb-cell-line">
-            {formatDcbHistoryReadout(view.historyDotCount)}
+            {formatSpinnerCellReadout(
+              view,
+              "HISTORY",
+              formatDcbHistoryReadout(view.historyDotCount),
+            )}
           </span>
         </DcbCell>
       </div>
@@ -194,7 +201,11 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">H_RATE</span>
           <span id={DCB_HISTORY_RATE_READOUT_ID} className="dcb-cell-line">
-            {formatDcbHistoryRateReadout(view.historyRateSec)}
+            {formatSpinnerCellReadout(
+              view,
+              "H_RATE",
+              formatDcbHistoryRateReadout(view.historyRateSec),
+            )}
           </span>
         </DcbCell>
       </div>
@@ -416,7 +427,7 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">PTL LNTH</span>
           <span id={DCB_PTL_MINUTES_READOUT_ID} className="dcb-cell-line">
-            {formatDcbPtlMinutesReadout(view.ptlMinutes)}
+            {formatSpinnerCellReadout(view, "PTL", formatDcbPtlMinutesReadout(view.ptlMinutes))}
           </span>
         </DcbCell>
       </div>
@@ -620,7 +631,7 @@ export function renderTpaAtpa(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">TPA MI</span>
           <span id={DCB_TPA_MI_READOUT_ID} className="dcb-cell-line">
-            {formatDcbTpaMiReadout(view.tpa.radiusNm)}
+            {formatSpinnerCellReadout(view, "TPA_MI", formatDcbTpaMiReadout(view.tpa.radiusNm))}
           </span>
         </DcbCell>
       </div>
@@ -1547,7 +1558,13 @@ export function renderCharSize(view: ScopeView, onChange: () => void) {
             >
               <span className="dcb-cell-line">{item.line1}</span>
               {item.line2 ? <span className="dcb-cell-line">{item.line2}</span> : null}
-              <span className="dcb-cell-line">{formatDcbCharReadout(size, item.channel)}</span>
+              <span className="dcb-cell-line">
+                {formatSpinnerCellReadout(
+                  view,
+                  item.cell,
+                  formatDcbCharReadout(size, item.channel),
+                )}
+              </span>
             </DcbCell>
           </div>
         );
@@ -1633,7 +1650,11 @@ export function renderBrite(view: ScopeView, onChange: () => void) {
             >
               <span className="dcb-cell-line">{cell.label}</span>
               <span className="dcb-cell-line">
-                {formatDcbBriteReadout(view.brite[cell.channel])}
+                {formatSpinnerCellReadout(
+                  view,
+                  spinnerKey,
+                  formatDcbBriteReadout(view.brite[cell.channel]),
+                )}
               </span>
             </DcbCell>
           );

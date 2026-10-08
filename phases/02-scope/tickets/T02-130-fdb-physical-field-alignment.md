@@ -18,6 +18,10 @@ aircraft-type Line 3 trainer delta.
 - User-provided `TI 6191.409 Rev. 30`, Figures 2-20 through 2-23, pp. 2-66–70:
   Field 3 is left Line 2 data, Field 4 is the center TCP, Field 5 is right
   Line 2 data, and Fields 6–8 occupy the trailing physical line.
+  In Figure 2-20 and 2-22, Field 5 formats ground speed (tens) followed by
+  flight rules (`V`) and aircraft category (e.g. `11V`), time-sharing with
+  aircraft type and requested altitude. Unassociated 1200 targets use limited
+  datablock (Figure 2-23).
 - R07, [CRC STARS data blocks](https://docs.virtualnas.net/crc/stars/#data-blocks):
   FDB/PDB layout, time-sharing, and one-/two-character TCP terminology.
 - R02, [FAA Pilot/Controller Glossary](https://www.faa.gov/air_traffic/publications/atpubs/pcg_html/):

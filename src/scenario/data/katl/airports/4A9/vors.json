@@ -1,0 +1,82 @@
+{
+  "airportId": "4A9",
+  "vors": [
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -17.914048,
+      "yNm": -29.8375,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "HCH",
+      "kind": "VORDME",
+      "name": "HINCH MOUNTAIN",
+      "xNm": 36.747974,
+      "yNm": 78.439167,
+      "latDeg": 35.781013888888886,
+      "lonDeg": -84.97845277777778,
+      "freqMhz": 117.6,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": 25.481776,
+      "yNm": -85.4745,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": 29.775866,
+      "yNm": -18.667833,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "RQZ",
+      "kind": "VORDME",
+      "name": "ROCKET",
+      "xNm": -45.133081,
+      "yNm": 19.412667,
+      "latDeg": 34.797238888888884,
+      "lonDeg": -86.63384722222223,
+      "freqMhz": 112.2,
+      "class": "T"
+    },
+    {
+      "id": "SYI",
+      "kind": "VORDME",
+      "name": "SHELBYVILLE",
+      "xNm": -35.502739,
+      "yNm": 65.296833,
+      "latDeg": 35.561975,
+      "lonDeg": -86.43915,
+      "freqMhz": 113.55,
+      "class": "L"
+    },
+    {
+      "id": "VUZ",
+      "kind": "VORDME",
+      "name": "VULCAN",
+      "xNm": -58.289734,
+      "yNm": -48.213667,
+      "latDeg": 33.67013333333333,
+      "lonDeg": -86.89983611111111,
+      "freqMhz": 114.4,
+      "class": "T"
+    }
+  ]
+}

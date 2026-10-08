@@ -33,7 +33,11 @@ const ALTITUDE_PREP_PREV = new Set(["descend", "climb"]);
 
 function tokenize(raw: string): string[] {
   const lower = raw.toLowerCase().trim();
-  const stripped = lower.replace(/-/g, " ").replace(/[^a-z0-9\s]/g, " ");
+  const preservedDecimals = lower.replace(/(\d+)\.(\d+)/g, "$1__decimal__$2");
+  const stripped = preservedDecimals
+    .replace(/-/g, " ")
+    .replace(/[^a-z0-9\s_]/g, " ")
+    .replace(/__decimal__/g, ".");
   return stripped.split(/\s+/).filter((tok) => tok.length > 0);
 }
 

@@ -75,17 +75,53 @@ export function speakAlphanumeric(text: string): string {
   return parts.join(" ");
 }
 
+export interface CallsignSpeechOptions {
+  isHeavy?: boolean;
+  /** Authored pilot name; canonical callsign remains the identity source. */
+  spokenAliases?: readonly string[];
+}
+
+function formatAliasedNNumber(
+  callsign: string,
+  spokenAliases: readonly string[] | undefined,
+): string | undefined {
+  const match = /^N(\d{1,5})([A-Z]{0,2})$/i.exec(callsign.trim());
+  const alias = spokenAliases?.find((candidate) => candidate.trim().length > 0)?.trim();
+  if (!match || !alias) {
+    return undefined;
+  }
+  const [, digits, suffix] = match;
+  const tail = [speakDigitString(digits), speakAlphanumeric(suffix)].filter(Boolean).join(" ");
+  return `${alias} ${tail}`;
+}
+
 /**
  * `DAL123` → `Delta 123`. Unknown `XYZ99` → `X-ray Yankee Zulu 99`.
+ * FAA AIM §4-2-4 analog: model/manufacturer name plus registration tail.
+ * Trainer delta: first authored alias is always preferred; no communication
+ * history or abbreviated-tail state is modeled.
  */
-export function formatCallsignSpeech(callsign: string, options?: { isHeavy?: boolean }): string {
-  const cs = callsign.trim().toUpperCase();
-  if (!cs) {
+export function formatCallsignSpeech(callsign: string, options?: CallsignSpeechOptions): string {
+  const trimmed = callsign.trim();
+  if (!trimmed) {
     return "";
   }
-  if (/^[A-Z]{3}/.test(cs)) {
+  const aliased = formatAliasedNNumber(trimmed, options?.spokenAliases);
+  if (aliased) {
+    return [aliased, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+  }
+  const gaMatch = trimmed.match(/^([A-Za-z]+)\s+(\d+.*)$/);
+  if (gaMatch) {
+    const makeModel = gaMatch[1].charAt(0).toUpperCase() + gaMatch[1].slice(1).toLowerCase();
+    const tail = speakAlphanumeric(gaMatch[2]);
+    return [makeModel, tail, options?.isHeavy ? "heavy" : ""]
+      .filter((part) => part.length > 0)
+      .join(" ");
+  }
+  const cs = trimmed.toUpperCase();
+  if (/^[A-Z]{3}\s*\d+/.test(cs)) {
     const prefix = cs.slice(0, 3);
-    const rest = cs.slice(3);
+    const rest = cs.slice(3).trimStart();
     const head = AIRLINE_TELEPHONY[prefix] ?? speakAlphanumeric(prefix);
     const tail = speakAlphanumeric(rest);
     return [head, tail, options?.isHeavy ? "heavy" : ""]
@@ -95,6 +131,37 @@ export function formatCallsignSpeech(callsign: string, options?: { isHeavy?: boo
   return [speakAlphanumeric(cs), options?.isHeavy ? "heavy" : ""]
     .filter((part) => part.length > 0)
     .join(" ");
+}
+
+/**
+ * Clean readable display callsign for the UI/command-line (e.g. `N123`, `N172SP`, `Delta 123`).
+ * Never expands letters/digits phonetically.
+ */
+export function formatCallsignDisplay(callsign: string, options?: CallsignSpeechOptions): string {
+  const trimmed = callsign.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const cs = trimmed.toUpperCase();
+  const alias = options?.spokenAliases?.find((candidate) => candidate.trim().length > 0)?.trim();
+  const nMatch = /^N(\d{1,5})([A-Z]{0,2})$/i.exec(cs);
+  if (nMatch && alias) {
+    const [, digits, suffix] = nMatch;
+    const body = `${alias} ${digits}${suffix}`;
+    return [body, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+  }
+  if (nMatch) {
+    return [cs, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
+  }
+  if (/^[A-Z]{3}\s*\d+/.test(cs)) {
+    const prefix = cs.slice(0, 3);
+    const rest = cs.slice(3).trimStart();
+    const head = AIRLINE_TELEPHONY[prefix] ?? prefix;
+    return [`${head} ${rest}`, options?.isHeavy ? "heavy" : ""]
+      .filter((part) => part.length > 0)
+      .join(" ");
+  }
+  return [trimmed, options?.isHeavy ? "heavy" : ""].filter((part) => part.length > 0).join(" ");
 }
 
 export const DIGIT_WORDS = [
@@ -195,6 +262,7 @@ export function speakAltitude(altitudeFt: number): string {
 
 export interface FormatDepartureCheckInArgs {
   callsign: string;
+  spokenAliases?: readonly string[];
   sidName?: string;
   currentAltitudeFt: number;
   assignedAltitudeFt: number;
@@ -208,7 +276,10 @@ export interface FormatDepartureCheckInArgs {
  * Level / assigned: "Departure, Delta 123, leaving one thousand two hundred for one-zero thousand"
  */
 export function formatDepartureCheckIn(args: FormatDepartureCheckInArgs): string {
-  const callsignSpeech = formatCallsignSpeech(args.callsign, { isHeavy: args.isHeavy });
+  const callsignSpeech = formatCallsignSpeech(args.callsign, {
+    isHeavy: args.isHeavy,
+    spokenAliases: args.spokenAliases,
+  });
   const altFt = roundAltitudeToHundreds(args.currentAltitudeFt);
   const altSpeech = altFt >= FLIGHT_LEVEL_FT ? `FL ${altFt / 100}` : speakAltitude(altFt);
 

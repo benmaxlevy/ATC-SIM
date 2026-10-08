@@ -941,3 +941,123 @@ export function buildGroupedRunwaySubset(): string {
     "",
   ].join("\n");
 }
+
+export function uc(opts: {
+  center: string;
+  airspaceClass: string;
+  name: string;
+  seq: number | string;
+  lat: string;
+  lon: string;
+  icao?: string;
+  boundaryVia?: string;
+  airspaceType?: string;
+  multipleCode?: string;
+  continuation?: string;
+  lowerLimit?: string;
+  lowerLimitUnit?: string;
+  upperLimit?: string;
+  upperLimitUnit?: string;
+  arcOriginLat?: string;
+  arcOriginLon?: string;
+  arcDistance?: string;
+  arcBearing?: string;
+  cycle?: string;
+}): string {
+  const fields: Array<[number, number, string]> = [
+    [1, 1, "S"],
+    [2, 3, "USA"],
+    [5, 1, "U"],
+    [6, 1, "C"],
+    [7, 2, opts.icao ?? "K "],
+    [9, 1, opts.airspaceType ?? "T"],
+    [10, 5, opts.center.padEnd(5, " ")],
+    [17, 1, opts.airspaceClass],
+    [20, 1, opts.multipleCode ?? " "],
+    [
+      21,
+      4,
+      typeof opts.seq === "number" ? String(opts.seq).padStart(4, "0") : opts.seq.padStart(4, "0"),
+    ],
+    [25, 1, opts.continuation ?? "0"],
+    [31, 2, (opts.boundaryVia ?? "G").padEnd(2, " ")],
+    [33, 9, opts.lat],
+    [42, 10, opts.lon],
+    [82, 5, (opts.lowerLimit ?? "00000").padStart(5, " ")],
+    [87, 1, opts.lowerLimitUnit ?? "M"],
+    [88, 5, (opts.upperLimit ?? "10000").padStart(5, " ")],
+    [93, 1, opts.upperLimitUnit ?? "M"],
+    [94, 30, opts.name.padEnd(30, " ")],
+    [129, 4, opts.cycle ?? "2610"],
+  ];
+  if (opts.arcOriginLat && opts.arcOriginLon) {
+    fields.push([52, 9, opts.arcOriginLat]);
+    fields.push([61, 10, opts.arcOriginLon]);
+  }
+  if (opts.arcDistance) {
+    fields.push([71, 4, opts.arcDistance.padStart(4, "0")]);
+  }
+  if (opts.arcBearing) {
+    fields.push([75, 4, opts.arcBearing.padStart(4, "0")]);
+  }
+  return arincRecord(fields);
+}
+
+export function ur(opts: {
+  restrictionType: string;
+  designation: string;
+  name: string;
+  seq: number | string;
+  lat: string;
+  lon: string;
+  icao?: string;
+  boundaryVia?: string;
+  multipleCode?: string;
+  continuation?: string;
+  lowerLimit?: string;
+  lowerLimitUnit?: string;
+  upperLimit?: string;
+  upperLimitUnit?: string;
+  arcOriginLat?: string;
+  arcOriginLon?: string;
+  arcDistance?: string;
+  arcBearing?: string;
+  cycle?: string;
+}): string {
+  const fields: Array<[number, number, string]> = [
+    [1, 1, "S"],
+    [2, 3, "USA"],
+    [5, 1, "U"],
+    [6, 1, "R"],
+    [7, 2, opts.icao ?? "K "],
+    [9, 1, opts.restrictionType],
+    [10, 10, opts.designation.padEnd(10, " ")],
+    [20, 1, opts.multipleCode ?? " "],
+    [
+      21,
+      4,
+      typeof opts.seq === "number" ? String(opts.seq).padStart(4, "0") : opts.seq.padStart(4, "0"),
+    ],
+    [25, 1, opts.continuation ?? "0"],
+    [31, 2, (opts.boundaryVia ?? "G").padEnd(2, " ")],
+    [33, 9, opts.lat],
+    [42, 10, opts.lon],
+    [82, 5, (opts.lowerLimit ?? "00000").padStart(5, " ")],
+    [87, 1, opts.lowerLimitUnit ?? "M"],
+    [88, 5, (opts.upperLimit ?? "10000").padStart(5, " ")],
+    [93, 1, opts.upperLimitUnit ?? "M"],
+    [94, 30, opts.name.padEnd(30, " ")],
+    [129, 4, opts.cycle ?? "2610"],
+  ];
+  if (opts.arcOriginLat && opts.arcOriginLon) {
+    fields.push([52, 9, opts.arcOriginLat]);
+    fields.push([61, 10, opts.arcOriginLon]);
+  }
+  if (opts.arcDistance) {
+    fields.push([71, 4, opts.arcDistance.padStart(4, "0")]);
+  }
+  if (opts.arcBearing) {
+    fields.push([75, 4, opts.arcBearing.padStart(4, "0")]);
+  }
+  return arincRecord(fields);
+}

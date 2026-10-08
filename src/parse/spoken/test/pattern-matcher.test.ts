@@ -149,4 +149,26 @@ describe("pattern-matcher", () => {
       { type: "SPEED", speedKt: 210, verb: "MAINTAIN", until: { type: "FIX", fixId: "MERGE" } },
     ]);
   });
+
+  test("T04-82: cleared visual approach spoken parsing", () => {
+    const res1 = parse("DAL123 cleared visual approach runway two seven left");
+    expect(res1.ok).toBe(true);
+    if (!res1.ok) return;
+    expect(res1.callsignToken).toBe("DAL123");
+    expect(res1.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "27L" }]);
+
+    const res2 = parse("DAL123 cleared visual approach runway 27L");
+    expect(res2.ok).toBe(true);
+    if (!res2.ok) return;
+    expect(res2.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "27L" }]);
+
+    const res3 = parse("DAL123 cleared visual runway two one left");
+    expect(res3.ok).toBe(true);
+    if (!res3.ok) return;
+    expect(res3.instructions).toEqual([{ type: "CLEARED_VISUAL", runwayId: "21L" }]);
+
+    // Near-miss without runway fails to parse
+    const resNearMiss = parse("DAL123 cleared visual approach");
+    expect(resNearMiss.ok).toBe(false);
+  });
 });

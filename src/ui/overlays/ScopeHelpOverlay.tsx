@@ -8,6 +8,7 @@ import {
   HELP_COMMAND_GROUPS,
   HELP_NAVIGATION_GROUPS,
   HELP_GLOSSARY_NOTE,
+  HELP_CALLSIGN_ALIAS_NOTE,
   HELP_OVERLAY_ID,
   RADIO_CONFLICT_WARNING,
   bindingById,
@@ -185,6 +186,7 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
         />
         <p className="scope-help-glossary">{HELP_GLOSSARY_NOTE}</p>
         <p className="scope-help-radio">{RADIO_CONFLICT_WARNING}</p>
+        <p className="scope-help-callsign">{HELP_CALLSIGN_ALIAS_NOTE}</p>
         {filteredNavigationGroups.map((navigationGroup) => {
           return (
             <details

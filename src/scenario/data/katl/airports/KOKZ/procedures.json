@@ -1,0 +1,30 @@
+{
+  "airportId": "KOKZ",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R13",
+      "type": "RNAV",
+      "runway": "13",
+      "name": "RNAV RWY 13",
+      "thresholdFixId": "RW13",
+      "courseDeg": 125.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1100
+    },
+    {
+      "id": "R31",
+      "type": "RNAV",
+      "runway": "31",
+      "name": "RNAV RWY 31",
+      "thresholdFixId": "RW31",
+      "courseDeg": 305.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 738
+    }
+  ]
+}

@@ -57,10 +57,20 @@ export type Instruction =
   | { type: "DIRECT"; fixId: string }
   | { type: "EXPECT_APPROACH"; approachId: string }
   | { type: "CLEARED_APPROACH"; approachId: string }
+  | { type: "CLEARED_VISUAL"; runwayId: string }
   | { type: "INTERCEPT_LOCALIZER"; approachId: string }
   | { type: "CANCEL_APPROACH" }
   | { type: "ASSIGN_SQUAWK"; code: string; source: "DISCRETE" | "VFR" }
   | { type: "MAINTAIN_VFR" }
+  | {
+      type: "CLASS_B_CLEARANCE";
+      operation: "THROUGH" | "TO_ENTER" | "OUT_OF";
+      route?: Array<{ type: "DIRECT"; fixId: string }>;
+      altitudeFt?: number;
+    }
+  | { type: "REMAIN_OUTSIDE_BRAVO" }
+  | { type: "CLASS_B_CLEARANCE_AS_REQUESTED" }
+  | { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" }
   | {
       type: "IFR_CLEARANCE";
       limitId: string;
@@ -79,6 +89,18 @@ export type Instruction =
       frequency?: string;
       squawk?: string;
     }
+
+Class B instructions are VFR-only. `CLASS_B_CLEARANCE` authorizes exactly one
+of `THROUGH`, `TO_ENTER`, or `OUT_OF`; its optional route is an ordered list of
+catalog-grounded direct fix legs and its optional altitude is temporary while
+in Bravo. `REMAIN_OUTSIDE_BRAVO` and
+`RESUME_APPROPRIATE_VFR_ALTITUDES` have no arguments. The pilot agent validates
+the active Class B volume, VFR status, route geometry, and altitude floor before
+mutating intent. None of these instructions creates an IFR clearance, changes
+flight-plan, service, or beacon state, or authorizes entry implicitly.
+`CLASS_B_CLEARANCE_AS_REQUESTED` is a single-instruction controller response;
+it obtains operation, route, and requested altitude only from the pending VFR
+`CLASS_B_ACCESS` request. It has no route or altitude fields of its own.
   | { type: "IDENT" }
   | { type: "SAY_HEADING" }
   | { type: "SAY_ALTITUDE" }
@@ -92,7 +114,19 @@ export type Instruction =
       restriction: "AT" | "AT_OR_ABOVE" | "AT_OR_BELOW";
     }
   | { type: "GO_AROUND" }
-  | { type: "DELETE_SPEED_RESTRICTIONS" };
+  | { type: "DELETE_SPEED_RESTRICTIONS" }
+  | { type: "REQUEST_DETAILS" }
+  | { type: "STANDBY_REQUEST" }
+  | { type: "APPROVE_FLIGHT_FOLLOWING" }
+  | { type: "DECLINE_REQUEST"; service: "FLIGHT_FOLLOWING" | "IFR_PICKUP" | "CLASS_B_ACCESS" }
+  | {
+      type: "RADAR_CONTACT";
+      distanceNm?: number;
+      referenceId?: string;
+      referenceKind?: "FIX" | "NAVAID" | "AIRPORT";
+    }
+  | { type: "TERMINATE_RADAR_SERVICE" }
+  | { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
 ```
 
 ## Parser rules (text, phase 1)
@@ -121,11 +155,15 @@ Suggested v1 tokens (callsign optional if a track is selected):
 | `MVFR` | `MAINTAIN_VFR` — radio-only VFR instruction; not an IFR clearance, VFR-on-top authorization, route, or plan activation |
 | `SQ 2222` / `SQ VFR` | `ASSIGN_SQUAWK` (`2222` / `1200`) — aircraft transponder state only; never edits the flight plan beacon |
 | `CLR TO KATL VIA DIRECT` | `IFR_CLEARANCE` with limit `KATL` and `EXPLICIT_ROUTE` with an empty `segments` list; clearance limit and access are mandatory, other fields optional |
+| `CLR TO KPDK VIA RADAR VECTORS [ALT <hundreds>] [FREQ <value>] [SQ <octal>]` | `IFR_CLEARANCE` with limit `KPDK` and `RADAR_VECTORS` access; valid for airborne VFR-to-IFR pickup to eligible regional controlled destination airports |
 
 An IFR clearance's `EXPLICIT_ROUTE.segments` is an ordered, catalog-grounded
 list. Each `DIRECT` segment names one fix or navaid; each `PROCEDURE` segment
 names one catalog procedure and optional transition. An empty list means direct
 to the clearance limit. The route has no semantic one- or two-segment limit.
+For airborne VFR-to-IFR pickup, an airborne radar-identified aircraft with an open
+`IFR_PICKUP` request transitions atomically to operational IFR upon receiving an
+`IFR_CLEARANCE` to its requested eligible regional controlled destination.
 The parser may accept legacy access wording at its boundary, but Command IR
 consumers use only the canonical shape above. This tactical route is separate
 from the standalone `DIRECT` instruction.
@@ -149,6 +187,7 @@ direct <fix>` are tactical `DIRECT`; `cleared to <limit> via direct` is an
 `IFR_CLEARANCE`. Airports are a clearance-limit namespace, never generic
 direct fixes.
 | `APP ILS27` | `CLEARED_APPROACH` (phase 1 may accept and no-op fly-through; phase 4 fly-through) |
+| `VIS 27L` | `CLEARED_VISUAL { runwayId: "27L" }` (straight-in lateral and 3° descent to threshold; T04-82) |
 | `IL ILS27` | `INTERCEPT_LOCALIZER` — join loc, hold assigned altitude, **no GS** until `APP` |
 | `R240 A20 APP ILS27` | `FLY_HEADING 240 RIGHT` + `ALTITUDE MAINTAIN 2000 untilEstablished` + `CLEARED_APPROACH ILS27` (phase 4; same-line heading+alt+APP) |
 | `CAPP H270 A50` | `CANCEL_APPROACH` + `FLY_HEADING 270` + `ALTITUDE MAINTAIN 5000`; cancellation must be first and cannot be followed by approach re-arm or `GO_AROUND` |
@@ -163,6 +202,24 @@ direct fixes.
 | `X NEMAX 40` | `CROSS { fixId: "NEMAX", altitudeFt: 4000, restriction: "AT" }` (hundreds, same as `C30`) |
 | `X NEMAX 40A` / `X NEMAX 40B` | same with `AT_OR_ABOVE` / `AT_OR_BELOW` |
 | `GA` | `GO_AROUND` (T04-07; immediate missed if `clearedApproachId` is set) |
+| `say request` | `REQUEST_DETAILS` (T04-73; request flight following or route details from pilot; single instruction per transmission) |
+| `stand by` / `standby` | `STANDBY_REQUEST` (T04-73; instruct pilot to standby on radio request) |
+| `approve flight following` | `APPROVE_FLIGHT_FOLLOWING` (T04-73; activate advisory flight following for radar-identified aircraft) |
+| `unable flight following` / `unable to provide flight following` | `DECLINE_REQUEST { service: "FLIGHT_FOLLOWING" }` (T04-73; decline flight following request) |
+| `unable ifr pickup` / `unable to provide ifr pickup` | `DECLINE_REQUEST { service: "IFR_PICKUP" }` (decline airborne VFR-to-IFR pickup request) |
+| `cleared as requested` | `CLASS_B_CLEARANCE_AS_REQUESTED` (resolve pending VFR Class B request; no modifiers) |
+| `unable class b clearance` / `unable to provide class b clearance` | `DECLINE_REQUEST { service: "CLASS_B_ACCESS" }` (decline pending VFR Class B request) |
+| `radar contact [<distance> miles [direction] from\|of <fix/navaid/airport>]` | `RADAR_CONTACT` with optional all-or-nothing `{ distanceNm, referenceId, referenceKind }` (`referenceKind` is `FIX`, `NAVAID`, or `AIRPORT`; T04-73; radar identification; pilot answers `roger`) |
+| `radar service terminated` | `TERMINATE_RADAR_SERVICE` (T04-73; terminate radar advisory service) |
+| `IFR cancellation received` | `ACKNOWLEDGE_IFR_CANCELLATION` (T04-75; acknowledge pilot IFR cancellation outside Class B and revert to VFR) |
+| `contact <facility-name> tower` | `CONTACT_TOWER { facilityName }` (T04-101–103; syntax/readback name only; no frequency or facility lookup; eligible arrival transfer only) |
+| `contact <facility-name> center` | `CONTACT_CENTER { facilityName }` (T04-101–103; syntax/readback name only; no frequency or facility lookup; eligible outbound transfer only) |
+
+Path C transcript evidence binds `CLEARED_VISUAL.runwayId` to the visual-runway
+phrase, `RADAR_CONTACT` distance and reference to the same radar-contact
+position phrase, and `CONTACT_TOWER` / `CONTACT_CENTER.facilityName` to the
+spoken contact name. A spoken airport reference must select one airport from
+the supplied catalog by ICAO, name, or alias.
 
 Callsign: full (`DAL123`) or unambiguous suffix (`123`). Ambiguous suffix → reject, no aircraft moves.
 

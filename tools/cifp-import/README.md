@@ -417,3 +417,168 @@ not TF legs.
 `lonDeg` is preserved. Video-map ids and authored spawn routes are not copied
 as procedure geometry. ATPA volumes are omitted unless the catalog already
 has rows.
+
+## Regional airport and airspace import (T04-69)
+
+Regional mode integrates local FAA CIFP procedure/airspace data with local FAA
+NASR airport and tower/controlled metadata to produce a validated regional
+source model for training simulation.
+
+### CLI usage
+
+```text
+npm run cifp:regional -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Or directly:
+
+```text
+node --experimental-strip-types tools/cifp-import/cli.ts regional --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run]
+```
+
+### Official source families
+
+- **CIFP ARINC 424 fixed-width:**
+  - `UC`: Controlled Airspace records defining Class B, Class C, and Class D
+    geometry and vertical limits.
+  - `UR`: Restrictive (Special Use) Airspace records covering Restricted (`R`),
+    Prohibited (`P`), Warning (`W`), Alert (`A`), MOA (`M`), and SATR (`U`)
+    airspaces.
+  - **FAA NASR subscription tables:**
+  - `APT`: Airport records providing public-use vs private-use status (`FAC_USE`)
+    and tower presence.
+  - `TWR` / `ATC`: Tower and control facility records verifying tower operation
+    and operating hours.
+  - `CLS_ARSP` is outside this importer’s supported regional-source boundary;
+    regional airspace comes from CIFP `UC`/`UR` only. The importer does not
+    accept or provenance a `--nasr-cls-arsp` input.
+
+The regional report records explicit coverage for `CIFP`, `CIFP_UC`, `CIFP_UR`,
+`NASR_APT`, and `NASR_TWR`. `CLS_ARSP` is not a supported input family.
+Missing families remain marked unavailable; missing required CIFP or APT input
+is an error. Source IDs in generated output are portable product/file names,
+never absolute paths.
+
+### Provenance and effective-cycle responsibility
+
+- Source files must reside locally on disk outside git (e.g. `.cifp/`).
+- The developer is responsible for obtaining authorized FAA data and specifying
+  provenance (`--cycle <cycle>`).
+- The importer operates strictly offline: **no network requests**, no API calls,
+  no automatic cycle downloaders, and no telemetry.
+- **Never commit a real FAA CIFP/NASR cycle or national dump to git.** Only
+  synthetic, reviewable fixtures under `testdata/cifp/` belong in git.
+- **Tool-only boundary:** runtime `src/` never imports `tools/cifp-import`, and
+  KDEM fixtures remain independent of FAA input.
+
+### Supported geometry and loss diagnostics
+
+- **Supported boundary vias:**
+  - Great Circle (`G` / blank)
+  - Rhumb Line (`H`)
+  - Circular airspace (`C`) with center origin and radius
+  - Clockwise (`R`) and Counter-Clockwise (`L`) arcs with center origin,
+    arc radius, and bearing bounds
+- **Geometry loss diagnostics:**
+  - Any unsupported boundary via (e.g. `Z`) emits an explicit
+    `UNSUPPORTED_AIRSPACE_GEOMETRY` skip diagnostic. The volume is excluded;
+    it is **never** emitted as a guessed straight line.
+  - Continuation records (`UC-CONT`, `UR-CONT`) are counted as skips; altitude
+    limits are inherited from the primary record per FAA CIFP Readme.
+- **Strict regional validation:**
+  - Selected airports lacking NASR service metadata trigger
+    `MISSING_AIRPORT_SERVICE_METADATA` errors.
+  - Missing, invalid, or inconsistent lower/upper altitude limits trigger
+    strict `INVALID_AIRSPACE_VERTICAL_LIMITS` errors. The offending volume is
+    excluded from serialized output and regional write/dry-run commands fail
+    before any output is written.
+  - Conflicting NASR airport records trigger `CONFLICTING_NASR_RECORD` errors.
+  - Airports whose procedure catalog fails reference closure are excluded with
+    `exclusionReason="catalog_error"` and a `CATALOG_GENERATION_FAILED`
+    warning (both strict and report closure modes); the pack still writes and
+    the airport stays out of the eligible destination lookup.
+  - In strict mode (default), any remaining error-level diagnostic causes the
+    importer to exit nonzero **without writing any output files**.
+
+## Regional catalog and satellite-arrival pack (T04-70)
+
+Regional pack mode integrates the T04-69 regional source model with generic
+procedure catalog generation to emit a complete regional pack: manifest,
+regional airport metadata, controlled airspace geometry, and closed procedure
+catalogs for the center facility and all eligible satellite destination airports.
+
+### CLI usage
+
+```text
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Or directly:
+
+```text
+node --experimental-strip-types tools/cifp-import/cli.ts regional-pack --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run]
+```
+
+### Generated file contract
+
+```text
+<out>/
+  regional.json             # Manifest with schemaVersion, centerIcao, radiusNm, sourceProvenance, files
+  regional-airports.json    # Regional airports with elevation, status, runway geometry, and catalog ref
+  regional-airspace.json    # Controlled airspace volumes (Class B/C/D) with boundary vias and altitude limits
+  airports/<ICAO>/          # Procedure catalog files (catalog, vors, ndbs, ils, fixes, procedures, sids)
+```
+
+The center airport catalog is also written to `<out>/` at the root for backwards
+compatibility with existing scenario catalog loaders.
+
+### 40 NM KATL reproduction workflow
+
+To generate the KATL regional pack from an authorized local source:
+
+```text
+npm run cifp:regional-pack -- --cifp .cifp/FAACIFP18 --nasr-apt .cifp/APT.txt --nasr-twr .cifp/TWR.txt --airport KATL --radius 40 --out src/scenario/data/katl --cycle 2401
+```
+
+If local FAA source files are missing or unauthorized, regional generation exits
+immediately with code 1 and writes no output files. CI exercises synthetic
+fixtures only.
+
+### Source provenance rules
+
+- The generated `regional.json` records source product names, effective dates,
+  cycles, and generator command parameters.
+- It never records local absolute paths, host credentials, or source cycle dumps.
+- Raw FAA CIFP and NASR subscription cycles remain local and outside git (`.cifp/`).
+
+### Destination eligibility rules
+
+Only airports meeting all of the following source-proven criteria qualify as
+eligible destinations (`eligibleForDestination: true`):
+1. Public-use operational status (`FAC_USE === "PU"` from NASR).
+2. Towered air traffic control service (`TOWER === true` from NASR).
+3. Valid runway geometry with at least one threshold, length, and heading from CIFP `PG` records.
+4. An emitted procedure catalog with verified reference closure.
+
+Airports lacking NASR operational metadata, private-use fields, untowered fields,
+or airports with missing runway geometry are marked ineligible (`eligibleForDestination: false`)
+and are rejected by downstream satellite destination lookup.
+
+### Trainer limitations
+
+The regional pack provides physical and procedural geometry as a training
+approximation for terminal radar simulation. It does not model an FAA tower
+cab, certify approaches, or claim operational airspace accuracy. Simulated
+tower coordination, landing clearances, and aircraft removal/despawn are
+trainer behaviors supplied by downstream navigation and service tickets (T04-71+).
+
+## Satellite traffic settings (T04-76)
+
+The controller-facing satellite-traffic feature (session-setup VFR population
+and request controls, full-phrase radio workflow, satellite arrivals) runs on
+the regional pack produced above. To regenerate the KATL data it loads, follow
+the **40 NM KATL reproduction workflow** under `Regional catalog and
+satellite-arrival pack (T04-70)` with an authorized local FAA source; CI and
+review use synthetic fixtures only. No hand-filled FAA airport or airspace
+values: every destination, provenance record, and airspace volume comes from
+that reproducible pipeline.

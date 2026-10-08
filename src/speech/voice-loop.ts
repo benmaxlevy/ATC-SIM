@@ -33,6 +33,7 @@ import {
 import { readbackForTts } from "./tts-text";
 import type { PathCRouteCandidateInput } from "../parse/path-c";
 import type { CatalogFixInput } from "../parse/spoken/catalog-ground";
+import type { CallsignRosterEntry } from "../parse/spoken/telephony";
 
 /** Named default for the settings slider / logs. T03-15: does not skip parse. */
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.55;
@@ -69,7 +70,7 @@ export type ParseCommandFn = (
   opts: {
     source: "text" | "voice";
     selectedCallsign?: string | null;
-    callsigns?: readonly string[];
+    callsigns?: readonly CallsignRosterEntry[];
     fixes?: readonly CatalogFixInput[];
     routeCandidates?: readonly PathCRouteCandidateInput[];
     procedures?: ReadonlyArray<{ id: string; name?: string }>;
@@ -99,7 +100,7 @@ export interface VoiceLoopOptions {
   dispatchCommand: DispatchCommandFn;
   getSelectedCallsign: () => string | null;
   /** Live ICAO roster for Path C grounding. Default none. */
-  getOnFrequencyCallsigns?: () => readonly string[];
+  getOnFrequencyCallsigns?: () => readonly CallsignRosterEntry[];
   /** Full facility fix/navaid vocabulary for parseCommand. Not the STT header. */
   getCatalogFixIds?: () => readonly CatalogFixInput[];
   /** Fix/navaid kind and aliases for route-window Path C grounding. */
@@ -147,7 +148,12 @@ export interface VoiceLoop {
   handlePttEvent(event: PttCaptureEvent): Promise<void>;
   readonly lastUtteranceMetrics: VoiceUtteranceMetrics | null;
   readonly inFlight: boolean;
-  /** True while capture, transcribe, parse, or playback holds the transmit gate. */
+  /**
+   * True while capture, transcribe, parse, committed TTS synthesis, or
+   * playback holds the transmit gate. Pilot queues gate on this before
+   * replacing the command-line text, so a callup stays visible (and its
+   * audio un-overlapped) for the full TTS stream.
+   */
   readonly busy: boolean;
   readonly latency: VoiceLatencyTracker;
   readonly readbackPlayer: ReadbackPlayer;
@@ -234,7 +240,7 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly parseCommand: ParseCommandFn;
   private readonly dispatchCommand: DispatchCommandFn;
   private readonly getSelectedCallsign: () => string | null;
-  private readonly getOnFrequencyCallsigns: () => readonly string[];
+  private readonly getOnFrequencyCallsigns: () => readonly CallsignRosterEntry[];
   private readonly getCatalogFixIds: () => readonly CatalogFixInput[];
   private readonly getCatalogRouteCandidates: () => readonly PathCRouteCandidateInput[];
   private readonly getSttFixIds: () => readonly string[];
@@ -259,6 +265,17 @@ class VoiceLoopImpl implements VoiceLoop {
   private readonly onUtteranceComplete?: (metrics: VoiceUtteranceMetrics) => void;
   private readonly getVoiceId: (callsign?: string) => string;
   private readonly gate = new TransmitGate();
+  /**
+   * Committed TTS streams (synthesis through playback end). Incremented
+   * synchronously on `playReadback` so `busy` covers the synthesis gap
+   * before `play-started` locks the gate; otherwise a second pilot queue
+   * drain could start mid-synthesis and replace the visible callup text.
+   */
+  private speakActive = 0;
+  /** Latest committed TTS stream; a stale stream never clears newer text. */
+  private speakSeq = 0;
+  /** Serialized audio playback queue to avoid overlapping playPcm rejections. */
+  private playbackQueue: Promise<void> = Promise.resolve();
   private readonly latencyTracker: VoiceLatencyTracker;
   private readonly dispatchedCommandIds = new Set<string>();
   readonly readbackPlayer: ReadbackPlayer;
@@ -297,7 +314,7 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   get busy(): boolean {
-    return this.inFlightValue || this.gate.locked;
+    return this.inFlightValue || this.gate.locked || this.speakActive > 0;
   }
 
   get latency(): VoiceLatencyTracker {
@@ -345,7 +362,7 @@ class VoiceLoopImpl implements VoiceLoop {
 
   private syncLock(event: TransmitGateEvent): void {
     this.gate.apply(event);
-    this.setTransmitLocked(this.gate.locked);
+    this.setTransmitLocked(this.gate.locked || this.busy);
   }
 
   private emitStatus(event: VoiceStatusEvent | null): void {
@@ -365,10 +382,16 @@ class VoiceLoopImpl implements VoiceLoop {
       return;
     }
     if (event.type === "permission-denied") {
+      if (this.gate.locked) {
+        this.syncLock("utterance-failed");
+      }
       this.emitStatus({ code: "mic_denied" });
       return;
     }
     if (event.type === "capture-error") {
+      if (this.gate.locked) {
+        this.syncLock("utterance-failed");
+      }
       this.emitStatus(
         event.reason === "insecure-context"
           ? { code: "insecure_context" }
@@ -382,9 +405,12 @@ class VoiceLoopImpl implements VoiceLoop {
   }
 
   private onPttDown(): void {
-    if (this.inFlightValue || this.gate.current === "playing") {
+    if (this.inFlightValue || this.gate.current === "playing" || this.speakActive > 0) {
       this.emitStatus({ code: "ptt_locked" });
       return;
+    }
+    if (this.gate.locked) {
+      this.syncLock("utterance-failed");
     }
     this.emitStatus({ code: "ptt_transmit" });
     this.syncLock("ptt-down");
@@ -392,6 +418,7 @@ class VoiceLoopImpl implements VoiceLoop {
     try {
       this.speechPort.beginUtterance?.();
     } catch (err) {
+      this.syncLock("utterance-failed");
       this.emitStatus(statusFromTranscribeError(err));
     }
   }
@@ -420,6 +447,9 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.gate.locked) {
         this.syncLock("utterance-failed");
       }
+      // Playback cleanup can run while the utterance is still marked in
+      // flight. Recompute after clearing that flag or PTT stays locked.
+      this.setTransmitLocked(this.gate.locked || this.busy);
       this.finishUtteranceMetrics();
     }
   }
@@ -523,6 +553,9 @@ class VoiceLoopImpl implements VoiceLoop {
     if (this.disposed || text === "") {
       return;
     }
+    this.speakActive += 1;
+    this.speakSeq += 1;
+    this.setTransmitLocked(true);
 
     const voiceId = this.getVoiceId(callsign ?? undefined);
     const onAudioStart = (nowMs: number): void => {
@@ -554,16 +587,27 @@ class VoiceLoopImpl implements VoiceLoop {
       if (this.disposed) {
         return;
       }
-      this.syncLock("play-started");
-      const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
-      if (!outcome.ok) {
-        this.emitStatus({ code: "tts_failed" });
-      }
+      const playTask = async (): Promise<void> => {
+        if (this.disposed) return;
+        this.syncLock("play-started");
+        const outcome = await this.readbackPlayer.playPcm(ttsClip, { onAudioStart });
+        if (!outcome.ok) {
+          this.emitStatus({ code: "tts_failed" });
+        }
+      };
+      const currentPlayback = this.playbackQueue.then(playTask, playTask);
+      this.playbackQueue = currentPlayback;
+      await currentPlayback;
     } catch {
       this.emitStatus({ code: "tts_failed" });
     } finally {
-      this.syncLock("play-ended");
-      this.emitStatus(null);
+      this.speakActive -= 1;
+      if (this.speakActive === 0) {
+        this.playbackQueue = Promise.resolve();
+        this.syncLock("play-ended");
+        this.emitStatus(null);
+      }
+      this.setTransmitLocked(this.gate.locked || this.busy);
     }
   }
 

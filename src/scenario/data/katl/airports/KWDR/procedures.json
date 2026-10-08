@@ -1,0 +1,106 @@
+{
+  "airportId": "KWDR",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I31",
+      "type": "ILS",
+      "runway": "31",
+      "name": "ILS RWY 31",
+      "locNavaidId": "IIDR",
+      "gsNavaidId": "IIDRGS",
+      "thresholdFixId": "RW31",
+      "courseDeg": 238.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 316,
+        "climbToFt": 954,
+        "directFixId": "RW31"
+      }
+    },
+    {
+      "id": "L31",
+      "type": "LOC",
+      "runway": "31",
+      "name": "LOC RWY 31",
+      "locNavaidId": "IIDR",
+      "gsNavaidId": "IIDRGS",
+      "thresholdFixId": "RW31",
+      "courseDeg": 238.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 316,
+        "climbToFt": 1115,
+        "directFixId": "BOWIT"
+      }
+    },
+    {
+      "id": "R13",
+      "type": "RNAV",
+      "runway": "13",
+      "name": "RNAV RWY 13",
+      "locNavaidId": "IIDR",
+      "gsNavaidId": "IIDRGS",
+      "thresholdFixId": "RW13",
+      "courseDeg": 133.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1207,
+      "missed": {
+        "headingDeg": 133.6,
+        "climbToFt": 993,
+        "directFixId": "RW13"
+      }
+    },
+    {
+      "id": "R23",
+      "type": "RNAV",
+      "runway": "23",
+      "name": "RNAV RWY 23",
+      "locNavaidId": "IIDR",
+      "gsNavaidId": "IIDRGS",
+      "thresholdFixId": "RW23",
+      "courseDeg": 322.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1179,
+      "missed": {
+        "headingDeg": 230.8,
+        "climbToFt": 956,
+        "directFixId": "RW23"
+      }
+    },
+    {
+      "id": "R31",
+      "type": "RNAV",
+      "runway": "31",
+      "name": "RNAV RWY 31",
+      "locNavaidId": "IIDR",
+      "gsNavaidId": "IIDRGS",
+      "thresholdFixId": "RW31",
+      "courseDeg": 313.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1172,
+      "missed": {
+        "headingDeg": 313.7,
+        "climbToFt": 951,
+        "directFixId": "RW31"
+      }
+    }
+  ]
+}

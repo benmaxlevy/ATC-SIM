@@ -116,6 +116,10 @@ describe("Altitude telephony helpers", () => {
     expect(formatCallsignSpeech("UAL999")).toBe("United 999");
     expect(formatCallsignSpeech("GTI123")).toBe("Giant 123");
     expect(formatCallsignSpeech("GTI123", { isHeavy: true })).toBe("Giant 123 heavy");
+    expect(formatCallsignSpeech("Skyhawk 172SP")).toBe("Skyhawk 172 Sierra Papa");
+    expect(formatCallsignSpeech("SKYHAWK 172SP")).toBe("Skyhawk 172 Sierra Papa");
+    expect(formatCallsignSpeech("Cessna 210AB")).toBe("Cessna 210 Alfa Bravo");
+    expect(formatCallsignSpeech("Cherokee 4821V")).toBe("Cherokee 4821 Victor");
     expect(formatCallsignSpeech("")).toBe("");
   });
 });

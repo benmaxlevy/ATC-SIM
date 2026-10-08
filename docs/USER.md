@@ -88,15 +88,16 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
 
 ### Simulated pilot & handoffs
 
-- **Callsign resolution**: Matches callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target.
+- **Callsign resolution**: Matches canonical callsigns via telephony name ("Delta 123"), ICAO code ("DAL123"), numeric tail ("123"), or currently hooked radar target. Current VFR aircraft may also have an authored alias: `N123 H270` and `Skyhawk 123 H270` target canonical `N123`. The alias must include the complete one-to-five-digit registration tail; aliases never replace the canonical N-number in aircraft state, logs, or commands.
 - **Automated check-ins**: Staggered arrival and departure check-in radio calls:
   - STAR arrivals: *"Approach, Delta 123, descending via DEMO ONE arrival through one-one thousand (11000)"*.
   - SID departures: *"Departure, American 100, passing seven hundred climbing via the BAY ONE departure"*.
+  - Airborne VFR flight following / IFR pickup cold call: *"[Facility ]Approach, <callsign>"* (e.g. *"Atlanta Approach, Skyhawk 172SP"* or *"Approach, Skyhawk 172SP"*). Full request details are provided upon controller query (`say request`).
 - **Inbound & departure handoff workflow**:
   - Inbound arrivals spawn in pending handoff state from Center (unowned green FDB) → Controller left-clicks the track (slew to accept) or uses `F1` (`INIT CNTL`) to accept → Track becomes owned (white FDB) → Radio frequency unlocked → Pilot checks in.
   - Rolling departures spawn off the active runway (~0.8 NM, 700 ft, 180 kt) under Tower handoff → Pilot checks in on departure frequency → Flies published SID climb profile.
 - **Smart Shift+H / F5 handoff**: Context-sensitive shared outbound handoff. Eligible arrivals target Tower; eligible climbing departures target Center (`C`). Receiver TCP remains visible while pending and for five simulated seconds after acceptance. Single-position trainer auto-accepts supported destinations after five simulated seconds; Tower landing/ownership effects occur only after acceptance. F4 terminates the track and its associated local plan. No live second position or network is modeled.
-- **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances.
+- **Readbacks**: FAA JO 7110.65 digit grouping (e.g. "climb and maintain five thousand, Delta one twenty-three"), plus "unable" for invalid clearances. VFR pilots use the preferred authored alias plus the complete tail (for example, `Skyhawk one two three`); aircraft without an alias use the N-number.
 
 ## ATC command reference
 
@@ -107,12 +108,67 @@ Pressing `Tab` toggles focus between the command line and the radar scope (PPI /
 > Radio commands stay strictly on the command line or PTT audio channel and issue pilot instructions.
 > Scope keys and STARS Preview Area commands stay on the radar display and never issue radio transmissions.
 
+#### VFR callsign aliases
+
+The seven current VFR profile aliases are `Bonanza`, `Skyhawk`, `Skylane`,
+`Caravan`, `Diamond`, `Archer`, and `Cirrus`. They are authored aircraft data,
+not abbreviations selected from communication history. Use the canonical
+N-number or the exact alias plus the complete registration tail:
+
+```text
+N123 H270
+Skyhawk 123 H270
+Skyhawk one two three turn left heading two seven zero
+N12345 H270
+```
+
+Both `N123` and `Skyhawk 123` resolve to the same canonical aircraft. The
+parser returns `PARSE_MISS` and changes nothing for an alias-only input such as
+`Skyhawk`, an unknown or ambiguous alias, an incomplete tail, a short
+N-prefix, or a six-digit N-number. Pilot readback may say `Skyhawk one two
+three`, but the underlying aircraft identity remains `N123`.
+
 `MVFR` / "maintain VFR" is a radio-only trainer instruction. It sets only an
 aircraft marker for a future VFR-to-IFR pickup path and produces a deterministic
 readback/log entry. It does not change altitude, route, procedure, correlation,
 flight-plan lifecycle, or clearance state. `VFR ON TOP`, SVFR, flight following,
 airspace authorization, and airborne VFR-to-IFR pickup are not accepted by this
 command.
+
+Controller-issued VFR Class B phraseology is also supported by the radio parser:
+`cleared to enter/into [the] [class] Bravo airspace`, `cleared through Bravo
+airspace`, `cleared out of Bravo airspace`, `remain outside Bravo airspace`, and
+`resume appropriate VFR altitudes`. `VIA ... THEN ...` route legs must be
+catalog-grounded and precede `maintain ... while in Bravo airspace`. These are
+VFR-only forms; `cleared into Bravo` without `airspace`, fuzzy paraphrases, and
+aliases for THROUGH/OUT OF are rejected. Accepted clearances preserve VFR
+flight rules, flight-following state, and squawk state. Crossing out of Bravo
+logs `LEAVING (name) BRAVO AIRSPACE`; it does not automatically terminate radar
+service or reset the squawk. A Class B-specific altitude is temporary and is
+restored by the explicit resume command or on exit.
+
+Ambient VFR pilots may request access before a modeled route enters Bravo. Use
+`say request` to hear the stored request: arrival requests say `request VFR
+arrival into Bravo`, departure requests say `request VFR departure into Bravo`,
+and transitions say `request transition through Bravo`, with available
+destination and catalog-grounded route details. `stand by` leaves the request
+open. Controller responses are exact: `cleared as requested` applies only the
+pending VFR `TO_ENTER`/`THROUGH` request; `unable class b clearance` (or `unable
+to provide class b clearance`) declines it; `remain outside Bravo airspace`
+also declines it when accepted outside. These responses do not change VFR,
+flight plan, service, beacon, or kinematics except for an accepted clearance's
+existing Class B route/altitude behavior. A primary-airport departure does not
+create a pilot `OUT_OF` request; `OUT_OF` remains controller-issued.
+
+Communications transfer uses `contact <facility> tower` or `contact
+<facility> center`. The facility name is syntax/readback data only: no
+frequency is accepted and no facility identity lookup occurs. Tower contact
+requires the existing eligible-arrival gate and reuses visual-final or IFR
+landing behavior. Center contact requires the existing outbound gate. These
+commands do not terminate radar service, issue an approach clearance, change
+flight rules, or authorize Class B. At actual `nav.landed`, only an active IFR
+plan at an eligible functioning towered destination closes; VFR/DVFR and
+non-towered IFR plans remain open, and closed plans remain read-only history.
 
 ### Typed command syntax
 
@@ -140,11 +196,21 @@ If an aircraft is already selected on the scope, the callsign prefix is automati
 | **Approach** | `APP ILS<RWY>` | `DAL123 APP ILS27` | Cleared ILS Runway 27 approach (arms localizer + glideslope) |
 | | `IL ILS<RWY>` | `DAL123 IL ILS27` | Intercept localizer only (clears localizer tracking, no glideslope) |
 | | `EXP ILS<RWY>` | `DAL123 EXP ILS27` | Expect ILS Runway 27 approach |
+| | `VIS <RWY>` | `DAL123 VIS 27L` | Cleared visual approach Runway 27L (straight-in lateral tracking + 3° descent profile to touchdown) |
 | **Compound Clearance** | `<H> <A> APP ILS<RWY>` | `DAL123 R240 A20 APP ILS27` | Fly heading 240°, maintain 2,000 ft until established, cleared ILS 27 |
-| **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (flashes target symbol for 5 seconds) |
+| **Transponder / Ident** | `I` | `DAL123 I` | Squawk ident (STARS SPI: FDB Field 5 shows ground speed + `ID`, PDB Field 4 shows `ID`, LDB Field 1 shows flashing `ID` next to the beacon code; target symbol does not change) |
 | **Beacon assignment** | `SQ <[0-7]{4}>` / `SQ VFR` | `DAL123 SQ 4721` / `DAL123 SQ VFR` | Assigns the aircraft a discrete octal beacon or VFR code 1200; it never edits the manually maintained flight-plan beacon, and assigned/reported surveillance codes stay separate until the pilot report. |
 | **Maintain VFR** | `MVFR` | `DAL123 MVFR` | Radio-only VFR instruction. Sets the aircraft's maintain-VFR marker and readback; it is not an IFR clearance, VFR-on-top authorization, route, or flight-plan activation. |
 | **IFR clearance** | `CLR TO <LIMIT> (ASFILED\|VIA <ROUTE-WINDOW>\|VIA RADAR VECTORS) [ALT <hundreds>] [CVIA] [FREQ <value>] [SQ <code>]` | `DAL123 CLR TO KAHN VIA SIITH DIRECT VOR1 ALT 50` | One limit plus exactly one access method. A route window may contain any number of catalog-grounded fixes, navaids, or procedures/transitions; `DIRECT` is optional between elements. The aircraft follows an independent active-clearance snapshot immediately; radar vectors remain pending. Issuance never edits the flight plan. This compact route grammar is an ATC-SIM trainer extension. |
+| **VFR Flight Following & Radar Contact** | `say request` | `DAL123 say request` | Request flight following or route details from the pilot |
+| | `stand by` | `DAL123 stand by` | Tell pilot to standby on open radio request |
+| | `approve flight following` | `DAL123 approve flight following` | Approve flight following for radar-identified aircraft |
+| | `unable flight following` / `unable to provide flight following` | `DAL123 unable flight following` | Decline flight following request |
+| | `radar contact <distance> miles from <fix>` | `DAL123 radar contact 5 miles from MERGE` | Establish radar identification with informational position report |
+| | `radar service terminated` | `DAL123 radar service terminated` | Terminate radar advisory service (transponder squawk is not automatically reset to 1200) |
+| | `contact <facility> tower` | `DAL123 contact Atlanta tower` | Transfer an eligible arrival to the generic tower/landing path; no frequency is accepted, VFR remains VFR, and this does not authorize Class B. |
+| | `contact <facility> center` | `DAL123 contact Atlanta center` | Transfer an eligible outbound aircraft to the generic center handoff; route, flight rules, beacon, and radar service remain separate. |
+| **Pilot IFR Cancellation** | `IFR cancellation received` | `DAL123 IFR cancellation received` | Acknowledge pilot-initiated IFR cancellation outside Class B airspace; operational rules revert to VFR and autonomous navigation resumes, with unsafe continuation replanned around Bravo |
 | **Miscellaneous** | `GA` | `DAL123 GA` | Go around / execute published missed approach |
 | | `SH` | `DAL123 SH` | Say current heading |
 | | `SA` | `DAL123 SA` | Say current altitude |
@@ -312,8 +378,124 @@ the route is never reused for an unrelated limit. Plain `CLEARED DIRECT` and
 plan. Catalog airport ICAOs and listed spoken names are valid only in the IFR
 clearance-limit slot; they are not fixes, so `DIRECT KATL` remains a tactical
 direct command and is rejected unless KATL is an actual catalog fix/navaid.
-VFR-to-IFR pickup, holds, release/void, and full route amendments are not
-implemented.
+Airborne VFR-to-IFR pickup is supported: an airborne radar-identified ambient
+VFR aircraft with an open IFR pickup request can receive an IFR clearance to any
+eligible generated controlled airport in the loaded region (`CLR TO <AIRPORT> VIA
+RADAR VECTORS [ALT] [FREQ] [SQ]`), atomically transitioning operational flight
+rules to IFR while leaving any manual plan intact. Holds, release/void, and full
+route amendments are not implemented.
+
+### Satellite traffic and VFR session controls
+
+On scenarios with regional airport and airspace data (for example the KATL
+configurations), Session setup offers a **VFR Traffic & Regional Operations**
+section. Scenarios without regional data show `VFR traffic unavailable:
+selected scenario has no regional airport or airspace data` and start with VFR
+disabled. Stored sessions saved before these controls existed still load with
+VFR disabled and unchanged IFR settings.
+
+Population controls (counts of aircraft):
+
+- **VFR density** — one preset: Off, Light (2/2/3/4, cap 3, FF 20/pickup 10/
+  cancel 10), Moderate (4/4/6/8, cap 6, FF 30/pickup 20/cancel 25), or Busy
+  (6/8/12/12, cap 10, FF 40/pickup 30/cancel 25). Off starts with zero VFR
+  state and persists no VFR keys. Editing any tuned number switches the
+  readout to Custom (tuned); stored sessions keep the full numbers.
+- **Tune VFR numbers** — collapsible disclosure with the exact counts and
+  rates: initial count, target population, entries/hour, maximum population,
+  flight following %, IFR pickup %, request cap/hour, IFR cancellation %.
+- **Initial VFR count** — aircraft present at session start.
+- **Target VFR population** — soft target the trainer replenishes toward as
+  aircraft exit or complete flights.
+- **Maximum VFR population** — hard bound on both sources below.
+
+Rate controls (aircraft per hour):
+
+- **VFR entries/hour** — scheduled new background entries, independent of
+  target replenishment. Target replenishment and scheduled entries are
+  separate sources; both are bounded by the maximum population.
+
+Target replenishment maintains background population via exits, while
+entries/hour injects scheduled arrivals. Labels and helper text in the dialog
+keep this population-vs-rate distinction visible.
+
+- **Movement mix** — fixed at 60% local / 20% transit / 20% airport-bound;
+  airport-bound folds to local (80/20/0) when the scenario has no eligible
+  satellite destinations. There is no movement-mix input.
+- **Flight following %** and **IFR pickup %** — exclusive initial categories
+  for new traffic; their sum must be at most 100%. The remainder stays silent
+  ambient traffic that never calls.
+- **Request cap/hour** — combined new service requests per hour, paced at
+  3,600,000 / cap ms. Zero means no new service requests are transmitted
+  (aircraft still fly; replies and cancellation reports still work), with no
+  catch-up burst later.
+- **IFR cancellation %** — share of accepted IFR pickups the pilot later
+  offers to cancel.
+
+Invalid combinations show the exact upstream validation message and block
+Apply; the dialog never silently clamps a percentage, normalizes an invalid
+sum, or starts a partially configured session. Cancel and Escape discard
+draft edits and return focus. The existing seed control is reused, and
+`?traffic=N` keeps its benchmark meaning.
+
+Full phrases for the new workflow (typed on the command line or spoken over
+PTT; `SQ`, `I`, and `CLR` keep their existing meanings):
+
+1. A generated aircraft calls, for example `N123AB, 15 miles north of KPDK, C172, request flight following to KFTY at 4500` — position, aircraft type, destination, and altitude.
+2. `N123AB say request` hears the details; `N123AB stand by` defers;
+   `N123AB SQ 4721` and `N123AB I` assign a beacon and ident.
+3. `N123AB radar contact 5 miles from MERGE` establishes identification. The
+   position is informational only: it never moves the aircraft or changes its
+   navigation.
+4. `N123AB approve flight following` starts the advisory service, or
+   `N123AB unable flight following` declines it.
+5. `N123AB radar service terminated` ends the service when the pilot leaves
+   the area or the controller no longer wants the track. The assigned squawk
+   stays as issued; it is not reset to 1200.
+6. An airborne VFR aircraft with an open pickup request can receive
+   `N123AB CLR TO KPDK VIA RADAR VECTORS ALT 50`, becoming operational IFR to
+   an eligible satellite airport. A later pilot `cancel IFR` report is
+   answered with `N123AB IFR cancellation received`, reverting to VFR outside
+   Class B with autonomous navigation resumed; if the old VFR suffix would
+   enter Bravo, it is deterministically replanned around the modeled volume.
+7. Airport-bound arrivals complete at their satellite destination: entering
+   the terminal phase (~3–5 NM along the extended runway centerline), they
+   smoothly transition onto the visual final approach path, emit a simulated
+   tower handoff (`vfr.tower.handoff`), descend at 3° along the visual
+   glidepath to the runway threshold, touch down (`nav.landed`), and safely
+   despawn. Standard VFR datablock presentation (1200 squawk or discrete
+   flight-following beacon) is preserved without clearance shorthand tags.
+8. Satellite departures lift off near a satellite airport and fly a
+   near-straight line with slight seeded wobble (at most 3 NM off the direct
+   course) to a boundary exit. The login-time population is disc-spawned
+   airborne traffic; every post-login entry is a satellite departure. There
+   is no surface tower or ground simulation: no takeoff clearance, no departure
+   handoff, and arrivals land straight-in to threshold touchdown.
+
+Service versus flight rules: flight following is a radar advisory *service*
+on a VFR aircraft, not an IFR clearance. Pickup changes operational flight
+rules to IFR; cancellation reverts them to VFR and repairs the autonomous
+continuation around modeled Class B when needed. Airport-bound VFR traffic may
+request Class B access before arriving at the primary airport; the request and
+clearance lifecycle is modeled, while surface/tower coordination is not.
+Swept-path Bravo avoidance is enforced on every planned route, and the trainer
+issues no VFR Bravo clearance without explicit authorization. A
+controller-issued Class B clearance authorizes the named VFR operation only; it
+does not create an IFR clearance or alter flight-plan, service, or beacon state.
+Other-airspace and tower coordination is assumed, not simulated.
+
+Trainer limitations: deterministic virtual pilots with configurable workload,
+not observed traffic statistics; VMC assumed for generated IFR cancellation;
+cancellation inside Bravo is rejected, while outside-Bravo cancellation replans
+unsafe autonomous continuations around modeled Class B volumes. Class B
+geometry, MVA floors, and clearance execution are deterministic training
+approximations, not operational or certified data.
+There is no tower cab, ground traffic, emergencies, scoring, or certification.
+Visual approaches use simplified straight-in guidance and touchdown. Regional
+airspace and runway data are deterministic training approximations, not
+operational or certified data. Speech runs only through the self-hosted speech
+API or in-tab fallback; if speech is unavailable, every phrase above works
+typed.
 
 ## Controls & keybindings
 
@@ -388,6 +570,16 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `Ctrl + F9` | `<RNG RING>` Range Rings | Arms the DCB Range Ring (`RR`) interval spinner. |
 | `Ctrl + F10` | `<RANGE>` Range Spinner | Arms the DCB `RANGE` NM spinner. |
 | `Ctrl + F11` | `<WX>` Weather Toggle | Cycles weather radar reflectivity layers on/off. |
+
+#### DCB numeric keyboard typing
+
+Clicking or selecting a numeric DCB adjustment button (Range, Range Rings, Leader Length, PTL) arms it for keyboard entry:
+- **Direct typing**: Digits (`0`–`9`) can be typed directly via the keyboard or numeric keypad; `PTL` also accepts decimal (`.`).
+- **Live feedback**: The active typed buffer renders in real time inside the armed DCB button label while typing.
+- **Enter**: Commits and validates the typed value according to STARS limits (reverting without mutation if invalid) and disarms the button.
+- **Escape / Clear**: Cancels adjustment, restores the previous value, and disarms the button.
+- **Backspace**: Edits the buffer by removing the last character.
+- **Mouse wheel**: Continues to work for incremental adjustment while armed, synchronizing the buffer.
 
 #### Scope-focused shortcuts (active when PPI is focused)
 

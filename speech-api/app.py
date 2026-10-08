@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,9 @@ class TtsRequest(BaseModel):
 class ParseContext(BaseModel):
     """Live-strip + catalog grounding for Path C. No n-best, no STT confidence, no kinematics."""
 
-    callsigns: List[str] = Field(default_factory=list)
+    # Legacy strings remain accepted at the HTTP boundary; parse_engine converts
+    # them to structured canonical-plus-alias candidates before use.
+    callsigns: List[Union[str, dict]] = Field(default_factory=list)
     selectedCallsign: Optional[str] = None
     fixes: List[str] = Field(default_factory=list)
     procedures: List[dict] = Field(default_factory=list)

@@ -1,0 +1,95 @@
+{
+  "airportId": "KAUO",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": 21.042876,
+      "yNm": 0.0085,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 51.64092,
+      "yNm": 61.107167,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MXF",
+      "kind": "DME",
+      "name": "MAXWELL",
+      "xNm": -47.221037,
+      "yNm": -14.144667,
+      "latDeg": 32.37936666666667,
+      "lonDeg": -86.36835555555555,
+      "freqMhz": 115,
+      "class": "T"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": -30.762154,
+      "yNm": 57.6025,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": -11.892719,
+      "yNm": -7.8145,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    },
+    {
+      "id": "IAUODME",
+      "kind": "DME",
+      "name": "AUBURN UNIVERSITY RGNL",
+      "xNm": -0.09097,
+      "yNm": 0.4735,
+      "latDeg": 32.62300277777778,
+      "lonDeg": -85.4358,
+      "freqMhz": 110.1,
+      "class": "T"
+    },
+    {
+      "id": "IAUOGS",
+      "kind": "GS",
+      "name": "IAUO GS",
+      "xNm": -0.073843,
+      "yNm": -0.441667,
+      "latDeg": 32.60775,
+      "lonDeg": -85.43546111111111,
+      "gsAngleDeg": 3,
+      "tchFt": 44
+    },
+    {
+      "id": "IAUO",
+      "kind": "LOC",
+      "name": "IAUO",
+      "xNm": -0.099954,
+      "yNm": 0.472833,
+      "latDeg": 32.622991666666664,
+      "lonDeg": -85.43597777777778,
+      "freqMhz": 110.1,
+      "courseDeg": 5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3
+    }
+  ]
+}

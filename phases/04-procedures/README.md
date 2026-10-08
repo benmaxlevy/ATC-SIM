@@ -641,6 +641,127 @@ Use the named `magneticToTrueDeg` and `trueToMagneticDeg` helpers at frame
 boundaries. KDEM's `magVarDeg: 0` is fixture data, not a coordinate-system
 assumption; other catalogs (including KATL's `-5`) use the same plumbing.
 
+### Post-exit addendum (T04-69–76 satellite traffic and regional packs)
+
+This addendum integrates local FAA CIFP and NASR subscription data into regional
+packs, enabling generic satellite arrivals, local VFR traffic, and controlled
+airspace awareness.
+
+- T04-69 imports local FAA CIFP (controlled airspace `UC`, restrictive airspace `UR`)
+  and NASR (`APT`, `TWR`/`ATC`) tables into a validated regional source model.
+- T04-70 generates and loads the regional pack: manifest (`regional.json`), regional
+  airports (`regional-airports.json`), controlled airspace (`regional-airspace.json`),
+  and generic procedure catalogs (`airports/<ICAO>/`) for the center facility and
+  all eligible destination airports within 40 NM.
+- T04-71–76 provide VFR navigation, request handling, radar services, satellite arrival
+  flow control, and controller UI.
+- T04-73 implements the VFR flight-following and radio-contact lifecycle (request state machine,
+  controller Command IR instructions, atomic validation, pilot readbacks, and operational service tracking).
+- T04-74 implements airborne VFR-to-IFR pickup (atomic transition to operational IFR, clearance limit validation against regional controlled destination airports, unchanged manual flight plan, and datablock/strip/list operational status).
+- T04-75 and T04-92 implement pilot-initiated IFR cancellation and autonomous VFR continuation (atomic reversion to VFR, deterministic replanning around modeled 3D Class B airspace when the aircraft is outside Bravo, autonomous navigation recovery, intact flight plan/service/beacon state, and multi-channel command parity). Cancellation inside modeled Class B remains rejected; it is not an implicit VFR Class B authorization.
+- T04-94–96 implement the controller-issued VFR Class B workflow. The closed Command IR accepts eight `TO_ENTER` wording variants, canonical `THROUGH`/`OUT OF`, catalog-grounded route legs, temporary Class B altitude assignments, `REMAIN_OUTSIDE_BRAVO`, and explicit VFR-altitude resume. Accepted commands preserve VFR, service, and beacon state; boundary exit logs the required `LEAVING (name) BRAVO AIRSPACE` notice without automatic radar-service termination or squawk reset. Synthetic acceptance coverage proves route/altitude validation, boundary events, and no-entry behavior.
+- T04-97–100 add pilot-initiated VFR Class B requests. Geometry-driven ambient VFR arrivals, transitions, and underlying-airport departures request only `TO_ENTER` or `THROUGH` before entry; primary-airport departures never create pilot `OUT_OF` requests. `say request` reports the stored intent, `stand by` defers it, `cleared as requested` applies the pending request, and exact Class B `unable`/remain-outside responses decline it. Requests remain informational until accepted clearance, resolve to terminal `CLEARED`/`DECLINED`, and preserve VFR and unrelated aircraft state.
+- The VFR fleet lives in the separate `generalAviation` object in
+  `src/core/performance/aircraft-profiles.json` (`BE36`, `C172`, `C182`,
+  `C208`, `DA40`, `PA28`, `SR22` with manufacturer-spec limits; OpenAP has no
+  piston/turboprop GA). `DEFAULT_VFR_AIRCRAFT_MIX` derives from that object;
+  VFR mixes reject airliner keys. IFR arrival fleets walk airline lists only,
+  so arrivals never spawn GA types.
+- T04-76 wires the approved population and request controls into session setup
+  (`src/ui/controls/session-setup.tsx`, `src/scenario/sessionSetup.ts`) against
+  the T04-71/72 schemas and schedulers, with units, labels, and exact upstream
+  validation; legacy sessions load with VFR disabled and `traffic=N` keeps its
+  benchmark meaning. It verifies the whole feature with one synthetic
+  integrated acceptance file (silent traffic, flight following, IFR
+  pickup/cancellation, rejection, termination, destination completion),
+  parameterized swept-path Bravo no-entry geometry, Atlanta data/contract
+  acceptance (source provenance, preserved routes), and long-session bounds
+  (request cap, fair scheduling, cleanup, seed repeatability, zero-cap
+  behavior, legacy IFR repeatability). Manual evidence (both KATL runway
+  configurations with ambient VFR plus following/pickup/cancellation/satellite
+  arrival, joint radio/pilot/scope check, FAA edition and paragraph records,
+  speech/perf samples) is recorded as worker-handoff leftovers, not claimed
+  from automation.
+
+The regional pack generator command:
+
+```text
+npm run cifp:regional-pack -- --cifp <path> --nasr-apt <path> [--nasr-twr <path>] --airport <ICAO> --radius <NM> --out <dir> [--dry-run] [--cycle <cycle>]
+```
+
+Coverage is 40 NM from the center airport ARP (e.g. KATL). Source provenance is
+recorded in `regional.json` (cycles, product names, command parameters); raw FAA
+cycles stay local and outside git (`.cifp/`).
+
+Eligibility rule: Only airports with source-proven towered AND public-use status,
+valid runway geometry (thresholds, lengths, headings), and an emitted procedure
+catalog qualify as eligible destinations (`eligibleForDestination: true`).
+CIFP-only and missing-status rows never qualify.
+
+Trainer limitations: The regional pack provides physical and procedural geometry
+as a training approximation. It does not model a certified tower cab or claim
+operational airspace accuracy. Simulated tower handoff, landing clearances, and
+aircraft despawn are trainer behaviors supplied by downstream tickets. The
+Class B workflow is deterministic training behavior over modeled volumes and
+MVA floors; IFR cancellation inside Bravo remains rejected, and autonomous VFR
+traffic still cannot enter without an explicit accepted Class B clearance.
+
+### Post-exit addendum (T04-91 audit closure)
+
+The audit closure suite joins regional scenario loading, generic VFR destination
+eligibility, fail-closed visual rejection and visual touchdown, IFR cancellation
+state recovery with Class B no-entry protection, and DCB coupled-state behavior.
+These checks prove existing remediation contracts together; they add no runtime
+behavior. Manual KATL live-source, STARS-manual, speech-latency, and performance
+evidence remains an explicit handoff item when the required local data and
+browser session are unavailable. The Class B acceptance tests do not claim
+certification or replace controller review of the cited FAA phraseology.
+
+### Post-exit addendum (T04-77–78 VFR setup simplification)
+
+T04-77 replaced named VFR zones with one fixed ARP-centered training box;
+`VfrZone`, `VfrTrafficZoneConfig`, `Scenario.vfrZones`, and
+`VfrTrafficConfig.zones` are deleted (T04-78 removes the last ignored shims).
+T04-78 collapses the 14-input VFR panel to one `VFR density` preset plus a
+`<details>` Tune disclosure mirroring the help-overlay `scope-help-section`
+pattern:
+
+- Presets (UI mapping only; storage keeps full numbers): Off (no VFR keys
+  persisted), Light (2/2/3/4, cap 3, FF 20/pickup 10/cancel 10), Moderate
+  (4/4/6/8, cap 6, FF 30/pickup 20/cancel 25 = T04-76 defaults), Busy
+  (6/8/12/12, cap 10, FF 40/pickup 30/cancel 25). Custom is display-only when
+  tuned numbers differ from all presets and is never persisted.
+- Movement mix is fixed at 60/20/20 with airport-bound folding to local
+  (80/20/0) when the scenario has no eligible destinations. Validation
+  strings, legacy-load VFR-disabled, `traffic=N` precedence, capability
+  gating, and `@scope`-only DCB behavior are unchanged.
+
+### Post-exit addendum (T04-79–80 satellite departures)
+
+T04-79 routes every post-login VFR entry through a satellite liftoff pose;
+T04-80 flies it as a near-straight line corridor (runway-heading climb, ≤3 NM
+seeded wobble, radial boundary exit with `BOUNDARY_EXIT`) under the hard
+Bravo-avoidance guard, with no tower/ground simulation.
+
+### Post-exit addendum (T04-81–83 satellite traffic, visual clearances, and VFR auto-land)
+
+T04-81 enables arrival-airport approach resolution and satellite ILS parity;
+T04-82 implements visual approach clearance (`CLEARED_VISUAL`, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance);
+T04-83 executes autonomous VFR auto-land on visual final for airport-bound traffic, emitting `vfr.tower.handoff` and `nav.landed` events with MSAW inhibit on final descent and standard VFR datablock presentation.
+
+### Post-exit addendum (T04-101–103 contact tower/center and landing closure)
+
+`CONTACT_TOWER` and `CONTACT_CENTER` use a 1–4-token syntax-only facility
+name. No frequency is accepted and no facility identity lookup occurs. Tower
+contact reuses the generic IFR tower/landing and VFR visual-final gates;
+center contact reuses the generic outbound handoff gate. Contact transfer is
+not radar-service termination, an approach clearance, or Class B
+authorization. VFR remains VFR. At actual `nav.landed`, an active IFR plan
+closes only at an eligible public-use towered destination; the historical
+record remains read-only while VFR/DVFR and non-towered IFR plans remain open.
+This is trainer behavior, with no tower cab, frequency, facility entity, or
+Raytheon STARS functionality.
+
 ---
 
 ## Phase exit checklist
@@ -673,5 +794,6 @@ Do not start phase 5 until every box is true.
 2. Paste **`AGENT.md`** from this folder as the implementation prompt, **or** paste a single `tickets/T04-xx-*.md` and say: implement only this ticket, stop when ACs are checked.
 3. Do not implement phase 5 scoring against these events until phase 4 exits — emitting the events is enough.
 
-Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, and T04-36–42
-are post-exit addenda. Historical exit boxes stay unchecked-as-written.
+Ticket IDs are stable. Do not renumber. T04-13–25, T04-31–35, T04-36–42,
+T04-46–50, and T04-69–76 are post-exit addenda. Historical exit boxes stay
+unchecked-as-written.

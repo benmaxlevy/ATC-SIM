@@ -1,0 +1,30 @@
+{
+  "airportId": "KJZP",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R16",
+      "type": "RNAV",
+      "runway": "16",
+      "name": "RNAV RWY 16",
+      "thresholdFixId": "RW16",
+      "courseDeg": 162.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 3000
+    },
+    {
+      "id": "R34",
+      "type": "RNAV",
+      "runway": "34",
+      "name": "RNAV RWY 34",
+      "thresholdFixId": "RW34",
+      "courseDeg": 342.7,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1789
+    }
+  ]
+}

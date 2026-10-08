@@ -1,0 +1,128 @@
+{
+  "airportId": "KCSG",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -3.984723,
+      "yNm": 5.9355,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 55.174065,
+      "yNm": 66.893833,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": 21.834391,
+      "yNm": 83.8995,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 26.647033,
+      "yNm": 67.034167,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 65.351952,
+      "yNm": 10.4915,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "MXF",
+      "kind": "DME",
+      "name": "MAXWELL",
+      "xNm": -72.323846,
+      "yNm": -8.217667,
+      "latDeg": 32.37936666666667,
+      "lonDeg": -86.36835555555555,
+      "freqMhz": 115,
+      "class": "T"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 32.383161,
+      "yNm": 81.558167,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": -55.846829,
+      "yNm": 63.5295,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": -36.956605,
+      "yNm": -1.8875,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    },
+    {
+      "id": "ICSGGS",
+      "kind": "GS",
+      "name": "ICSG GS",
+      "xNm": -0.247069,
+      "yNm": -0.139167,
+      "latDeg": 32.51400833333334,
+      "lonDeg": -84.94375277777777,
+      "gsAngleDeg": 2.61,
+      "tchFt": 49
+    },
+    {
+      "id": "ICSG",
+      "kind": "LOC",
+      "name": "ICSG",
+      "xNm": 0.799952,
+      "yNm": 0.517333,
+      "latDeg": 32.52495,
+      "lonDeg": -84.92305833333334,
+      "freqMhz": 110.3,
+      "courseDeg": 55.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36
+    }
+  ]
+}

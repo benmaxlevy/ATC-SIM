@@ -9,9 +9,34 @@
 import type { Instruction, SpeedUntil, TurnDir } from "@core";
 import type { ParseResult } from "../parseRadioText";
 import { formatParseError, PARSE_ERROR } from "../tokens";
+import { parseFacilityName } from "../contact";
+
+function isRequestControlInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "REQUEST_DETAILS" ||
+    instruction.type === "STANDBY_REQUEST" ||
+    instruction.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    instruction.type === "DECLINE_REQUEST" ||
+    instruction.type === "RADAR_CONTACT" ||
+    instruction.type === "TERMINATE_RADAR_SERVICE" ||
+    instruction.type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    instruction.type === "CONTACT_TOWER" ||
+    instruction.type === "CONTACT_CENTER"
+  );
+}
+
+function isClassBInstruction(instruction: Instruction): boolean {
+  return (
+    instruction.type === "CLASS_B_CLEARANCE" ||
+    instruction.type === "CLASS_B_CLEARANCE_AS_REQUESTED" ||
+    instruction.type === "REMAIN_OUTSIDE_BRAVO" ||
+    instruction.type === "RESUME_APPROPRIATE_VFR_ALTITUDES"
+  );
+}
 import {
   ONES,
   parseAltitudeFt,
+  parseDistanceNmValue,
   parseHeadingDeg,
   parseSpeedKt,
   parseTurnDegreesValue,
@@ -21,14 +46,25 @@ import {
   TENS,
 } from "./numbers";
 import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundAirportToCatalog,
+  groundFixPhraseToCatalog,
   groundFixToCatalog,
   groundProcedureToCatalog,
+  groundReferenceToCatalog,
   looksLikeSpokenTransition,
   matchSpokenStarTransition,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogProcedure,
 } from "./catalog-ground";
-import { parseSpokenCallsign, PHONETIC_TO_LETTER, RESERVED_SPOKEN } from "./telephony";
+import {
+  parseSpokenCallsign,
+  PHONETIC_TO_LETTER,
+  RESERVED_SPOKEN,
+  type CallsignRosterEntry,
+} from "./telephony";
 import { acceptIfrClearanceField, newIfrClearanceFieldOrder } from "../ifr-clearance-syntax";
 import { scanIfrClearanceRouteWindow } from "../ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "../instruction-order";
@@ -39,6 +75,8 @@ interface Cursor {
   catalog?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
   clearanceLimitIds?: ReadonlySet<string>;
+  /** Separate airport namespace for position references; never fix grounding. */
+  airports?: readonly CatalogAirport[];
 }
 
 function peek(c: Cursor, offset = 0): string | undefined {
@@ -191,6 +229,367 @@ function tryMaintainVfr(c: Cursor): Instruction | null {
   }
   c.i = start;
   return null;
+}
+
+function parseClassBRoute(c: Cursor): Array<{ type: "DIRECT"; fixId: string }> | null {
+  if (!take(c, "via")) {
+    return [];
+  }
+  if ((c.catalog?.length ?? 0) === 0) {
+    return null;
+  }
+  const route: Array<{ type: "DIRECT"; fixId: string }> = [];
+  while (true) {
+    const start = c.i;
+    let fixId: string | null = null;
+    let consumed = 0;
+    for (let n = Math.min(3, c.tokens.length - start); n >= 1; n -= 1) {
+      const candidateTokens = c.tokens.slice(start, start + n);
+      if (candidateTokens.includes("then") || candidateTokens.includes("maintain")) {
+        continue;
+      }
+      const hit = groundFixPhraseToCatalog(candidateTokens, c.catalog ?? []);
+      if (hit !== null) {
+        fixId = hit;
+        consumed = n;
+        break;
+      }
+    }
+    if (fixId === null) {
+      c.i = start;
+      return null;
+    }
+    c.i += consumed;
+    route.push({ type: "DIRECT", fixId });
+    if (!take(c, "then")) {
+      return route;
+    }
+    if (peek(c) === undefined || peek(c) === "maintain") {
+      return null;
+    }
+  }
+}
+
+function tryClassBClearance(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "cleared")) {
+    return null;
+  }
+
+  let operation: "THROUGH" | "TO_ENTER" | "OUT_OF" | null = null;
+  if (take(c, "through")) {
+    operation = "THROUGH";
+  } else if (take(c, "out") && take(c, "of")) {
+    operation = "OUT_OF";
+  } else {
+    const entryStart = c.i;
+    if (take(c, "to") && take(c, "enter")) {
+      operation = "TO_ENTER";
+    } else {
+      c.i = entryStart;
+      if (take(c, "into")) {
+        operation = "TO_ENTER";
+      }
+    }
+  }
+  if (operation === null) {
+    c.i = start;
+    return null;
+  }
+
+  if (operation === "TO_ENTER") {
+    take(c, "the");
+    take(c, "class");
+  }
+  if (!take(c, "bravo") || !take(c, "airspace")) {
+    c.i = start;
+    return null;
+  }
+
+  const route = parseClassBRoute(c);
+  if (route === null) {
+    c.i = start;
+    return null;
+  }
+  let altitudeFt: number | undefined;
+  if (take(c, "maintain")) {
+    const parsed = altitudeAt(c);
+    if (
+      parsed === null ||
+      !take(c, "while") ||
+      !take(c, "in") ||
+      !take(c, "bravo") ||
+      !take(c, "airspace")
+    ) {
+      c.i = start;
+      return null;
+    }
+    altitudeFt = parsed;
+  }
+  return {
+    type: "CLASS_B_CLEARANCE",
+    operation,
+    ...(route.length > 0 ? { route } : {}),
+    ...(altitudeFt === undefined ? {} : { altitudeFt }),
+  };
+}
+
+function tryRemainOutsideBravo(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "remain") && take(c, "outside") && take(c, "bravo") && take(c, "airspace")) {
+    return { type: "REMAIN_OUTSIDE_BRAVO" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryResumeAppropriateVfrAltitudes(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "resume") && take(c, "appropriate") && take(c, "vfr") && take(c, "altitudes")) {
+    return { type: "RESUME_APPROPRIATE_VFR_ALTITUDES" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRequestDetails(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "say") && take(c, "request")) {
+    return { type: "REQUEST_DETAILS" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryClassBClearanceAsRequested(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "cleared") && take(c, "as") && take(c, "requested") && peek(c) === undefined) {
+    return { type: "CLASS_B_CLEARANCE_AS_REQUESTED" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryStandby(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "stand") && take(c, "by")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  if (take(c, "standby")) {
+    return { type: "STANDBY_REQUEST" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryApproveFlightFollowing(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "approve") && take(c, "flight") && take(c, "following")) {
+    return { type: "APPROVE_FLIGHT_FOLLOWING" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryDeclineRequest(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "unable")) {
+    if (take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "flight") && take(c, "following")) {
+      return { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" };
+    }
+    if (take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+    if (take(c, "to") && take(c, "provide") && take(c, "ifr") && take(c, "pickup")) {
+      return { type: "DECLINE_REQUEST", service: "IFR_PICKUP" };
+    }
+    if (take(c, "class") && take(c, "b") && take(c, "clearance")) {
+      return { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" };
+    }
+    if (
+      take(c, "to") &&
+      take(c, "provide") &&
+      take(c, "class") &&
+      take(c, "b") &&
+      take(c, "clearance")
+    ) {
+      return { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" };
+    }
+  }
+  c.i = start;
+  return null;
+}
+
+function tryRadarServiceTerminated(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "radar") && take(c, "service") && take(c, "terminated")) {
+    return { type: "TERMINATE_RADAR_SERVICE" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryAcknowledgeIfrCancellation(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (take(c, "ifr") && take(c, "cancellation") && take(c, "received")) {
+    return { type: "ACKNOWLEDGE_IFR_CANCELLATION" };
+  }
+  c.i = start;
+  return null;
+}
+
+function tryContact(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "contact")) return null;
+  const facilityTokens: string[] = [];
+  while (peek(c) !== undefined && peek(c) !== "tower" && peek(c) !== "center") {
+    facilityTokens.push(peek(c)!);
+    c.i += 1;
+    if (facilityTokens.length > 4) {
+      c.i = start;
+      return null;
+    }
+  }
+  const terminal = peek(c);
+  const facilityName = parseFacilityName(facilityTokens);
+  if ((terminal !== "tower" && terminal !== "center") || !facilityName) {
+    c.i = start;
+    return null;
+  }
+  c.i += 1;
+  return { type: terminal === "tower" ? "CONTACT_TOWER" : "CONTACT_CENTER", facilityName };
+}
+
+function tryRadarContact(c: Cursor): Instruction | null {
+  const start = c.i;
+  if (!take(c, "radar") || !take(c, "contact")) {
+    c.i = start;
+    return null;
+  }
+  const dist = parseDistanceNmValue(c.tokens, c.i);
+  if (!dist) {
+    // Bare `radar contact`: identification with no position report.
+    return { type: "RADAR_CONTACT" };
+  }
+  if (dist.value <= 0) {
+    c.i = start;
+    return null;
+  }
+  c.i = dist.next;
+  if (!take(c, "miles") && !take(c, "mile")) {
+    c.i = start;
+    return null;
+  }
+  // Optional direction (`25 miles southeast of KATL`, split `south east`
+  // included); the stored reference is position only.
+  if (peek(c) === "north" || peek(c) === "south") {
+    c.i += 1;
+    if (peek(c) === "east" || peek(c) === "west") {
+      c.i += 1;
+    }
+  } else if (peek(c) !== undefined && EIGHT_POINT_CARDINALS.has(peek(c)!)) {
+    c.i += 1;
+  }
+  if (!take(c, "from") && !take(c, "of")) {
+    c.i = start;
+    return null;
+  }
+  const refStart = c.i;
+  let refEnd = refStart;
+  while (refEnd < c.tokens.length && !RESERVED_SPOKEN.has(c.tokens[refEnd] ?? "")) {
+    refEnd += 1;
+  }
+  // Keep a trailing airport type word in the span so `atlanta international
+  // airport` grounds as one airport reference instead of stranding `airport`.
+  while (
+    refEnd < c.tokens.length &&
+    (c.tokens[refEnd] === "airport" || c.tokens[refEnd] === "field")
+  ) {
+    refEnd += 1;
+  }
+  if (refEnd <= refStart) {
+    c.i = start;
+    return null;
+  }
+  const rawRef = c.tokens.slice(refStart, refEnd).join(" ");
+  // Spoken references arrive as NATO runs (`delta echo mike`); translate to
+  // the id before grounding, mirroring parseFixId. Falls through to phrase
+  // grounding for catalog aliases when the run does not resolve.
+  const phonetics: string[] = [];
+  let phoneticEnd = refStart;
+  while (
+    phonetics.length < 5 &&
+    c.tokens[phoneticEnd] !== undefined &&
+    c.tokens[phoneticEnd]! in PHONETIC_TO_LETTER
+  ) {
+    phonetics.push(PHONETIC_TO_LETTER[c.tokens[phoneticEnd]!]!);
+    phoneticEnd += 1;
+  }
+  if (phonetics.length >= 2) {
+    const phoneticId = phonetics.join("");
+    const phoneticGrounded = c.catalog ? groundReferenceToCatalog(phoneticId, c.catalog) : null;
+    if (phoneticGrounded) {
+      c.i = phoneticEnd;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: phoneticGrounded.referenceId,
+        referenceKind: phoneticGrounded.referenceKind,
+      };
+    }
+    const phoneticAirport = groundAirportToCatalog(phoneticId, c.airports ?? []);
+    if (phoneticAirport) {
+      c.i = phoneticEnd;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: phoneticAirport,
+        referenceKind: "AIRPORT",
+      };
+    }
+  }
+  const grounded = c.catalog ? groundReferenceToCatalog(rawRef, c.catalog) : null;
+  if (grounded) {
+    c.i = refEnd;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: grounded.referenceId,
+      referenceKind: grounded.referenceKind,
+    };
+  }
+  for (let k = refEnd; k > refStart; k -= 1) {
+    const subRef = c.tokens.slice(refStart, k).join(" ");
+    const subGrounded = c.catalog ? groundReferenceToCatalog(subRef, c.catalog) : null;
+    if (subGrounded) {
+      c.i = k;
+      return {
+        type: "RADAR_CONTACT",
+        distanceNm: dist.value,
+        referenceId: subGrounded.referenceId,
+        referenceKind: subGrounded.referenceKind,
+      };
+    }
+  }
+  // Airport names and aliases (`atlanta international airport` → KATL).
+  const airportHit = groundAirportPhraseToCatalog(
+    c.tokens.slice(refStart, refEnd).join(" "),
+    c.airports ?? [],
+  );
+  if (airportHit) {
+    c.i = refStart + airportHit.length;
+    return {
+      type: "RADAR_CONTACT",
+      distanceNm: dist.value,
+      referenceId: airportHit.icao,
+      referenceKind: "AIRPORT",
+    };
+  }
+  c.i = refEnd;
+  return { type: "RADAR_CONTACT" };
 }
 
 function tryAltitude(c: Cursor): Instruction | null {
@@ -352,49 +751,100 @@ function tryDirect(c: Cursor): Instruction | null {
 }
 
 /** Compact trainer IFR clearance; kept ahead of tactical cleared-direct. */
+function parseIfrAccess(
+  c: Cursor,
+): Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | null {
+  if (take(c, "asfiled")) {
+    return { type: "AS_FILED" };
+  }
+  if (take(c, "as")) {
+    if (!take(c, "filed")) return null;
+    return { type: "AS_FILED" };
+  }
+  if (!take(c, "via")) {
+    return null;
+  }
+  if (take(c, "radar")) {
+    if (!take(c, "vectors") && !take(c, "vector")) {
+      return null;
+    }
+    let thenDirect = false;
+    if (take(c, "then")) {
+      if (take(c, "direct")) thenDirect = true;
+    } else if (take(c, "direct")) {
+      thenDirect = true;
+    }
+    return thenDirect ? { type: "RADAR_VECTORS", thenDirect: true } : { type: "RADAR_VECTORS" };
+  }
+  if (
+    peek(c) === "direct" &&
+    ((peek(c, 1) === "radar" && (peek(c, 2) === "vectors" || peek(c, 2) === "vector")) ||
+      (peek(c, 1) === "then" &&
+        peek(c, 2) === "radar" &&
+        (peek(c, 3) === "vectors" || peek(c, 3) === "vector")))
+  ) {
+    take(c, "direct");
+    take(c, "then");
+    take(c, "radar");
+    if (!take(c, "vectors")) {
+      take(c, "vector");
+    }
+    if (take(c, "then")) {
+      take(c, "direct");
+    } else {
+      take(c, "direct");
+    }
+    return { type: "RADAR_VECTORS", thenDirect: true };
+  }
+  const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
+    fixes: c.catalog,
+    procedures: c.procedures,
+  });
+  if (!route) {
+    return null;
+  }
+  c.i = route.nextIndex;
+  return { type: "EXPLICIT_ROUTE", segments: route.segments };
+}
+
 function tryIfrClearance(c: Cursor): Instruction | null {
   const start = c.i;
-  if ((!take(c, "cleared") && !take(c, "clear")) || !take(c, "to")) {
-    c.i = start;
-    return null;
-  }
-  const limitId = parseFixId(c, c.clearanceLimitIds);
-  if (!limitId) {
-    c.i = start;
-    return null;
-  }
+  let limitId: string | null = null;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (take(c, "asfiled")) {
-    access = { type: "AS_FILED" };
-  } else if (take(c, "as")) {
-    if (!take(c, "filed")) {
+
+  const hasCleared = take(c, "cleared") || take(c, "clear");
+
+  if (take(c, "to")) {
+    limitId = parseFixId(c, c.clearanceLimitIds);
+    if (!limitId) {
       c.i = start;
       return null;
     }
-    access = { type: "AS_FILED" };
+    const acc = parseIfrAccess(c);
+    if (!acc) {
+      c.i = start;
+      return null;
+    }
+    access = acc;
+  } else if (hasCleared || peek(c) === "via") {
+    const acc = parseIfrAccess(c);
+    if (!acc) {
+      c.i = start;
+      return null;
+    }
+    if (!take(c, "to")) {
+      c.i = start;
+      return null;
+    }
+    limitId = parseFixId(c, c.clearanceLimitIds);
+    if (!limitId) {
+      c.i = start;
+      return null;
+    }
+    access = acc;
   } else {
-    if (!take(c, "via")) {
-      c.i = start;
-      return null;
-    }
-    if (take(c, "radar")) {
-      if (!take(c, "vectors")) {
-        c.i = start;
-        return null;
-      }
-      access = { type: "RADAR_VECTORS" };
-    } else {
-      const route = scanIfrClearanceRouteWindow(c.tokens, c.i, {
-        fixes: c.catalog,
-        procedures: c.procedures,
-      });
-      if (!route) {
-        c.i = start;
-        return null;
-      }
-      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
-      c.i = route.nextIndex;
-    }
+    c.i = start;
+    return null;
   }
   const optional: Pick<
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,
@@ -786,7 +1236,24 @@ function ilsApproachIdFromRunway(rwy: string): string {
 
 function tryCleared(c: Cursor): Instruction | null {
   const start = c.i;
-  if ((!take(c, "clear") && !take(c, "cleared")) || !take(c, "ils")) {
+  if (!take(c, "clear") && !take(c, "cleared")) {
+    c.i = start;
+    return null;
+  }
+  take(c, "for");
+  take(c, "the");
+  take(c, "to");
+  if (take(c, "visual")) {
+    take(c, "approach");
+    const rwy = runwayId(c);
+    if (rwy === null) {
+      c.i = start;
+      return null;
+    }
+    take(c, "approach");
+    return { type: "CLEARED_VISUAL", runwayId: rwy };
+  }
+  if (!take(c, "ils")) {
     c.i = start;
     return null;
   }
@@ -956,6 +1423,18 @@ function parseOneInstruction(c: Cursor): Instruction | null {
     tryFlyHeading(c) ??
     tryPresentHeading(c) ??
     tryMaintainVfr(c) ??
+    tryRequestDetails(c) ??
+    tryClassBClearanceAsRequested(c) ??
+    tryStandby(c) ??
+    tryApproveFlightFollowing(c) ??
+    tryDeclineRequest(c) ??
+    tryRadarServiceTerminated(c) ??
+    tryAcknowledgeIfrCancellation(c) ??
+    tryContact(c) ??
+    tryRadarContact(c) ??
+    tryClassBClearance(c) ??
+    tryRemainOutsideBravo(c) ??
+    tryResumeAppropriateVfrAltitudes(c) ??
     tryAltitude(c) ??
     tryVia(c) ??
     tryJoinProcedure(c) ??
@@ -1007,6 +1486,8 @@ export function parseSpokenGrammar(
   catalogFixes?: readonly CatalogFixInput[],
   catalogProcedures?: readonly CatalogProcedure[],
   clearanceLimitIds?: ReadonlySet<string>,
+  catalogAirports?: readonly CatalogAirport[],
+  callsignRoster?: readonly CallsignRosterEntry[],
 ): ParseResult {
   const tokens = normalized.split(" ").filter((tok) => tok.length > 0);
   if (tokens.length === 0) {
@@ -1019,15 +1500,20 @@ export function parseSpokenGrammar(
     catalog: catalogFixes ?? [],
     procedures: catalogProcedures ?? [],
     clearanceLimitIds,
+    airports: catalogAirports ?? [],
   };
-  const callsignAttempt = parseSpokenCallsign(tokens, 0);
+  const callsignAttempt = parseSpokenCallsign(tokens, 0, callsignRoster);
   let callsignToken: string | null = null;
   if (callsignAttempt.kind === "ok") {
     callsignToken = callsignAttempt.callsign;
     c.i = callsignAttempt.next;
+  } else if (callsignAttempt.kind === "invalid_alias") {
+    return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   } else if (selectedCallsign) {
     const selectedStart = tokens.findIndex(
-      (token, index) => (token === "clear" || token === "cleared") && tokens[index + 1] === "to",
+      (token, index) =>
+        (token === "clear" || token === "cleared") &&
+        ["to", "into", "through", "out"].includes(tokens[index + 1] ?? ""),
     );
     if (selectedStart > 0) {
       // The selected aircraft supplies the callsign when ASR mangles its prefix;
@@ -1069,6 +1555,12 @@ export function parseSpokenGrammar(
     return { ok: false, error: formatParseError(PARSE_ERROR.PARSE_MISS), sourceText };
   }
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  if (instructions.some(isClassBInstruction) && instructions.length !== 1) {
+    return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
+  }
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
     return { ok: false, error: formatParseError(PARSE_ERROR.BAD_CLEARANCE), sourceText };
   }
   const cancellationError = cancelApproachSequenceError(instructions);

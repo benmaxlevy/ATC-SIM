@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createAircraft } from "@core";
+import { createAircraft, createWorld } from "@core";
 import type { CatalogStar } from "@core";
 import { applyIntent } from "../applyIntent";
 import proceduresJson from "../../scenario/data/kdem/procedures.json";
@@ -170,4 +170,275 @@ test("AC7: DSR and SPEED intent application and via reset", () => {
   expect(ac.intent.controllerAssignedSpeedKt).toBe(180);
   expect(ac.intent.speedUntil).toEqual({ type: "FAF" });
   expect(ac.intent.speedRestrictionsDeleted).toBeUndefined();
+});
+
+test("T04-82: CLEARED_VISUAL sets VISUAL_FINAL lateral and GLIDEPATH vertical guidance", () => {
+  const ac = jet();
+  ac.intent.expectedApproachId = "ILS27";
+  const regional = {
+    airports: [
+      {
+        icao: "KDEM",
+        fieldElevFt: 15,
+        runways: [
+          {
+            id: "27",
+            headingMagDeg: 270,
+            thresholdNm: { xNm: 0, yNm: 0 },
+            headingTrueDeg: 270,
+            lengthFt: 8000,
+            threshold: { lat: 0, lon: 0 },
+          },
+        ],
+      },
+    ],
+  };
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, {
+    regional: regional as unknown as import("../../scenario/regional").RegionalFacility,
+    destinationIcao: "KDEM",
+  });
+
+  expect(ac.intent.clearedApproachId).toBe("VISUAL 27");
+  expect(ac.intent.expectedApproachId).toBeNull();
+  expect(ac.intent.assignedAltitudeFt).toBe(15);
+  expect(ac.intent.lateral).toEqual({
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+    fieldElevFt: 15,
+  });
+  expect(ac.intent.vertical).toEqual({
+    type: "GLIDEPATH",
+    approachId: "VISUAL 27",
+  });
+});
+
+test("T04-90: center visual uses exact runway geometry", () => {
+  const ac = jet();
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      fieldElevFt: 15,
+      approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+      navaids: [],
+      fixes: [{ id: "RW27", xNm: 4, yNm: 5 }],
+      sids: [],
+      stars: [],
+    },
+  });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent.lateral).toMatchObject({
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 4, yNm: 5 },
+  });
+});
+
+test.each([
+  { label: "threshold x", fix: { id: "RW27", xNm: Number.NaN, yNm: 5 } },
+  { label: "threshold y", fix: { id: "RW27", xNm: 4, yNm: Number.NaN } },
+  {
+    label: "course",
+    approach: { id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: Number.NaN },
+  },
+])("T04-90: center visual rejects invalid $label geometry", ({ fix, approach }) => {
+  const ac = jet();
+  const before = structuredClone(ac.intent);
+  const world =
+    Number.isNaN(fix?.xNm) || Number.isNaN(fix?.yNm)
+      ? ({
+          catalog: {
+            airportId: "KDEM",
+            approaches: [
+              approach ?? { id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 },
+            ],
+            navaids: [],
+            fixes: [fix ?? { id: "RW27", xNm: 4, yNm: 5 }],
+            sids: [],
+            stars: [],
+          },
+        } as unknown as import("../../core/world").World)
+      : createWorld({
+          catalog: {
+            airportId: "KDEM",
+            approaches: [
+              approach ?? { id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 },
+            ],
+            navaids: [],
+            fixes: [fix ?? { id: "RW27", xNm: 4, yNm: 5 }],
+            sids: [],
+            stars: [],
+          },
+        });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent).toEqual(before);
+});
+
+test("T04-90: satellite visual rejects missing geometry despite center catalog geometry", () => {
+  const ac = jet();
+  ac.destination = "KSAT";
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      fieldElevFt: 15,
+      approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+      navaids: [],
+      fixes: [{ id: "RW27", xNm: 4, yNm: 5 }],
+      sids: [],
+      stars: [],
+    },
+    regional: {
+      centerAirportId: "KDEM",
+      airports: [{ icao: "KSAT", fieldElevFt: 20, runways: [] }],
+    },
+  });
+
+  const before = structuredClone(ac.intent);
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent).toEqual(before);
+});
+
+test("T04-90: satellite visual accepts exact runway geometry", () => {
+  const ac = jet();
+  ac.destination = "KSAT";
+  const world = createWorld({
+    catalog: { airportId: "KDEM", approaches: [], navaids: [], fixes: [], sids: [], stars: [] },
+    regional: {
+      centerAirportId: "KDEM",
+      airports: [
+        {
+          icao: "KSAT",
+          fieldElevFt: 850,
+          runways: [
+            {
+              id: "09",
+              thresholdNm: { xNm: 12, yNm: 10 },
+              headingMagDeg: 95,
+              lengthFt: 6000,
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "09" }], 0, { world });
+
+  expect(ac.intent.lateral).toMatchObject({
+    type: "VISUAL_FINAL",
+    runwayId: "09",
+    threshold: { xNm: 12, yNm: 10 },
+    headingDeg: 95,
+  });
+});
+
+test("T04-90: standalone regional application follows flight-plan destination", () => {
+  const ac = jet();
+  ac.destination = "KATL";
+  ac.flightPlan = { destination: "KSAT" };
+  const regional = {
+    getAirport: (icao: string) =>
+      icao === "KSAT"
+        ? {
+            icao: "KSAT",
+            fieldElevFt: 850,
+            runways: [
+              { id: "09", thresholdNm: { xNm: 12, yNm: 10 }, headingMagDeg: 95, lengthFt: 6000 },
+            ],
+          }
+        : undefined,
+  } as unknown as import("../../scenario/regional").RegionalFacility;
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "09" }], 0, {
+    regional,
+    destinationIcao: "KATL",
+  });
+
+  expect(ac.intent.lateral).toMatchObject({ type: "VISUAL_FINAL", runwayId: "09" });
+});
+
+test("T04-90: apply-time missing visual geometry leaves intent unchanged", () => {
+  const ac = jet();
+  const before = structuredClone(ac.intent);
+  const world = createWorld({
+    catalog: {
+      airportId: "KDEM",
+      approaches: [],
+      navaids: [],
+      fixes: [],
+      sids: [],
+      stars: [],
+    },
+  });
+
+  applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+  expect(ac.intent).toEqual(before);
+});
+
+test.each([undefined, Number.NaN])(
+  "T04-90: center visual rejects missing field elevation %s",
+  (fieldElevFt) => {
+    const ac = jet();
+    const before = structuredClone(ac.intent);
+    const world = createWorld({
+      catalog: {
+        airportId: "KDEM",
+        ...(fieldElevFt === undefined ? {} : { fieldElevFt }),
+        approaches: [{ id: "VISUAL27", runway: "27", thresholdFixId: "RW27", courseDeg: 270 }],
+        navaids: [],
+        fixes: [{ id: "RW27", xNm: 4, yNm: 5 }],
+        sids: [],
+        stars: [],
+      },
+    });
+
+    applyIntent(ac, [{ type: "CLEARED_VISUAL", runwayId: "27" }], 0, { world });
+
+    expect(ac.intent).toEqual(before);
+  },
+);
+
+test("T04-82: FLY_HEADING or CANCEL_APPROACH breaks out of VISUAL_FINAL", () => {
+  const ac1 = jet();
+  ac1.headingDeg = 265;
+  ac1.intent.clearedApproachId = "VISUAL_27";
+  ac1.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  ac1.intent.vertical = { type: "GLIDEPATH", approachId: "VISUAL_27" };
+
+  // Breakout via FLY_HEADING
+  applyIntent(ac1, [{ type: "FLY_HEADING", headingDeg: 250, turn: "LEFT" }], 0);
+  expect(ac1.intent.clearedApproachId).toBeNull();
+  expect(ac1.intent.lateral).toEqual({ type: "HEADING", headingDeg: 250 });
+  expect(ac1.intent.vertical).toEqual({ type: "ASSIGNED" });
+
+  // Breakout via CANCEL_APPROACH
+  const ac2 = jet();
+  ac2.headingDeg = 268;
+  ac2.intent.clearedApproachId = "VISUAL_27";
+  ac2.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  ac2.intent.vertical = { type: "GLIDEPATH", approachId: "VISUAL_27" };
+
+  applyIntent(ac2, [{ type: "CANCEL_APPROACH" }], 0);
+  expect(ac2.intent.clearedApproachId).toBeNull();
+  expect(ac2.intent.assignedHeadingDeg).toBe(268);
+  expect(ac2.intent.lateral).toEqual({ type: "HEADING", headingDeg: 268 });
+  expect(ac2.intent.vertical).toEqual({ type: "ASSIGNED" });
 });

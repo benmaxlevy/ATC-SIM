@@ -1,0 +1,47 @@
+{
+  "airportId": "KEBA",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R11",
+      "type": "RNAV",
+      "runway": "11",
+      "name": "RNAV RWY 11",
+      "thresholdFixId": "RW11",
+      "courseDeg": 104.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1015
+    },
+    {
+      "id": "R29",
+      "type": "RNAV",
+      "runway": "29",
+      "name": "RNAV RWY 29",
+      "thresholdFixId": "RW29",
+      "courseDeg": 284.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1100
+    },
+    {
+      "id": "S11",
+      "type": "VOR",
+      "runway": "11",
+      "name": "VOR RWY 11",
+      "thresholdFixId": "RW11",
+      "courseDeg": 43.4,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 70,
+        "climbToFt": 657,
+        "directFixId": "MATKL"
+      }
+    }
+  ]
+}

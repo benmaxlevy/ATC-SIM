@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KGVL",
+  "name": "LEE GILMER MEML",
+  "spokenAliases": ["LEE GILMER MEML"],
+  "magVarDeg": -3,
+  "fieldElevFt": 1277,
+  "arp": {
+    "latDeg": 34.27262777777778,
+    "lonDeg": -83.830225
+  },
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  },
+  "originNote": "Imported from a synthetic CIFP subset fixture (not a real FAA cycle). Local tangent NM from ARP using the phase 0 projector. KDEM remains the sim default."
+}

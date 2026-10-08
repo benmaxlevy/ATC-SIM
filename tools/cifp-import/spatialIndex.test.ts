@@ -1,17 +1,23 @@
 import { expect, test } from "vitest";
 import {
+  airspaceIntersectsRadius,
   buildSpatialIndex,
   EARTH_RADIUS_NM,
   greatCircleDistanceNm,
+  initialBearingDeg,
+  minDistanceToSegmentNm,
   pointInRadius,
+  selectAirspacesByRadius,
   selectByRadius,
   serializeRadiusSeed,
   type CifpRadiusSeed,
 } from "./spatialIndex.ts";
 import type {
   CifpRecordIdentity,
+  NormalizedAirspace,
   NormalizedAirport,
   NormalizedApproach,
+  NormalizedBoundarySegment,
   NormalizedCifpSource,
   NormalizedFix,
   NormalizedNavaid,
@@ -146,6 +152,7 @@ function source(partial: Partial<NormalizedCifpSource>): NormalizedCifpSource {
     stars: [],
     sids: [],
     approaches: [],
+    airspaces: [],
     diagnostics: [],
     skippedByType: {},
     ...partial,
@@ -177,6 +184,22 @@ test("AC2 — ±180° longitudes are the same meridian", () => {
   expect(
     greatCircleDistanceNm({ latDeg: 10, lonDeg: 180 }, { latDeg: 10, lonDeg: -180 }),
   ).toBeCloseTo(0, 8);
+});
+
+test("initialBearingDeg calculates cardinal bearings accurately", () => {
+  expect(initialBearingDeg(ORIGIN, { latDeg: 1, lonDeg: 0 })).toBeCloseTo(0, 4);
+  expect(initialBearingDeg(ORIGIN, { latDeg: 0, lonDeg: 1 })).toBeCloseTo(90, 4);
+  expect(initialBearingDeg(ORIGIN, { latDeg: -1, lonDeg: 0 })).toBeCloseTo(180, 4);
+  expect(initialBearingDeg(ORIGIN, { latDeg: 0, lonDeg: -1 })).toBeCloseTo(270, 4);
+});
+
+test("minDistanceToSegmentNm computes perpendicular distance to segment midpoint", () => {
+  const a = { latDeg: 1, lonDeg: -1 };
+  const b = { latDeg: 1, lonDeg: 1 };
+  const point = { latDeg: 0, lonDeg: 0 };
+  const dist = minDistanceToSegmentNm(point, a, b);
+  // Distance to great circle arc bowing slightly north of 1° lat
+  expect(dist).toBeCloseTo(DEG_LAT_NM, 1);
 });
 
 test("AC2 — exact-boundary points are included (distance <= radiusNm)", () => {
@@ -300,4 +323,152 @@ test("dateline airport selects the wrapped-near fix only", () => {
   const seed = selectByRadius(src, { airportId: "KDAT", radiusNm: 70 });
   expect(seed.fixes.map((row) => row.id)).toEqual(["WRAP"]);
   expect(seed.arp).toEqual(arp);
+});
+
+function makeAirspace(
+  id: string,
+  segments: NormalizedBoundarySegment[],
+  centerAirportId?: string,
+  extras: Partial<NormalizedAirspace> = {},
+): NormalizedAirspace {
+  return {
+    identity: ident("UC", centerAirportId, id),
+    type: "CONTROLLED",
+    class: "B",
+    name: id,
+    centerAirportId,
+    lowerLimit: {
+      rawAltitude: "000",
+      rawUnit: "M",
+      altitudeFt: 0,
+      unit: "MSL",
+      reference: "MSL",
+    },
+    upperLimit: {
+      rawAltitude: "100",
+      rawUnit: "M",
+      altitudeFt: 10000,
+      unit: "MSL",
+      reference: "MSL",
+    },
+    segments,
+    sourceLineNo: 1,
+    ...extras,
+  };
+}
+
+function seg(
+  seq: number,
+  pos: SourceLatLon,
+  boundaryVia = "G",
+  boundaryViaType: NormalizedBoundarySegment["boundaryViaType"] = "GREAT_CIRCLE",
+  arcOrigin?: SourceLatLon,
+  arcDistanceNm?: number,
+): NormalizedBoundarySegment {
+  return {
+    sequence: seq,
+    boundaryVia,
+    boundaryViaType,
+    position: pos,
+    arcOrigin,
+    arcDistanceNm,
+    lineNo: seq,
+  };
+}
+
+function nmToDegLat(nm: number): number {
+  return nm / DEG_LAT_NM;
+}
+
+test("AC4 — line boundary intersects radius when NO vertex is inside", () => {
+  const lat15 = nmToDegLat(15);
+  const lat35 = nmToDegLat(35);
+  const lon20 = nmToDegLat(20);
+
+  const v1 = { latDeg: lat15, lonDeg: -lon20 };
+  const v2 = { latDeg: lat15, lonDeg: lon20 };
+  const v3 = { latDeg: lat35, lonDeg: lon20 };
+  const v4 = { latDeg: lat35, lonDeg: -lon20 };
+
+  expect(pointInRadius(ORIGIN, v1, 20)).toBe(false);
+  expect(pointInRadius(ORIGIN, v2, 20)).toBe(false);
+  expect(pointInRadius(ORIGIN, v3, 20)).toBe(false);
+  expect(pointInRadius(ORIGIN, v4, 20)).toBe(false);
+
+  const airspace = makeAirspace("POLY-CROSS", [seg(1, v1), seg(2, v2), seg(3, v3), seg(4, v4)]);
+
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 20)).toBe(true);
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 10)).toBe(false);
+});
+
+test("AC4 — arc boundary intersects radius when NO vertex is inside", () => {
+  const arcCenter = { latDeg: nmToDegLat(30), lonDeg: 0 };
+  const arcDistNm = 12;
+
+  const lat24 = nmToDegLat(24);
+  const lon10 = nmToDegLat(10.3923);
+
+  const startPoint = { latDeg: lat24, lonDeg: lon10 };
+  const endPoint = { latDeg: lat24, lonDeg: -lon10 };
+
+  expect(pointInRadius(ORIGIN, startPoint, 20)).toBe(false);
+  expect(pointInRadius(ORIGIN, endPoint, 20)).toBe(false);
+
+  const airspace = makeAirspace("ARC-CROSS", [
+    seg(1, startPoint),
+    seg(2, endPoint, "R", "CLOCKWISE_ARC", arcCenter, arcDistNm),
+  ]);
+
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 20)).toBe(true);
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 15)).toBe(false);
+});
+
+test("AC4 — circular airspace overlap selection", () => {
+  const circleCenter = { latDeg: nmToDegLat(25), lonDeg: 0 };
+  const airspace = makeAirspace("CIRC-1", [seg(1, circleCenter, "C", "CIRCLE", circleCenter, 10)]);
+
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 20)).toBe(true);
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 10)).toBe(false);
+});
+
+test("AC4 — point-in-polygon selects volume when search center is inside but all vertices outside", () => {
+  const lat30 = nmToDegLat(30);
+  const lon30 = nmToDegLat(30);
+
+  const airspace = makeAirspace("CONTAINING", [
+    seg(1, { latDeg: -lat30, lonDeg: -lon30 }),
+    seg(2, { latDeg: lat30, lonDeg: -lon30 }),
+    seg(3, { latDeg: lat30, lonDeg: lon30 }),
+    seg(4, { latDeg: -lat30, lonDeg: lon30 }),
+  ]);
+
+  expect(airspaceIntersectsRadius(airspace, ORIGIN, 5)).toBe(true);
+});
+
+test("AC4 — preserves centerAirportId and deterministic ordering under input reordering", () => {
+  const vNear = { latDeg: nmToDegLat(5), lonDeg: 0 };
+  const a1 = makeAirspace("AIR-Z", [seg(1, vNear)], "KATL");
+  const a2 = makeAirspace("AIR-A", [seg(1, vNear)], "KATL");
+  const a3 = makeAirspace("AIR-M", [seg(1, vNear)], "KATL");
+
+  const ordered = selectAirspacesByRadius([a1, a2, a3], ORIGIN, 20);
+  const reordered = selectAirspacesByRadius([a3, a1, a2], ORIGIN, 20);
+
+  expect(ordered.map((a) => a.identity.key)).toEqual([
+    "UC:KATL:AIR-A",
+    "UC:KATL:AIR-M",
+    "UC:KATL:AIR-Z",
+  ]);
+  expect(reordered.map((a) => a.identity.key)).toEqual(ordered.map((a) => a.identity.key));
+  expect(ordered[0]?.centerAirportId).toBe("KATL");
+});
+
+test("AC4 — unsupported geometry and empty segments are excluded", () => {
+  const vNear = { latDeg: nmToDegLat(5), lonDeg: 0 };
+  const emptyAirspace = makeAirspace("EMPTY", []);
+  const unsupportedAirspace = makeAirspace("UNSUPP", [seg(1, vNear, "XX", "UNSUPPORTED")]);
+
+  expect(airspaceIntersectsRadius(emptyAirspace, ORIGIN, 20)).toBe(false);
+  expect(airspaceIntersectsRadius(unsupportedAirspace, ORIGIN, 20)).toBe(false);
+  expect(selectAirspacesByRadius([emptyAirspace, unsupportedAirspace], ORIGIN, 20)).toEqual([]);
 });

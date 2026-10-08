@@ -284,6 +284,7 @@ export function closeProcedureReferences(
     stars: closedStars,
     sids: closedSids,
     approaches: closedApproaches,
+    airspaces: source.airspaces,
     diagnostics: copyDiagnostics(source.diagnostics),
     skippedByType: { ...source.skippedByType },
   };

@@ -11,16 +11,27 @@ import type {
   Instruction,
   MissedCatalog,
   ProcedureJoinCatalog,
+  RadioRequest,
   SessionLog,
 } from "@core";
 import {
   beginMissedApproach,
+  applyClassBInstruction,
+  findOpenRadioRequest,
   joinNamedProcedure,
   joinProcedureTransition,
   missedApproachId,
   missedSpecFor,
   normalizeHeading,
+  transitionRequestToIdentifying,
 } from "@core";
+import {
+  resolveRegionalRunwayGeometryForAircraft,
+  resolveRunwayGeometry,
+  type VisualRunwayGeometry,
+} from "../core/nav/approachContext";
+import type { World } from "../core/world";
+import type { RegionalFacility } from "../scenario/regional";
 
 /** IDENT flash duration (sim ms). PPI may read `identUntilSimMs` later (T01-10). */
 export const IDENT_FLASH_MS = 5000;
@@ -36,6 +47,10 @@ export interface ApplyIntentOpts {
   squawkReportDelayMs?: number;
   /** Authoritative plan for the aircraft, when one exists. */
   flightPlan?: Pick<FlightPlan, "routeRecord">;
+  radioRequests?: RadioRequest[];
+  regional?: RegionalFacility | null;
+  world?: World | null;
+  destinationIcao?: string | null;
 }
 
 export function applyIntent(
@@ -63,7 +78,9 @@ function setHeadingMode(
 
   const clearedApproachId = aircraft.intent.clearedApproachId;
   const isEstablishedOnApproach =
-    aircraft.intent.lateral?.type === "LOC" || aircraft.intent.lateral?.type === "LANDING";
+    aircraft.intent.lateral?.type === "LOC" ||
+    aircraft.intent.lateral?.type === "LANDING" ||
+    aircraft.intent.lateral?.type === "VISUAL_FINAL";
 
   if (clearedApproachId && !isEstablishedOnApproach) {
     aircraft.intent.lateral = { type: "INTERCEPT_LOC", approachId: clearedApproachId };
@@ -78,6 +95,7 @@ function setHeadingMode(
     aircraft.intent.vertical?.type === "VIA_STAR" ||
     aircraft.intent.vertical?.type === "VIA_SID" ||
     aircraft.intent.vertical?.type === "GS" ||
+    aircraft.intent.vertical?.type === "GLIDEPATH" ||
     aircraft.intent.vertical?.type === "MISSED_CLIMB"
   ) {
     aircraft.intent.vertical = { type: "ASSIGNED" };
@@ -274,8 +292,10 @@ function armLocIntercept(aircraft: Aircraft, approachId: string): void {
 }
 
 function cancelApproach(aircraft: Aircraft): void {
+  const onApproach =
+    Boolean(aircraft.intent.clearedApproachId) || aircraft.intent.lateral?.type === "VISUAL_FINAL";
   if (
-    !aircraft.intent.clearedApproachId ||
+    !onApproach ||
     aircraft.intent.lateral?.type === "MISSED" ||
     aircraft.intent.lateral?.type === "LANDING"
   ) {
@@ -287,7 +307,7 @@ function cancelApproach(aircraft: Aircraft): void {
   aircraft.intent.clearedApproachId = null;
   aircraft.intent.locInterceptApproachId = null;
   aircraft.intent.expectedApproachId = null;
-  if (aircraft.intent.vertical?.type === "GS") {
+  if (aircraft.intent.vertical?.type === "GS" || aircraft.intent.vertical?.type === "GLIDEPATH") {
     aircraft.intent.vertical = { type: "ASSIGNED" };
   }
   const lateralType = aircraft.intent.lateral?.type;
@@ -295,10 +315,50 @@ function cancelApproach(aircraft: Aircraft): void {
     lateralType === undefined ||
     lateralType === "HEADING" ||
     lateralType === "INTERCEPT_LOC" ||
-    lateralType === "LOC"
+    lateralType === "LOC" ||
+    lateralType === "VISUAL_FINAL"
   ) {
     aircraft.intent.lateral = { type: "HEADING", headingDeg: aircraft.headingDeg };
   }
+}
+
+function applyClearedVisual(
+  aircraft: Aircraft,
+  instruction: Extract<Instruction, { type: "CLEARED_VISUAL" }>,
+  opts?: ApplyIntentOpts,
+): void {
+  const clean = instruction.runwayId.replace(/^RW/i, "").toUpperCase();
+  let geom: VisualRunwayGeometry | null = null;
+  if (opts?.world) {
+    geom = resolveRunwayGeometry(aircraft, clean, opts.world);
+    if (!geom) return;
+  } else if (opts?.regional) {
+    geom = resolveRegionalRunwayGeometryForAircraft(
+      aircraft,
+      clean,
+      opts.regional,
+      opts.destinationIcao,
+    );
+  }
+  if (!geom) return;
+
+  aircraft.intent.assignedHeadingDeg = geom.headingDeg;
+  aircraft.intent.clearedApproachId = `VISUAL ${geom.runwayId}`;
+  aircraft.intent.locInterceptApproachId = null;
+  aircraft.intent.expectedApproachId = null;
+  aircraft.intent.assignedAltitudeFt = geom.fieldElevFt;
+  aircraft.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: geom.runwayId,
+    threshold: geom.threshold,
+    headingDeg: geom.headingDeg,
+    fieldElevFt: geom.fieldElevFt,
+  };
+  aircraft.intent.vertical = {
+    type: "GLIDEPATH",
+    approachId: `VISUAL ${geom.runwayId}`,
+  };
+  aircraft.intent.cross = undefined;
 }
 
 function applyOne(
@@ -343,6 +403,9 @@ function applyOne(
       aircraft.intent.clearedApproachId = instruction.approachId;
       armLocIntercept(aircraft, instruction.approachId);
       return;
+    case "CLEARED_VISUAL":
+      applyClearedVisual(aircraft, instruction, opts);
+      return;
     case "INTERCEPT_LOCALIZER":
       aircraft.intent.clearedApproachId = null;
       if (aircraft.intent.vertical?.type === "GS") {
@@ -355,6 +418,12 @@ function applyOne(
       return;
     case "IDENT":
       aircraft.identUntilSimMs = simTimeMs + IDENT_FLASH_MS;
+      if (opts?.radioRequests) {
+        const openReq = findOpenRadioRequest(opts.radioRequests, aircraft.id);
+        if (openReq) {
+          transitionRequestToIdentifying(openReq, simTimeMs);
+        }
+      }
       return;
     case "ASSIGN_SQUAWK":
       aircraft.assignedSquawk = instruction.code;
@@ -366,6 +435,11 @@ function applyOne(
     case "MAINTAIN_VFR":
       // Radio-only VFR marker for a future pickup path; no plan, route, or intent mutation.
       aircraft.maintainVfr = true;
+      return;
+    case "CLASS_B_CLEARANCE":
+    case "REMAIN_OUTSIDE_BRAVO":
+    case "RESUME_APPROPRIATE_VFR_ALTITUDES":
+      if (opts?.world) applyClassBInstruction(aircraft, instruction, opts.world, opts.log);
       return;
     case "IFR_CLEARANCE":
       // IFR clearance application is an atomic world transaction, never a
@@ -429,6 +503,16 @@ function applyOne(
       return;
     case "SAY_HEADING":
     case "SAY_ALTITUDE":
+    case "REQUEST_DETAILS":
+    case "STANDBY_REQUEST":
+    case "APPROVE_FLIGHT_FOLLOWING":
+    case "DECLINE_REQUEST":
+    case "RADAR_CONTACT":
+    case "TERMINATE_RADAR_SERVICE":
+    case "ACKNOWLEDGE_IFR_CANCELLATION":
+    case "CLASS_B_CLEARANCE_AS_REQUESTED":
+    case "CONTACT_TOWER":
+    case "CONTACT_CENTER":
       return;
     default: {
       const _exhaustive: never = instruction;

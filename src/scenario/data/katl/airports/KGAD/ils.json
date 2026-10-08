@@ -1,0 +1,128 @@
+{
+  "airportId": "KGAD",
+  "components": [
+    {
+      "id": "DCU",
+      "kind": "DME",
+      "name": "DECATUR",
+      "xNm": -42.207318,
+      "yNm": 40.6745,
+      "latDeg": 34.648313888888886,
+      "lonDeg": -86.9395138888889,
+      "freqMhz": 112.8,
+      "class": "L"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": 78.818065,
+      "yNm": -3.345167,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GQO",
+      "kind": "DME",
+      "name": "CHOO CHOO",
+      "xNm": 46.670476,
+      "yNm": 59.452167,
+      "latDeg": 34.961275,
+      "lonDeg": -85.15336944444445,
+      "freqMhz": 115.8,
+      "class": "H"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": 83.551307,
+      "yNm": -20.2105,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "LDK",
+      "kind": "DME",
+      "name": "CRIMSON",
+      "xNm": -71.932307,
+      "yNm": -42.691833,
+      "latDeg": 33.258875,
+      "lonDeg": -87.53688611111112,
+      "freqMhz": 117.8,
+      "class": "T"
+    },
+    {
+      "id": "MSL",
+      "kind": "DME",
+      "name": "MUSCLE SHOALS",
+      "xNm": -69.674743,
+      "yNm": 44.187833,
+      "latDeg": 34.70686944444445,
+      "lonDeg": -87.49151666666667,
+      "freqMhz": 116.25,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": 89.192799,
+      "yNm": -5.6865,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TDG",
+      "kind": "DME",
+      "name": "TALLADEGA",
+      "xNm": 2.418454,
+      "yNm": -23.715167,
+      "latDeg": 33.57515277777778,
+      "lonDeg": -86.04268611111111,
+      "freqMhz": 108.8,
+      "class": "L"
+    },
+    {
+      "id": "IGADDME",
+      "kind": "DME",
+      "name": "NORTHEAST ALABAMA RGNL",
+      "xNm": -0.672031,
+      "yNm": -0.349,
+      "latDeg": 33.96458888888889,
+      "lonDeg": -86.10479444444444,
+      "freqMhz": 108.35,
+      "class": "T"
+    },
+    {
+      "id": "IGADGS",
+      "kind": "GS",
+      "name": "IGAD GS",
+      "xNm": 0.394206,
+      "yNm": 0.170667,
+      "latDeg": 33.97325,
+      "lonDeg": -86.08336666666666,
+      "gsAngleDeg": 3,
+      "tchFt": 43
+    },
+    {
+      "id": "IGAD",
+      "kind": "LOC",
+      "name": "IGAD",
+      "xNm": -0.6589,
+      "yNm": -0.370667,
+      "latDeg": 33.96422777777778,
+      "lonDeg": -86.10453055555556,
+      "freqMhz": 108.35,
+      "courseDeg": 243.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5
+    }
+  ]
+}

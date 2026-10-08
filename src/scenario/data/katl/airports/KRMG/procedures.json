@@ -1,0 +1,106 @@
+{
+  "airportId": "KRMG",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I01",
+      "type": "ILS",
+      "runway": "01",
+      "name": "ILS RWY 01",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW01",
+      "courseDeg": 7,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1200,
+      "missed": {
+        "headingDeg": 7,
+        "climbToFt": 681,
+        "directFixId": "RW01"
+      }
+    },
+    {
+      "id": "L01",
+      "type": "LOC",
+      "runway": "01",
+      "name": "LOC RWY 01",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW01",
+      "courseDeg": 7,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1200,
+      "missed": {
+        "headingDeg": 7,
+        "climbToFt": 681,
+        "directFixId": "RW01"
+      }
+    },
+    {
+      "id": "R01",
+      "type": "RNAV",
+      "runway": "01",
+      "name": "RNAV RWY 01",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW01",
+      "courseDeg": 6.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1200
+    },
+    {
+      "id": "R07",
+      "type": "RNAV",
+      "runway": "07",
+      "name": "RNAV RWY 07",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW07",
+      "courseDeg": 56.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1044
+    },
+    {
+      "id": "R19",
+      "type": "RNAV",
+      "runway": "19",
+      "name": "RNAV RWY 19",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW19",
+      "courseDeg": 187,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 2000
+    },
+    {
+      "id": "R25",
+      "type": "RNAV",
+      "runway": "25",
+      "name": "RNAV RWY 25",
+      "locNavaidId": "IHBQ",
+      "gsNavaidId": "IHBQGS",
+      "thresholdFixId": "RW25",
+      "courseDeg": 252.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.49,
+      "tchFt": 49,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1100
+    }
+  ]
+}

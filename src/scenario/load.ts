@@ -27,6 +27,8 @@ import { loadCatalog, parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedur
 import { starRouteFixIds } from "./starSpawn";
 import { loadMva } from "./mva";
 import { parseRadarSites } from "./radarSites";
+import { hasRegionalPack, loadRegionalPack, type RegionalFacility } from "./regional";
+import { validateVfrRequestConfig, validateVfrTrafficConfig } from "./vfrTraffic";
 import {
   coastlineFromVideoMaps,
   loadVideoMapGroups,
@@ -34,39 +36,8 @@ import {
   localizerFromVideoMaps,
   runwayFromVideoMaps,
 } from "./loadVideoMaps";
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-export function assertFinite(value: unknown, path: string, prefix = "Scenario"): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${prefix} ${path} must be a finite number`);
-  }
-  return value;
-}
-
-export const assertNumber = assertFinite;
-
-export function assertString(
-  value: unknown,
-  path: string,
-  prefix = "Scenario",
-  options?: boolean | { nonEmpty?: boolean },
-): string {
-  const nonEmpty = typeof options === "boolean" ? options : options?.nonEmpty === true;
-  if (typeof value !== "string" || (nonEmpty && value.length === 0)) {
-    const requirement = nonEmpty ? "a non-empty string" : "a string";
-    throw new Error(`${prefix} ${path} must be ${requirement}`);
-  }
-  return value;
-}
-
-export function assertArray(value: unknown, path: string, prefix = "Scenario"): unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`${prefix} ${path} must be an array`);
-  }
-  return value;
-}
+import { assertArray, assertFinite, assertNumber, assertString, isRecord } from "./assertions";
+export { assertArray, assertFinite, assertNumber, assertString, isRecord };
 
 function assertLatLon(value: unknown, path: string): LatLon {
   if (!isRecord(value)) {
@@ -545,6 +516,10 @@ export interface AssertScenarioOptions {
   /** Default KDEM student pack is 4–8. Phase 4 ILS demo may spawn 1–2. */
   arrivalCountMin?: number;
   arrivalCountMax?: number;
+  /** When true, missing regional pack declared in scenario JSON throws. Default false. */
+  strictRegional?: boolean;
+  /** Optional pre-loaded or synthetic regional facility (e.g. for synthetic test scenarios). */
+  regional?: RegionalFacility;
 }
 
 /**
@@ -602,6 +577,25 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
           ),
         };
 
+  const regionalPack =
+    s.regionalPack === undefined
+      ? undefined
+      : assertString(s.regionalPack, "regionalPack", "Scenario", true);
+
+  let regional: RegionalFacility | undefined =
+    options?.regional ??
+    (isRecord(s.regional) ? (s.regional as unknown as RegionalFacility) : undefined);
+  if (regional === undefined && regionalPack !== undefined) {
+    if (options?.strictRegional && !hasRegionalPack(regionalPack)) {
+      throw new Error(`Scenario regionalPack '${regionalPack}' was not found`);
+    }
+    regional = loadRegionalPack(regionalPack, {
+      centerIcao: icao,
+      centerArp: arp,
+      optional: !options?.strictRegional,
+    });
+  }
+
   return {
     id: assertString(s.id, "id"),
     name: assertString(s.name, "name"),
@@ -637,6 +631,17 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     catalog: scenarioCatalog,
     mva: loadMva(icao),
     radarSites: parseRadarSites(s.radarSites, arp),
+    ...(regionalPack !== undefined ? { regionalPack } : {}),
+    ...(regional !== undefined ? { regional } : {}),
+    ...(() => {
+      // T04-77: legacy `vfrZones` keys are ignored (training box replaced named zones).
+      const vfrTraffic = validateVfrTrafficConfig(s.vfrTraffic, { regional });
+      const vfrRequests = validateVfrRequestConfig(s.vfrRequests);
+      return {
+        ...(vfrTraffic !== undefined ? { vfrTraffic } : {}),
+        ...(vfrRequests !== undefined ? { vfrRequests } : {}),
+      };
+    })(),
   };
 }
 

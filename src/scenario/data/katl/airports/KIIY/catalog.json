@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KIIY",
+  "name": "WASHINGTON/WILKES COUNTY",
+  "spokenAliases": ["WASHINGTON/WILKES COUNTY"],
+  "magVarDeg": -7,
+  "fieldElevFt": 646,
+  "arp": {
+    "latDeg": 33.778597222222224,
+    "lonDeg": -82.81449722222222
+  },
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  },
+  "originNote": "Imported from a synthetic CIFP subset fixture (not a real FAA cycle). Local tangent NM from ARP using the phase 0 projector. KDEM remains the sim default."
+}

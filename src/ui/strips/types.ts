@@ -42,6 +42,8 @@ export interface BaseStripData {
   id: string;
   /** Aircraft identification / callsign (Box 1). */
   acid: string;
+  /** Callsign alias for acid. */
+  callsign?: string;
   /** Revision index (Box 2). Undefined or 0 when unrevised. */
   revisionNumber?: number;
   /** Aircraft type designator, e.g. 'B738', 'A321', 'C172' (Box 3). */

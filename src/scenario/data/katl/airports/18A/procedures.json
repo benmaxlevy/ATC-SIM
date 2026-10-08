@@ -1,0 +1,30 @@
+{
+  "airportId": "18A",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R08",
+      "type": "RNAV",
+      "runway": "08",
+      "name": "RNAV RWY 08",
+      "thresholdFixId": "RW08",
+      "courseDeg": 77,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1202
+    },
+    {
+      "id": "R26",
+      "type": "RNAV",
+      "runway": "26",
+      "name": "RNAV RWY 26",
+      "thresholdFixId": "RW26",
+      "courseDeg": 257.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1390
+    }
+  ]
+}

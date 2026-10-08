@@ -1,0 +1,3037 @@
+{
+  "airportId": "7A3",
+  "fixes": [
+    {
+      "id": "ACORI",
+      "kind": "INTERSECTION",
+      "xNm": -31.704189,
+      "yNm": -62.321333,
+      "latDeg": 31.773155555555554,
+      "lonDeg": -85.85819722222222
+    },
+    {
+      "id": "ACUVI",
+      "kind": "INTERSECTION",
+      "xNm": 37.281726,
+      "yNm": 65.889833,
+      "latDeg": 33.91000833333333,
+      "lonDeg": -84.49016944444445
+    },
+    {
+      "id": "ADONY",
+      "kind": "INTERSECTION",
+      "xNm": -10.419536,
+      "yNm": -17.237333,
+      "latDeg": 32.52455555555555,
+      "lonDeg": -85.43611111111112
+    },
+    {
+      "id": "ADZIN",
+      "kind": "INTERSECTION",
+      "xNm": -58.132144,
+      "yNm": 21.905833,
+      "latDeg": 33.176941666666664,
+      "lonDeg": -86.38227777777777
+    },
+    {
+      "id": "AFENY",
+      "kind": "INTERSECTION",
+      "xNm": 5.608073,
+      "yNm": -47.737167,
+      "latDeg": 32.016225,
+      "lonDeg": -85.118275
+    },
+    {
+      "id": "ALOON",
+      "kind": "INTERSECTION",
+      "xNm": -65.492145,
+      "yNm": -44.5135,
+      "latDeg": 32.06995277777778,
+      "lonDeg": -86.52823055555555
+    },
+    {
+      "id": "AMAPO",
+      "kind": "INTERSECTION",
+      "xNm": 45.696357,
+      "yNm": -43.718833,
+      "latDeg": 32.083197222222225,
+      "lonDeg": -84.32330277777777
+    },
+    {
+      "id": "ARPPE",
+      "kind": "INTERSECTION",
+      "xNm": -0.376384,
+      "yNm": 47.579167,
+      "latDeg": 33.60483055555556,
+      "lonDeg": -85.23695000000001
+    },
+    {
+      "id": "AXOSE",
+      "kind": "INTERSECTION",
+      "xNm": 14.129723,
+      "yNm": -55.488667,
+      "latDeg": 31.88703333333333,
+      "lonDeg": -84.94928611111112
+    },
+    {
+      "id": "AXOTY",
+      "kind": "INTERSECTION",
+      "xNm": 43.656714,
+      "yNm": 59.522667,
+      "latDeg": 33.803888888888885,
+      "lonDeg": -84.36375
+    },
+    {
+      "id": "AYUVO",
+      "kind": "INTERSECTION",
+      "xNm": 31.764701,
+      "yNm": -62.865167,
+      "latDeg": 31.764091666666666,
+      "lonDeg": -84.599575
+    },
+    {
+      "id": "BADSE",
+      "kind": "INTERSECTION",
+      "xNm": 35.915427,
+      "yNm": 50.258,
+      "latDeg": 33.649477777777776,
+      "lonDeg": -84.51726388888889
+    },
+    {
+      "id": "BAHRR",
+      "kind": "INTERSECTION",
+      "xNm": -0.817062,
+      "yNm": 39.571,
+      "latDeg": 33.471361111111115,
+      "lonDeg": -85.24568888888889
+    },
+    {
+      "id": "BAIZE",
+      "kind": "INTERSECTION",
+      "xNm": 0.997199,
+      "yNm": -62.153667,
+      "latDeg": 31.775949999999998,
+      "lonDeg": -85.20971111111112
+    },
+    {
+      "id": "BAMSE",
+      "kind": "INTERSECTION",
+      "xNm": 44.142637,
+      "yNm": 50.097,
+      "latDeg": 33.646794444444446,
+      "lonDeg": -84.35411388888889
+    },
+    {
+      "id": "BANBI",
+      "kind": "INTERSECTION",
+      "xNm": -26.742565,
+      "yNm": -58.639,
+      "latDeg": 31.834527777777776,
+      "lonDeg": -85.75980555555556
+    },
+    {
+      "id": "BAPPY",
+      "kind": "INTERSECTION",
+      "xNm": 40.590595,
+      "yNm": 79.108833,
+      "latDeg": 34.130325,
+      "lonDeg": -84.42455277777778
+    },
+    {
+      "id": "BATLL",
+      "kind": "INTERSECTION",
+      "xNm": 23.777161,
+      "yNm": 69.702833,
+      "latDeg": 33.97355833333334,
+      "lonDeg": -84.75797222222222
+    },
+    {
+      "id": "BBAIT",
+      "kind": "INTERSECTION",
+      "xNm": 23.153964,
+      "yNm": 18.5265,
+      "latDeg": 33.12061944444444,
+      "lonDeg": -84.77033055555556
+    },
+    {
+      "id": "BBASS",
+      "kind": "INTERSECTION",
+      "xNm": 62.54453,
+      "yNm": 22.834333,
+      "latDeg": 33.19241666666667,
+      "lonDeg": -83.98919444444445
+    },
+    {
+      "id": "BEING",
+      "kind": "INTERSECTION",
+      "xNm": -68.73756,
+      "yNm": -16.982667,
+      "latDeg": 32.5288,
+      "lonDeg": -86.59258888888888
+    },
+    {
+      "id": "BENTO",
+      "kind": "INTERSECTION",
+      "xNm": -82.620189,
+      "yNm": -32.941167,
+      "latDeg": 32.262825,
+      "lonDeg": -86.86788888888888
+    },
+    {
+      "id": "BESTT",
+      "kind": "INTERSECTION",
+      "xNm": 67.266064,
+      "yNm": 46.757667,
+      "latDeg": 33.59113888888889,
+      "lonDeg": -83.8955638888889
+    },
+    {
+      "id": "BEVBE",
+      "kind": "INTERSECTION",
+      "xNm": 47.049489,
+      "yNm": 62.986,
+      "latDeg": 33.86161111111111,
+      "lonDeg": -84.29646944444444
+    },
+    {
+      "id": "BEYAP",
+      "kind": "INTERSECTION",
+      "xNm": 46.505295,
+      "yNm": 38.981833,
+      "latDeg": 33.46154166666667,
+      "lonDeg": -84.3072611111111
+    },
+    {
+      "id": "BITZY",
+      "kind": "INTERSECTION",
+      "xNm": -14.228896,
+      "yNm": -84.349833,
+      "latDeg": 31.406013888888886,
+      "lonDeg": -85.51165277777778
+    },
+    {
+      "id": "BIZKT",
+      "kind": "INTERSECTION",
+      "xNm": -20.59534,
+      "yNm": 76.557167,
+      "latDeg": 34.08779722222222,
+      "lonDeg": -85.63790277777778
+    },
+    {
+      "id": "BLEWW",
+      "kind": "INTERSECTION",
+      "xNm": 40.386365,
+      "yNm": 69.5275,
+      "latDeg": 33.97063611111111,
+      "lonDeg": -84.42860277777778
+    },
+    {
+      "id": "BOKRT",
+      "kind": "INTERSECTION",
+      "xNm": 4.361119,
+      "yNm": 26.846667,
+      "latDeg": 33.25928888888889,
+      "lonDeg": -85.14300277777778
+    },
+    {
+      "id": "BOWIN",
+      "kind": "INTERSECTION",
+      "xNm": -62.264379,
+      "yNm": -13.4485,
+      "latDeg": 32.58770277777778,
+      "lonDeg": -86.46422222222222
+    },
+    {
+      "id": "BRAVS",
+      "kind": "INTERSECTION",
+      "xNm": 1.165711,
+      "yNm": 14.23,
+      "latDeg": 33.049011111111106,
+      "lonDeg": -85.20636944444445
+    },
+    {
+      "id": "BRONN",
+      "kind": "INTERSECTION",
+      "xNm": 46.658818,
+      "yNm": -59.928833,
+      "latDeg": 31.813030555555557,
+      "lonDeg": -84.30421666666666
+    },
+    {
+      "id": "BRTEN",
+      "kind": "INTERSECTION",
+      "xNm": 19.862604,
+      "yNm": 71.793167,
+      "latDeg": 34.00839722222222,
+      "lonDeg": -84.8356
+    },
+    {
+      "id": "BUKHD",
+      "kind": "INTERSECTION",
+      "xNm": 18.999177,
+      "yNm": 83.881,
+      "latDeg": 34.20986111111112,
+      "lonDeg": -84.85272222222221
+    },
+    {
+      "id": "BUYER",
+      "kind": "INTERSECTION",
+      "xNm": -22.532448,
+      "yNm": -69.504167,
+      "latDeg": 31.653441666666666,
+      "lonDeg": -85.67631666666666
+    },
+    {
+      "id": "BYROE",
+      "kind": "INTERSECTION",
+      "xNm": 72.273353,
+      "yNm": -11.628667,
+      "latDeg": 32.61803333333334,
+      "lonDeg": -83.79626666666667
+    },
+    {
+      "id": "CAMGI",
+      "kind": "INTERSECTION",
+      "xNm": 75.264671,
+      "yNm": -0.178,
+      "latDeg": 32.808877777777774,
+      "lonDeg": -83.73694722222223
+    },
+    {
+      "id": "CAMPP",
+      "kind": "INTERSECTION",
+      "xNm": -26.12315,
+      "yNm": 17.4625,
+      "latDeg": 33.10288611111111,
+      "lonDeg": -85.74752222222223
+    },
+    {
+      "id": "CANER",
+      "kind": "INTERSECTION",
+      "xNm": 31.863455,
+      "yNm": -3.352667,
+      "latDeg": 32.755966666666666,
+      "lonDeg": -84.59761666666667
+    },
+    {
+      "id": "CANUK",
+      "kind": "INTERSECTION",
+      "xNm": 71.69554,
+      "yNm": 24.306833,
+      "latDeg": 33.21695833333334,
+      "lonDeg": -83.80772499999999
+    },
+    {
+      "id": "CAPEV",
+      "kind": "INTERSECTION",
+      "xNm": 86.610528,
+      "yNm": 0.352167,
+      "latDeg": 32.81771388888889,
+      "lonDeg": -83.51195277777778
+    },
+    {
+      "id": "CAPMI",
+      "kind": "INTERSECTION",
+      "xNm": 83.216632,
+      "yNm": -11.0715,
+      "latDeg": 32.627319444444446,
+      "lonDeg": -83.57925555555555
+    },
+    {
+      "id": "CARAN",
+      "kind": "INTERSECTION",
+      "xNm": 4.039645,
+      "yNm": 68.845333,
+      "latDeg": 33.95926666666667,
+      "lonDeg": -85.14937777777779
+    },
+    {
+      "id": "CATTA",
+      "kind": "INTERSECTION",
+      "xNm": 34.652363,
+      "yNm": 50.092333,
+      "latDeg": 33.64671666666666,
+      "lonDeg": -84.5423111111111
+    },
+    {
+      "id": "CCLAY",
+      "kind": "INTERSECTION",
+      "xNm": 41.251613,
+      "yNm": 29.471,
+      "latDeg": 33.30302777777778,
+      "lonDeg": -84.41144444444446
+    },
+    {
+      "id": "CCOKE",
+      "kind": "INTERSECTION",
+      "xNm": 29.526851,
+      "yNm": 80.686833,
+      "latDeg": 34.156625,
+      "lonDeg": -84.64395277777778
+    },
+    {
+      "id": "CEDOK",
+      "kind": "INTERSECTION",
+      "xNm": 34.648441,
+      "yNm": 66.584167,
+      "latDeg": 33.92158055555555,
+      "lonDeg": -84.5423888888889
+    },
+    {
+      "id": "CEVES",
+      "kind": "INTERSECTION",
+      "xNm": -10.357622,
+      "yNm": 86.733167,
+      "latDeg": 34.257397222222224,
+      "lonDeg": -85.43488333333333
+    },
+    {
+      "id": "CFBCN",
+      "kind": "INTERSECTION",
+      "xNm": -10.639035,
+      "yNm": -24.028167,
+      "latDeg": 32.411375,
+      "lonDeg": -85.4404638888889
+    },
+    {
+      "id": "CFBLN",
+      "kind": "INTERSECTION",
+      "xNm": 29.908558,
+      "yNm": 22.112333,
+      "latDeg": 33.18038333333333,
+      "lonDeg": -84.63638333333334
+    },
+    {
+      "id": "CFFJJ",
+      "kind": "INTERSECTION",
+      "xNm": 42.203988,
+      "yNm": 25.617667,
+      "latDeg": 33.23880555555556,
+      "lonDeg": -84.39255833333334
+    },
+    {
+      "id": "CFVVR",
+      "kind": "INTERSECTION",
+      "xNm": 22.762872,
+      "yNm": 52.730833,
+      "latDeg": 33.690691666666666,
+      "lonDeg": -84.77808611111111
+    },
+    {
+      "id": "CFVVT",
+      "kind": "INTERSECTION",
+      "xNm": 23.142058,
+      "yNm": 45.969333,
+      "latDeg": 33.578,
+      "lonDeg": -84.77056666666667
+    },
+    {
+      "id": "CFVVV",
+      "kind": "INTERSECTION",
+      "xNm": 58.153015,
+      "yNm": 52.742167,
+      "latDeg": 33.69088055555555,
+      "lonDeg": -84.07628055555556
+    },
+    {
+      "id": "CFVVW",
+      "kind": "INTERSECTION",
+      "xNm": 58.19854,
+      "yNm": 57.751,
+      "latDeg": 33.77436111111111,
+      "lonDeg": -84.07537777777777
+    },
+    {
+      "id": "CFVVX",
+      "kind": "INTERSECTION",
+      "xNm": 57.836584,
+      "yNm": 45.974167,
+      "latDeg": 33.57808055555556,
+      "lonDeg": -84.08255555555556
+    },
+    {
+      "id": "CHEHA",
+      "kind": "INTERSECTION",
+      "xNm": -48.875797,
+      "yNm": 33.789167,
+      "latDeg": 33.37499722222222,
+      "lonDeg": -86.19871944444445
+    },
+    {
+      "id": "CHIRP",
+      "kind": "INTERSECTION",
+      "xNm": -9.049315,
+      "yNm": -54.741,
+      "latDeg": 31.899494444444443,
+      "lonDeg": -85.4089388888889
+    },
+    {
+      "id": "CHUTT",
+      "kind": "INTERSECTION",
+      "xNm": 8.961347,
+      "yNm": -35.322167,
+      "latDeg": 32.22314166666667,
+      "lonDeg": -85.05177777777777
+    },
+    {
+      "id": "CIDIV",
+      "kind": "INTERSECTION",
+      "xNm": 10.724761,
+      "yNm": -26.020167,
+      "latDeg": 32.378175,
+      "lonDeg": -85.01680833333333
+    },
+    {
+      "id": "CINOG",
+      "kind": "INTERSECTION",
+      "xNm": -58.843729,
+      "yNm": -22.745,
+      "latDeg": 32.432761111111105,
+      "lonDeg": -86.3963888888889
+    },
+    {
+      "id": "CIPBA",
+      "kind": "INTERSECTION",
+      "xNm": -71.969388,
+      "yNm": 15.45,
+      "latDeg": 33.06934444444445,
+      "lonDeg": -86.65667777777779
+    },
+    {
+      "id": "CIPEL",
+      "kind": "INTERSECTION",
+      "xNm": 29.756715,
+      "yNm": 67.990833,
+      "latDeg": 33.945024999999994,
+      "lonDeg": -84.63939444444445
+    },
+    {
+      "id": "CLIOS",
+      "kind": "INTERSECTION",
+      "xNm": -22.272607,
+      "yNm": -67.1375,
+      "latDeg": 31.69288611111111,
+      "lonDeg": -85.6711638888889
+    },
+    {
+      "id": "CODOK",
+      "kind": "INTERSECTION",
+      "xNm": -56.805626,
+      "yNm": -26.7275,
+      "latDeg": 32.36638611111111,
+      "lonDeg": -86.35597222222222
+    },
+    {
+      "id": "COKLO",
+      "kind": "INTERSECTION",
+      "xNm": 42.574769,
+      "yNm": 64.2915,
+      "latDeg": 33.88336944444444,
+      "lonDeg": -84.38520555555556
+    },
+    {
+      "id": "CONEY",
+      "kind": "INTERSECTION",
+      "xNm": 68.968685,
+      "yNm": -48.840833,
+      "latDeg": 31.997830555555556,
+      "lonDeg": -83.86179999999999
+    },
+    {
+      "id": "CONOL",
+      "kind": "INTERSECTION",
+      "xNm": 41.612028,
+      "yNm": 72.51,
+      "latDeg": 34.02034444444444,
+      "lonDeg": -84.40429722222223
+    },
+    {
+      "id": "CRAWL",
+      "kind": "INTERSECTION",
+      "xNm": -4.562968,
+      "yNm": -15.395833,
+      "latDeg": 32.55524722222222,
+      "lonDeg": -85.31997222222222
+    },
+    {
+      "id": "CRENS",
+      "kind": "INTERSECTION",
+      "xNm": -50.521407,
+      "yNm": -63.9785,
+      "latDeg": 31.74553611111111,
+      "lonDeg": -86.23135277777779
+    },
+    {
+      "id": "CUGEG",
+      "kind": "INTERSECTION",
+      "xNm": -2.434377,
+      "yNm": -85.47,
+      "latDeg": 31.387344444444444,
+      "lonDeg": -85.2777611111111
+    },
+    {
+      "id": "CUGOV",
+      "kind": "INTERSECTION",
+      "xNm": -57.79344,
+      "yNm": -25.124833,
+      "latDeg": 32.393097222222224,
+      "lonDeg": -86.37556111111111
+    },
+    {
+      "id": "CULTO",
+      "kind": "INTERSECTION",
+      "xNm": 47.157207,
+      "yNm": 70.464667,
+      "latDeg": 33.98625555555556,
+      "lonDeg": -84.29433333333333
+    },
+    {
+      "id": "CYLON",
+      "kind": "INTERSECTION",
+      "xNm": 25.588061,
+      "yNm": 68.636167,
+      "latDeg": 33.955780555555556,
+      "lonDeg": -84.72206111111112
+    },
+    {
+      "id": "DALAS",
+      "kind": "INTERSECTION",
+      "xNm": 19.236185,
+      "yNm": 68.424333,
+      "latDeg": 33.95225,
+      "lonDeg": -84.84802222222221
+    },
+    {
+      "id": "DARRY",
+      "kind": "INTERSECTION",
+      "xNm": 42.699996,
+      "yNm": 64.255167,
+      "latDeg": 33.88276388888889,
+      "lonDeg": -84.38272222222221
+    },
+    {
+      "id": "DAWWN",
+      "kind": "INTERSECTION",
+      "xNm": 31.089256,
+      "yNm": -79.878,
+      "latDeg": 31.480544444444444,
+      "lonDeg": -84.61296944444445
+    },
+    {
+      "id": "DDASH",
+      "kind": "INTERSECTION",
+      "xNm": -18.742278,
+      "yNm": 57.481667,
+      "latDeg": 33.76987222222222,
+      "lonDeg": -85.60115555555555
+    },
+    {
+      "id": "DECLN",
+      "kind": "INTERSECTION",
+      "xNm": 38.56566,
+      "yNm": 79.1085,
+      "latDeg": 34.130319444444446,
+      "lonDeg": -84.46470833333333
+    },
+    {
+      "id": "DEEDA",
+      "kind": "INTERSECTION",
+      "xNm": 11.136724,
+      "yNm": -74.484833,
+      "latDeg": 31.570430555555554,
+      "lonDeg": -85.00863888888888
+    },
+    {
+      "id": "DEGAA",
+      "kind": "INTERSECTION",
+      "xNm": -40.997516,
+      "yNm": 45.799,
+      "latDeg": 33.575161111111115,
+      "lonDeg": -86.04248888888888
+    },
+    {
+      "id": "DIBBS",
+      "kind": "INTERSECTION",
+      "xNm": 78.884228,
+      "yNm": -5.579833,
+      "latDeg": 32.71884722222222,
+      "lonDeg": -83.66516944444444
+    },
+    {
+      "id": "DMFCD",
+      "kind": "INTERSECTION",
+      "xNm": 53.778729,
+      "yNm": 52.704333,
+      "latDeg": 33.69025,
+      "lonDeg": -84.163025
+    },
+    {
+      "id": "DMHBB",
+      "kind": "INTERSECTION",
+      "xNm": 73.970371,
+      "yNm": -12.710667,
+      "latDeg": 32.6,
+      "lonDeg": -83.7626138888889
+    },
+    {
+      "id": "DOCAG",
+      "kind": "INTERSECTION",
+      "xNm": 80.452377,
+      "yNm": -7.525667,
+      "latDeg": 32.686416666666666,
+      "lonDeg": -83.63407222222223
+    },
+    {
+      "id": "DOSLE",
+      "kind": "INTERSECTION",
+      "xNm": 68.819644,
+      "yNm": -4.898,
+      "latDeg": 32.73021111111111,
+      "lonDeg": -83.86475555555555
+    },
+    {
+      "id": "DRINC",
+      "kind": "INTERSECTION",
+      "xNm": 24.010807,
+      "yNm": 76.119667,
+      "latDeg": 34.08050555555556,
+      "lonDeg": -84.75333888888889
+    },
+    {
+      "id": "DUNCS",
+      "kind": "INTERSECTION",
+      "xNm": 40.665536,
+      "yNm": 38.856667,
+      "latDeg": 33.45945555555556,
+      "lonDeg": -84.42306666666667
+    },
+    {
+      "id": "DUVAT",
+      "kind": "INTERSECTION",
+      "xNm": 36.145851,
+      "yNm": -51.784333,
+      "latDeg": 31.94877222222222,
+      "lonDeg": -84.51269444444445
+    },
+    {
+      "id": "DUYER",
+      "kind": "INTERSECTION",
+      "xNm": -22.162228,
+      "yNm": -79.764167,
+      "latDeg": 31.482441666666666,
+      "lonDeg": -85.668975
+    },
+    {
+      "id": "EARRL",
+      "kind": "INTERSECTION",
+      "xNm": 11.09302,
+      "yNm": 56.891667,
+      "latDeg": 33.760038888888886,
+      "lonDeg": -85.00950555555555
+    },
+    {
+      "id": "EATWO",
+      "kind": "INTERSECTION",
+      "xNm": 75.279939,
+      "yNm": 48.304333,
+      "latDeg": 33.61691666666667,
+      "lonDeg": -83.73664444444445
+    },
+    {
+      "id": "EBEHU",
+      "kind": "INTERSECTION",
+      "xNm": 49.023717,
+      "yNm": 60.787333,
+      "latDeg": 33.82496666666667,
+      "lonDeg": -84.25731944444445
+    },
+    {
+      "id": "EBELS",
+      "kind": "INTERSECTION",
+      "xNm": -76.616122,
+      "yNm": 42.355,
+      "latDeg": 33.51776111111111,
+      "lonDeg": -86.748825
+    },
+    {
+      "id": "EDKIF",
+      "kind": "INTERSECTION",
+      "xNm": 73.30375,
+      "yNm": 0.165833,
+      "latDeg": 32.81460833333333,
+      "lonDeg": -83.77583333333334
+    },
+    {
+      "id": "EFORD",
+      "kind": "INTERSECTION",
+      "xNm": -9.421916,
+      "yNm": -66.895667,
+      "latDeg": 31.696916666666667,
+      "lonDeg": -85.41632777777778
+    },
+    {
+      "id": "EGEST",
+      "kind": "INTERSECTION",
+      "xNm": -14.185193,
+      "yNm": -83.604167,
+      "latDeg": 31.418441666666666,
+      "lonDeg": -85.51078611111112
+    },
+    {
+      "id": "EJZEN",
+      "kind": "INTERSECTION",
+      "xNm": 83.797106,
+      "yNm": -3.304,
+      "latDeg": 32.75677777777778,
+      "lonDeg": -83.56774444444444
+    },
+    {
+      "id": "ERLIN",
+      "kind": "INTERSECTION",
+      "xNm": 10.466601,
+      "yNm": 76.521833,
+      "latDeg": 34.087208333333336,
+      "lonDeg": -85.02192777777778
+    },
+    {
+      "id": "ESCOT",
+      "kind": "INTERSECTION",
+      "xNm": -62.962096,
+      "yNm": -26.948333,
+      "latDeg": 32.36270555555556,
+      "lonDeg": -86.47805833333334
+    },
+    {
+      "id": "EWALL",
+      "kind": "INTERSECTION",
+      "xNm": -21.469693,
+      "yNm": -82.654,
+      "latDeg": 31.43427777777778,
+      "lonDeg": -85.65524166666667
+    },
+    {
+      "id": "EYUDE",
+      "kind": "INTERSECTION",
+      "xNm": 11.658086,
+      "yNm": -28.1705,
+      "latDeg": 32.342336111111116,
+      "lonDeg": -84.9983
+    },
+    {
+      "id": "EZRUB",
+      "kind": "INTERSECTION",
+      "xNm": -60.393107,
+      "yNm": 50.927667,
+      "latDeg": 33.66063888888889,
+      "lonDeg": -86.4271138888889
+    },
+    {
+      "id": "FANBU",
+      "kind": "INTERSECTION",
+      "xNm": 37.536804,
+      "yNm": 29.291,
+      "latDeg": 33.30002777777778,
+      "lonDeg": -84.48511111111111
+    },
+    {
+      "id": "FANOG",
+      "kind": "INTERSECTION",
+      "xNm": 44.927341,
+      "yNm": -67.501167,
+      "latDeg": 31.686825,
+      "lonDeg": -84.33855277777778
+    },
+    {
+      "id": "FASAM",
+      "kind": "INTERSECTION",
+      "xNm": -60.78756,
+      "yNm": -20.106667,
+      "latDeg": 32.476733333333335,
+      "lonDeg": -86.43493611111111
+    },
+    {
+      "id": "FAYEZ",
+      "kind": "INTERSECTION",
+      "xNm": -49.427835,
+      "yNm": 11.938167,
+      "latDeg": 33.01081388888889,
+      "lonDeg": -86.20966666666666
+    },
+    {
+      "id": "FELTO",
+      "kind": "INTERSECTION",
+      "xNm": -6.034184,
+      "yNm": 69.102,
+      "latDeg": 33.963544444444445,
+      "lonDeg": -85.34914722222221
+    },
+    {
+      "id": "FENJE",
+      "kind": "INTERSECTION",
+      "xNm": 24.205933,
+      "yNm": 39.029833,
+      "latDeg": 33.46234166666667,
+      "lonDeg": -84.74946944444444
+    },
+    {
+      "id": "FEONA",
+      "kind": "INTERSECTION",
+      "xNm": 25.750548,
+      "yNm": -72.352167,
+      "latDeg": 31.605975,
+      "lonDeg": -84.7188388888889
+    },
+    {
+      "id": "FIBAV",
+      "kind": "INTERSECTION",
+      "xNm": -62.098669,
+      "yNm": -12.734833,
+      "latDeg": 32.59959722222222,
+      "lonDeg": -86.46093611111111
+    },
+    {
+      "id": "FIDAV",
+      "kind": "INTERSECTION",
+      "xNm": -25.325699,
+      "yNm": 58.879667,
+      "latDeg": 33.79317222222222,
+      "lonDeg": -85.73170833333333
+    },
+    {
+      "id": "FIDUK",
+      "kind": "INTERSECTION",
+      "xNm": 19.267982,
+      "yNm": -38.888333,
+      "latDeg": 32.16370555555555,
+      "lonDeg": -84.84739166666667
+    },
+    {
+      "id": "FINOM",
+      "kind": "INTERSECTION",
+      "xNm": 46.975389,
+      "yNm": 62.7525,
+      "latDeg": 33.85771944444445,
+      "lonDeg": -84.2979388888889
+    },
+    {
+      "id": "FITTZ",
+      "kind": "INTERSECTION",
+      "xNm": -39.072594,
+      "yNm": -39.625167,
+      "latDeg": 32.151424999999996,
+      "lonDeg": -86.00431666666667
+    },
+    {
+      "id": "FNISH",
+      "kind": "INTERSECTION",
+      "xNm": -16.896779,
+      "yNm": 38.356,
+      "latDeg": 33.45111111111111,
+      "lonDeg": -85.56455833333332
+    },
+    {
+      "id": "FOGEX",
+      "kind": "INTERSECTION",
+      "xNm": 83.159621,
+      "yNm": -11.108833,
+      "latDeg": 32.62669722222222,
+      "lonDeg": -83.58038611111111
+    },
+    {
+      "id": "FOMAR",
+      "kind": "INTERSECTION",
+      "xNm": 34.430623,
+      "yNm": 38.988667,
+      "latDeg": 33.46165555555556,
+      "lonDeg": -84.54670833333333
+    },
+    {
+      "id": "FULTY",
+      "kind": "INTERSECTION",
+      "xNm": -51.910819,
+      "yNm": -55.023333,
+      "latDeg": 31.89478888888889,
+      "lonDeg": -86.25890555555556
+    },
+    {
+      "id": "GAMSE",
+      "kind": "INTERSECTION",
+      "xNm": 78.805646,
+      "yNm": -37.479333,
+      "latDeg": 32.18718888888888,
+      "lonDeg": -83.66672777777778
+    },
+    {
+      "id": "GARET",
+      "kind": "INTERSECTION",
+      "xNm": 26.0314,
+      "yNm": 26.706,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445
+    },
+    {
+      "id": "GETRR",
+      "kind": "INTERSECTION",
+      "xNm": 18.398252,
+      "yNm": -37.638333,
+      "latDeg": 32.18453888888889,
+      "lonDeg": -84.86463888888888
+    },
+    {
+      "id": "GIFFY",
+      "kind": "INTERSECTION",
+      "xNm": -22.167971,
+      "yNm": 24.611167,
+      "latDeg": 33.222030555555556,
+      "lonDeg": -85.6690888888889
+    },
+    {
+      "id": "GILLY",
+      "kind": "INTERSECTION",
+      "xNm": 76.682237,
+      "yNm": -44.7405,
+      "latDeg": 32.06616944444444,
+      "lonDeg": -83.70883611111111
+    },
+    {
+      "id": "GONDR",
+      "kind": "INTERSECTION",
+      "xNm": -27.04765,
+      "yNm": -26.677667,
+      "latDeg": 32.367216666666664,
+      "lonDeg": -85.76585555555556
+    },
+    {
+      "id": "GOONS",
+      "kind": "INTERSECTION",
+      "xNm": 21.361695,
+      "yNm": -56.686167,
+      "latDeg": 31.867075,
+      "lonDeg": -84.80587222222222
+    },
+    {
+      "id": "GOPDE",
+      "kind": "INTERSECTION",
+      "xNm": 8.496296,
+      "yNm": -23.494333,
+      "latDeg": 32.420272222222216,
+      "lonDeg": -85.06099999999999
+    },
+    {
+      "id": "GORGO",
+      "kind": "INTERSECTION",
+      "xNm": -4.615216,
+      "yNm": 77.793,
+      "latDeg": 34.10839444444444,
+      "lonDeg": -85.32100833333332
+    },
+    {
+      "id": "GORRY",
+      "kind": "INTERSECTION",
+      "xNm": -73.689659,
+      "yNm": 43.081167,
+      "latDeg": 33.52986388888889,
+      "lonDeg": -86.69079166666667
+    },
+    {
+      "id": "GOSSE",
+      "kind": "INTERSECTION",
+      "xNm": -40.030853,
+      "yNm": 32.453167,
+      "latDeg": 33.35273055555556,
+      "lonDeg": -86.02331944444444
+    },
+    {
+      "id": "GOTBY",
+      "kind": "INTERSECTION",
+      "xNm": -76.458817,
+      "yNm": 28.721667,
+      "latDeg": 33.29053888888889,
+      "lonDeg": -86.74570555555556
+    },
+    {
+      "id": "GOUBR",
+      "kind": "INTERSECTION",
+      "xNm": -40.031973,
+      "yNm": 67.891667,
+      "latDeg": 33.943372222222216,
+      "lonDeg": -86.02334166666667
+    },
+    {
+      "id": "GRANT",
+      "kind": "INTERSECTION",
+      "xNm": 42.999899,
+      "yNm": 1.038667,
+      "latDeg": 32.82915555555556,
+      "lonDeg": -84.376775
+    },
+    {
+      "id": "GULCH",
+      "kind": "INTERSECTION",
+      "xNm": -49.32572,
+      "yNm": -36.0785,
+      "latDeg": 32.21053611111111,
+      "lonDeg": -86.20764166666667
+    },
+    {
+      "id": "GUMMP",
+      "kind": "INTERSECTION",
+      "xNm": -70.041946,
+      "yNm": 15.831833,
+      "latDeg": 33.07570833333334,
+      "lonDeg": -86.61845555555554
+    },
+    {
+      "id": "GUVNR",
+      "kind": "INTERSECTION",
+      "xNm": 73.91392,
+      "yNm": -38.388333,
+      "latDeg": 32.172038888888885,
+      "lonDeg": -83.76373333333333
+    },
+    {
+      "id": "HANDE",
+      "kind": "INTERSECTION",
+      "xNm": -65.251354,
+      "yNm": 30.029333,
+      "latDeg": 33.31233333333333,
+      "lonDeg": -86.52345555555556
+    },
+    {
+      "id": "HAVSO",
+      "kind": "INTERSECTION",
+      "xNm": -4.671807,
+      "yNm": -77.0785,
+      "latDeg": 31.527202777777777,
+      "lonDeg": -85.32213055555555
+    },
+    {
+      "id": "HEENA",
+      "kind": "INTERSECTION",
+      "xNm": -82.772592,
+      "yNm": 23.699667,
+      "latDeg": 33.20683888888889,
+      "lonDeg": -86.8709111111111
+    },
+    {
+      "id": "HEFIN",
+      "kind": "INTERSECTION",
+      "xNm": -9.587066,
+      "yNm": 47.201833,
+      "latDeg": 33.59854166666667,
+      "lonDeg": -85.41960277777778
+    },
+    {
+      "id": "HELTU",
+      "kind": "INTERSECTION",
+      "xNm": -70.90047,
+      "yNm": -29.369333,
+      "latDeg": 32.32235555555556,
+      "lonDeg": -86.63548055555556
+    },
+    {
+      "id": "HEMMO",
+      "kind": "INTERSECTION",
+      "xNm": -56.242802,
+      "yNm": -54.213667,
+      "latDeg": 31.908283333333333,
+      "lonDeg": -86.34481111111111
+    },
+    {
+      "id": "HEPAT",
+      "kind": "INTERSECTION",
+      "xNm": 42.698315,
+      "yNm": 64.252833,
+      "latDeg": 33.882725,
+      "lonDeg": -84.38275555555555
+    },
+    {
+      "id": "HERKO",
+      "kind": "INTERSECTION",
+      "xNm": -81.485155,
+      "yNm": 15.433833,
+      "latDeg": 33.069075000000005,
+      "lonDeg": -86.84538055555555
+    },
+    {
+      "id": "HESPI",
+      "kind": "INTERSECTION",
+      "xNm": 57.254289,
+      "yNm": 25.642,
+      "latDeg": 33.23921111111111,
+      "lonDeg": -84.09410277777778
+    },
+    {
+      "id": "HETUL",
+      "kind": "INTERSECTION",
+      "xNm": 75.548604,
+      "yNm": -0.575,
+      "latDeg": 32.80226111111111,
+      "lonDeg": -83.73131666666667
+    },
+    {
+      "id": "HHRVY",
+      "kind": "INTERSECTION",
+      "xNm": -4.889765,
+      "yNm": 9.081333,
+      "latDeg": 32.9632,
+      "lonDeg": -85.32645277777777
+    },
+    {
+      "id": "HIDIT",
+      "kind": "INTERSECTION",
+      "xNm": 37.264216,
+      "yNm": 65.829,
+      "latDeg": 33.908994444444446,
+      "lonDeg": -84.49051666666666
+    },
+    {
+      "id": "HIGEM",
+      "kind": "INTERSECTION",
+      "xNm": 79.074731,
+      "yNm": -5.4455,
+      "latDeg": 32.72108611111111,
+      "lonDeg": -83.66139166666667
+    },
+    {
+      "id": "HOBMO",
+      "kind": "INTERSECTION",
+      "xNm": 41.218135,
+      "yNm": 64.6185,
+      "latDeg": 33.888819444444444,
+      "lonDeg": -84.41210833333334
+    },
+    {
+      "id": "HOKES",
+      "kind": "INTERSECTION",
+      "xNm": -38.479514,
+      "yNm": 66.790667,
+      "latDeg": 33.92502222222222,
+      "lonDeg": -85.99255555555555
+    },
+    {
+      "id": "HONID",
+      "kind": "INTERSECTION",
+      "xNm": 42.072457,
+      "yNm": -69.872167,
+      "latDeg": 31.64730833333333,
+      "lonDeg": -84.39516666666667
+    },
+    {
+      "id": "HONIE",
+      "kind": "INTERSECTION",
+      "xNm": 10.129999,
+      "yNm": 22.316,
+      "latDeg": 33.18377777777778,
+      "lonDeg": -85.02860277777778
+    },
+    {
+      "id": "HONRR",
+      "kind": "INTERSECTION",
+      "xNm": 10.33507,
+      "yNm": 68.872667,
+      "latDeg": 33.959722222222226,
+      "lonDeg": -85.0245361111111
+    },
+    {
+      "id": "HOTGI",
+      "kind": "INTERSECTION",
+      "xNm": 34.944842,
+      "yNm": 69.574333,
+      "latDeg": 33.97141666666667,
+      "lonDeg": -84.53651111111111
+    },
+    {
+      "id": "HUSKY",
+      "kind": "INTERSECTION",
+      "xNm": 62.997675,
+      "yNm": 31.116833,
+      "latDeg": 33.33045833333334,
+      "lonDeg": -83.98020833333334
+    },
+    {
+      "id": "HUZER",
+      "kind": "INTERSECTION",
+      "xNm": 59.514972,
+      "yNm": 7.502333,
+      "latDeg": 32.93688333333333,
+      "lonDeg": -84.04927222222221
+    },
+    {
+      "id": "ILAKE",
+      "kind": "INTERSECTION",
+      "xNm": -70.177119,
+      "yNm": 43.9525,
+      "latDeg": 33.54438611111111,
+      "lonDeg": -86.6211361111111
+    },
+    {
+      "id": "IMOJU",
+      "kind": "INTERSECTION",
+      "xNm": -72.814605,
+      "yNm": 39.5815,
+      "latDeg": 33.471536111111114,
+      "lonDeg": -86.6734388888889
+    },
+    {
+      "id": "INCHU",
+      "kind": "INTERSECTION",
+      "xNm": -60.733631,
+      "yNm": -15.146,
+      "latDeg": 32.55941111111111,
+      "lonDeg": -86.43386666666667
+    },
+    {
+      "id": "INPAH",
+      "kind": "INTERSECTION",
+      "xNm": 82.019404,
+      "yNm": -9.472,
+      "latDeg": 32.653977777777776,
+      "lonDeg": -83.60299722222221
+    },
+    {
+      "id": "JALGA",
+      "kind": "INTERSECTION",
+      "xNm": 86.073897,
+      "yNm": -15.157667,
+      "latDeg": 32.559216666666664,
+      "lonDeg": -83.52259444444444
+    },
+    {
+      "id": "JALVO",
+      "kind": "INTERSECTION",
+      "xNm": 8.343333,
+      "yNm": -5.3645,
+      "latDeg": 32.722436111111115,
+      "lonDeg": -85.06403333333333
+    },
+    {
+      "id": "JAMMR",
+      "kind": "INTERSECTION",
+      "xNm": -86.373519,
+      "yNm": 25.2175,
+      "latDeg": 33.23213611111111,
+      "lonDeg": -86.94231944444445
+    },
+    {
+      "id": "JAMUD",
+      "kind": "INTERSECTION",
+      "xNm": -18.874509,
+      "yNm": 53.532667,
+      "latDeg": 33.704055555555556,
+      "lonDeg": -85.60377777777778
+    },
+    {
+      "id": "JAPAM",
+      "kind": "INTERSECTION",
+      "xNm": -82.994191,
+      "yNm": 27.947833,
+      "latDeg": 33.27764166666667,
+      "lonDeg": -86.87530555555554
+    },
+    {
+      "id": "JEDOM",
+      "kind": "INTERSECTION",
+      "xNm": -0.88752,
+      "yNm": -19.155167,
+      "latDeg": 32.49259166666667,
+      "lonDeg": -85.24708611111112
+    },
+    {
+      "id": "JEDOP",
+      "kind": "INTERSECTION",
+      "xNm": -47.375025,
+      "yNm": -41.604333,
+      "latDeg": 32.11843888888889,
+      "lonDeg": -86.16895833333334
+    },
+    {
+      "id": "JEFER",
+      "kind": "INTERSECTION",
+      "xNm": -71.495512,
+      "yNm": -49.7285,
+      "latDeg": 31.983036111111108,
+      "lonDeg": -86.64728055555557
+    },
+    {
+      "id": "JEGMO",
+      "kind": "INTERSECTION",
+      "xNm": 81.995311,
+      "yNm": -9.492333,
+      "latDeg": 32.653638888888885,
+      "lonDeg": -83.60347499999999
+    },
+    {
+      "id": "JENAT",
+      "kind": "INTERSECTION",
+      "xNm": 45.799873,
+      "yNm": 63.354167,
+      "latDeg": 33.86774722222222,
+      "lonDeg": -84.32124999999999
+    },
+    {
+      "id": "JIDOR",
+      "kind": "INTERSECTION",
+      "xNm": 46.081005,
+      "yNm": 63.268333,
+      "latDeg": 33.86631666666667,
+      "lonDeg": -84.315675
+    },
+    {
+      "id": "JIGPO",
+      "kind": "INTERSECTION",
+      "xNm": -18.656271,
+      "yNm": 51.3695,
+      "latDeg": 33.66800277777777,
+      "lonDeg": -85.59944999999999
+    },
+    {
+      "id": "JIMDO",
+      "kind": "INTERSECTION",
+      "xNm": 13.95883,
+      "yNm": 39.0415,
+      "latDeg": 33.46253611111111,
+      "lonDeg": -84.952675
+    },
+    {
+      "id": "JMPER",
+      "kind": "INTERSECTION",
+      "xNm": 15.064728,
+      "yNm": -32.868667,
+      "latDeg": 32.26403333333333,
+      "lonDeg": -84.93074444444444
+    },
+    {
+      "id": "JMPPR",
+      "kind": "INTERSECTION",
+      "xNm": 34.004653,
+      "yNm": 8.989667,
+      "latDeg": 32.96167222222223,
+      "lonDeg": -84.55515555555556
+    },
+    {
+      "id": "JOANN",
+      "kind": "INTERSECTION",
+      "xNm": -56.94262,
+      "yNm": -49.5485,
+      "latDeg": 31.986036111111112,
+      "lonDeg": -86.35868888888888
+    },
+    {
+      "id": "JOTAV",
+      "kind": "INTERSECTION",
+      "xNm": -54.327546,
+      "yNm": 47.5935,
+      "latDeg": 33.605069444444446,
+      "lonDeg": -86.30683055555555
+    },
+    {
+      "id": "JUFTE",
+      "kind": "INTERSECTION",
+      "xNm": 71.844301,
+      "yNm": -7.805667,
+      "latDeg": 32.68175,
+      "lonDeg": -83.80477499999999
+    },
+    {
+      "id": "JUKES",
+      "kind": "INTERSECTION",
+      "xNm": -63.031994,
+      "yNm": -15.335833,
+      "latDeg": 32.55624722222222,
+      "lonDeg": -86.47944444444444
+    },
+    {
+      "id": "JUNIT",
+      "kind": "INTERSECTION",
+      "xNm": -78.371971,
+      "yNm": 41.919167,
+      "latDeg": 33.51049722222222,
+      "lonDeg": -86.78364444444445
+    },
+    {
+      "id": "JYROD",
+      "kind": "INTERSECTION",
+      "xNm": -32.059141,
+      "yNm": 22.1775,
+      "latDeg": 33.181469444444446,
+      "lonDeg": -85.8652361111111
+    },
+    {
+      "id": "KAILL",
+      "kind": "INTERSECTION",
+      "xNm": 35.60684,
+      "yNm": 73.076167,
+      "latDeg": 34.029780555555554,
+      "lonDeg": -84.52338333333333
+    },
+    {
+      "id": "KAMSE",
+      "kind": "INTERSECTION",
+      "xNm": 34.64592,
+      "yNm": 66.573833,
+      "latDeg": 33.92140833333333,
+      "lonDeg": -84.54243888888888
+    },
+    {
+      "id": "KEEPS",
+      "kind": "INTERSECTION",
+      "xNm": -7.128036,
+      "yNm": 11.336333,
+      "latDeg": 33.00078333333333,
+      "lonDeg": -85.37083888888888
+    },
+    {
+      "id": "KENTT",
+      "kind": "INTERSECTION",
+      "xNm": -28.732061,
+      "yNm": -11.997833,
+      "latDeg": 32.61188055555556,
+      "lonDeg": -85.79925833333333
+    },
+    {
+      "id": "KIOSK",
+      "kind": "INTERSECTION",
+      "xNm": -46.596484,
+      "yNm": 46.184667,
+      "latDeg": 33.581588888888895,
+      "lonDeg": -86.15351944444446
+    },
+    {
+      "id": "KJ09O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": -78.710667,
+      "latDeg": 31.5,
+      "lonDeg": -86
+    },
+    {
+      "id": "KLOWD",
+      "kind": "INTERSECTION",
+      "xNm": 40.083801,
+      "yNm": 55.2665,
+      "latDeg": 33.73295277777778,
+      "lonDeg": -84.43460277777778
+    },
+    {
+      "id": "KOCEY",
+      "kind": "INTERSECTION",
+      "xNm": -22.918777,
+      "yNm": 46.629333,
+      "latDeg": 33.589000000000006,
+      "lonDeg": -85.68397777777778
+    },
+    {
+      "id": "KOMER",
+      "kind": "INTERSECTION",
+      "xNm": -8.839341,
+      "yNm": -47.863,
+      "latDeg": 32.01412777777778,
+      "lonDeg": -85.404775
+    },
+    {
+      "id": "KORNR",
+      "kind": "INTERSECTION",
+      "xNm": -81.542586,
+      "yNm": -0.013,
+      "latDeg": 32.81162777777777,
+      "lonDeg": -86.84651944444444
+    },
+    {
+      "id": "KOZEY",
+      "kind": "INTERSECTION",
+      "xNm": -62.689229,
+      "yNm": -14.051167,
+      "latDeg": 32.57765833333334,
+      "lonDeg": -86.47264722222222
+    },
+    {
+      "id": "KT12O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": -48.710667,
+      "latDeg": 32,
+      "lonDeg": -86
+    },
+    {
+      "id": "KT12Q",
+      "kind": "INTERSECTION",
+      "xNm": 61.999636,
+      "yNm": -48.710667,
+      "latDeg": 32,
+      "lonDeg": -84
+    },
+    {
+      "id": "KT15O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": -18.710667,
+      "latDeg": 32.5,
+      "lonDeg": -86
+    },
+    {
+      "id": "KT15Q",
+      "kind": "INTERSECTION",
+      "xNm": 61.999636,
+      "yNm": -18.710667,
+      "latDeg": 32.5,
+      "lonDeg": -84
+    },
+    {
+      "id": "KT18O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": 11.289333,
+      "latDeg": 33,
+      "lonDeg": -86
+    },
+    {
+      "id": "KT18Q",
+      "kind": "INTERSECTION",
+      "xNm": 61.999636,
+      "yNm": 11.289333,
+      "latDeg": 33,
+      "lonDeg": -84
+    },
+    {
+      "id": "KT21O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": 41.289333,
+      "latDeg": 33.5,
+      "lonDeg": -86
+    },
+    {
+      "id": "KT21Q",
+      "kind": "INTERSECTION",
+      "xNm": 61.999636,
+      "yNm": 41.289333,
+      "latDeg": 33.5,
+      "lonDeg": -84
+    },
+    {
+      "id": "KT24O",
+      "kind": "INTERSECTION",
+      "xNm": -38.854917,
+      "yNm": 71.289333,
+      "latDeg": 34,
+      "lonDeg": -86
+    },
+    {
+      "id": "KUTVE",
+      "kind": "INTERSECTION",
+      "xNm": 39.241666,
+      "yNm": -56.693667,
+      "latDeg": 31.86695,
+      "lonDeg": -84.45130277777778
+    },
+    {
+      "id": "KYLEE",
+      "kind": "INTERSECTION",
+      "xNm": -57.312981,
+      "yNm": 20.973333,
+      "latDeg": 33.1614,
+      "lonDeg": -86.36603333333333
+    },
+    {
+      "id": "LACCE",
+      "kind": "INTERSECTION",
+      "xNm": 9.091758,
+      "yNm": 68.842833,
+      "latDeg": 33.959225,
+      "lonDeg": -85.04919166666666
+    },
+    {
+      "id": "LANGA",
+      "kind": "INTERSECTION",
+      "xNm": 14.107731,
+      "yNm": 6.858833,
+      "latDeg": 32.92615833333333,
+      "lonDeg": -84.94972222222222
+    },
+    {
+      "id": "LAYIN",
+      "kind": "INTERSECTION",
+      "xNm": -16.034333,
+      "yNm": 46.929167,
+      "latDeg": 33.59399722222223,
+      "lonDeg": -85.54745555555556
+    },
+    {
+      "id": "LICEV",
+      "kind": "INTERSECTION",
+      "xNm": 17.19402,
+      "yNm": -43.4375,
+      "latDeg": 32.08788611111111,
+      "lonDeg": -84.88851944444446
+    },
+    {
+      "id": "LIDBE",
+      "kind": "INTERSECTION",
+      "xNm": 62.178232,
+      "yNm": -32.603833,
+      "latDeg": 32.26844722222222,
+      "lonDeg": -83.99645833333334
+    },
+    {
+      "id": "LILLY",
+      "kind": "INTERSECTION",
+      "xNm": 62.21185,
+      "yNm": -40.580833,
+      "latDeg": 32.13549722222222,
+      "lonDeg": -83.99579166666666
+    },
+    {
+      "id": "LINTZ",
+      "kind": "INTERSECTION",
+      "xNm": -45.135634,
+      "yNm": 34.679167,
+      "latDeg": 33.389830555555555,
+      "lonDeg": -86.12455
+    },
+    {
+      "id": "LOMAX",
+      "kind": "INTERSECTION",
+      "xNm": -69.146161,
+      "yNm": 7.081167,
+      "latDeg": 32.92986388888889,
+      "lonDeg": -86.60069166666666
+    },
+    {
+      "id": "LUMPP",
+      "kind": "INTERSECTION",
+      "xNm": 32.643957,
+      "yNm": -46.241167,
+      "latDeg": 32.04115833333333,
+      "lonDeg": -84.58213888888889
+    },
+    {
+      "id": "MABOJ",
+      "kind": "INTERSECTION",
+      "xNm": 84.04616,
+      "yNm": 0.469833,
+      "latDeg": 32.819675000000004,
+      "lonDeg": -83.56280555555556
+    },
+    {
+      "id": "MAFGY",
+      "kind": "INTERSECTION",
+      "xNm": 13.985165,
+      "yNm": -16.802167,
+      "latDeg": 32.53180833333333,
+      "lonDeg": -84.95215277777778
+    },
+    {
+      "id": "MAJKU",
+      "kind": "INTERSECTION",
+      "xNm": 73.93255,
+      "yNm": -18.338667,
+      "latDeg": 32.5062,
+      "lonDeg": -83.76336388888889
+    },
+    {
+      "id": "MAPSC",
+      "kind": "INTERSECTION",
+      "xNm": 52.841202,
+      "yNm": -41.759,
+      "latDeg": 32.115861111111116,
+      "lonDeg": -84.18161666666667
+    },
+    {
+      "id": "MAPSD",
+      "kind": "INTERSECTION",
+      "xNm": -36.958291,
+      "yNm": 5.8585,
+      "latDeg": 32.90948611111111,
+      "lonDeg": -85.9623888888889
+    },
+    {
+      "id": "MARSL",
+      "kind": "INTERSECTION",
+      "xNm": 5.165994,
+      "yNm": 62.093833,
+      "latDeg": 33.84674166666667,
+      "lonDeg": -85.12704166666666
+    },
+    {
+      "id": "MARST",
+      "kind": "INTERSECTION",
+      "xNm": -41.007321,
+      "yNm": -22.8875,
+      "latDeg": 32.43038611111111,
+      "lonDeg": -86.04268333333333
+    },
+    {
+      "id": "MARVO",
+      "kind": "INTERSECTION",
+      "xNm": 0.683009,
+      "yNm": -14.150833,
+      "latDeg": 32.57599722222223,
+      "lonDeg": -85.21594166666667
+    },
+    {
+      "id": "MATKN",
+      "kind": "INTERSECTION",
+      "xNm": 14.32891,
+      "yNm": -18.0415,
+      "latDeg": 32.51115277777778,
+      "lonDeg": -84.94533611111112
+    },
+    {
+      "id": "MAVCL",
+      "kind": "INTERSECTION",
+      "xNm": -59.531921,
+      "yNm": -30.5565,
+      "latDeg": 32.302569444444444,
+      "lonDeg": -86.41003611111111
+    },
+    {
+      "id": "MAVDC",
+      "kind": "INTERSECTION",
+      "xNm": -39.974122,
+      "yNm": -57.212667,
+      "latDeg": 31.8583,
+      "lonDeg": -86.02219444444444
+    },
+    {
+      "id": "MAXEY",
+      "kind": "INTERSECTION",
+      "xNm": -73.831135,
+      "yNm": 4.990167,
+      "latDeg": 32.89501388888889,
+      "lonDeg": -86.69359722222222
+    },
+    {
+      "id": "MAYES",
+      "kind": "INTERSECTION",
+      "xNm": -29.824792,
+      "yNm": 69.628,
+      "latDeg": 33.97231111111111,
+      "lonDeg": -85.82092777777777
+    },
+    {
+      "id": "MDCDB",
+      "kind": "INTERSECTION",
+      "xNm": 27.529371,
+      "yNm": 52.6875,
+      "latDeg": 33.68996944444444,
+      "lonDeg": -84.6835638888889
+    },
+    {
+      "id": "MGMRY",
+      "kind": "INTERSECTION",
+      "xNm": -54.980999,
+      "yNm": -35.364333,
+      "latDeg": 32.22243888888889,
+      "lonDeg": -86.31978888888888
+    },
+    {
+      "id": "MIKEE",
+      "kind": "INTERSECTION",
+      "xNm": 16.042037,
+      "yNm": 59.666833,
+      "latDeg": 33.80629166666667,
+      "lonDeg": -84.9113638888889
+    },
+    {
+      "id": "MILBO",
+      "kind": "INTERSECTION",
+      "xNm": -60.133546,
+      "yNm": -20.593667,
+      "latDeg": 32.46861666666667,
+      "lonDeg": -86.42196666666668
+    },
+    {
+      "id": "MILER",
+      "kind": "INTERSECTION",
+      "xNm": -8.463378,
+      "yNm": -35.748333,
+      "latDeg": 32.21603888888889,
+      "lonDeg": -85.39731944444445
+    },
+    {
+      "id": "MRICA",
+      "kind": "INTERSECTION",
+      "xNm": -53.932672,
+      "yNm": 64.790667,
+      "latDeg": 33.891688888888886,
+      "lonDeg": -86.29899999999999
+    },
+    {
+      "id": "MUPTE",
+      "kind": "INTERSECTION",
+      "xNm": -78.957068,
+      "yNm": 41.773833,
+      "latDeg": 33.508075,
+      "lonDeg": -86.79524722222222
+    },
+    {
+      "id": "NAFOR",
+      "kind": "INTERSECTION",
+      "xNm": 9.360843,
+      "yNm": -22.880833,
+      "latDeg": 32.43049722222222,
+      "lonDeg": -85.04385555555555
+    },
+    {
+      "id": "NEDKE",
+      "kind": "INTERSECTION",
+      "xNm": 37.58583,
+      "yNm": 69.619333,
+      "latDeg": 33.972166666666666,
+      "lonDeg": -84.48413888888889
+    },
+    {
+      "id": "NEXIE",
+      "kind": "INTERSECTION",
+      "xNm": 84.301939,
+      "yNm": -26.3525,
+      "latDeg": 32.37263611111111,
+      "lonDeg": -83.55773333333333
+    },
+    {
+      "id": "NFTRY",
+      "kind": "INTERSECTION",
+      "xNm": 3.926464,
+      "yNm": 13.334667,
+      "latDeg": 33.03408888888889,
+      "lonDeg": -85.15162222222223
+    },
+    {
+      "id": "NILUE",
+      "kind": "INTERSECTION",
+      "xNm": 81.721043,
+      "yNm": 4.534167,
+      "latDeg": 32.88741388888889,
+      "lonDeg": -83.60891388888888
+    },
+    {
+      "id": "NIXBY",
+      "kind": "INTERSECTION",
+      "xNm": -45.01769,
+      "yNm": 6.864667,
+      "latDeg": 32.92625555555556,
+      "lonDeg": -86.1222111111111
+    },
+    {
+      "id": "NOHOW",
+      "kind": "INTERSECTION",
+      "xNm": -45.098654,
+      "yNm": 40.317833,
+      "latDeg": 33.483808333333336,
+      "lonDeg": -86.12381666666666
+    },
+    {
+      "id": "NOKIE",
+      "kind": "INTERSECTION",
+      "xNm": 79.790939,
+      "yNm": -7.229667,
+      "latDeg": 32.69135,
+      "lonDeg": -83.64718888888889
+    },
+    {
+      "id": "NOONE",
+      "kind": "INTERSECTION",
+      "xNm": 33.045274,
+      "yNm": 83.399833,
+      "latDeg": 34.20184166666667,
+      "lonDeg": -84.57418055555556
+    },
+    {
+      "id": "NOPVE",
+      "kind": "INTERSECTION",
+      "xNm": -47.985195,
+      "yNm": 46.744333,
+      "latDeg": 33.59091666666667,
+      "lonDeg": -86.18105833333334
+    },
+    {
+      "id": "OBXAY",
+      "kind": "INTERSECTION",
+      "xNm": -24.651094,
+      "yNm": -3.381167,
+      "latDeg": 32.755491666666664,
+      "lonDeg": -85.71833055555555
+    },
+    {
+      "id": "OCNNR",
+      "kind": "INTERSECTION",
+      "xNm": -10.765103,
+      "yNm": -73.968333,
+      "latDeg": 31.57903888888889,
+      "lonDeg": -85.4429638888889
+    },
+    {
+      "id": "OKBAE",
+      "kind": "INTERSECTION",
+      "xNm": 63.078919,
+      "yNm": -48.104,
+      "latDeg": 32.01011111111111,
+      "lonDeg": -83.97859722222222
+    },
+    {
+      "id": "OKIES",
+      "kind": "INTERSECTION",
+      "xNm": 45.964602,
+      "yNm": 75.699,
+      "latDeg": 34.07349444444445,
+      "lonDeg": -84.31798333333333
+    },
+    {
+      "id": "OMAHO",
+      "kind": "INTERSECTION",
+      "xNm": 6.739045,
+      "yNm": -39.377,
+      "latDeg": 32.15556111111111,
+      "lonDeg": -85.09584722222222
+    },
+    {
+      "id": "ONTEE",
+      "kind": "INTERSECTION",
+      "xNm": 31.496176,
+      "yNm": 67.293,
+      "latDeg": 33.93339444444444,
+      "lonDeg": -84.6049
+    },
+    {
+      "id": "OPROE",
+      "kind": "INTERSECTION",
+      "xNm": 5.048611,
+      "yNm": -18.590167,
+      "latDeg": 32.502008333333336,
+      "lonDeg": -85.12936944444444
+    },
+    {
+      "id": "OREGE",
+      "kind": "INTERSECTION",
+      "xNm": 32.634712,
+      "yNm": 31.778,
+      "latDeg": 33.34147777777778,
+      "lonDeg": -84.58232222222222
+    },
+    {
+      "id": "OSOXE",
+      "kind": "INTERSECTION",
+      "xNm": 63.546212,
+      "yNm": -31.2675,
+      "latDeg": 32.29071944444444,
+      "lonDeg": -83.96933055555556
+    },
+    {
+      "id": "OTSIE",
+      "kind": "INTERSECTION",
+      "xNm": -58.29253,
+      "yNm": -24.205,
+      "latDeg": 32.408427777777774,
+      "lonDeg": -86.38545833333335
+    },
+    {
+      "id": "OVZES",
+      "kind": "INTERSECTION",
+      "xNm": 56.81235,
+      "yNm": -37.8595,
+      "latDeg": 32.18085277777777,
+      "lonDeg": -84.10286666666666
+    },
+    {
+      "id": "PAIRA",
+      "kind": "INTERSECTION",
+      "xNm": 35.361567,
+      "yNm": -16.9165,
+      "latDeg": 32.52990277777778,
+      "lonDeg": -84.52824722222222
+    },
+    {
+      "id": "PCANN",
+      "kind": "INTERSECTION",
+      "xNm": 47.210436,
+      "yNm": -69.3945,
+      "latDeg": 31.655269444444443,
+      "lonDeg": -84.29327777777777
+    },
+    {
+      "id": "PECAT",
+      "kind": "INTERSECTION",
+      "xNm": 37.478812,
+      "yNm": 29.336667,
+      "latDeg": 33.30078888888889,
+      "lonDeg": -84.4862611111111
+    },
+    {
+      "id": "PEECH",
+      "kind": "INTERSECTION",
+      "xNm": -16.418981,
+      "yNm": -45.778167,
+      "latDeg": 32.048874999999995,
+      "lonDeg": -85.55508333333333
+    },
+    {
+      "id": "PETOC",
+      "kind": "INTERSECTION",
+      "xNm": -49.785309,
+      "yNm": -30.721667,
+      "latDeg": 32.299816666666665,
+      "lonDeg": -86.21675555555555
+    },
+    {
+      "id": "PETRY",
+      "kind": "INTERSECTION",
+      "xNm": -38.838808,
+      "yNm": -48.629833,
+      "latDeg": 32.00134722222222,
+      "lonDeg": -85.99968055555556
+    },
+    {
+      "id": "PHENS",
+      "kind": "INTERSECTION",
+      "xNm": 6.964847,
+      "yNm": -17.375667,
+      "latDeg": 32.52225,
+      "lonDeg": -85.09136944444444
+    },
+    {
+      "id": "PIMDE",
+      "kind": "INTERSECTION",
+      "xNm": 10.366727,
+      "yNm": -26.1595,
+      "latDeg": 32.37585277777778,
+      "lonDeg": -85.02390833333334
+    },
+    {
+      "id": "PINGG",
+      "kind": "INTERSECTION",
+      "xNm": 6.365183,
+      "yNm": 36.663667,
+      "latDeg": 33.42290555555555,
+      "lonDeg": -85.10326111111111
+    },
+    {
+      "id": "PIZZO",
+      "kind": "INTERSECTION",
+      "xNm": 15.846491,
+      "yNm": 16.280167,
+      "latDeg": 33.08318055555556,
+      "lonDeg": -84.91524166666667
+    },
+    {
+      "id": "POLLL",
+      "kind": "INTERSECTION",
+      "xNm": 22.644789,
+      "yNm": 80.243667,
+      "latDeg": 34.14923888888889,
+      "lonDeg": -84.78042777777777
+    },
+    {
+      "id": "PONGG",
+      "kind": "INTERSECTION",
+      "xNm": 10.99959,
+      "yNm": 59.221667,
+      "latDeg": 33.79887222222222,
+      "lonDeg": -85.01135833333333
+    },
+    {
+      "id": "POTAR",
+      "kind": "INTERSECTION",
+      "xNm": 59.228517,
+      "yNm": -19.285833,
+      "latDeg": 32.49041388888889,
+      "lonDeg": -84.05495277777777
+    },
+    {
+      "id": "PPEGE",
+      "kind": "INTERSECTION",
+      "xNm": 5.005748,
+      "yNm": 57.087333,
+      "latDeg": 33.7633,
+      "lonDeg": -85.13021944444444
+    },
+    {
+      "id": "PRATZ",
+      "kind": "INTERSECTION",
+      "xNm": 43.68683,
+      "yNm": -10.2025,
+      "latDeg": 32.64180277777778,
+      "lonDeg": -84.36315277777777
+    },
+    {
+      "id": "PREST",
+      "kind": "INTERSECTION",
+      "xNm": 27.501496,
+      "yNm": -38.128167,
+      "latDeg": 32.176375,
+      "lonDeg": -84.68411666666667
+    },
+    {
+      "id": "QTPIE",
+      "kind": "INTERSECTION",
+      "xNm": -21.634982,
+      "yNm": -84.3395,
+      "latDeg": 31.40618611111111,
+      "lonDeg": -85.65851944444445
+    },
+    {
+      "id": "RABIT",
+      "kind": "INTERSECTION",
+      "xNm": -72.13874,
+      "yNm": 5.186667,
+      "latDeg": 32.898288888888885,
+      "lonDeg": -86.66003611111111
+    },
+    {
+      "id": "RANOC",
+      "kind": "INTERSECTION",
+      "xNm": -61.606443,
+      "yNm": -15.423167,
+      "latDeg": 32.55479166666667,
+      "lonDeg": -86.451175
+    },
+    {
+      "id": "REDDI",
+      "kind": "INTERSECTION",
+      "xNm": -63.389047,
+      "yNm": -54.553333,
+      "latDeg": 31.90262222222222,
+      "lonDeg": -86.486525
+    },
+    {
+      "id": "RENFO",
+      "kind": "INTERSECTION",
+      "xNm": 21.325135,
+      "yNm": -41.836167,
+      "latDeg": 32.114575,
+      "lonDeg": -84.80659722222222
+    },
+    {
+      "id": "RKEMP",
+      "kind": "INTERSECTION",
+      "xNm": -24.066277,
+      "yNm": -73.424833,
+      "latDeg": 31.58809722222222,
+      "lonDeg": -85.70673333333333
+    },
+    {
+      "id": "RKMRT",
+      "kind": "INTERSECTION",
+      "xNm": -1.071299,
+      "yNm": 74.9015,
+      "latDeg": 34.060202777777775,
+      "lonDeg": -85.25073055555555
+    },
+    {
+      "id": "ROCOD",
+      "kind": "INTERSECTION",
+      "xNm": 15.142891,
+      "yNm": -32.98,
+      "latDeg": 32.26217777777778,
+      "lonDeg": -84.92919444444445
+    },
+    {
+      "id": "ROSAW",
+      "kind": "INTERSECTION",
+      "xNm": 79.235679,
+      "yNm": -5.671,
+      "latDeg": 32.71732777777778,
+      "lonDeg": -83.65820000000001
+    },
+    {
+      "id": "ROTME",
+      "kind": "INTERSECTION",
+      "xNm": 15.356646,
+      "yNm": -33.284333,
+      "latDeg": 32.257105555555555,
+      "lonDeg": -84.92495555555556
+    },
+    {
+      "id": "RRNDA",
+      "kind": "INTERSECTION",
+      "xNm": 4.845781,
+      "yNm": 52.080667,
+      "latDeg": 33.679855555555555,
+      "lonDeg": -85.13339166666667
+    },
+    {
+      "id": "RSVLT",
+      "kind": "INTERSECTION",
+      "xNm": 10.678536,
+      "yNm": -11.786833,
+      "latDeg": 32.61539722222222,
+      "lonDeg": -85.017725
+    },
+    {
+      "id": "RTLRY",
+      "kind": "INTERSECTION",
+      "xNm": 5.022697,
+      "yNm": 56.596167,
+      "latDeg": 33.755113888888886,
+      "lonDeg": -85.12988333333332
+    },
+    {
+      "id": "RUTEL",
+      "kind": "INTERSECTION",
+      "xNm": -57.013358,
+      "yNm": -65.749167,
+      "latDeg": 31.716025,
+      "lonDeg": -86.36009166666666
+    },
+    {
+      "id": "SAWES",
+      "kind": "INTERSECTION",
+      "xNm": 19.472353,
+      "yNm": -57.716,
+      "latDeg": 31.84991111111111,
+      "lonDeg": -84.84333888888888
+    },
+    {
+      "id": "SCAIL",
+      "kind": "INTERSECTION",
+      "xNm": -21.647449,
+      "yNm": 13.311333,
+      "latDeg": 33.033699999999996,
+      "lonDeg": -85.65876666666668
+    },
+    {
+      "id": "SEEME",
+      "kind": "INTERSECTION",
+      "xNm": -59.935479,
+      "yNm": -20.273667,
+      "latDeg": 32.47395,
+      "lonDeg": -86.41803888888889
+    },
+    {
+      "id": "SEMAN",
+      "kind": "INTERSECTION",
+      "xNm": -37.026087,
+      "yNm": -2.361167,
+      "latDeg": 32.77249166666667,
+      "lonDeg": -85.96373333333334
+    },
+    {
+      "id": "SENVE",
+      "kind": "INTERSECTION",
+      "xNm": 29.342932,
+      "yNm": 68.112333,
+      "latDeg": 33.94705,
+      "lonDeg": -84.64760000000001
+    },
+    {
+      "id": "SHADY",
+      "kind": "INTERSECTION",
+      "xNm": -43.443238,
+      "yNm": -44.8365,
+      "latDeg": 32.064569444444444,
+      "lonDeg": -86.09098888888889
+    },
+    {
+      "id": "SHAKK",
+      "kind": "INTERSECTION",
+      "xNm": 4.691418,
+      "yNm": 43.576333,
+      "latDeg": 33.53811666666667,
+      "lonDeg": -85.13645277777779
+    },
+    {
+      "id": "SHANY",
+      "kind": "INTERSECTION",
+      "xNm": 33.57308,
+      "yNm": -63.625833,
+      "latDeg": 31.751413888888887,
+      "lonDeg": -84.56371388888888
+    },
+    {
+      "id": "SHORT",
+      "kind": "INTERSECTION",
+      "xNm": 4.579077,
+      "yNm": -75.672167,
+      "latDeg": 31.550641666666667,
+      "lonDeg": -85.13868055555557
+    },
+    {
+      "id": "SHURT",
+      "kind": "INTERSECTION",
+      "xNm": 40.291674,
+      "yNm": 43.499833,
+      "latDeg": 33.53684166666667,
+      "lonDeg": -84.43048055555556
+    },
+    {
+      "id": "SINCA",
+      "kind": "INTERSECTION",
+      "xNm": 81.925133,
+      "yNm": 16.160667,
+      "latDeg": 33.08118888888889,
+      "lonDeg": -83.60486666666667
+    },
+    {
+      "id": "SIPNE",
+      "kind": "INTERSECTION",
+      "xNm": -69.397457,
+      "yNm": -20.184833,
+      "latDeg": 32.475430555555555,
+      "lonDeg": -86.60567499999999
+    },
+    {
+      "id": "SKIPO",
+      "kind": "INTERSECTION",
+      "xNm": -18.123143,
+      "yNm": -75.747833,
+      "latDeg": 31.549380555555558,
+      "lonDeg": -85.58887777777777
+    },
+    {
+      "id": "SKYME",
+      "kind": "INTERSECTION",
+      "xNm": 75.298989,
+      "yNm": 43.485667,
+      "latDeg": 33.53660555555555,
+      "lonDeg": -83.73626666666667
+    },
+    {
+      "id": "SMARR",
+      "kind": "INTERSECTION",
+      "xNm": 72.938853,
+      "yNm": 12.703833,
+      "latDeg": 33.023575,
+      "lonDeg": -83.78306944444445
+    },
+    {
+      "id": "SMMAL",
+      "kind": "INTERSECTION",
+      "xNm": 14.47655,
+      "yNm": 56.78,
+      "latDeg": 33.758177777777775,
+      "lonDeg": -84.94240833333333
+    },
+    {
+      "id": "SOCAB",
+      "kind": "INTERSECTION",
+      "xNm": 86.068014,
+      "yNm": -15.1765,
+      "latDeg": 32.558902777777774,
+      "lonDeg": -83.52271111111111
+    },
+    {
+      "id": "SOONE",
+      "kind": "INTERSECTION",
+      "xNm": 51.651818,
+      "yNm": 15.933333,
+      "latDeg": 33.077400000000004,
+      "lonDeg": -84.20520277777779
+    },
+    {
+      "id": "SOTWO",
+      "kind": "INTERSECTION",
+      "xNm": 40.662734,
+      "yNm": 13.973333,
+      "latDeg": 33.04473333333333,
+      "lonDeg": -84.42312222222223
+    },
+    {
+      "id": "SPATT",
+      "kind": "INTERSECTION",
+      "xNm": -66.236507,
+      "yNm": 52.457333,
+      "latDeg": 33.68613333333333,
+      "lonDeg": -86.54299166666667
+    },
+    {
+      "id": "SSONY",
+      "kind": "INTERSECTION",
+      "xNm": 73.819789,
+      "yNm": -27.876167,
+      "latDeg": 32.34724166666667,
+      "lonDeg": -83.7656
+    },
+    {
+      "id": "STAMP",
+      "kind": "INTERSECTION",
+      "xNm": -51.130176,
+      "yNm": 63.838333,
+      "latDeg": 33.875816666666665,
+      "lonDeg": -86.243425
+    },
+    {
+      "id": "SUBIC",
+      "kind": "INTERSECTION",
+      "xNm": 47.543116,
+      "yNm": 62.8465,
+      "latDeg": 33.85928611111111,
+      "lonDeg": -84.28668055555555
+    },
+    {
+      "id": "SUSDE",
+      "kind": "INTERSECTION",
+      "xNm": 45.112801,
+      "yNm": 63.550333,
+      "latDeg": 33.87101666666667,
+      "lonDeg": -84.334875
+    },
+    {
+      "id": "SWTEE",
+      "kind": "INTERSECTION",
+      "xNm": 4.036283,
+      "yNm": 68.845333,
+      "latDeg": 33.95926666666667,
+      "lonDeg": -85.14944444444446
+    },
+    {
+      "id": "TAKKY",
+      "kind": "INTERSECTION",
+      "xNm": -11.934455,
+      "yNm": -84.348167,
+      "latDeg": 31.406041666666667,
+      "lonDeg": -85.46615277777778
+    },
+    {
+      "id": "TALBO",
+      "kind": "INTERSECTION",
+      "xNm": 28.816667,
+      "yNm": -10.894,
+      "latDeg": 32.63027777777778,
+      "lonDeg": -84.65803611111112
+    },
+    {
+      "id": "TASYU",
+      "kind": "INTERSECTION",
+      "xNm": -82.47451,
+      "yNm": 17.973167,
+      "latDeg": 33.11139722222222,
+      "lonDeg": -86.865
+    },
+    {
+      "id": "TATRS",
+      "kind": "INTERSECTION",
+      "xNm": 69.047408,
+      "yNm": 31.905167,
+      "latDeg": 33.34359722222222,
+      "lonDeg": -83.86023888888889
+    },
+    {
+      "id": "TEMPO",
+      "kind": "INTERSECTION",
+      "xNm": 9.624046,
+      "yNm": 47.9675,
+      "latDeg": 33.61130277777778,
+      "lonDeg": -85.0386361111111
+    },
+    {
+      "id": "TEOFF",
+      "kind": "INTERSECTION",
+      "xNm": 40.621272,
+      "yNm": 69.6695,
+      "latDeg": 33.97300277777778,
+      "lonDeg": -84.42394444444444
+    },
+    {
+      "id": "THRSR",
+      "kind": "INTERSECTION",
+      "xNm": 40.058728,
+      "yNm": 49.043667,
+      "latDeg": 33.62923888888889,
+      "lonDeg": -84.4351
+    },
+    {
+      "id": "TIMMY",
+      "kind": "INTERSECTION",
+      "xNm": -15.897759,
+      "yNm": -0.687833,
+      "latDeg": 32.800380555555556,
+      "lonDeg": -85.54474722222223
+    },
+    {
+      "id": "TIROE",
+      "kind": "INTERSECTION",
+      "xNm": 18.328074,
+      "yNm": 29.6765,
+      "latDeg": 33.30645277777778,
+      "lonDeg": -84.86603055555555
+    },
+    {
+      "id": "TOYOT",
+      "kind": "INTERSECTION",
+      "xNm": 63.490602,
+      "yNm": -21.788333,
+      "latDeg": 32.448705555555556,
+      "lonDeg": -83.97043333333333
+    },
+    {
+      "id": "TRUST",
+      "kind": "INTERSECTION",
+      "xNm": -69.935348,
+      "yNm": 49.655833,
+      "latDeg": 33.63944166666666,
+      "lonDeg": -86.61634166666666
+    },
+    {
+      "id": "TUPPS",
+      "kind": "INTERSECTION",
+      "xNm": -15.23352,
+      "yNm": -87.463333,
+      "latDeg": 31.354122222222223,
+      "lonDeg": -85.531575
+    },
+    {
+      "id": "TYGRR",
+      "kind": "INTERSECTION",
+      "xNm": 5.000985,
+      "yNm": -51.6905,
+      "latDeg": 31.95033611111111,
+      "lonDeg": -85.13031388888888
+    },
+    {
+      "id": "UTOCU",
+      "kind": "INTERSECTION",
+      "xNm": 41.704058,
+      "yNm": 66.8625,
+      "latDeg": 33.92621944444444,
+      "lonDeg": -84.40247222222223
+    },
+    {
+      "id": "VADMW",
+      "kind": "INTERSECTION",
+      "xNm": 21.041481,
+      "yNm": -83.977333,
+      "latDeg": 31.41222222222222,
+      "lonDeg": -84.81222222222222
+    },
+    {
+      "id": "VIKER",
+      "kind": "INTERSECTION",
+      "xNm": 23.517461,
+      "yNm": 69.777,
+      "latDeg": 33.97479444444445,
+      "lonDeg": -84.76312222222222
+    },
+    {
+      "id": "VORTX",
+      "kind": "INTERSECTION",
+      "xNm": -1.195126,
+      "yNm": 85.692167,
+      "latDeg": 34.24004722222222,
+      "lonDeg": -85.2531861111111
+    },
+    {
+      "id": "VPCPR",
+      "kind": "INTERSECTION",
+      "xNm": 53.59509,
+      "yNm": 39.289333,
+      "latDeg": 33.46666666666667,
+      "lonDeg": -84.16666666666667
+    },
+    {
+      "id": "VPDEU",
+      "kind": "INTERSECTION",
+      "xNm": 53.59509,
+      "yNm": 49.289333,
+      "latDeg": 33.63333333333333,
+      "lonDeg": -84.16666666666667
+    },
+    {
+      "id": "VPFRH",
+      "kind": "INTERSECTION",
+      "xNm": 51.91418,
+      "yNm": 56.289333,
+      "latDeg": 33.75,
+      "lonDeg": -84.2
+    },
+    {
+      "id": "VPGHT",
+      "kind": "INTERSECTION",
+      "xNm": 63.680545,
+      "yNm": 39.289333,
+      "latDeg": 33.46666666666667,
+      "lonDeg": -83.96666666666667
+    },
+    {
+      "id": "VPHUB",
+      "kind": "INTERSECTION",
+      "xNm": 64.17081,
+      "yNm": 59.656,
+      "latDeg": 33.80611111111111,
+      "lonDeg": -83.95694444444445
+    },
+    {
+      "id": "VPJBF",
+      "kind": "INTERSECTION",
+      "xNm": 26.280315,
+      "yNm": 39.289333,
+      "latDeg": 33.46666666666667,
+      "lonDeg": -84.70833333333334
+    },
+    {
+      "id": "VPKNM",
+      "kind": "INTERSECTION",
+      "xNm": 26.280315,
+      "yNm": 49.289333,
+      "latDeg": 33.63333333333333,
+      "lonDeg": -84.70833333333334
+    },
+    {
+      "id": "VPLRF",
+      "kind": "INTERSECTION",
+      "xNm": 28.381452,
+      "yNm": 56.289333,
+      "latDeg": 33.75,
+      "lonDeg": -84.66666666666667
+    },
+    {
+      "id": "VPMNG",
+      "kind": "INTERSECTION",
+      "xNm": 15.774632,
+      "yNm": 39.289333,
+      "latDeg": 33.46666666666667,
+      "lonDeg": -84.91666666666667
+    },
+    {
+      "id": "WALTY",
+      "kind": "INTERSECTION",
+      "xNm": -82.137768,
+      "yNm": 11.48,
+      "latDeg": 33.00317777777778,
+      "lonDeg": -86.85832222222221
+    },
+    {
+      "id": "WANDS",
+      "kind": "INTERSECTION",
+      "xNm": -58.298834,
+      "yNm": 21.405167,
+      "latDeg": 33.16859722222222,
+      "lonDeg": -86.38558333333334
+    },
+    {
+      "id": "WEKMU",
+      "kind": "INTERSECTION",
+      "xNm": -45.564966,
+      "yNm": -31.051833,
+      "latDeg": 32.29431388888889,
+      "lonDeg": -86.13306388888888
+    },
+    {
+      "id": "WEKPA",
+      "kind": "INTERSECTION",
+      "xNm": -45.922019,
+      "yNm": -20.047167,
+      "latDeg": 32.477725,
+      "lonDeg": -86.14014444444445
+    },
+    {
+      "id": "WELOR",
+      "kind": "INTERSECTION",
+      "xNm": -59.102028,
+      "yNm": -22.874333,
+      "latDeg": 32.43060555555555,
+      "lonDeg": -86.40151111111112
+    },
+    {
+      "id": "WEMOB",
+      "kind": "INTERSECTION",
+      "xNm": 67.855923,
+      "yNm": 27.392667,
+      "latDeg": 33.268388888888886,
+      "lonDeg": -83.88386666666668
+    },
+    {
+      "id": "WENDO",
+      "kind": "INTERSECTION",
+      "xNm": -52.740207,
+      "yNm": 62.629833,
+      "latDeg": 33.855675,
+      "lonDeg": -86.27535277777778
+    },
+    {
+      "id": "WEONE",
+      "kind": "INTERSECTION",
+      "xNm": 5.407765,
+      "yNm": 42.830667,
+      "latDeg": 33.52568888888889,
+      "lonDeg": -85.12224722222221
+    },
+    {
+      "id": "WESUV",
+      "kind": "INTERSECTION",
+      "xNm": 8.080831,
+      "yNm": -29.953833,
+      "latDeg": 32.31261388888888,
+      "lonDeg": -85.06923888888889
+    },
+    {
+      "id": "WETUM",
+      "kind": "INTERSECTION",
+      "xNm": -44.528966,
+      "yNm": -16.099333,
+      "latDeg": 32.54352222222222,
+      "lonDeg": -86.11251944444444
+    },
+    {
+      "id": "WETWO",
+      "kind": "INTERSECTION",
+      "xNm": 5.326241,
+      "yNm": 55.008,
+      "latDeg": 33.72864444444445,
+      "lonDeg": -85.12386388888888
+    },
+    {
+      "id": "WILMS",
+      "kind": "INTERSECTION",
+      "xNm": 44.747204,
+      "yNm": -27.845333,
+      "latDeg": 32.34775555555556,
+      "lonDeg": -84.342125
+    },
+    {
+      "id": "WIPPS",
+      "kind": "INTERSECTION",
+      "xNm": 46.097114,
+      "yNm": -50.470167,
+      "latDeg": 31.970675,
+      "lonDeg": -84.31535555555556
+    },
+    {
+      "id": "WIVAR",
+      "kind": "INTERSECTION",
+      "xNm": 20.662296,
+      "yNm": 69.750333,
+      "latDeg": 33.97435,
+      "lonDeg": -84.81974166666666
+    },
+    {
+      "id": "WIVPI",
+      "kind": "INTERSECTION",
+      "xNm": -61.216612,
+      "yNm": -28.787,
+      "latDeg": 32.332061111111116,
+      "lonDeg": -86.44344444444445
+    },
+    {
+      "id": "WODUM",
+      "kind": "INTERSECTION",
+      "xNm": -57.90312,
+      "yNm": -24.845167,
+      "latDeg": 32.397758333333336,
+      "lonDeg": -86.3777361111111
+    },
+    {
+      "id": "WOTGO",
+      "kind": "INTERSECTION",
+      "xNm": -60.570583,
+      "yNm": -20.4625,
+      "latDeg": 32.47080277777778,
+      "lonDeg": -86.43063333333333
+    },
+    {
+      "id": "WRGNZ",
+      "kind": "INTERSECTION",
+      "xNm": 78.595252,
+      "yNm": 34.021667,
+      "latDeg": 33.37887222222222,
+      "lonDeg": -83.6709
+    },
+    {
+      "id": "WUBRA",
+      "kind": "INTERSECTION",
+      "xNm": 36.759383,
+      "yNm": 65.975667,
+      "latDeg": 33.91143888888889,
+      "lonDeg": -84.50052777777778
+    },
+    {
+      "id": "WULVA",
+      "kind": "INTERSECTION",
+      "xNm": -64.047543,
+      "yNm": -14.762167,
+      "latDeg": 32.56580833333333,
+      "lonDeg": -86.49958333333333
+    },
+    {
+      "id": "WURDO",
+      "kind": "INTERSECTION",
+      "xNm": -59.528979,
+      "yNm": -30.566667,
+      "latDeg": 32.3024,
+      "lonDeg": -86.40997777777778
+    },
+    {
+      "id": "WUVRO",
+      "kind": "INTERSECTION",
+      "xNm": -17.153538,
+      "yNm": -79.11,
+      "latDeg": 31.493344444444446,
+      "lonDeg": -85.56965
+    },
+    {
+      "id": "YARBE",
+      "kind": "INTERSECTION",
+      "xNm": -21.895523,
+      "yNm": -5.964,
+      "latDeg": 32.71244444444445,
+      "lonDeg": -85.66368611111112
+    },
+    {
+      "id": "YATES",
+      "kind": "INTERSECTION",
+      "xNm": 52.562731,
+      "yNm": 6.447333,
+      "latDeg": 32.9193,
+      "lonDeg": -84.1871388888889
+    },
+    {
+      "id": "YAVUL",
+      "kind": "INTERSECTION",
+      "xNm": -4.107302,
+      "yNm": 80.915833,
+      "latDeg": 34.160441666666664,
+      "lonDeg": -85.3109361111111
+    },
+    {
+      "id": "YELLL",
+      "kind": "INTERSECTION",
+      "xNm": 75.11619,
+      "yNm": -0.911667,
+      "latDeg": 32.79665,
+      "lonDeg": -83.73989166666667
+    },
+    {
+      "id": "YEVUL",
+      "kind": "INTERSECTION",
+      "xNm": -17.353146,
+      "yNm": -83.537333,
+      "latDeg": 31.419555555555558,
+      "lonDeg": -85.57360833333333
+    },
+    {
+      "id": "YIBYI",
+      "kind": "INTERSECTION",
+      "xNm": -52.974274,
+      "yNm": -64.535667,
+      "latDeg": 31.736250000000002,
+      "lonDeg": -86.27999444444444
+    },
+    {
+      "id": "ZAPUN",
+      "kind": "INTERSECTION",
+      "xNm": 35.16322,
+      "yNm": 66.436667,
+      "latDeg": 33.91912222222222,
+      "lonDeg": -84.53218055555556
+    },
+    {
+      "id": "ZESTI",
+      "kind": "INTERSECTION",
+      "xNm": 85.933541,
+      "yNm": -14.9655,
+      "latDeg": 32.562419444444444,
+      "lonDeg": -83.52537777777778
+    },
+    {
+      "id": "ZIBED",
+      "kind": "INTERSECTION",
+      "xNm": 35.955208,
+      "yNm": 69.591833,
+      "latDeg": 33.97170833333333,
+      "lonDeg": -84.516475
+    },
+    {
+      "id": "ZIGAG",
+      "kind": "INTERSECTION",
+      "xNm": -32.570417,
+      "yNm": 40.643333,
+      "latDeg": 33.48923333333333,
+      "lonDeg": -85.87537499999999
+    },
+    {
+      "id": "ZINTU",
+      "kind": "INTERSECTION",
+      "xNm": 4.471919,
+      "yNm": 34.952333,
+      "latDeg": 33.39438333333333,
+      "lonDeg": -85.14080555555556
+    },
+    {
+      "id": "ZODMO",
+      "kind": "INTERSECTION",
+      "xNm": 42.657834,
+      "yNm": 64.1525,
+      "latDeg": 33.881052777777775,
+      "lonDeg": -84.38355833333334
+    },
+    {
+      "id": "ZOREL",
+      "kind": "INTERSECTION",
+      "xNm": -48.380909,
+      "yNm": -22.183667,
+      "latDeg": 32.442116666666664,
+      "lonDeg": -86.18890555555556
+    },
+    {
+      "id": "ZOSIR",
+      "kind": "INTERSECTION",
+      "xNm": -53.685859,
+      "yNm": -30.622333,
+      "latDeg": 32.301472222222216,
+      "lonDeg": -86.29410555555556
+    },
+    {
+      "id": "ZUTAG",
+      "kind": "INTERSECTION",
+      "xNm": -9.868758,
+      "yNm": -81.618167,
+      "latDeg": 31.451541666666667,
+      "lonDeg": -85.4251888888889
+    },
+    {
+      "id": "AJDUX",
+      "kind": "INTERSECTION",
+      "xNm": 9.70599,
+      "yNm": 7.488167,
+      "latDeg": 32.93664722222222,
+      "lonDeg": -85.03701111111111
+    },
+    {
+      "id": "DIDEE",
+      "kind": "INTERSECTION",
+      "xNm": -9.720138,
+      "yNm": -7.538333,
+      "latDeg": 32.68620555555555,
+      "lonDeg": -85.42224166666666
+    },
+    {
+      "id": "TUDCI",
+      "kind": "INTERSECTION",
+      "xNm": -1.958119,
+      "yNm": -1.515167,
+      "latDeg": 32.786591666666666,
+      "lonDeg": -85.26831666666666
+    },
+    {
+      "id": "URIWE",
+      "kind": "INTERSECTION",
+      "xNm": -4.43718,
+      "yNm": -3.435833,
+      "latDeg": 32.754580555555556,
+      "lonDeg": -85.31747777777777
+    },
+    {
+      "id": "YODBO",
+      "kind": "INTERSECTION",
+      "xNm": 4.383951,
+      "yNm": 3.3865,
+      "latDeg": 32.86828611111111,
+      "lonDeg": -85.14255
+    },
+    {
+      "id": "RW06",
+      "kind": "THRESHOLD",
+      "xNm": -0.35117,
+      "yNm": -0.271667,
+      "latDeg": 32.807316666666665,
+      "lonDeg": -85.23645
+    },
+    {
+      "id": "RW24",
+      "kind": "THRESHOLD",
+      "xNm": 0.35117,
+      "yNm": 0.2715,
+      "latDeg": 32.81636944444444,
+      "lonDeg": -85.22252222222222
+    }
+  ]
+}

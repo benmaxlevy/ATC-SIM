@@ -153,6 +153,8 @@ test("F9 accepts delta-prefixed scratchpad 1 and plus-prefixed scratchpad 2", ()
       creationMode: "vfr",
       acid: "N123AB",
       flightRules: "VFR",
+      departureAirport: "KDEM",
+      airportId: "RW27",
       fixes: ["KDEM*RW27"],
       scratchpads: ["WEST", "S21"],
       beacon: { kind: "pool", pool: "vfr" },
@@ -196,4 +198,66 @@ test("F9 parser rejects invalid route and preserves Ctrl+F9 routing", () => {
   expect(handleScopeKeyDown(event, view, "scope")).toBe(true);
   expect(view.dcbSpinner.cell).toBe("RR");
   expect(view.preview.creationMode).toBeUndefined();
+});
+
+test("F9 flight plan creation populates departureAirport, airportId, and route", () => {
+  // Two-element KLZU*KPIM
+  const twoElement = parseVfrFlightPlanCommand("N123 KLZU*KPIM C172 050");
+  expect(twoElement).toMatchObject({
+    kind: "action",
+    action: {
+      departureAirport: "KLZU",
+      airportId: "KPIM",
+      fixes: ["KLZU*KPIM"],
+    },
+  });
+  if (twoElement.kind === "action" && twoElement.action.type === "createFlightPlan") {
+    expect(twoElement.action.route).toBeUndefined();
+  }
+
+  // Multi-element KLZU*AJAAY*PDK*KPIM
+  const multiElement = parseVfrFlightPlanCommand("N123 KLZU*AJAAY*PDK*KPIM C172 050");
+  expect(multiElement).toMatchObject({
+    kind: "action",
+    action: {
+      departureAirport: "KLZU",
+      airportId: "KPIM",
+      route: "AJAAY PDK",
+      fixes: ["KLZU*AJAAY*PDK*KPIM"],
+    },
+  });
+
+  // Omitted departure *KPIM
+  const omittedDeparture = parseVfrFlightPlanCommand("N123 *KPIM C172 050");
+  expect(omittedDeparture).toMatchObject({
+    kind: "action",
+    action: {
+      airportId: "KPIM",
+      fixes: ["*KPIM"],
+    },
+  });
+  if (omittedDeparture.kind === "action" && omittedDeparture.action.type === "createFlightPlan") {
+    expect(omittedDeparture.action.departureAirport).toBeUndefined();
+    expect(omittedDeparture.action.route).toBeUndefined();
+  }
+
+  // End-to-end scope key entry creating and modifying VFR plan
+  const world = createWorld({ beaconPools: vfrPools });
+  const view = createScopeView();
+  typeVfr(view, world, "N123 KLZU*AJAAY*PDK*KPIM C172 050");
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "N123",
+    departureAirport: "KLZU",
+    airportId: "KPIM",
+    route: "AJAAY PDK",
+  });
+
+  // Modification of existing VFR plan updates departureAirport, airportId, route
+  typeVfr(view, world, "N123 KMCN*MCN*KATL C172 060");
+  expect(world.flightPlans[0]).toMatchObject({
+    acid: "N123",
+    departureAirport: "KMCN",
+    airportId: "KATL",
+    route: "MCN",
+  });
 });

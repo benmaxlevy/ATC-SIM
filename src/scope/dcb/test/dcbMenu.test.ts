@@ -94,8 +94,10 @@ test("AC3 — spinner arm → step(+1/−1) → commit; Esc while armed disarms 
   expect(handleDcbEscape(h)).toBe(false);
 });
 
-test("RANGE spinner steps the same 8 presets as stepRange", () => {
-  expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
+test("RANGE spinner steps the same 17 presets as stepRange", () => {
+  expect(RANGE_PRESETS_NM).toEqual([
+    5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 512,
+  ]);
   const view = createScopeView();
   armDcbSpinner(view, "RANGE");
   expect(view.camera.rangeNm).toBe(20);

@@ -12,6 +12,7 @@
 import { matchingRunways } from "./runwayIdentity.ts";
 import type {
   CifpRecordIdentity,
+  NormalizedAirspace,
   NormalizedAirport,
   NormalizedApproach,
   NormalizedCifpSource,
@@ -68,6 +69,7 @@ export interface CifpRadiusSeed {
   stars: NormalizedStar[];
   sids: NormalizedSid[];
   approaches: NormalizedApproach[];
+  airspaces: NormalizedAirspace[];
 }
 
 export function greatCircleDistanceNm(from: SourceLatLon, to: SourceLatLon): number {
@@ -212,6 +214,7 @@ export function selectByRadius(
         ),
       ),
     ),
+    airspaces: selectAirspacesByRadius(source.airspaces ?? [], origin, radiusNm),
   };
 }
 
@@ -220,7 +223,7 @@ export function serializeRadiusSeed(seed: CifpRadiusSeed): string {
   return `${JSON.stringify(seed, null, 2)}\n`;
 }
 
-function wrapLonDeltaDeg(dLon: number): number {
+export function wrapLonDeltaDeg(dLon: number): number {
   let delta = dLon;
   while (delta > 180) {
     delta -= 360;
@@ -229,6 +232,277 @@ function wrapLonDeltaDeg(dLon: number): number {
     delta += 360;
   }
   return delta;
+}
+
+export function initialBearingDeg(from: SourceLatLon, to: SourceLatLon): number {
+  assertFiniteLatLon(from, "from");
+  assertFiniteLatLon(to, "to");
+  const lat1 = from.latDeg * DEG2RAD;
+  const lat2 = to.latDeg * DEG2RAD;
+  const dLon = wrapLonDeltaDeg(to.lonDeg - from.lonDeg) * DEG2RAD;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const rad = Math.atan2(y, x);
+  return ((rad * 180) / Math.PI + 360) % 360;
+}
+
+interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+function toUnitVec3(p: SourceLatLon): Vec3 {
+  const lat = p.latDeg * DEG2RAD;
+  const lon = p.lonDeg * DEG2RAD;
+  return {
+    x: Math.cos(lat) * Math.cos(lon),
+    y: Math.cos(lat) * Math.sin(lon),
+    z: Math.sin(lat),
+  };
+}
+
+function dotVec3(u: Vec3, v: Vec3): number {
+  return u.x * v.x + u.y * v.y + u.z * v.z;
+}
+
+function crossVec3(u: Vec3, v: Vec3): Vec3 {
+  return {
+    x: u.y * v.z - u.z * v.y,
+    y: u.z * v.x - u.x * v.z,
+    z: u.x * v.y - u.y * v.x,
+  };
+}
+
+function lengthVec3(v: Vec3): number {
+  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+export function minDistanceToSegmentNm(
+  point: SourceLatLon,
+  a: SourceLatLon,
+  b: SourceLatLon,
+): number {
+  assertFiniteLatLon(point, "point");
+  assertFiniteLatLon(a, "a");
+  assertFiniteLatLon(b, "b");
+
+  const vA = toUnitVec3(a);
+  const vB = toUnitVec3(b);
+  const vC = toUnitVec3(point);
+
+  const nRaw = crossVec3(vA, vB);
+  const nLen = lengthVec3(nRaw);
+  if (nLen < 1e-12) {
+    return greatCircleDistanceNm(point, a);
+  }
+  const n: Vec3 = { x: nRaw.x / nLen, y: nRaw.y / nLen, z: nRaw.z / nLen };
+
+  const cDotN = dotVec3(vC, n);
+  const proj: Vec3 = {
+    x: vC.x - cDotN * n.x,
+    y: vC.y - cDotN * n.y,
+    z: vC.z - cDotN * n.z,
+  };
+  const projLen = lengthVec3(proj);
+  if (projLen < 1e-12) {
+    return Math.min(greatCircleDistanceNm(point, a), greatCircleDistanceNm(point, b));
+  }
+  const p: Vec3 = { x: proj.x / projLen, y: proj.y / projLen, z: proj.z / projLen };
+
+  const inArc =
+    dotVec3(crossVec3(vA, p), n) >= -1e-9 &&
+    dotVec3(crossVec3(p, vB), n) >= -1e-9 &&
+    dotVec3(vA, p) > 0 &&
+    dotVec3(vB, p) > 0;
+
+  if (inArc) {
+    const sinDist = Math.min(1, Math.max(-1, Math.abs(cDotN)));
+    return Math.asin(sinDist) * EARTH_RADIUS_NM;
+  }
+
+  return Math.min(greatCircleDistanceNm(point, a), greatCircleDistanceNm(point, b));
+}
+
+function isBearingInArc(bearing: number, start: number, end: number, clockwise: boolean): boolean {
+  if (clockwise) {
+    let arcSpan = (end - start + 360) % 360;
+    if (arcSpan === 0) arcSpan = 360;
+    const targetDelta = (bearing - start + 360) % 360;
+    return targetDelta >= 0 && targetDelta <= arcSpan;
+  } else {
+    let arcSpan = (start - end + 360) % 360;
+    if (arcSpan === 0) arcSpan = 360;
+    const targetDelta = (start - bearing + 360) % 360;
+    return targetDelta >= 0 && targetDelta <= arcSpan;
+  }
+}
+
+function arcSegmentIntersectsRadius(
+  from: SourceLatLon,
+  to: SourceLatLon,
+  center: SourceLatLon,
+  radiusNm: number,
+  arcOrigin: SourceLatLon,
+  arcDistanceNm: number | undefined,
+  clockwise: boolean,
+): boolean {
+  if (pointInRadius(center, from, radiusNm) || pointInRadius(center, to, radiusNm)) {
+    return true;
+  }
+  const rArc = arcDistanceNm ?? greatCircleDistanceNm(arcOrigin, to);
+  const dCO = greatCircleDistanceNm(center, arcOrigin);
+  if (Math.abs(dCO - rArc) > radiusNm) {
+    return false;
+  }
+  const bearingToCenter = initialBearingDeg(arcOrigin, center);
+  const bearingStart = initialBearingDeg(arcOrigin, from);
+  const bearingEnd = initialBearingDeg(arcOrigin, to);
+
+  return isBearingInArc(bearingToCenter, bearingStart, bearingEnd, clockwise);
+}
+
+function pointInPolygon(point: SourceLatLon, vertices: readonly SourceLatLon[]): boolean {
+  if (vertices.length < 3) return false;
+  let inside = false;
+  const pLat = point.latDeg;
+  const pLon = point.lonDeg;
+
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const v1 = vertices[j]!;
+    const v2 = vertices[i]!;
+
+    const lat1 = v1.latDeg;
+    const lat2 = v2.latDeg;
+    const lon1 = v1.lonDeg;
+    const lon2 = v2.lonDeg;
+
+    const dLon1 = wrapLonDeltaDeg(lon1 - pLon);
+    const dLon2 = wrapLonDeltaDeg(lon2 - pLon);
+
+    const crossesLat = lat1 > pLat !== lat2 > pLat;
+    if (crossesLat) {
+      const lonIntersect = dLon1 + ((pLat - lat1) * (dLon2 - dLon1)) / (lat2 - lat1);
+      if (lonIntersect > 0) {
+        inside = !inside;
+      }
+    }
+  }
+  return inside;
+}
+
+export function airspaceIntersectsRadius(
+  airspace: NormalizedAirspace,
+  center: SourceLatLon,
+  radiusNm: number,
+): boolean {
+  if (airspace.segments.length === 0) {
+    return false;
+  }
+  if (airspace.segments.some((s) => s.boundaryViaType === "UNSUPPORTED")) {
+    return false;
+  }
+
+  // 1. Any vertex inside radius
+  for (const seg of airspace.segments) {
+    if (pointInRadius(center, seg.position, radiusNm)) {
+      return true;
+    }
+  }
+
+  // 2. Full CIRCLE segments
+  for (const seg of airspace.segments) {
+    if (seg.boundaryViaType === "CIRCLE") {
+      const circleCenter = seg.arcOrigin ?? seg.position;
+      const circleRadius = seg.arcDistanceNm ?? 0;
+      const dist = greatCircleDistanceNm(center, circleCenter);
+      if (dist <= radiusNm + circleRadius) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Segment boundaries (lines and arcs)
+  const segments = airspace.segments;
+  const polyVertices: SourceLatLon[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!;
+    if (seg.boundaryViaType !== "CIRCLE") {
+      polyVertices.push(seg.position);
+    }
+
+    const prevSeg = i > 0 ? segments[i - 1]! : undefined;
+    if (prevSeg !== undefined) {
+      if (
+        seg.boundaryViaType === "CLOCKWISE_ARC" ||
+        seg.boundaryViaType === "COUNTER_CLOCKWISE_ARC"
+      ) {
+        if (seg.arcOrigin !== undefined) {
+          const clockwise = seg.boundaryViaType === "CLOCKWISE_ARC";
+          if (
+            arcSegmentIntersectsRadius(
+              prevSeg.position,
+              seg.position,
+              center,
+              radiusNm,
+              seg.arcOrigin,
+              seg.arcDistanceNm,
+              clockwise,
+            )
+          ) {
+            return true;
+          }
+        }
+      } else {
+        if (minDistanceToSegmentNm(center, prevSeg.position, seg.position) <= radiusNm) {
+          return true;
+        }
+      }
+    }
+  }
+
+  // Check closing edge from last to first vertex if polygon has >= 3 vertices
+  if (polyVertices.length >= 3) {
+    const lastPos = polyVertices[polyVertices.length - 1]!;
+    const firstPos = polyVertices[0]!;
+    if (minDistanceToSegmentNm(center, lastPos, firstPos) <= radiusNm) {
+      return true;
+    }
+
+    // 4. Point-in-polygon: is the search center inside the airspace?
+    if (pointInPolygon(center, polyVertices)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function selectAirspacesByRadius(
+  airspaces: readonly NormalizedAirspace[],
+  center: SourceLatLon,
+  radiusNm: number,
+): NormalizedAirspace[] {
+  if (!Number.isFinite(radiusNm) || radiusNm < 0) {
+    throw new Error(`CIFP spatial index: radiusNm must be a finite number >= 0 (got ${radiusNm})`);
+  }
+  assertFiniteLatLon(center, "center");
+
+  const seenKeys = new Set<string>();
+  const selected: NormalizedAirspace[] = [];
+
+  for (const airspace of airspaces) {
+    if (seenKeys.has(airspace.identity.key)) {
+      continue;
+    }
+    if (airspaceIntersectsRadius(airspace, center, radiusNm)) {
+      seenKeys.add(airspace.identity.key);
+      selected.push(airspace);
+    }
+  }
+
+  return sortByKey(selected);
 }
 
 function assertFiniteLatLon(point: SourceLatLon, label: string): void {

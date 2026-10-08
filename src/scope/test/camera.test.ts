@@ -45,7 +45,9 @@ function roundTrip(
 
 test("AC1 — default session is 20 NM centered on the airport ref", () => {
   expect(DEFAULT_RANGE_NM).toBe(20);
-  expect(RANGE_PRESETS_NM).toEqual([5, 10, 15, 20, 30, 40, 50, 60]);
+  expect(RANGE_PRESETS_NM).toEqual([
+    5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 512,
+  ]);
   expect(DEFAULT_SCOPE_CAMERA).toEqual({
     rangeNm: 20,
     centerEastNm: 0,
@@ -68,8 +70,8 @@ test("north is up: +north maps toward the top midpoint", () => {
   expect(Math.abs(p.y - 0)).toBeLessThanOrEqual(2);
 });
 
-test("AC8 — nmToScreen ↔ screenToNm round-trip at center, +5 E, +5 N, range 5 and 60", () => {
-  for (const rangeNm of [5, 60] as const) {
+test("AC8 — nmToScreen ↔ screenToNm round-trip at center, +5 E, +5 N, range 5 and 512", () => {
+  for (const rangeNm of [5, 512] as const) {
     const camera = cam(rangeNm);
     roundTrip(0, 0, camera);
     roundTrip(5, 0, camera);
@@ -113,29 +115,29 @@ test("stepRange ±1 matches PageUp/PageDown presets and does not wrap", () => {
   expect(walked).toEqual([20, 15, 10, 5]);
   stepRange(camera, -1);
   expect(camera.rangeNm).toBe(5);
-  while (camera.rangeNm < 60) {
+  while (camera.rangeNm < 512) {
     stepRange(camera, 1);
   }
-  expect(camera.rangeNm).toBe(60);
+  expect(camera.rangeNm).toBe(512);
   stepRange(camera, 1);
-  expect(camera.rangeNm).toBe(60);
+  expect(camera.rangeNm).toBe(512);
   expect(camera.centerEastNm).toBe(2);
   expect(camera.centerNorthNm).toBe(-1);
-  expect(RANGE_PRESETS_NM).toHaveLength(8);
+  expect(RANGE_PRESETS_NM).toHaveLength(17);
 });
 
-test("AC3 — range-out from 20 stops at 60; further steps are no-ops; center unchanged", () => {
+test("AC3 — range-out from 20 stops at 512; further steps are no-ops; center unchanged", () => {
   const camera = cam(20);
   camera.centerEastNm = 1.5;
   camera.centerNorthNm = 2.5;
-  for (let i = 0; i < 20; i += 1) {
+  for (let i = 0; i < 30; i += 1) {
     applyRangeOut(camera);
   }
-  expect(camera.rangeNm).toBe(60);
+  expect(camera.rangeNm).toBe(512);
   expect(camera.centerEastNm).toBe(1.5);
   expect(camera.centerNorthNm).toBe(2.5);
   applyRangeOut(camera);
-  expect(camera.rangeNm).toBe(60);
+  expect(camera.rangeNm).toBe(512);
 });
 
 test("AC6 — pan screen delta matches nmToScreen of a known world point", () => {
@@ -155,10 +157,10 @@ test("AC9 — range readout is RNG n, never zoom", () => {
   expect(formatRangeReadout(20).toLowerCase()).not.toContain("zoom");
 });
 
-test("DCB RANGE readout is RANGE n and cycleRange wraps the same 8 presets", () => {
+test("DCB RANGE readout is RANGE n and cycleRange wraps the same 17 presets", () => {
   expect(formatDcbRangeReadout(20)).toBe("RANGE 20");
   expect(formatDcbRangeReadout(5)).toBe("RANGE 5");
-  expect(formatDcbRangeReadout(60)).toBe("RANGE 60");
+  expect(formatDcbRangeReadout(512)).toBe("RANGE 512");
   expect(formatDcbRangeReadout(20).toLowerCase()).not.toContain("zoom");
 
   const camera = cam(20);
@@ -169,7 +171,9 @@ test("DCB RANGE readout is RANGE n and cycleRange wraps the same 8 presets", () 
     cycleRange(camera);
     walked.push(camera.rangeNm);
   }
-  expect(walked).toEqual([20, 30, 40, 50, 60, 5, 10, 15, 20]);
+  expect(walked).toEqual([
+    20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 512, 5, 10, 15, 20,
+  ]);
   expect(camera.centerEastNm).toBe(3);
   expect(camera.centerNorthNm).toBe(-2);
 });

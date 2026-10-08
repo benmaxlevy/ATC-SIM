@@ -1,0 +1,160 @@
+{
+  "airportId": "6A2",
+  "stars": [
+    {
+      "id": "BUKHD3",
+      "name": "BUKHD3",
+      "transitions": [
+        {
+          "id": "RIZZZ",
+          "name": "RIZZZ",
+          "legs": [
+            {
+              "fixId": "RIZZZ"
+            },
+            {
+              "fixId": "MDTWN"
+            },
+            {
+              "fixId": "HLNDS"
+            }
+          ]
+        },
+        {
+          "id": "WUDYA",
+          "name": "WUDYA",
+          "legs": [
+            {
+              "fixId": "WUDYA"
+            },
+            {
+              "fixId": "HAVVE"
+            },
+            {
+              "fixId": "HLNDS"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "HLNDS"
+        },
+        {
+          "fixId": "BUKHD"
+        },
+        {
+          "fixId": "DRINC"
+        }
+      ],
+      "termination": "VECTORS"
+    },
+    {
+      "id": "DEHAN3",
+      "name": "DEHAN3",
+      "transitions": [
+        {
+          "id": "APPLS",
+          "name": "APPLS",
+          "legs": [
+            {
+              "fixId": "APPLS"
+            },
+            {
+              "fixId": "HIGGI"
+            },
+            {
+              "fixId": "HELNN"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "MILBY",
+          "name": "MILBY",
+          "legs": [
+            {
+              "fixId": "MILBY"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "SCNRY",
+          "name": "SCNRY",
+          "legs": [
+            {
+              "fixId": "SCNRY"
+            },
+            {
+              "fixId": "TRALZ"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        },
+        {
+          "id": "VIEWS",
+          "name": "VIEWS",
+          "legs": [
+            {
+              "fixId": "VIEWS"
+            },
+            {
+              "fixId": "TARAA"
+            },
+            {
+              "fixId": "AWSON"
+            }
+          ]
+        }
+      ],
+      "common": [
+        {
+          "fixId": "AWSON"
+        },
+        {
+          "fixId": "DEHAN"
+        },
+        {
+          "fixId": "TFALS"
+        },
+        {
+          "fixId": "WTWTH"
+        }
+      ],
+      "termination": "VECTORS"
+    }
+  ],
+  "approaches": [
+    {
+      "id": "R14",
+      "type": "RNAV",
+      "runway": "14",
+      "name": "RNAV RWY 14",
+      "thresholdFixId": "RW14",
+      "courseDeg": 140.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1320
+    },
+    {
+      "id": "R32",
+      "type": "RNAV",
+      "runway": "32",
+      "name": "RNAV RWY 32",
+      "thresholdFixId": "RW32",
+      "courseDeg": 321,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1500
+    }
+  ]
+}

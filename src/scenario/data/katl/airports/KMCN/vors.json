@@ -1,0 +1,93 @@
+{
+  "airportId": "KMCN",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 16.383707,
+      "yNm": 75.285667,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "DBN",
+      "kind": "VORDME",
+      "name": "DUBLIN",
+      "xNm": 41.364137,
+      "yNm": -7.762333,
+      "latDeg": 32.56346111111111,
+      "lonDeg": -82.83004444444444,
+      "freqMhz": 113.1,
+      "class": "T"
+    },
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": -74.795697,
+      "yNm": -44.555,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -78.620249,
+      "yNm": 21.377167,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": -67.859548,
+      "yNm": -21.632333,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "PZD",
+      "kind": "VORDME",
+      "name": "PECAN",
+      "xNm": -32.512416,
+      "yNm": -62.257667,
+      "latDeg": 31.655205555555554,
+      "lonDeg": -84.2931,
+      "freqMhz": 116.1,
+      "class": "H"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": 7.673511,
+      "yNm": -28.7635,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 2.961374,
+      "yNm": -3.11,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

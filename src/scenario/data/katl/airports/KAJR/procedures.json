@@ -1,0 +1,30 @@
+{
+  "airportId": "KAJR",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R06",
+      "type": "RNAV",
+      "runway": "06",
+      "name": "RNAV RWY 06",
+      "thresholdFixId": "RW06",
+      "courseDeg": 62.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 2000
+    },
+    {
+      "id": "R24",
+      "type": "RNAV",
+      "runway": "24",
+      "name": "RNAV RWY 24",
+      "thresholdFixId": "RW24",
+      "courseDeg": 246.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1900
+    }
+  ]
+}

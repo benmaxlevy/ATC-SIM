@@ -14,6 +14,7 @@
 import {
   flightPlanForAircraft,
   handoffFor,
+  isFlightPlanOperational,
   type Aircraft,
   type TrackHandoff,
   type World,
@@ -132,6 +133,7 @@ export interface DatablockRuntimeBuildOptions {
     Pick<TrackDisplay, "ownership">;
   mode?: DatablockMode;
   modeCVisible?: boolean;
+  beaconVisible?: boolean;
   beaconatorActive?: boolean;
   localTcp?: string;
   /** Existing upstream display decisions for supported Fields 0–8. */
@@ -214,8 +216,17 @@ export function flightPlanForDatablock(
   const correlated = flightPlanForAircraft(world, aircraft.id);
   if (correlated) return correlated;
 
+  const reportedSquawk = (track?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk)
+    ?.trim()
+    .toUpperCase();
+  if (reportedSquawk === "1200") {
+    return undefined;
+  }
+
   const retained = track?.derivedPlanId
-    ? world.flightPlans.find((plan) => plan.id === track.derivedPlanId && plan.status !== "deleted")
+    ? world.flightPlans.find(
+        (plan) => plan.id === track.derivedPlanId && isFlightPlanOperational(plan),
+      )
     : undefined;
   if (retained) return retained;
 
@@ -223,7 +234,7 @@ export function flightPlanForDatablock(
   if (!assignedSquawk) return undefined;
   const candidates = world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
+      isFlightPlanOperational(plan) && plan.assignedBeacon?.trim().toUpperCase() === assignedSquawk,
   );
   return candidates.length === 1 ? candidates[0] : undefined;
 }
@@ -282,7 +293,7 @@ export function buildDatablockRuntimeState(
     sp2: scratchpads.sp2,
     ...handoffOptions,
     queried,
-    beaconVisible: true,
+    beaconVisible: options.beaconVisible ?? fieldInputs.beaconVisible ?? false,
     field0Indicators,
     simTimeMs,
   };
@@ -342,9 +353,15 @@ function datablockSourceFromPlan(
     squawk: reportedSquawk,
     assignedSquawk,
     reportedSquawk,
-    aircraftType: plan?.aircraftType ?? aircraft.aircraftType,
+    aircraftType: plan ? plan.aircraftType : aircraft.aircraftType,
     requestedAltitudeFt: plan?.requestedAltitudeFt,
-    flightRules: plan?.flightRules ?? aircraft.flightRules,
+    flightRules: plan
+      ? (plan.flightRules ??
+        (plan.flightType === "VFR" ? "VFR" : plan.flightType === "IFR" ? "IFR" : plan.flightType) ??
+        "IFR")
+      : aircraft.activeClearance || aircraft.flightRules === "IFR"
+        ? (aircraft.flightRules ?? "IFR")
+        : aircraft.flightRules,
     intent: {
       ...aircraftIntent,
       ...(plan?.assignedAltitudeFt === undefined
@@ -407,6 +424,11 @@ export interface FullDatablockOpts {
   pointoutRd?: boolean;
   pointoutAcceptCount?: number;
   pointoutInhibited?: boolean;
+  /**
+   * SPI/IDENT active: FDB Field 5 shows ground-speed tens + "ID",
+   * replacing the flight-rules / category suffix (Fig. 2-20 Field 5).
+   */
+  identActive?: boolean;
 }
 
 export interface PartialDatablockOpts {
@@ -439,7 +461,7 @@ export interface PartialDatablockOpts {
 }
 
 export interface LimitedDatablockOpts {
-  /** Show beacon code if present (default true). When false/inhibited, displays Mode C only. */
+  /** Show beacon code if present (default false per STARS Fig. 6-9). When false/inhibited, displays Mode C only. */
   beaconVisible?: boolean;
   /** When true (queried state), displays Mode C altitude + ground speed. */
   queried?: boolean;
@@ -447,6 +469,13 @@ export interface LimitedDatablockOpts {
   speedFormat?: "tens" | "knots";
   /** Existing Field 0 safety-alert indicators supplied by the renderer. */
   field0Indicators?: string[];
+  /**
+   * SPI/IDENT active: forces RBC (Field 1) + Mode C (Field 3) display and
+   * appends a flashing "ID" next to the RBC (Fig. 2-23).
+   */
+  identActive?: boolean;
+  /** Blink phase for the LDB "ID"; defaults to visible when identActive. */
+  identBlinkOn?: boolean;
 }
 
 export interface FullDatablock {
@@ -492,6 +521,8 @@ export interface DatablockFieldOptions {
   aircraftTypeVisible?: boolean;
   /** Include ground speed in Field 5; PDBs may suppress it. */
   groundSpeedVisible?: boolean;
+  /** SPI/IDENT active: Field 5 shows GS tens + "ID" (Fig. 2-20). */
+  identActive?: boolean;
   field0Indicators?: string[];
   tsasSequence?: string | number;
   exitGate?: string;
@@ -774,8 +805,17 @@ export function formatDatablockFields(
           isOverflight: track.isOverflight,
         });
   const duplicateBeacon = normalizeDisplayField(opts.duplicateBeaconCode, 4) || undefined;
-  const rules = normalizeFlightRulesDisplay(track.flightRules);
-  const category = formatWakeCategory(track.wakeCategory) || undefined;
+  // SPI/IDENT (Fig. 2-20 Field 5): ground-speed tens followed by "ID",
+  // replacing the flight-rules / aircraft-category suffix.
+  const gsIdent = (() => {
+    if (!opts.identActive) return undefined;
+    const base = Number.isFinite(track.speedKt)
+      ? String(Math.max(0, Math.round(track.speedKt / 10))).padStart(2, "0")
+      : "00";
+    return `${base}ID`;
+  })();
+  const rules = gs || gsIdent ? undefined : normalizeFlightRulesDisplay(track.flightRules);
+  const category = gs || gsIdent ? undefined : formatWakeCategory(track.wakeCategory) || undefined;
   const count = formatAircraftCount(opts.aircraftCount);
   const type =
     opts.aircraftTypeVisible === false ? undefined : formatAircraftType(track.aircraftType);
@@ -840,7 +880,7 @@ export function formatDatablockFields(
     field4: [normalizeDisplayField(opts.field4Indicator, 1), formatTcp(opts.tcp)]
       .filter(Boolean)
       .join(""),
-    field5: select([gs, duplicateBeacon, rules, category, count, type, requested]),
+    field5: select([gsIdent ?? gs, duplicateBeacon, rules, category, count, type, requested]),
     field6,
     field7,
     field8: pointout ?? acceptCount ?? "",
@@ -1003,18 +1043,31 @@ export function formatLimitedDatablock(
     return line0 == null ? lines : { line0, ...lines };
   };
   const modeC = formatAltitudeHundreds(track.altitudeFt);
+  const squawk = track.squawk ?? track.beaconCode;
+  // SPI/IDENT (Fig. 2-23): flashing "ID" next to the RBC, forcing both RBC
+  // (Field 1) and Mode C (Field 3) even when filters suppress them. The RBC
+  // stays steady; only the "ID" blinks.
+  if (opts.identActive) {
+    const showId = opts.identBlinkOn !== false;
+    const rbc = squawk && squawk.length > 0 ? squawk : "";
+    const line1 = showId ? (rbc ? `${rbc} ID` : "ID") : rbc || modeC;
+    const line2 = rbc ? modeC : undefined;
+    // When there is no RBC to anchor to, keep Mode C visible with the ID.
+    if (!rbc) {
+      return showId ? withLine0("ID", modeC) : withLine0(modeC);
+    }
+    return withLine0(line1, line2);
+  }
   if (opts.queried) {
     const gs =
       opts.speedFormat === "knots"
         ? formatGroundSpeedKt(track.speedKt)
         : formatGroundSpeedTens(track.speedKt);
-    const squawk = track.squawk ?? track.beaconCode;
-    return squawk && opts.beaconVisible !== false
-      ? withLine0(squawk, `${modeC} ${gs}`)
-      : withLine0(modeC, gs);
+    return squawk ? withLine0(squawk, `${modeC} ${gs}`) : withLine0(modeC, gs);
   }
-  const squawk = track.squawk ?? track.beaconCode;
-  if (opts.beaconVisible !== false && squawk && squawk.length > 0) {
+  const hasCa = (opts.field0Indicators ?? []).includes("CA");
+  const forceBeacon = Boolean(opts.beaconVisible || ldbSpc || hasCa);
+  if (forceBeacon && squawk && squawk.length > 0) {
     return withLine0(squawk, modeC);
   }
   return withLine0(modeC);
@@ -1096,6 +1149,10 @@ export interface DatablockRenderOpts {
   handoffSectorId?: string;
   suppressPdbSpeed?: boolean;
   identIndicator?: string;
+  /** SPI/IDENT active for FDB Field 5 (GS + "ID"). */
+  identActive?: boolean;
+  /** Blink phase for the LDB "ID"; defaults to visible. */
+  identBlinkOn?: boolean;
   timeSharePhase?: number;
   simTimeMs?: number;
   queried?: boolean;
@@ -1152,6 +1209,8 @@ export function linesForDatablock(
       queried: opts.queried,
       speedFormat: opts.speedFormat,
       field0Indicators: opts.field0Indicators,
+      identActive: opts.identActive,
+      identBlinkOn: opts.identBlinkOn,
     });
   }
   if (mode === "partial") {
@@ -1202,6 +1261,7 @@ export function linesForDatablock(
     pointoutRd: opts.pointoutRd,
     pointoutAcceptCount: opts.pointoutAcceptCount,
     pointoutInhibited: opts.pointoutInhibited,
+    identActive: opts.identActive,
   });
 }
 

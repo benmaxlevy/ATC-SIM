@@ -1,0 +1,102 @@
+{
+  "airportId": "KGAD",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I24",
+      "type": "ILS",
+      "runway": "24",
+      "name": "ILS RWY 24",
+      "locNavaidId": "IGAD",
+      "gsNavaidId": "IGADGS",
+      "fafFixId": "FIKOX",
+      "thresholdFixId": "RW24",
+      "courseDeg": 244,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "fafDistanceNm": 8.867795,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 244,
+        "climbToFt": 592,
+        "directFixId": "RW24"
+      }
+    },
+    {
+      "id": "L24",
+      "type": "LOC",
+      "runway": "24",
+      "name": "LOC RWY 24",
+      "locNavaidId": "IGAD",
+      "gsNavaidId": "IGADGS",
+      "fafFixId": "FIKOX",
+      "thresholdFixId": "RW24",
+      "courseDeg": 244,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "fafDistanceNm": 8.867795,
+      "gsInterceptAltFt": 3000,
+      "missed": {
+        "headingDeg": 244,
+        "climbToFt": 592,
+        "directFixId": "RW24"
+      }
+    },
+    {
+      "id": "R06",
+      "type": "RNAV",
+      "runway": "06",
+      "name": "RNAV RWY 06",
+      "locNavaidId": "IGAD",
+      "gsNavaidId": "IGADGS",
+      "thresholdFixId": "RW06",
+      "courseDeg": 63.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1300
+    },
+    {
+      "id": "R24",
+      "type": "RNAV",
+      "runway": "24",
+      "name": "RNAV RWY 24",
+      "locNavaidId": "IGAD",
+      "gsNavaidId": "IGADGS",
+      "fafFixId": "FIKOX",
+      "thresholdFixId": "RW24",
+      "courseDeg": 243.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "fafDistanceNm": 8.867795,
+      "gsInterceptAltFt": 3000
+    },
+    {
+      "id": "S06",
+      "type": "VOR",
+      "runway": "06",
+      "name": "VOR RWY 06",
+      "locNavaidId": "IGAD",
+      "gsNavaidId": "IGADGS",
+      "thresholdFixId": "RW06",
+      "courseDeg": 187.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 43,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 2000,
+      "missed": {
+        "headingDeg": 52.1,
+        "climbToFt": 609,
+        "directFixId": "RW06"
+      }
+    }
+  ]
+}

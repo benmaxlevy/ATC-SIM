@@ -1,0 +1,75 @@
+{
+  "airportId": "KJZP",
+  "ndbs": [
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": 42.931651,
+      "yNm": -31.086833,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": -34.640028,
+      "yNm": 42.784,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": -12.667975,
+      "yNm": -71.791667,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": -1.444949,
+      "yNm": -69.153167,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": -33.334159,
+      "yNm": -53.262833,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": 29.406244,
+      "yNm": -26.013333,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    },
+    {
+      "id": "VV",
+      "kind": "NDB",
+      "name": "JUNNE",
+      "xNm": 71.019382,
+      "yNm": -48.423667,
+      "latDeg": 33.646411111111114,
+      "lonDeg": -83.02176666666666,
+      "freqKhz": 353
+    }
+  ]
+}

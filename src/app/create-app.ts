@@ -1,14 +1,25 @@
-import { SessionLog, createWorld, type SessionEvent, type World } from "@core";
-import { DEFAULT_SPAWN_SEED, type Scenario } from "@scenario";
+import { SessionLog, createWorld, performanceRegistry, type SessionEvent, type World } from "@core";
 import {
-  approachesFromCatalog,
+  DEFAULT_SPAWN_SEED,
+  type RegionalFacility,
+  type Scenario,
+  type VfrRequestConfig,
+} from "@scenario";
+import {
   catalogFixEntriesFromCatalog,
   parseCommand,
   proceduresFromCatalog,
   sanitizeCatalogFixEntries,
+  type CallsignCandidate,
   type CatalogFixEntry,
 } from "@parse";
-import { handleRadioCommand, createCheckInQueue } from "@pilot";
+import {
+  approachesFromWorld,
+  createCheckInQueue,
+  createVfrRequestQueue,
+  handleRadioCommand,
+  type VfrRequestQueue,
+} from "@pilot";
 import {
   createPttCaptureController,
   createVoiceLoop,
@@ -56,6 +67,10 @@ export interface AppDeps {
   caAlertTone?: CaAlertTone;
   /** Injected in tests. Browser default plays shipped event WAVs. */
   eventSounds?: EventSounds;
+  /** Optional VFR pilot request stagger seed. Default 1. */
+  vfrRequestSeed?: number;
+  /** Optional VFR pilot request queue instance. */
+  vfrRequestQueue?: VfrRequestQueue;
 }
 
 export interface AppHandles {
@@ -63,6 +78,7 @@ export interface AppHandles {
   setSpeechPort(port: SpeechPort): boolean;
   speechSettings: SpeechSettingsController;
   log: SessionLog;
+  vfrRequestQueue: VfrRequestQueue;
   world: World;
   ptt: PttCaptureController;
   voiceLoop: VoiceLoop;
@@ -139,10 +155,18 @@ export function createApp(deps: AppDeps): AppHandles {
   const prefs = deps.speechPrefs ?? defaultSpeechPrefs();
   let ptt: PttCaptureController | undefined = undefined;
   const voiceStatusListeners = new Set<(status: string | null) => void>();
+  let transientStatusTimer: ReturnType<typeof setTimeout> | null = null;
   // User intent starts from prefs; /health must still make Path C effective.
   let pathCActive = false;
 
   function emitVoiceStatus(status: string | null): void {
+    // Any newer status supersedes a pending transient voice error. Pilot
+    // queues use this same channel for callups, so an older timer must not
+    // clear their text while the callup is playing.
+    if (transientStatusTimer !== null) {
+      clearTimeout(transientStatusTimer);
+      transientStatusTimer = null;
+    }
     for (const listener of voiceStatusListeners) {
       listener(status);
     }
@@ -162,34 +186,92 @@ export function createApp(deps: AppDeps): AppHandles {
         return result;
       },
       getSelectedCallsign: () => selectedCallsignFromWorld(world),
-      getOnFrequencyCallsigns: () => world.aircraft.map((ac) => ac.callsign),
+      getOnFrequencyCallsigns: (): CallsignCandidate[] =>
+        world.aircraft.map((ac) => {
+          const aliases =
+            ac.spokenAliases && ac.spokenAliases.length > 0
+              ? ac.spokenAliases
+              : ac.aircraftType
+                ? performanceRegistry.getSpokenAliases(ac.aircraftType)
+                : undefined;
+          return {
+            callsign: ac.callsign,
+            ...(aliases && aliases.length > 0 ? { aliases } : {}),
+          };
+        }),
       getCatalogFixIds: () => catalogFixEntriesFromWorld(world),
       getCatalogRouteCandidates: () => catalogFixEntriesFromWorld(world),
       getSttFixIds: () => highValueFixIds(world.catalog),
       getCatalogProcedures: () => proceduresFromCatalog(world.catalog),
-      getCatalogApproaches: () => approachesFromCatalog(world.catalog),
-      getCatalogAirports: () =>
-        world.catalog?.name
-          ? [
-              {
-                icao: world.catalog.airportId,
-                name: world.catalog.name,
-                aliases: world.catalog.spokenAliases ?? [],
-              },
-            ]
-          : [],
+      getCatalogApproaches: () => approachesFromWorld(world),
+      getCatalogAirports: () => {
+        const results: Array<{ icao: string; name: string; aliases: string[] }> = [];
+        const seen = new Set<string>();
+        if (world.catalog?.name && world.catalog.airportId) {
+          seen.add(world.catalog.airportId.toUpperCase());
+          results.push({
+            icao: world.catalog.airportId,
+            name: world.catalog.name,
+            aliases: [...(world.catalog.spokenAliases ?? [])],
+          });
+        }
+        const regional = world.regional as
+          | {
+              airports?:
+                | Array<{ icao: string; name?: string }>
+                | {
+                    centerAirport?: { icao: string; name?: string };
+                    destinations?: Array<{ icao: string; name?: string }>;
+                  };
+              getEligibleDestinations?: () => Array<{ icao: string; name?: string }>;
+            }
+          | undefined;
+        if (regional) {
+          const rawAirports = regional.airports;
+          const list: Array<{ icao: string; name?: string }> = Array.isArray(rawAirports)
+            ? rawAirports
+            : rawAirports && typeof rawAirports === "object" && "destinations" in rawAirports
+              ? [rawAirports.centerAirport, ...(rawAirports.destinations ?? [])].filter(
+                  (a): a is { icao: string; name?: string } => Boolean(a),
+                )
+              : typeof regional.getEligibleDestinations === "function"
+                ? regional.getEligibleDestinations()
+                : [];
+          for (const apt of list) {
+            if (apt?.icao && !seen.has(apt.icao.toUpperCase())) {
+              seen.add(apt.icao.toUpperCase());
+              results.push({
+                icao: apt.icao,
+                name: apt.name ?? apt.icao,
+                aliases: [],
+              });
+            }
+          }
+        }
+        return results;
+      },
       getIssuedAtSimMs: () => world.simTimeMs,
       getVoiceId: deps.getVoiceId ?? ((callsign) => voiceIdForCallsign(callsign, prefs.voiceId)),
       setTransmitLocked: (locked) => {
         ptt?.setTransmitLocked(locked);
       },
       onStatus: (event) => {
+        if (transientStatusTimer !== null) {
+          clearTimeout(transientStatusTimer);
+          transientStatusTimer = null;
+        }
         if (event === null) {
           emitVoiceStatus(null);
           return;
         }
         emitVoiceStatus(formatVoiceStatus(event));
         logVoiceReject(log, world, event);
+        if (event.code !== "ptt_transmit") {
+          transientStatusTimer = setTimeout(() => {
+            emitVoiceStatus(null);
+            transientStatusTimer = null;
+          }, 3000);
+        }
       },
       onUtteranceComplete: (metrics) => {
         logVoiceLatency(log, world, metrics, speech.id);
@@ -248,6 +330,15 @@ export function createApp(deps: AppDeps): AppHandles {
 
   const checkInQueue = createCheckInQueue({ seed: deps.checkInSeed ?? 1 });
   checkInQueue.scheduleFromWorld(world);
+  const vfrRequestQueue =
+    deps.vfrRequestQueue ??
+    createVfrRequestQueue({
+      seed: deps.vfrRequestSeed ?? 1,
+      config: world.vfrRequestConfig as VfrRequestConfig | undefined,
+      regional: world.regional as RegionalFacility | undefined,
+    });
+  vfrRequestQueue.scheduleFromWorld(world);
+  world.vfrRequestQueue = vfrRequestQueue;
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
 
@@ -255,6 +346,17 @@ export function createApp(deps: AppDeps): AppHandles {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
     checkInQueue.scheduleFromWorld(world);
     checkInQueue.drain({
+      world,
+      log,
+      radio: {
+        isBusy: () => voiceLoop.busy,
+        play: (text, callsign) => voiceLoop.playReadback(text, callsign),
+      },
+      setStatus: emitVoiceStatus,
+      nowWallMs: () => Date.now(),
+    });
+    vfrRequestQueue.scheduleFromWorld(world);
+    vfrRequestQueue.drain({
       world,
       log,
       radio: {
@@ -282,6 +384,7 @@ export function createApp(deps: AppDeps): AppHandles {
     setSpeechPort,
     speechSettings,
     log,
+    vfrRequestQueue,
     get world() {
       return world;
     },
@@ -301,6 +404,12 @@ export function createApp(deps: AppDeps): AppHandles {
       world.sessionLog = log;
       checkInQueue.reset();
       checkInQueue.scheduleFromWorld(world);
+      vfrRequestQueue.reset({
+        config: next.vfrRequestConfig as VfrRequestConfig | undefined,
+        regional: next.regional as RegionalFacility | undefined,
+      });
+      vfrRequestQueue.scheduleFromWorld(world);
+      world.vfrRequestQueue = vfrRequestQueue;
     },
   };
 }

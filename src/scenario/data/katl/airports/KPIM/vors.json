@@ -1,0 +1,93 @@
+{
+  "airportId": "KPIM",
+  "vors": [
+    {
+      "id": "EUF",
+      "kind": "VORDME",
+      "name": "EUFAULA",
+      "xNm": -12.503723,
+      "yNm": -53.426667,
+      "latDeg": 31.95025,
+      "lonDeg": -85.13048055555555,
+      "freqMhz": 109.2,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": -16.321929,
+      "yNm": 12.5055,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "LSF",
+      "kind": "VORDME",
+      "name": "LAWSON",
+      "xNm": -5.579086,
+      "yNm": -30.504,
+      "latDeg": 32.33229444444445,
+      "lonDeg": -84.99311666666667,
+      "freqMhz": 111.4,
+      "class": "T"
+    },
+    {
+      "id": "MGM",
+      "kind": "VORDME",
+      "name": "MONTGOMERY",
+      "xNm": -72.454744,
+      "yNm": -37.104833,
+      "latDeg": 32.22228055555556,
+      "lonDeg": -86.31972777777777,
+      "freqMhz": 112.1,
+      "class": "T"
+    },
+    {
+      "id": "PZD",
+      "kind": "VORDME",
+      "name": "PECAN",
+      "xNm": 29.709383,
+      "yNm": -71.129333,
+      "latDeg": 31.655205555555554,
+      "lonDeg": -84.2931,
+      "freqMhz": 116.1,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -11.945563,
+      "yNm": 79.312167,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": 69.828617,
+      "yNm": -37.635167,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": 65.124299,
+      "yNm": -11.981667,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

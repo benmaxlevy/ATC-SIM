@@ -13,6 +13,7 @@ import type { Instruction, ParseStage, SpeedUntil, TurnDir } from "@core";
 import {
   formatParseError,
   isCallsignToken,
+  isClearanceLimitToken,
   isFixIdToken,
   isProcedureIdToken,
   isTransitionIdToken,
@@ -29,6 +30,12 @@ import {
   type IfrClearanceRouteWindowOptions,
 } from "./ifr-clearance-route-window";
 import { cancelApproachSequenceError } from "./instruction-order";
+import { parseFacilityName } from "./contact";
+import {
+  EIGHT_POINT_CARDINALS,
+  groundAirportPhraseToCatalog,
+  groundReferenceToCatalog,
+} from "./spoken/catalog-ground";
 
 export type ParseResult =
   | {
@@ -81,6 +88,13 @@ export function parseRadioText(
   if (instructions.some((item) => item.type === "IFR_CLEARANCE") && instructions.length !== 1) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, "clearance must be the only instruction");
   }
+  if (instructions.some(isRequestControlInstruction) && instructions.length !== 1) {
+    return fail(
+      sourceText,
+      PARSE_ERROR.BAD_CLEARANCE,
+      "request instruction must be the only instruction",
+    );
+  }
   const cancellationError = cancelApproachSequenceError(instructions);
   if (cancellationError !== null) {
     return fail(sourceText, PARSE_ERROR.BAD_CLEARANCE, cancellationError);
@@ -92,6 +106,21 @@ export function parseRadioText(
     instructions: markUntilEstablished(instructions),
     sourceText,
   };
+}
+
+function isRequestControlInstruction(inst: Instruction): boolean {
+  return (
+    inst.type === "CLASS_B_CLEARANCE_AS_REQUESTED" ||
+    inst.type === "REQUEST_DETAILS" ||
+    inst.type === "STANDBY_REQUEST" ||
+    inst.type === "APPROVE_FLIGHT_FOLLOWING" ||
+    inst.type === "DECLINE_REQUEST" ||
+    inst.type === "RADAR_CONTACT" ||
+    inst.type === "TERMINATE_RADAR_SERVICE" ||
+    inst.type === "ACKNOWLEDGE_IFR_CANCELLATION" ||
+    inst.type === "CONTACT_TOWER" ||
+    inst.type === "CONTACT_CENTER"
+  );
 }
 
 function fail(sourceText: string, code: ParseErrorCode, detail?: string): ParseResult {
@@ -110,7 +139,16 @@ function isTypedInstructionStart(token: string): boolean {
     token === "X" ||
     token === "SQ" ||
     token === "MVFR" ||
-    token === "CLR"
+    token === "CLR" ||
+    token === "SAY" ||
+    token === "STAND" ||
+    token === "STANDBY" ||
+    token === "APPROVE" ||
+    token === "UNABLE" ||
+    token === "RADAR" ||
+    token === "IFR" ||
+    token === "CONTACT" ||
+    token === "VIS"
   ) {
     return true;
   }
@@ -139,41 +177,123 @@ type InstructionParse =
   | { ok: true; instruction: Instruction; nextIndex: number }
   | { ok: false; code: ParseErrorCode; detail?: string };
 
+function parseIfrAccess(
+  tokens: string[],
+  i: number,
+  routeOptions: IfrClearanceRouteWindowOptions,
+): { access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"]; nextIndex: number } | null {
+  if (tokens[i] === "ASFILED") {
+    return { access: { type: "AS_FILED" }, nextIndex: i + 1 };
+  }
+  if (tokens[i] === "AS" && tokens[i + 1] === "FILED") {
+    return { access: { type: "AS_FILED" }, nextIndex: i + 2 };
+  }
+  if (tokens[i] !== "VIA") {
+    return null;
+  }
+  let k = i + 1;
+  if (tokens[k] === "RADAR" && (tokens[k + 1] === "VECTORS" || tokens[k + 1] === "VECTOR")) {
+    k += 2;
+    let thenDirect = false;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+      thenDirect = true;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+      thenDirect = true;
+    }
+    return {
+      access: thenDirect ? { type: "RADAR_VECTORS", thenDirect: true } : { type: "RADAR_VECTORS" },
+      nextIndex: k,
+    };
+  }
+  if (
+    tokens[k] === "DIRECT" &&
+    tokens[k + 1] === "RADAR" &&
+    (tokens[k + 2] === "VECTORS" || tokens[k + 2] === "VECTOR")
+  ) {
+    k += 3;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      nextIndex: k,
+    };
+  }
+  if (
+    tokens[k] === "DIRECT" &&
+    tokens[k + 1] === "THEN" &&
+    tokens[k + 2] === "RADAR" &&
+    (tokens[k + 3] === "VECTORS" || tokens[k + 3] === "VECTOR")
+  ) {
+    k += 4;
+    if (tokens[k] === "THEN" && tokens[k + 1] === "DIRECT") {
+      k += 2;
+    } else if (tokens[k] === "DIRECT") {
+      k += 1;
+    }
+    return {
+      access: { type: "RADAR_VECTORS", thenDirect: true },
+      nextIndex: k,
+    };
+  }
+  const route = scanIfrClearanceRouteWindow(tokens, k, routeOptions);
+  if (!route) {
+    return null;
+  }
+  return {
+    access: { type: "EXPLICIT_ROUTE", segments: route.segments },
+    nextIndex: route.nextIndex,
+  };
+}
+
 function parseIfrClearance(
   tokens: string[],
   index: number,
   routeOptions: IfrClearanceRouteWindowOptions,
 ): InstructionParse {
   let i = index + 1;
-  if (tokens[i] !== "TO") {
-    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
-  }
-  i += 1;
-  const limitId = tokens[i];
-  if (!limitId || !isFixIdToken(limitId)) {
-    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
-  }
-  i += 1;
+  let limitId: string | null = null;
   let access: Extract<Instruction, { type: "IFR_CLEARANCE" }>["access"] | undefined;
-  if (tokens[i] === "ASFILED" || (tokens[i] === "AS" && tokens[i + 1] === "FILED")) {
-    access = { type: "AS_FILED" };
-    i += tokens[i] === "ASFILED" ? 1 : 2;
-  } else {
-    if (tokens[i] !== "VIA") {
-      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+
+  if (tokens[i] === "TO") {
+    i += 1;
+    limitId = tokens[i] ?? null;
+    if (!limitId || !isClearanceLimitToken(limitId)) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
     }
     i += 1;
-    if (tokens[i] === "RADAR" && tokens[i + 1] === "VECTORS") {
-      access = { type: "RADAR_VECTORS" };
-      i += 2;
-    } else {
-      const route = scanIfrClearanceRouteWindow(tokens, i, routeOptions);
-      if (!route) {
-        return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "bad access" };
-      }
-      access = { type: "EXPLICIT_ROUTE", segments: route.segments };
-      i = route.nextIndex;
+    const parsedAccess = parseIfrAccess(tokens, i, routeOptions);
+    if (!parsedAccess) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
     }
+    access = parsedAccess.access;
+    i = parsedAccess.nextIndex;
+  } else if (
+    tokens[i] === "VIA" ||
+    tokens[i] === "ASFILED" ||
+    (tokens[i] === "AS" && tokens[i + 1] === "FILED")
+  ) {
+    const parsedAccess = parseIfrAccess(tokens, i, routeOptions);
+    if (!parsedAccess) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing access" };
+    }
+    access = parsedAccess.access;
+    i = parsedAccess.nextIndex;
+    if (tokens[i] !== "TO") {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO" };
+    }
+    i += 1;
+    limitId = tokens[i] ?? null;
+    if (!limitId || !isClearanceLimitToken(limitId)) {
+      return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing limit" };
+    }
+    i += 1;
+  } else {
+    return { ok: false, code: PARSE_ERROR.BAD_CLEARANCE, detail: "missing TO or VIA" };
   }
   const optional: Pick<
     Extract<Instruction, { type: "IFR_CLEARANCE" }>,
@@ -260,6 +380,21 @@ function parseOneInstruction(
       nextIndex: index + 2,
     };
   }
+  if (token === "VIS") {
+    const rawRwy = tokens[index + 1];
+    if (rawRwy === undefined) {
+      return { ok: false, code: PARSE_ERROR.MISSING_APPROACH_ID };
+    }
+    const runwayId = rawRwy.replace(/^RW/i, "").toUpperCase();
+    if (!/^\d{1,2}[LRC]?$/.test(runwayId)) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: rawRwy };
+    }
+    return {
+      ok: true,
+      instruction: { type: "CLEARED_VISUAL", runwayId },
+      nextIndex: index + 2,
+    };
+  }
   if (token === "SQ") {
     const rawCode = tokens[index + 1];
     if (rawCode === "VFR") {
@@ -283,6 +418,262 @@ function parseOneInstruction(
       ok: true,
       instruction: { type: "MAINTAIN_VFR" },
       nextIndex: index + 1,
+    };
+  }
+  if (token === "SAY" && tokens[index + 1] === "REQUEST") {
+    return {
+      ok: true,
+      instruction: { type: "REQUEST_DETAILS" },
+      nextIndex: index + 2,
+    };
+  }
+  if (
+    token === "CLEARED" &&
+    tokens[index + 1] === "AS" &&
+    tokens[index + 2] === "REQUESTED" &&
+    tokens[index + 3] === undefined
+  ) {
+    return {
+      ok: true,
+      instruction: { type: "CLASS_B_CLEARANCE_AS_REQUESTED" },
+      nextIndex: index + 3,
+    };
+  }
+  if (token === "STAND" && tokens[index + 1] === "BY") {
+    return {
+      ok: true,
+      instruction: { type: "STANDBY_REQUEST" },
+      nextIndex: index + 2,
+    };
+  }
+  if (token === "STANDBY") {
+    return {
+      ok: true,
+      instruction: { type: "STANDBY_REQUEST" },
+      nextIndex: index + 1,
+    };
+  }
+  if (token === "APPROVE") {
+    if (tokens[index + 1] === "FLIGHT" && tokens[index + 2] === "FOLLOWING") {
+      return {
+        ok: true,
+        instruction: { type: "APPROVE_FLIGHT_FOLLOWING" },
+        nextIndex: index + 3,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "UNABLE") {
+    if (tokens[index + 1] === "FLIGHT" && tokens[index + 2] === "FOLLOWING") {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        nextIndex: index + 3,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "FLIGHT" &&
+      tokens[index + 4] === "FOLLOWING"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "FLIGHT_FOLLOWING" },
+        nextIndex: index + 5,
+      };
+    }
+    if (
+      tokens[index + 1] === "CLASS" &&
+      tokens[index + 2] === "B" &&
+      tokens[index + 3] === "CLEARANCE"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        nextIndex: index + 4,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "CLASS" &&
+      tokens[index + 4] === "B" &&
+      tokens[index + 5] === "CLEARANCE"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "CLASS_B_ACCESS" },
+        nextIndex: index + 6,
+      };
+    }
+    if (tokens[index + 1] === "IFR" && tokens[index + 2] === "PICKUP") {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        nextIndex: index + 3,
+      };
+    }
+    if (
+      tokens[index + 1] === "TO" &&
+      tokens[index + 2] === "PROVIDE" &&
+      tokens[index + 3] === "IFR" &&
+      tokens[index + 4] === "PICKUP"
+    ) {
+      return {
+        ok: true,
+        instruction: { type: "DECLINE_REQUEST", service: "IFR_PICKUP" },
+        nextIndex: index + 5,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "IFR") {
+    if (tokens[index + 1] === "CANCELLATION" && tokens[index + 2] === "RECEIVED") {
+      return {
+        ok: true,
+        instruction: { type: "ACKNOWLEDGE_IFR_CANCELLATION" },
+        nextIndex: index + 3,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "RADAR") {
+    if (tokens[index + 1] === "SERVICE" && tokens[index + 2] === "TERMINATED") {
+      return {
+        ok: true,
+        instruction: { type: "TERMINATE_RADAR_SERVICE" },
+        nextIndex: index + 3,
+      };
+    }
+    if (tokens[index + 1] === "CONTACT") {
+      const distToken = tokens[index + 2];
+      if (distToken === undefined) {
+        return { ok: true, instruction: { type: "RADAR_CONTACT" }, nextIndex: index + 2 };
+      }
+      const dist = Number(distToken);
+      if (!Number.isFinite(dist) || dist <= 0) {
+        return { ok: false, code: PARSE_ERROR.MISSING_NUMBER, detail: "distance must be positive" };
+      }
+      const milesToken = tokens[index + 3];
+      if (milesToken !== "MILES" && milesToken !== "MILE") {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: milesToken ?? "" };
+      }
+      // Optional direction (`25 MILES SOUTHEAST OF KATL`, split `SOUTH EAST`
+      // included); the stored reference is position only.
+      let refIndex = index + 4;
+      const maybeDir = tokens[refIndex]?.toLowerCase();
+      if (maybeDir === "north" || maybeDir === "south") {
+        refIndex += 1;
+        const maybeHalf = tokens[refIndex]?.toLowerCase();
+        if (maybeHalf === "east" || maybeHalf === "west") {
+          refIndex += 1;
+        }
+      } else if (maybeDir !== undefined && EIGHT_POINT_CARDINALS.has(maybeDir)) {
+        refIndex += 1;
+      }
+      const fromToken = tokens[refIndex];
+      if (fromToken !== "FROM" && fromToken !== "OF") {
+        return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: fromToken ?? "" };
+      }
+      let refEndIndex = refIndex + 1;
+      while (
+        refEndIndex < tokens.length &&
+        !isTypedInstructionStart(tokens[refEndIndex]!) &&
+        tokens[refEndIndex] !== "SQUAWK"
+      ) {
+        refEndIndex += 1;
+      }
+      const refTokens = tokens.slice(refIndex + 1, refEndIndex);
+      if (refTokens.length === 0) {
+        return { ok: false, code: PARSE_ERROR.MISSING_FIX_ID, detail: "missing reference" };
+      }
+      const rawRef = refTokens.join(" ");
+      let referenceId = rawRef;
+      let referenceKind: "FIX" | "NAVAID" | "AIRPORT" = "FIX";
+      const fixCatalog = routeOptions.fixes ?? [];
+      const hasFixCatalog = fixCatalog.length > 0;
+      let nextIndex = refEndIndex;
+      const grounded = hasFixCatalog ? groundReferenceToCatalog(rawRef, fixCatalog) : null;
+      const airportHit = groundAirportPhraseToCatalog(rawRef, routeOptions.airports ?? []);
+      if (grounded) {
+        referenceId = grounded.referenceId;
+        referenceKind = grounded.referenceKind;
+      } else if (airportHit) {
+        referenceId = airportHit.icao;
+        referenceKind = "AIRPORT";
+        nextIndex = refIndex + 1 + airportHit.length;
+      } else {
+        let subFound = false;
+        if (hasFixCatalog) {
+          for (let k = refTokens.length - 1; k >= 1; k -= 1) {
+            const subRef = refTokens.slice(0, k).join(" ");
+            const subGrounded = groundReferenceToCatalog(subRef, fixCatalog);
+            if (subGrounded) {
+              referenceId = subGrounded.referenceId;
+              referenceKind = subGrounded.referenceKind;
+              nextIndex = refIndex + 1 + k;
+              subFound = true;
+              break;
+            }
+          }
+        }
+        if (!subFound && (routeOptions.airports ?? []).length > 0) {
+          for (let k = refTokens.length - 1; k >= 1; k -= 1) {
+            const subRef = refTokens.slice(0, k).join(" ");
+            const subAirport = groundAirportPhraseToCatalog(subRef, routeOptions.airports ?? []);
+            if (subAirport) {
+              referenceId = subAirport.icao;
+              referenceKind = "AIRPORT";
+              nextIndex = refIndex + 1 + subAirport.length;
+              subFound = true;
+              break;
+            }
+          }
+        }
+        if (!subFound) {
+          if (hasFixCatalog || (routeOptions.airports ?? []).length > 0) {
+            return { ok: true, instruction: { type: "RADAR_CONTACT" }, nextIndex: refEndIndex };
+          } else {
+            const cleanRef = rawRef.trim().replace(/\s+(VOR|VORTAC|TACAN|NDB|DME)$/i, "");
+            referenceId = cleanRef.toUpperCase();
+            referenceKind =
+              rawRef.toUpperCase().includes("VOR") || referenceId.length <= 3 ? "NAVAID" : "FIX";
+          }
+        }
+      }
+      return {
+        ok: true,
+        instruction: {
+          type: "RADAR_CONTACT",
+          distanceNm: dist,
+          referenceId,
+          referenceKind,
+        },
+        nextIndex,
+      };
+    }
+    return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+  }
+  if (token === "CONTACT") {
+    const terminalIndex = tokens.findIndex(
+      (candidate, candidateIndex) =>
+        candidateIndex > index && (candidate === "TOWER" || candidate === "CENTER"),
+    );
+    if (terminalIndex < 0) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: token };
+    }
+    const facilityName = parseFacilityName(tokens.slice(index + 1, terminalIndex));
+    if (!facilityName) {
+      return { ok: false, code: PARSE_ERROR.UNKNOWN_TOKEN, detail: "facility name" };
+    }
+    return {
+      ok: true,
+      instruction: {
+        type: tokens[terminalIndex] === "TOWER" ? "CONTACT_TOWER" : "CONTACT_CENTER",
+        facilityName,
+      },
+      nextIndex: terminalIndex + 1,
     };
   }
   if (token === "DCT") {

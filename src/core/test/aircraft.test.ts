@@ -89,6 +89,24 @@ test("aircraftType is copied from spawn and does not change kinematics fields", 
   expect(withType.intent).toEqual(without.intent);
 });
 
+test("createAircraft copies spoken aliases without changing canonical callsign", () => {
+  const aliases = ["Skyhawk"] as const;
+  const ac = createAircraft(
+    sampleInit({ callsign: "n123", aircraftType: "C172", spokenAliases: aliases }),
+  );
+
+  expect(ac.callsign).toBe("N123");
+  expect(ac.spokenAliases).toEqual(["Skyhawk"]);
+  expect(ac.spokenAliases).not.toBe(aliases);
+  expect(Object.isFrozen(ac.spokenAliases)).toBe(true);
+});
+
+test("createAircraft omits empty spoken alias metadata", () => {
+  const ac = createAircraft(sampleInit({ callsign: "n123", spokenAliases: [] }));
+  expect(ac.callsign).toBe("N123");
+  expect(ac.spokenAliases).toBeUndefined();
+});
+
 test("B789 is classified as heavy", () => {
   const ac = createAircraft(sampleInit({ aircraftType: "B789" }));
   expect(ac.wakeCategory).toBe("H");

@@ -4,7 +4,7 @@
  * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — Help is `?` / the Help button,
- * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–60 (no CRC 6/8/12/16/24), `/` when
+ * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–512 (no CRC 6/8/12/16/24), `/` when
  * scope-focused buffers into the Preview Area (not leader length; Tab cycles
  * radio ↔ PPI). 1.5 s L/F
  * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
@@ -36,6 +36,10 @@ export const RADIO_CONFLICT_WARNING =
 /** Glossary terms the overlay must teach (range, datablock, leader, initiate track). */
 export const HELP_GLOSSARY_NOTE =
   "Use this reference for the trainer's active commands. Radio commands use the command line; display commands use the PPI, Preview Area, DCB, or mouse.";
+
+/** Callsign identity contract shared by the Help overlay and its tests. */
+export const HELP_CALLSIGN_ALIAS_NOTE =
+  "Callsigns: N123 H270 and Skyhawk 123 H270 are valid when Skyhawk is authored for that aircraft. The alias needs its complete registration tail and resolves to the canonical N-number. Skyhawk alone, an unknown or ambiguous alias, a short N-prefix, or an incomplete tail returns PARSE_MISS with no aircraft mutation. Five-digit N-numbers such as N12345 are supported. Pilot readback uses the preferred alias plus the complete tail; without an alias it uses the N-number.";
 
 export interface HelpCommandEntry {
   id: string;
@@ -114,7 +118,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "DAL123 CLR TO KAHN VIA DIRECT",
         input: "Radio",
         result:
-          "Issues one atomic IFR clearance; every VIA element must match a catalog FIX/NAVAID or procedure using its id, alias/name, spoken folding, or a unique one-edit match. Local parsing does not apply distance-two repairs. DIRECT is optional between elements and missing markers mean direct. If local parsing misses, trainer-only Path C may choose one unique listed candidate per supplied transcript span, including a unique distance-two retrieval candidate. Unknown, unlisted, tied, incomplete, concatenated, or airport route elements are PARSE_MISS and read back unable. It never invents route legs. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
+          "Issues one atomic IFR clearance. For an airborne ambient VFR aircraft with an open IFR pickup request, grants an atomic transition to operational IFR to an eligible regional controlled airport via RADAR VECTORS or catalog route. Every VIA element must match a catalog FIX/NAVAID or procedure using its id, alias/name, spoken folding, or a unique one-edit match. Local parsing does not apply distance-two repairs. DIRECT is optional between elements and missing markers mean direct. If local parsing misses, trainer-only Path C may choose one unique listed candidate per supplied transcript span, including a unique distance-two retrieval candidate. Unknown, unlisted, tied, incomplete, concatenated, or airport route elements are PARSE_MISS and read back unable. It never invents route legs. Tactical CLEARED/PROCEED DIRECT never resets the plan.",
       },
       {
         id: "approach",
@@ -124,12 +128,102 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         result: "Issues a supported approach clearance.",
       },
       {
+        id: "visual-approach",
+        command: "VIS <runway> / cleared visual approach runway <runway>",
+        example: "DAL123 VIS 27L",
+        input: "Radio",
+        result:
+          "Clears the aircraft for a visual approach to the designated runway at its destination airport. Guides straight-in with a 3° descent to touchdown.",
+      },
+      {
         id: "cancel-approach",
         command: "CAPP / cancel approach clearance",
         example: "DAL123 CAPP H270 A50",
         input: "Radio",
         result:
           "Cancels active approach guidance, then accepts ordinary vectors. It does not cancel IFR clearance or start the missed approach; no approach re-arm may follow in the same transmission.",
+      },
+      {
+        id: "say-request",
+        command: "say request",
+        example: "DAL123 say request",
+        input: "Radio",
+        result: "Requests flight following, Class B access, or route details from the pilot.",
+      },
+      {
+        id: "class-b-request-response",
+        command: "cleared as requested / unable class b clearance",
+        example: "N12345 cleared as requested",
+        input: "Radio",
+        result:
+          "Approves the pending VFR Class B request as filed by the pilot, or declines it. These exact commands do not add route or altitude modifiers.",
+      },
+      {
+        id: "standby-request",
+        command: "stand by",
+        example: "DAL123 stand by",
+        input: "Radio",
+        result: "Tells the pilot to standby on their radio request.",
+      },
+      {
+        id: "approve-flight-following",
+        command: "approve flight following",
+        example: "DAL123 approve flight following",
+        input: "Radio",
+        result: "Approves VFR flight following for a radar-identified aircraft.",
+      },
+      {
+        id: "decline-request",
+        command: "unable flight following",
+        example: "DAL123 unable flight following",
+        input: "Radio",
+        result: "Declines an open flight-following request.",
+      },
+      {
+        id: "decline-ifr-pickup",
+        command: "unable ifr pickup",
+        example: "DAL123 unable ifr pickup",
+        input: "Radio",
+        result: "Declines an open airborne VFR-to-IFR pickup request.",
+      },
+      {
+        id: "radar-contact",
+        command: "radar contact [<N> miles [direction] from|of <fix|navaid|airport>]",
+        example: "DAL123 radar contact 25 miles southeast of KATL",
+        input: "Radio",
+        result:
+          "Establishes radar identification; the position report is optional and the pilot answers roger.",
+      },
+      {
+        id: "terminate-radar-service",
+        command: "radar service terminated",
+        example: "DAL123 radar service terminated",
+        input: "Radio",
+        result: "Terminates radar advisory service; squawk is not automatically reset to 1200.",
+      },
+      {
+        id: "contact-tower",
+        command: "contact <facility> tower",
+        example: "DAL123 contact Atlanta tower",
+        input: "Radio",
+        result:
+          "Transfers an eligible arrival to the generic tower/landing path. No frequency is accepted; VFR remains VFR and Class B is not authorized.",
+      },
+      {
+        id: "contact-center",
+        command: "contact <facility> center",
+        example: "DAL123 contact Atlanta center",
+        input: "Radio",
+        result:
+          "Transfers an eligible outbound aircraft to the generic center handoff. Route, flight rules, beacon, and radar service remain separate.",
+      },
+      {
+        id: "acknowledge-ifr-cancellation",
+        command: "IFR cancellation received",
+        example: "DAL123 IFR cancellation received",
+        input: "Radio",
+        result:
+          "Acknowledges pilot-initiated IFR cancellation, reverting flight rules to VFR outside Class B.",
       },
       {
         id: "callsign",

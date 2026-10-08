@@ -219,3 +219,12 @@ test("T04-63: parseRadioText rejects malformed speed until constraints", () => {
   expect(errorCode("S180/-5")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
   expect(errorCode("H270/FAF")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
 });
+
+test("T04-82: parseRadioText parses VIS <rwy>", () => {
+  expectOkInstructions("VIS 27L", [{ type: "CLEARED_VISUAL", runwayId: "27L" }]);
+  expectOkInstructions("VIS 21L", [{ type: "CLEARED_VISUAL", runwayId: "21L" }]);
+  expectOkInstructions("VIS 08", [{ type: "CLEARED_VISUAL", runwayId: "08" }]);
+  expectOkInstructions("VIS RW27L", [{ type: "CLEARED_VISUAL", runwayId: "27L" }]);
+  expect(errorCode("VIS")).toBe(PARSE_ERROR.MISSING_APPROACH_ID);
+  expect(errorCode("VIS FOOBAR")).toBe(PARSE_ERROR.UNKNOWN_TOKEN);
+});

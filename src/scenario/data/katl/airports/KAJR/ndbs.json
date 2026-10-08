@@ -1,0 +1,85 @@
+{
+  "airportId": "KAJR",
+  "ndbs": [
+    {
+      "id": "AA",
+      "kind": "NDB",
+      "name": "CEDAR",
+      "xNm": 46.594254,
+      "yNm": -57.994167,
+      "latDeg": 33.53328333333333,
+      "lonDeg": -82.61436944444443,
+      "freqKhz": 341
+    },
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": -1.622707,
+      "yNm": -33.869667,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "BRA",
+      "kind": "NDB",
+      "name": "BROAD RIVER",
+      "xNm": 53.681752,
+      "yNm": 46.374,
+      "latDeg": 35.272752777777775,
+      "lonDeg": -82.47103611111112,
+      "freqKhz": 379
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": -79.151279,
+      "yNm": 40.001167,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": -45.974647,
+      "yNm": -71.936,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "IM",
+      "kind": "NDB",
+      "name": "KEANS",
+      "xNm": 47.92577,
+      "yNm": 61.980833,
+      "latDeg": 35.53286666666666,
+      "lonDeg": -82.58744166666666,
+      "freqKhz": 357
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": -15.140598,
+      "yNm": -28.796167,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    },
+    {
+      "id": "VV",
+      "kind": "NDB",
+      "name": "JUNNE",
+      "xNm": 26.449415,
+      "yNm": -51.2065,
+      "latDeg": 33.646411111111114,
+      "lonDeg": -83.02176666666666,
+      "freqKhz": 353
+    }
+  ]
+}

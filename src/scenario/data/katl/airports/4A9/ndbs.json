@@ -1,0 +1,55 @@
+{
+  "airportId": "4A9",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": -10.381357,
+      "yNm": -56.361333,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BH",
+      "kind": "NDB",
+      "name": "MCDEN",
+      "xNm": -55.606632,
+      "yNm": -57.730333,
+      "latDeg": 33.511522222222226,
+      "lonDeg": -86.84559166666666,
+      "freqKhz": 224
+    },
+    {
+      "id": "CQN",
+      "kind": "NDB",
+      "name": "DAISY",
+      "xNm": 27.898052,
+      "yNm": 41.570667,
+      "latDeg": 35.16653888888889,
+      "lonDeg": -85.15737222222222,
+      "freqKhz": 341
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": 49.864782,
+      "yNm": -73.005,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": 29.203605,
+      "yNm": -54.476167,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    }
+  ]
+}

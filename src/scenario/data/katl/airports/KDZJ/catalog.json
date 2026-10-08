@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "airportId": "KDZJ",
+  "name": "BLAIRSVILLE",
+  "spokenAliases": ["BLAIRSVILLE"],
+  "magVarDeg": -3,
+  "fieldElevFt": 1907,
+  "arp": {
+    "latDeg": 34.85443055555556,
+    "lonDeg": -83.99731944444444
+  },
+  "files": {
+    "vors": "vors.json",
+    "ndbs": "ndbs.json",
+    "ils": "ils.json",
+    "fixes": "fixes.json",
+    "procedures": "procedures.json",
+    "sids": "sids.json"
+  },
+  "originNote": "Imported from a synthetic CIFP subset fixture (not a real FAA cycle). Local tangent NM from ARP using the phase 0 projector. KDEM remains the sim default."
+}

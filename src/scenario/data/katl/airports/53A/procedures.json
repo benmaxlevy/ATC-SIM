@@ -1,0 +1,30 @@
+{
+  "airportId": "53A",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R18",
+      "type": "RNAV",
+      "runway": "18",
+      "name": "RNAV RWY 18",
+      "thresholdFixId": "RW18",
+      "courseDeg": 184.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1500
+    },
+    {
+      "id": "R36",
+      "type": "RNAV",
+      "runway": "36",
+      "name": "RNAV RWY 36",
+      "thresholdFixId": "RW36",
+      "courseDeg": 4.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 745
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "airportId": "KMLJ",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": -4.186845,
+      "yNm": 47.602167,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "DBN",
+      "kind": "VORDME",
+      "name": "DUBLIN",
+      "xNm": 20.663668,
+      "yNm": -35.445833,
+      "latDeg": 32.56346111111111,
+      "lonDeg": -82.83004444444444,
+      "freqMhz": 113.1,
+      "class": "T"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 22.942252,
+      "yNm": 75.897667,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "IRQ",
+      "kind": "VORDME",
+      "name": "COLLIERS",
+      "xNm": 54.217728,
+      "yNm": 33.187667,
+      "latDeg": 33.70735277777778,
+      "lonDeg": -82.1620638888889,
+      "freqMhz": 113.9,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": -12.851741,
+      "yNm": -56.447,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": -17.539372,
+      "yNm": -30.7935,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

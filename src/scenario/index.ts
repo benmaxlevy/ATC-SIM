@@ -33,6 +33,13 @@ export type {
   Fix,
   RadarSite,
   RadarSiteKind,
+  RegionalAirport,
+  RegionalAirspaceAltitude,
+  RegionalAirspaceSegment,
+  RegionalAirspaceVolume,
+  RegionalFacility,
+  RegionalRunwayGeometry,
+  RegionalSourceProvenance,
   Runway,
   Scenario,
   ScenarioMaps,
@@ -98,6 +105,13 @@ export {
   parseCatalogFiles,
   sidRouteFixIds,
 } from "./procedures/loadCatalog";
+export {
+  getRegionalAirportEligibility,
+  hasRegionalPack,
+  loadRegionalPack,
+  parseRegionalPack,
+} from "./regional";
+export { loadRegionalAirportCatalog } from "./regionalCatalogs";
 export type { AtpaTrackPose, AtpaVolumeGeometry } from "./atpaVolume";
 export {
   alongCourseDistanceNm,
@@ -192,21 +206,33 @@ export {
   SESSION_DEPARTURES_PER_HOUR_MIN,
   SESSION_INITIAL_COUNT_MAX,
   SESSION_INITIAL_COUNT_MIN,
+  VFR_DENSITY_PRESETS,
+  applyVfrDensityPreset,
   arrivalTrafficFromSetup,
   defaultSessionSetup,
+  defaultVfrRequestConfigForScenario,
+  defaultVfrTrafficConfigForScenario,
   departuresEnabledForScenario,
   loadSessionSetup,
+  matchVfrDensityPreset,
   parseSessionSetupStorage,
   resolveSessionSetup,
   saveSessionSetup,
   serializeSessionSetup,
   validateSessionSetup,
+  vfrDensityNumbersFromSetup,
+  vfrEnabledForScenario,
+  vfrRequestsFromSetup,
+  vfrTrafficFromSetup,
 } from "./sessionSetup";
 export type {
   SessionSetup,
   SessionSetupDefaults,
   SessionSetupDraft,
   SessionSetupResolution,
+  VfrDensityNumbers,
+  VfrDensityPresetId,
+  VfrDensitySelection,
 } from "./sessionSetup";
 export type {
   ArrivalScheduler,
@@ -222,3 +248,31 @@ export {
   createArrivalScheduler,
   validateArrivalTrafficConfig,
 } from "./arrivalScheduler";
+export type {
+  VfrAircraftMixRow,
+  VfrAltitudeMixRow,
+  VfrMovementMix,
+  VfrRequestConfig,
+  VfrTrafficConfig,
+} from "./types";
+export {
+  DEFAULT_VFR_AIRCRAFT_MIX,
+  DEFAULT_VFR_ALTITUDE_MIX,
+  DEFAULT_VFR_MOVEMENT_MIX,
+  DEFAULT_VFR_REQUEST_CONFIG,
+  VFR_FUTURE_ENTRY_XOR,
+  VFR_INITIAL_PLACEMENT_XOR,
+  VFR_MISSION_ZONE_XOR,
+  VFR_PILOT_REQUEST_XOR,
+  VFR_ROUTE_XOR,
+  VfrTrafficManager,
+  allocateVfrCallsign,
+  chooseWeighted,
+  fixedVfrMovementMix,
+  getDepartureVfrAirports,
+  getEligibleVfrDestinations,
+  resolveVfrExitRadiusNm,
+  resolveVfrSpawnRadiusNm,
+  validateVfrRequestConfig,
+  validateVfrTrafficConfig,
+} from "./vfrTraffic";

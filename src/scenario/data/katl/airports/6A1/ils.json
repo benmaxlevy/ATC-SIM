@@ -1,0 +1,82 @@
+{
+  "airportId": "6A1",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -38.982569,
+      "yNm": 2.821,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 20.142029,
+      "yNm": 63.779333,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -13.178378,
+      "yNm": 80.785,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -8.368517,
+      "yNm": 63.919667,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 30.314033,
+      "yNm": 7.377,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -2.635704,
+      "yNm": 78.443667,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": -71.935395,
+      "yNm": -5.002,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    }
+  ]
+}

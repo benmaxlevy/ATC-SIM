@@ -1,0 +1,30 @@
+{
+  "airportId": "KCZL",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R17",
+      "type": "RNAV",
+      "runway": "17",
+      "name": "RNAV RWY 17",
+      "thresholdFixId": "RW17",
+      "courseDeg": 173.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 930
+    },
+    {
+      "id": "R35",
+      "type": "RNAV",
+      "runway": "35",
+      "name": "RNAV RWY 35",
+      "thresholdFixId": "RW35",
+      "courseDeg": 353.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1056
+    }
+  ]
+}

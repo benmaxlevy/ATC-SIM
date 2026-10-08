@@ -1,0 +1,84 @@
+{
+  "airportId": "52A",
+  "components": [
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": -19.382961,
+      "yNm": 1.146,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -52.310092,
+      "yNm": 18.151667,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GRD",
+      "kind": "DME",
+      "name": "GREENWOOD",
+      "xNm": 65.273243,
+      "yNm": 38.3665,
+      "latDeg": 34.25156666666667,
+      "lonDeg": -82.15415,
+      "freqMhz": 115.5,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -47.557001,
+      "yNm": 1.286333,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "HRS",
+      "kind": "DME",
+      "name": "HARRIS",
+      "xNm": -22.747073,
+      "yNm": 79.852333,
+      "latDeg": 34.94299722222222,
+      "lonDeg": -83.91567500000001,
+      "freqMhz": 109.8,
+      "class": "T"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": -9.331015,
+      "yNm": -55.256333,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -41.891851,
+      "yNm": 15.810333,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    }
+  ],
+  "runwayId": "14",
+  "approachId": "R14"
+}

@@ -1,0 +1,82 @@
+{
+  "airportId": "KASN",
+  "vors": [
+    {
+      "id": "GAD",
+      "kind": "VORDME",
+      "name": "GADSDEN",
+      "xNm": -1.617549,
+      "yNm": 24.413833,
+      "latDeg": 33.97640277777778,
+      "lonDeg": -86.08355833333333,
+      "freqMhz": 112.3,
+      "class": "L"
+    },
+    {
+      "id": "LGC",
+      "kind": "VORDME",
+      "name": "LAGRANGE",
+      "xNm": 42.243062,
+      "yNm": -31.223167,
+      "latDeg": 33.04911944444444,
+      "lonDeg": -85.20622222222222,
+      "freqMhz": 115.6,
+      "class": "T"
+    },
+    {
+      "id": "MGM",
+      "kind": "VORDME",
+      "name": "MONTGOMERY",
+      "xNm": -13.424354,
+      "yNm": -80.8335,
+      "latDeg": 32.22228055555556,
+      "lonDeg": -86.31972777777777,
+      "freqMhz": 112.1,
+      "class": "T"
+    },
+    {
+      "id": "OKW",
+      "kind": "VORDME",
+      "name": "BROOKWOOD",
+      "xNm": -59.924731,
+      "yNm": -19.8985,
+      "latDeg": 33.23786388888889,
+      "lonDeg": -87.24986666666666,
+      "freqMhz": 111,
+      "class": "T"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": 46.583143,
+      "yNm": 35.5835,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "RQZ",
+      "kind": "VORDME",
+      "name": "ROCKET",
+      "xNm": -29.128108,
+      "yNm": 73.664,
+      "latDeg": 34.797238888888884,
+      "lonDeg": -86.63384722222223,
+      "freqMhz": 112.2,
+      "class": "T"
+    },
+    {
+      "id": "VUZ",
+      "kind": "VORDME",
+      "name": "VULCAN",
+      "xNm": -42.425675,
+      "yNm": 6.037667,
+      "latDeg": 33.67013333333333,
+      "lonDeg": -86.89983611111111,
+      "freqMhz": 114.4,
+      "class": "T"
+    }
+  ]
+}

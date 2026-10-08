@@ -30,7 +30,7 @@ import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
 
-/** Display IDENT stroke pulse (~2 s sim). Aircraft flag may last longer (phase 1). */
+/** Display IDENT window (~2 s sim) for datablock "ID" text. Symbol does not flash. */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
 /** Legacy export retained for callers that still import the old query duration. */
 export const LDB_QUERY_DURATION_MS = 5000;
@@ -430,7 +430,12 @@ export function deriveScratchpads(
     ? planScratchpads.filter((value): value is string => typeof value === "string")
     : [];
   // Derive automatic SP1 (approach shorthand, or interim altitude if controller explicitly assigned one):
+  const visualRwy =
+    aircraft.intent?.lateral?.type === "VISUAL_FINAL" && !aircraft.ambientVfr
+      ? aircraft.intent.lateral.runwayId
+      : undefined;
   const approachId =
+    (visualRwy ? `VISUAL ${visualRwy}` : undefined) ??
     aircraft.intent?.clearedApproachId ??
     aircraft.intent?.locInterceptApproachId ??
     aircraft.intent?.expectedApproachId;
@@ -486,6 +491,31 @@ export function ensureTrackDisplay(tracks: Map<string, TrackDisplay>, id: string
     tracks.set(id, td);
   }
   return td;
+}
+
+/**
+ * True when the target is VFR with no beacon-correlated plan: squawking 1200
+ * (or carrying the ambient-VFR / VFR-rules markers) and no display plan from
+ * the canonical resolver. Slewing such a target must never associate an
+ * identity — there is no flight plan to correlate, so no callsign exists to
+ * display. Clicks query ground speed; FDB promotion is refused.
+ */
+export function isVfrWithoutAssociation(
+  world: World,
+  aircraft: Aircraft,
+  td?: Pick<TrackDisplay, "squawk" | "unassociated" | "derivedPlanId">,
+): boolean {
+  if (flightPlanForDatablock(world, aircraft, td)) {
+    return false;
+  }
+  const reported = td?.squawk ?? aircraft.reportedSquawk ?? aircraft.squawk;
+  if (reported === "1200") {
+    return true;
+  }
+  if (aircraft.ambientVfr) {
+    return true;
+  }
+  return (aircraft.flightRules ?? "").trim().toUpperCase() === "VFR";
 }
 
 export function queryTrack(
@@ -657,6 +687,15 @@ export function handleTrackClick(
     queryTrack(td, world.simTimeMs);
     return;
   }
+  // Squawking 1200 with no correlated plan: no identity exists to display.
+  // Record the unassociated state (display flags can lag) and query instead
+  // of promoting to a callsign-bearing FDB.
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (ac && isVfrWithoutAssociation(world, ac, td)) {
+    td.unassociated = true;
+    queryTrack(td, world.simTimeMs);
+    return;
+  }
   if (td.ownership === "unowned") {
     toggleTrackPdbFdb(td);
   }
@@ -710,6 +749,15 @@ export function applyInitiateTrackToId(
   const td = ensureTrackDisplay(tracks, aircraftId);
   const accepted = acceptInboundHandoff(world, aircraftId);
   td.ownership = applyInitiateTrack(td.ownership);
+  const ac = world.aircraft.find((item) => item.id === aircraftId);
+  if (!accepted && ac && isVfrWithoutAssociation(world, ac, td)) {
+    // INIT CNTL on a 1200 with no plan takes the track but creates no
+    // identity: keep it unassociated so no callsign is presented.
+    td.unassociated = true;
+    td.datablockMode = "limited";
+    td.forcedFdb = false;
+    return { applied: true, hint: null };
+  }
   td.datablockMode = "full";
   if (accepted) {
     td.unassociated = false;
@@ -1006,23 +1054,37 @@ export function syncTrackDisplays(
     // reported code changes, remove only the state this derivation created.
     const derivedPlan = flightPlanForAircraft(world, ac.id);
     const datablockPlan = flightPlanForDatablock(world, ac, td);
-    if (derivedPlan) {
-      td.derivedPlanId = derivedPlan.id;
+    const ho = handoffFor(world, ac.id);
+    if (derivedPlan || datablockPlan) {
+      const plan = derivedPlan ?? datablockPlan!;
+      td.derivedPlanId = plan.id;
       td.tracked = true;
       td.unassociated = false;
       td.datablockMode = "full";
-    } else if (datablockPlan) {
-      td.derivedPlanId = datablockPlan.id;
-      td.tracked = true;
-      td.unassociated = false;
-      td.datablockMode = "full";
+      if (
+        ho.kind !== "inbound" &&
+        ho.kind !== "departure" &&
+        td.ownership !== "tower" &&
+        td.ownership !== "center"
+      ) {
+        td.ownership = "owned";
+      }
     } else if (td.derivedPlanId) {
       delete td.derivedPlanId;
-      if (td.ownership !== "owned") {
-        td.tracked = false;
-        td.unassociated = true;
-        td.datablockMode = "partial";
-      }
+      td.ownership = "unowned";
+      td.tracked = false;
+      td.unassociated = true;
+      td.datablockMode = "partial";
+    }
+    // Squawking 1200 with no correlated plan has no display identity.
+    // Mark it unassociated up front so slew/force-FDB paths render the
+    // beacon-only LDB instead of the sim-truth callsign.
+    if (!derivedPlan && !datablockPlan && isVfrWithoutAssociation(world, ac, td)) {
+      delete td.derivedPlanId;
+      td.unassociated = true;
+      td.ownership = "unowned";
+      td.tracked = false;
+      td.datablockMode = "limited";
     }
     if (td.lastReport) {
       sampler.reports.set(ac.id, td.lastReport);

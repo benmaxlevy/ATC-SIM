@@ -1,0 +1,105 @@
+{
+  "airportId": "18A",
+  "ndbs": [
+    {
+      "id": "AA",
+      "kind": "NDB",
+      "name": "CEDAR",
+      "xNm": 25.585313,
+      "yNm": -48.424667,
+      "latDeg": 33.53328333333333,
+      "lonDeg": -82.61436944444443,
+      "freqKhz": 341
+    },
+    {
+      "id": "AG",
+      "kind": "NDB",
+      "name": "BUSHE",
+      "xNm": 58.655468,
+      "yNm": -63.2085,
+      "latDeg": 33.28688611111111,
+      "lonDeg": -81.94685277777778,
+      "freqKhz": 233
+    },
+    {
+      "id": "AIK",
+      "kind": "NDB",
+      "name": "AIKEN",
+      "xNm": 72.025909,
+      "yNm": -41.313667,
+      "latDeg": 33.6518,
+      "lonDeg": -81.67697222222223,
+      "freqKhz": 347
+    },
+    {
+      "id": "BMW",
+      "kind": "NDB",
+      "name": "BARROW COUNTY",
+      "xNm": -22.723708,
+      "yNm": -24.300167,
+      "latDeg": 33.93535833333333,
+      "lonDeg": -83.58948055555555,
+      "freqKhz": 404
+    },
+    {
+      "id": "BRA",
+      "kind": "NDB",
+      "name": "BROAD RIVER",
+      "xNm": 32.686342,
+      "yNm": 55.9435,
+      "latDeg": 35.272752777777775,
+      "lonDeg": -82.47103611111112,
+      "freqKhz": 379
+    },
+    {
+      "id": "EMR",
+      "kind": "NDB",
+      "name": "EMORY",
+      "xNm": 56.178227,
+      "yNm": -52.653167,
+      "latDeg": 33.462808333333335,
+      "lonDeg": -81.99685555555556,
+      "freqKhz": 385
+    },
+    {
+      "id": "IM",
+      "kind": "NDB",
+      "name": "KEANS",
+      "xNm": 26.91937,
+      "yNm": 71.550333,
+      "latDeg": 35.53286666666666,
+      "lonDeg": -82.58744166666666,
+      "freqKhz": 357
+    },
+    {
+      "id": "TX",
+      "kind": "NDB",
+      "name": "GWNET",
+      "xNm": -36.267408,
+      "yNm": -19.226667,
+      "latDeg": 34.01991666666667,
+      "lonDeg": -83.86285833333332,
+      "freqKhz": 419
+    },
+    {
+      "id": "UOT",
+      "kind": "NDB",
+      "name": "UNION COUNTY",
+      "xNm": 73.741991,
+      "yNm": 20.618333,
+      "latDeg": 34.684,
+      "lonDeg": -81.64233333333334,
+      "freqKhz": 326
+    },
+    {
+      "id": "VV",
+      "kind": "NDB",
+      "name": "JUNNE",
+      "xNm": 5.402012,
+      "yNm": -41.637,
+      "latDeg": 33.646411111111114,
+      "lonDeg": -83.02176666666666,
+      "freqKhz": 353
+    }
+  ]
+}

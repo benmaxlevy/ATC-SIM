@@ -93,6 +93,7 @@ export type AtpaTrack = Pick<
   | "isPrimary"
   | "transponder"
   | "cwtWakeCategory"
+  | "ambientVfr"
 >;
 
 export type AtpaGeometryByVolumeId = Readonly<Record<string, AtpaVolumeGeometry>>;
@@ -331,6 +332,9 @@ export function evaluateAtpa(
     }
     const eligible: EligibleTrack[] = [];
     for (const track of aircraft) {
+      if (track.ambientVfr?.alertEligibility === "AMBIENT_SUPPRESSED") {
+        continue;
+      }
       if (isPrimaryOnlyTarget(track)) {
         continue;
       }

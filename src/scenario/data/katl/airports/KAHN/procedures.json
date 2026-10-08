@@ -1,0 +1,106 @@
+{
+  "airportId": "KAHN",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I27",
+      "type": "ILS",
+      "runway": "27",
+      "name": "ILS RWY 27",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW27",
+      "courseDeg": 289,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 2500,
+      "missed": {
+        "headingDeg": 274,
+        "climbToFt": 852,
+        "directFixId": "RW27"
+      }
+    },
+    {
+      "id": "L27",
+      "type": "LOC",
+      "runway": "27",
+      "name": "LOC RWY 27",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW27",
+      "courseDeg": 289,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 2500,
+      "missed": {
+        "headingDeg": 274,
+        "climbToFt": 852,
+        "directFixId": "RW27"
+      }
+    },
+    {
+      "id": "R02",
+      "type": "RNAV",
+      "runway": "02",
+      "name": "RNAV RWY 02",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW02",
+      "courseDeg": 26.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1140
+    },
+    {
+      "id": "R09",
+      "type": "RNAV",
+      "runway": "09",
+      "name": "RNAV RWY 09",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW09",
+      "courseDeg": 94.2,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1028
+    },
+    {
+      "id": "R20",
+      "type": "RNAV",
+      "runway": "20",
+      "name": "RNAV RWY 20",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW20",
+      "courseDeg": 206.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600
+    },
+    {
+      "id": "R27",
+      "type": "RNAV",
+      "runway": "27",
+      "name": "RNAV RWY 27",
+      "locNavaidId": "IAHN",
+      "gsNavaidId": "IAHNGS",
+      "thresholdFixId": "RW27",
+      "courseDeg": 274.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.79,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1012
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "airportId": "KDNN",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I14",
+      "type": "ILS",
+      "runway": "14",
+      "name": "ILS RWY 14",
+      "locNavaidId": "IDNN",
+      "gsNavaidId": "IDNNGS",
+      "thresholdFixId": "RW14",
+      "courseDeg": 139.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1700,
+      "missed": {
+        "headingDeg": 140,
+        "climbToFt": 758,
+        "directFixId": "RW14"
+      }
+    },
+    {
+      "id": "L14",
+      "type": "LOC",
+      "runway": "14",
+      "name": "LOC RWY 14",
+      "locNavaidId": "IDNN",
+      "gsNavaidId": "IDNNGS",
+      "thresholdFixId": "RW14",
+      "courseDeg": 139.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1700,
+      "missed": {
+        "headingDeg": 140,
+        "climbToFt": 758,
+        "directFixId": "RW14"
+      }
+    },
+    {
+      "id": "R14",
+      "type": "RNAV",
+      "runway": "14",
+      "name": "RNAV RWY 14",
+      "locNavaidId": "IDNN",
+      "gsNavaidId": "IDNNGS",
+      "thresholdFixId": "RW14",
+      "courseDeg": 140.4,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 959
+    },
+    {
+      "id": "R32",
+      "type": "RNAV",
+      "runway": "32",
+      "name": "RNAV RWY 32",
+      "locNavaidId": "IDNN",
+      "gsNavaidId": "IDNNGS",
+      "thresholdFixId": "RW32",
+      "courseDeg": 320.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3,
+      "tchFt": 50,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1109
+    }
+  ]
+}

@@ -426,7 +426,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 
 | CRC / vNAS (typical) | ATC-SIM phase 2 |
 | --- | --- |
-| RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 8 presets 5–60 |
+| RANGE via DCB presets including 6/8/12/16/24 | PageUp/Down + wheel; 17 presets 5–512 |
 | CENTER then click | `Home` / `End` / double-click / DCB PLACE CNTR then PPI click / middle-drag pan |
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
 | F1 Initiate Track (NAS associate) | F1 color stub |

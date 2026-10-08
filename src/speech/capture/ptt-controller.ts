@@ -163,6 +163,7 @@ export interface PttCaptureController {
   dispose(): void;
   handleKeyDown(event: PttKeyEvent): Promise<void>;
   handleKeyUp(event: PttKeyEvent): Promise<void>;
+  handleBlur(): void;
   /** On-screen hold-to-talk. Same capture path as a keyboard hold. */
   pressFromPointer(): Promise<void>;
   releaseFromPointer(): void;
@@ -305,11 +306,23 @@ class PttCaptureControllerImpl implements PttCaptureController {
       const onUp = (event: Event): void => {
         void this.handleKeyUp(this.adaptKeyEvent(event));
       };
+      const onBlur = (): void => {
+        this.handleBlur();
+      };
       target.addEventListener("keydown", onDown);
       target.addEventListener("keyup", onUp);
+      target.addEventListener("blur", onBlur);
+      const win = typeof window !== "undefined" ? window : null;
+      if (win && target !== win) {
+        win.addEventListener("blur", onBlur);
+      }
       this.detach = () => {
         target.removeEventListener("keydown", onDown);
         target.removeEventListener("keyup", onUp);
+        target.removeEventListener("blur", onBlur);
+        if (win && target !== win) {
+          win.removeEventListener("blur", onBlur);
+        }
       };
     }
   }
@@ -356,6 +369,17 @@ class PttCaptureControllerImpl implements PttCaptureController {
       this.onKeyUp(event);
     } catch {
       this.emit({ type: "capture-error", reason: "unexpected" });
+    }
+  }
+
+  handleBlur(): void {
+    if (this.disposed) {
+      return;
+    }
+    const wasCapturing = this.capturing;
+    this.pttHeld = false;
+    if (wasCapturing) {
+      this.finishCapture();
     }
   }
 
@@ -419,11 +443,11 @@ class PttCaptureControllerImpl implements PttCaptureController {
       this.finishCapture();
       return;
     }
-    if (this.transmitLocked) {
-      this.emit({ type: "ignored-locked" });
+    if (this.pttHeld || this.capturing) {
       return;
     }
-    if (this.pttHeld || this.capturing) {
+    if (this.transmitLocked) {
+      this.emit({ type: "ignored-locked" });
       return;
     }
 

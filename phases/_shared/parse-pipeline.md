@@ -29,15 +29,81 @@ normalizeSpoken
     └─ miss (no throw)
 ```
 
+## Callsign identity and alias grounding
+
+The canonical N-number or ICAO callsign is the only identity in Command IR,
+world state, logs, and pilot resolution. A live roster candidate may carry
+authored `aliases`, but alias text is input evidence only:
+
+```json
+{ "callsign": "N123", "aliases": ["Skyhawk"] }
+```
+
+For an explicit callsign slot, grounding precedence is exact canonical token,
+then exact authored alias plus its complete registration tail, then existing
+unique numeric suffix behavior. Selected-aircraft fallback is allowed only
+when the input has no explicit callsign. Alias matching requires one through
+five registration digits and preserves any suffix letters. `Skyhawk 123 H270`
+therefore returns `callsignToken: "N123"`, while `Skyhawk`, an unknown alias,
+an incomplete or short tail, a six-digit N-number, or an ambiguous alias is
+`PARSE_MISS` and cannot mutate an aircraft. This exact-tail rule is a
+trainer-specific deterministic contract, not session-based abbreviation.
+
+Path C receives the same bounded live candidates as grounding context. It may
+use complete alias evidence only to select one listed canonical candidate;
+unknown, incomplete, alias-only, or ambiguous evidence is a soft
+`PARSE_MISS`. The GBNF and semantic validator constrain `callsignToken` to
+that canonical candidate; an alias-shaped model output is rejected and never
+enters Command IR.
+
 An **ungrounded or tied** catalog token on `DIRECT` / `CROSS` / `DESCEND_VIA` / `CLIMB_VIA` / `JOIN_PROCEDURE` / `CLEARED_APPROACH` / `INTERCEPT_LOCALIZER` / `EXPECT_APPROACH` converts a would-be local hit into a **miss**. Tactical fix grounding and IFR route-window grounding share one ranked catalog matcher: exact, spoken-alias, folded, then unique Levenshtein-distance-1 candidates are deterministic; distance-2 candidates are retrieval-only Path C evidence. Unique T03-17 floor+margin snap still counts as grounded and wins at that stage. Heading / altitude / speed / delete speed restrictions / ident / say-* / go-around hits are unchanged: they stay a local win and do not fetch Path C.
 
 `CAPP` and spoken `cancel approach clearance` emit the zero-argument
 `CANCEL_APPROACH` instruction. It must be the first instruction and may occur
 only once. Later ordinary heading/altitude/speed instructions retain source
-order; a later approach expectation, clearance, localizer intercept, or
+order; a later approach expectation, clearance, visual clearance, localizer intercept, or
 `GO_AROUND` is `BAD_CLEARANCE`. `CAPP` never consumes an approach ID, and
 `cancel approach` without `clearance` remains `PARSE_MISS`. Path C uses the
 same closed-union and transcript-evidence rules.
+
+Typed `VIS <rwy>` and spoken `cleared visual approach runway <rwy>` emit
+`CLEARED_VISUAL { runwayId }` (T04-82). Spoken visual clearances require the
+runway designation; a near-miss without a runway remains `PARSE_MISS`. Path C
+checks the emitted runway against the runway immediately following the visual
+approach cue, not a heading or other number elsewhere in the transcript.
+
+
+`say request` (`REQUEST_DETAILS`), `stand by` (`STANDBY_REQUEST`), `approve
+flight following` (`APPROVE_FLIGHT_FOLLOWING`), `unable flight following` /
+`unable ifr pickup`, or `unable class b clearance` (`DECLINE_REQUEST` with
+service `FLIGHT_FOLLOWING`, `IFR_PICKUP`, or `CLASS_B_ACCESS`), `cleared as requested`
+(`CLASS_B_CLEARANCE_AS_REQUESTED`), `radar contact` with an optional `<distance> miles
+[direction] from|of <fix/navaid/airport>` position report (`RADAR_CONTACT`), `radar service
+terminated` (`TERMINATE_RADAR_SERVICE`), and `IFR cancellation received`
+(`ACKNOWLEDGE_IFR_CANCELLATION`) are atomic single-instruction
+transmissions. `contact <facility-name> tower` and `contact <facility-name>
+center` are also atomic, emit `CONTACT_TOWER` or `CONTACT_CENTER`, require a
+1–4-token syntax-only name, and accept no frequency. A compound transmission
+combining any of these with another instruction is `BAD_CLEARANCE`. A present `RADAR_CONTACT` position is
+all-or-nothing; its fixes/navaids are grounded via the shared catalog
+matcher, airports via the airport namespace, and ungrounded references return
+a parse miss. The pilot answer to `RADAR_CONTACT` is `roger`. Transcripts
+carrying one of these cues (plus `maintain vfr` and visual-runway cues) may
+engage Path C even when identifier retrieval comes back empty; schema,
+completeness, grounding, and identifier-listed guards still decide acceptance.
+Path C checks the reported distance and fix/navaid reference within the same
+radar-contact position phrase. For an airport reference, the spoken name,
+alias, or ICAO must uniquely identify the emitted airport in the supplied
+catalog. Path C also checks `CONTACT_TOWER` / `CONTACT_CENTER.facilityName`
+against the spoken contact name.
+
+After parser acceptance, `CONTACT_TOWER` and `CONTACT_CENTER` use generic
+runtime transfer gates. Tower contact reuses the existing IFR tower/landing or
+VFR visual-final path; center contact reuses the outbound handoff path. Contact
+does not terminate radar service, issue an approach clearance, change flight
+rules, or authorize Class B. Actual `nav.landed` closes only an active IFR plan
+at an eligible functioning towered destination; VFR/DVFR and non-towered IFR
+plans remain open.
 
 ## IFR clearance route windows
 
@@ -95,6 +161,20 @@ Why this is the smallest design:
 
 ## Typed `DCT` unknown id vs spoken ungrounded miss
 
+Class B clearance English is a closed Path A/B grammar shared by typed and PTT
+input. `TO_ENTER` accepts only `CLEARED TO ENTER/INTO [THE] [CLASS] BRAVO
+AIRSPACE`; `THROUGH` and `OUT OF` remain canonical-only. Optional route and
+altitude fields occur only as `VIA ... THEN ...` followed by `MAINTAIN ...
+WHILE IN BRAVO AIRSPACE`. `REMAIN OUTSIDE BRAVO AIRSPACE` and `RESUME
+APPROPRIATE VFR ALTITUDES` are exact zero-argument forms. These instructions
+are VFR-only and require no IFR, flight-plan, beacon, or service mutation. The
+eight supported `TO_ENTER` aliases normalize to the same instruction: `cleared
+to enter/into bravo airspace`, with optional `the` and `class` before `bravo`.
+The grammar intentionally does not add aliases for `THROUGH` or `OUT OF`.
+Typed, Path A/B, Path C, and PTT inputs must preserve this closed-union result;
+bare `CLEARED INTO BRAVO`, missing `AIRSPACE`, fuzzy paraphrases, and
+ungrounded route legs remain parse misses.
+
 Typed `DCT NOPE` (a catalog-shaped token the student typed) with `pathC: false` remains an **ok-parse**. The pilot still returns `UNKNOWN_FIX` (`src/pilot/direct.test.ts`). Same idea for typed `VIA NOPE` / `X ZZZZ` / `APP ILS99`. Do not turn that into a parse miss.
 
 Spoken / island “proceed direct Haynes” with an ungrounded or tied catalog token is a **parse miss** (`PARSE_MISS`) when Path C is off or also misses. Command line and voice share that miss: `handleRadioText` maps it to `formatRejectReadback({ reason: "PARSE" })` (“Unable, say again”). Spoken Haynes is the Path C problem, not `DCT NOPE`.
@@ -137,7 +217,7 @@ Optional `context` is prompt grounding, **not** a vector DB, **not** kinematics,
 - `callsigns` / `selectedCallsign` — live strip roster (`onFrequency=`). Unchanged on non-identifier misses.
 - `fixes` / `approaches` / `procedures` — **retrieved candidates for this transcript** (tied cluster ∪ next-best), cap **8–16** (`MAX_PATH_C_FIXES = 16`). Never `fixRegistry.ids().slice(0, 64)` file-order padding. Empty retrieve on an identifier miss omits `fixes` (or sends `[]`); do not pad with unrelated catalog ids. A non-identifier miss (`"pizza the runway"`) still runs Path C as T03-14 without dumping file-order 64.
 - `airports` — separately retrieved ICAO/name/alias candidates for an
-  `IFR_CLEARANCE` limit. An airport may ground `limitId`, but is never a
+  `IFR_CLEARANCE` limit (including regional public-use controlled destination airports). An airport may ground `limitId`, but is never a
   `DIRECT`/`CROSS` fix and must not be merged into `fixes`.
 - `routeWindow` — route-only transcript plus `fixMatches`, where each
   transcript span has only its shared-matcher candidate alternatives (`id`,

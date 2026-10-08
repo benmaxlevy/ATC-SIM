@@ -115,12 +115,13 @@ export {
   activeRingRadiiNm,
   buildLocalizerFeather,
   buildMapCache,
+  computeClippedRingRadiiNm,
   getMapCacheBuildCount,
   parseDigitalMap,
   resetMapCacheBuildCount,
   reuseOrBuildMapCache,
 } from "./mapLayers";
-export type { DigitalMap, MapCache, MapLayerFlags, NmPoint } from "./mapLayers";
+export type { DigitalMap, MapCache, MapLayerFlags, NmPoint, RangeRingClipInput } from "./mapLayers";
 export {
   COMPASS_ROSE_TICK_INTERVAL_DEG,
   COMPASS_ROSE_MINOR_TICK_PX,
@@ -193,6 +194,7 @@ export {
   CHORD_TIMEOUT_MS,
   HELP_FOOTER,
   HELP_COMMAND_GROUPS,
+  HELP_CALLSIGN_ALIAS_NOTE,
   HELP_NAVIGATION_GROUPS,
   HELP_GLOSSARY_NOTE,
   HELP_KEYS_POINTER,
@@ -390,16 +392,20 @@ export {
   DCB_ACTION_FLASH_MS,
   applyDcbShift,
   armDcbSpinner,
+  backspaceDcbSpinner,
   cancelDcbSpinner,
   closeDcbMenu,
   commitDcbSpinner,
   dcbActionCapPressed,
   handleDcbEscape,
   idleDcbSpinner,
+  idleDcbSpinnerState,
+  inputDcbSpinnerKey,
   isDcbSubmenu,
   openDcbMenu,
   stepDcbSpinner,
   toggleDcbMenu,
+  validateDcbSpinnerValue,
 } from "./dcb/dcbMenu";
 export type {
   DcbCellKind,
@@ -857,6 +863,7 @@ export {
   findOverlappingLists,
   getAircraftDestination,
   getFlightPlanEntries,
+  getVfrListEntries,
   getVisibleFlightPlanEntries,
   handleFlightPlanListClick,
   handleListMiddleClick,

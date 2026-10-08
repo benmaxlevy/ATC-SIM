@@ -64,6 +64,13 @@ export class TransmitGate {
 export const PLAYBACK_TAIL_MS = 50;
 
 /**
+ * Chromium can occasionally finish an audible buffer without delivering the
+ * source `ended` event to the page. Keep the event as the normal path, but do
+ * not allow that browser failure to hold the radio forever.
+ */
+export const PLAYBACK_END_WATCHDOG_MARGIN_MS = 250;
+
+/**
  * Playback seam. Default PCM path uses {@link connectPlaybackThroughRadio}.
  * Tests and debug inject {@link connectPlaybackDry}.
  */
@@ -124,6 +131,24 @@ export function createReadbackPlayer(options: ReadbackPlayerOptions = {}): Readb
   return new ReadbackPlayerImpl(options);
 }
 
+async function resumeContextWithTimeout(ctx: AudioContext, timeoutMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  const resume = ctx.resume().then(
+    () => true,
+    () => false,
+  );
+  try {
+    return await Promise.race([resume, timeout]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 class ReadbackPlayerImpl implements ReadbackPlayer {
   private ctx: AudioContext | null = null;
   private source: AudioBufferSourceNode | null = null;
@@ -165,7 +190,7 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
     try {
       const ctx = this.tryContext();
       if (ctx && ctx.state === "suspended") {
-        await ctx.resume();
+        await resumeContextWithTimeout(ctx, 500);
       }
     } catch {
       // Never throw through the sim tick.
@@ -202,7 +227,10 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
 
     try {
       if (ctx.state === "suspended") {
-        await ctx.resume();
+        const resumed = await resumeContextWithTimeout(ctx, 1000);
+        if (!resumed || ctx.state === "suspended") {
+          return { ok: false, reason: "unavailable" };
+        }
       }
       if (this.generation !== generation) {
         return { ok: false, reason: "error" };
@@ -215,9 +243,19 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
       this.routePcm(source, ctx, clip);
 
       await new Promise<void>((resolve, reject) => {
-        source.onended = () => {
+        let settled = false;
+        let watchdog: ReturnType<typeof setTimeout> | undefined;
+        const settle = (): void => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (watchdog !== undefined) {
+            clearTimeout(watchdog);
+          }
           resolve();
         };
+        source.onended = settle;
         try {
           // audio-start: source.start() after resume. Map ctx.currentTime to wall clock now
           // (not Bluetooth/hardware delay). T03-07 still uses this same start instant.
@@ -225,6 +263,22 @@ class ReadbackPlayerImpl implements ReadbackPlayer {
           void ctx.currentTime;
           source.start();
           hooks?.onAudioStart?.(wallMs);
+          if (Number.isFinite(buffer.duration)) {
+            watchdog = setTimeout(
+              () => {
+                // The ended event can be lost when the audio context suspends.
+                // Stop the source before releasing the transmit lock so it
+                // cannot resume under a later transmission.
+                try {
+                  source.stop();
+                } catch {
+                  // A source that has already stopped can reject stop().
+                }
+                settle();
+              },
+              buffer.duration * 1000 + PLAYBACK_END_WATCHDOG_MARGIN_MS,
+            );
+          }
         } catch (err) {
           reject(err);
         }

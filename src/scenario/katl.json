@@ -2,6 +2,7 @@
   "id": "katl",
   "name": "Hartsfield-Jackson Atlanta Intl",
   "icao": "KATL",
+  "regionalPack": "katl",
   "magVarDeg": -5,
   "fieldElevFt": 1026,
   "arp": {

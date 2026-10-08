@@ -1,0 +1,30 @@
+{
+  "airportId": "9A5",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R02",
+      "type": "RNAV",
+      "runway": "02",
+      "name": "RNAV RWY 02",
+      "thresholdFixId": "RW02",
+      "courseDeg": 22.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1177
+    },
+    {
+      "id": "R20",
+      "type": "RNAV",
+      "runway": "20",
+      "name": "RNAV RWY 20",
+      "thresholdFixId": "RW20",
+      "courseDeg": 202.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1177
+    }
+  ]
+}

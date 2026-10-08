@@ -1,0 +1,95 @@
+{
+  "airportId": "KALX",
+  "ndbs": [
+    {
+      "id": "AN",
+      "kind": "NDB",
+      "name": "BOGGA",
+      "xNm": 1.595432,
+      "yNm": 37.175333,
+      "latDeg": 33.53433888888889,
+      "lonDeg": -85.93126944444445,
+      "freqKhz": 211
+    },
+    {
+      "id": "BH",
+      "kind": "NDB",
+      "name": "MCDEN",
+      "xNm": -44.457882,
+      "yNm": 35.806333,
+      "latDeg": 33.511522222222226,
+      "lonDeg": -86.84559166666666,
+      "freqKhz": 224
+    },
+    {
+      "id": "CS",
+      "kind": "NDB",
+      "name": "FENIX",
+      "xNm": 46.388266,
+      "yNm": -27.768667,
+      "latDeg": 32.45193888888889,
+      "lonDeg": -85.04197222222221,
+      "freqKhz": 355
+    },
+    {
+      "id": "EQQ",
+      "kind": "NDB",
+      "name": "COWETA COUNTY",
+      "xNm": 62.94463,
+      "yNm": 20.531667,
+      "latDeg": 33.25694444444444,
+      "lonDeg": -84.71326944444445,
+      "freqKhz": 234
+    },
+    {
+      "id": "FFC",
+      "kind": "NDB",
+      "name": "PECAT",
+      "xNm": 74.370373,
+      "yNm": 23.170167,
+      "latDeg": 33.30091944444444,
+      "lonDeg": -84.48642777777778,
+      "freqKhz": 316
+    },
+    {
+      "id": "GPQ",
+      "kind": "NDB",
+      "name": "CARROLLTON",
+      "xNm": 41.905163,
+      "yNm": 39.0605,
+      "latDeg": 33.56575833333333,
+      "lonDeg": -85.13097777777777,
+      "freqKhz": 278
+    },
+    {
+      "id": "MG",
+      "kind": "NDB",
+      "name": "MARRA",
+      "xNm": -27.586432,
+      "yNm": -36.188,
+      "latDeg": 32.311616666666666,
+      "lonDeg": -86.51063333333333,
+      "freqKhz": 245
+    },
+    {
+      "id": "SE",
+      "kind": "NDB",
+      "name": "POLLK",
+      "xNm": -48.586025,
+      "yNm": -38.6955,
+      "latDeg": 32.269825,
+      "lonDeg": -86.92755000000001,
+      "freqKhz": 344
+    },
+    {
+      "id": "TOI",
+      "kind": "NDB",
+      "name": "BLOOD",
+      "xNm": -7.203018,
+      "yNm": -65.037167,
+      "latDeg": 31.830797222222223,
+      "lonDeg": -86.10594999999999,
+      "freqKhz": 365
+    }
+  ]
+}

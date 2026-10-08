@@ -1,0 +1,117 @@
+{
+  "airportId": "KOPN",
+  "components": [
+    {
+      "id": "CSG",
+      "kind": "DME",
+      "name": "COLUMBUS",
+      "xNm": -37.93772,
+      "yNm": -20.385,
+      "latDeg": 32.615252777777776,
+      "lonDeg": -85.01762777777778,
+      "freqMhz": 117.1,
+      "class": "T"
+    },
+    {
+      "id": "CVC",
+      "kind": "DME",
+      "name": "COVINGTON",
+      "xNm": 20.930601,
+      "yNm": 40.573333,
+      "latDeg": 33.631225,
+      "lonDeg": -83.84835,
+      "freqMhz": 114.05,
+      "class": "H"
+    },
+    {
+      "id": "DOB",
+      "kind": "DME",
+      "name": "DOBBINS",
+      "xNm": -12.245377,
+      "yNm": 57.579,
+      "latDeg": 33.914652777777775,
+      "lonDeg": -84.50731111111111,
+      "freqMhz": 113,
+      "class": "T"
+    },
+    {
+      "id": "GSU",
+      "kind": "DME",
+      "name": "ATLANTA",
+      "xNm": -7.456365,
+      "yNm": 40.713667,
+      "latDeg": 33.63356388888889,
+      "lonDeg": -84.41218888888889,
+      "freqMhz": 116.9,
+      "class": "H"
+    },
+    {
+      "id": "MCN",
+      "kind": "DME",
+      "name": "MACON",
+      "xNm": 31.058515,
+      "yNm": -15.829,
+      "latDeg": 32.69118611111111,
+      "lonDeg": -83.64718333333334,
+      "freqMhz": 114.2,
+      "class": "H"
+    },
+    {
+      "id": "PDK",
+      "kind": "DME",
+      "name": "PEACHTREE",
+      "xNm": -1.748401,
+      "yNm": 55.237667,
+      "latDeg": 33.87563055555555,
+      "lonDeg": -84.29881388888889,
+      "freqMhz": 116.6,
+      "class": "L"
+    },
+    {
+      "id": "TGE",
+      "kind": "DME",
+      "name": "TUSKEGEE",
+      "xNm": -70.747712,
+      "yNm": -28.208,
+      "latDeg": 32.48486944444444,
+      "lonDeg": -85.66931944444445,
+      "freqMhz": 117.3,
+      "class": "L"
+    },
+    {
+      "id": "IOPNDME",
+      "kind": "DME",
+      "name": "THOMASTON-UPSON COUNTY",
+      "xNm": -0.534226,
+      "yNm": 0.235167,
+      "latDeg": 32.95892222222223,
+      "lonDeg": -84.27469722222222,
+      "freqMhz": 109.75,
+      "class": "T"
+    },
+    {
+      "id": "IOPNGS",
+      "kind": "GS",
+      "name": "IOPN GS",
+      "xNm": 0.238723,
+      "yNm": -0.0665,
+      "latDeg": 32.953894444444444,
+      "lonDeg": -84.25934444444445,
+      "gsAngleDeg": 3,
+      "tchFt": 50
+    },
+    {
+      "id": "IOPN",
+      "kind": "LOC",
+      "name": "IOPN",
+      "xNm": -0.513248,
+      "yNm": 0.2715,
+      "latDeg": 32.95952777777778,
+      "lonDeg": -84.27428055555555,
+      "freqMhz": 109.75,
+      "courseDeg": 300.8,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 3
+    }
+  ]
+}

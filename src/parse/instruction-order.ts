@@ -13,9 +13,13 @@ export function cancelApproachSequenceError(instructions: readonly Instruction[]
     instructions
       .slice(1)
       .some((instruction) =>
-        new Set(["CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "EXPECT_APPROACH", "GO_AROUND"]).has(
-          instruction.type,
-        ),
+        new Set([
+          "CLEARED_APPROACH",
+          "INTERCEPT_LOCALIZER",
+          "EXPECT_APPROACH",
+          "GO_AROUND",
+          "CLEARED_VISUAL",
+        ]).has(instruction.type),
       )
   ) {
     return "CANCEL_APPROACH cannot be followed by approach or go-around instructions";

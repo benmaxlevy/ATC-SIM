@@ -1,0 +1,18 @@
+{
+  "airportId": "KDZJ",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R08",
+      "type": "RNAV",
+      "runway": "08",
+      "name": "RNAV RWY 08",
+      "thresholdFixId": "RW08",
+      "courseDeg": 76,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 2307
+    }
+  ]
+}

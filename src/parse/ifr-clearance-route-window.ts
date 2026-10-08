@@ -4,6 +4,7 @@ import {
   groundFixPhraseToCatalog,
   matchSpokenStarTransition,
   sanitizeCatalogProcedures,
+  type CatalogAirport,
   type CatalogFixInput,
   type CatalogProcedure,
 } from "./spoken/catalog-ground";
@@ -44,6 +45,8 @@ export function routeWindowBounds(
 export interface IfrClearanceRouteWindowOptions {
   fixes?: readonly CatalogFixInput[];
   procedures?: readonly CatalogProcedure[];
+  /** Separate airport namespace for position references; never fix grounding. */
+  airports?: readonly CatalogAirport[];
 }
 
 export interface IfrClearanceRouteWindow {

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import {
   HELP_COMMAND_GROUPS,
+  HELP_CALLSIGN_ALIAS_NOTE,
   HELP_FOOTER,
   HELP_NAVIGATION_GROUPS,
   KEY_BINDINGS,
@@ -38,6 +39,11 @@ test("command reference lists local command groups and frozen keys", () => {
   }
   expect(html).toContain(HELP_FOOTER);
   expect(html).toContain(DISCLAIMER_COPY);
+  expect(html).toContain(HELP_CALLSIGN_ALIAS_NOTE);
+  expect(html).toContain("N123 H270");
+  expect(html).toContain("Skyhawk 123 H270");
+  expect(html).toMatch(/ambiguous alias/);
+  expect(html).toMatch(/PARSE_MISS/);
   expect(html).toMatch(/PageUp/);
   expect(html).toMatch(/PageDown/);
   expect(html).toMatch(/Home/);

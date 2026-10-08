@@ -1,0 +1,30 @@
+{
+  "airportId": "KPYP",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "R07",
+      "type": "RNAV",
+      "runway": "07",
+      "name": "RNAV RWY 07",
+      "thresholdFixId": "RW07",
+      "courseDeg": 66.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 896
+    },
+    {
+      "id": "R25",
+      "type": "RNAV",
+      "runway": "25",
+      "name": "RNAV RWY 25",
+      "thresholdFixId": "RW25",
+      "courseDeg": 247.1,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.5,
+      "tchFt": 50,
+      "gsInterceptAltFt": 1500
+    }
+  ]
+}

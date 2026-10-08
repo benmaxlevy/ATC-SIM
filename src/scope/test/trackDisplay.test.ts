@@ -5,6 +5,7 @@ import {
   IDENT_DISPLAY_FLASH_MS,
   acknowledgeAlert,
   applyDropTrackToId,
+  applyInitiateTrackToId,
   clearTrackQuery,
   clearAcknowledgedAlert,
   clearScratchpad1,
@@ -21,6 +22,7 @@ import {
   isCaPairInhibited,
   isIdentFlashing,
   isTrackQueried,
+  isVfrWithoutAssociation,
   makeCaPairKey,
   noteIdentAccepted,
   pruneCaPairInhibitsForTrack,
@@ -215,6 +217,88 @@ test("AC4 — clicking unowned track toggles between PDB and Green FDB", () => {
   expect(td.forcedFdb).toBe(false);
 });
 
+test("squawking 1200 with no plan never reveals a callsign on slew", () => {
+  const vfr = makeTestAircraft({
+    id: "ac-vfr1200",
+    callsign: "N1234V",
+    squawk: "1200",
+    reportedSquawk: "1200",
+    flightRules: "VFR",
+    ambientVfr: {
+      mission: "LOCAL",
+      zoneId: "training-box",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+    },
+  });
+  const world = createWorld({ aircraft: [vfr], simTimeMs: 0 });
+  const tracks = new Map();
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(vfr.id)!;
+
+  // Sync marks the 1200 target unassociated with a beacon-only LDB.
+  expect(isVfrWithoutAssociation(world, vfr, td)).toBe(true);
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+
+  // Slew queries ground speed instead of promoting to a callsign FDB.
+  handleTrackClick(tracks, world, vfr.id);
+  expect(td.datablockMode).toBe("limited");
+  expect(td.forcedFdb).not.toBe(true);
+  expect(isTrackQueried(td, world.simTimeMs)).toBe(true);
+
+  // F3 INIT CNTL takes the track but still presents no callsign.
+  const owned = applyInitiateTrackToId(tracks, world, vfr.id);
+  expect(owned.applied).toBe(true);
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+});
+
+test("discrete squawk correlation auto-acquires ownership and reverts to unowned on 1200", () => {
+  const ac = makeTestAircraft({
+    id: "ac-discrete-vfr",
+    callsign: "N9876V",
+    squawk: "1200",
+    reportedSquawk: "1200",
+    flightRules: "VFR",
+  });
+  const plan = {
+    id: "fp-discrete-vfr",
+    status: "active" as const,
+    acid: "N9876V",
+    assignedBeacon: "0342",
+    fixes: [],
+    scratchpads: [],
+  };
+  const world = createWorld({ aircraft: [ac], flightPlans: [plan], simTimeMs: 0 });
+  const tracks = new Map();
+
+  // Initially squawking 1200: unowned limited datablock
+  syncTrackDisplays(tracks, world);
+  const td = tracks.get(ac.id)!;
+  expect(td.ownership).toBe("unowned");
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+
+  // Aircraft changes squawk to assigned discrete beacon code: auto-owns with full datablock
+  ac.squawk = "0342";
+  ac.reportedSquawk = "0342";
+  syncTrackDisplays(tracks, world);
+  expect(td.ownership).toBe("owned");
+  expect(td.unassociated).toBe(false);
+  expect(td.datablockMode).toBe("full");
+  expect(td.derivedPlanId).toBe("fp-discrete-vfr");
+
+  // Reverting to 1200 drops correlation and reverts ownership to unowned limited datablock
+  ac.squawk = "1200";
+  ac.reportedSquawk = "1200";
+  syncTrackDisplays(tracks, world);
+  expect(td.ownership).toBe("unowned");
+  expect(td.unassociated).toBe(true);
+  expect(td.datablockMode).toBe("limited");
+  expect(td.derivedPlanId).toBeUndefined();
+});
+
 test("post-TERM unassociated track cannot be expanded back to an FDB", () => {
   const ac = makeTestAircraft({ id: "ac-terminated", callsign: "UAL999" });
   const world = createWorld({ aircraft: [ac], selectedAircraftId: ac.id });
@@ -279,6 +363,48 @@ test("plan scratchpads override derived track scratchpads after flight-plan modi
   const td = createTrackDisplay();
 
   expect(deriveScratchpads(ac, td, ["HI", "WEST"])).toEqual({ sp1: "HI", sp2: "WEST" });
+});
+
+test("T04-82: formatApproachShorthand and deriveScratchpads support visual approaches", () => {
+  expect(formatApproachShorthand("VISUAL 27L")).toBe("V27L");
+  expect(formatApproachShorthand("VISUAL 09")).toBe("V09");
+  expect(formatApproachShorthand("VISUAL")).toBe("VIS");
+
+  const ac = makeTestAircraft({ id: "ac-vis", altitudeFt: 3000 });
+  ac.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27L",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  const td = createTrackDisplay("owned");
+  const derived = deriveScratchpads(ac, td);
+  expect(derived.sp1).toBe("V27L");
+});
+
+test("T04-83: ambient VFR on VISUAL_FINAL suppresses V<rwy> shorthand in datablock", () => {
+  const ac = makeTestAircraft({
+    id: "ac-vfr-vis",
+    altitudeFt: 2500,
+    flightRules: "VFR",
+    ambientVfr: {
+      mission: "AIRPORT_BOUND",
+      zoneId: "test",
+      destinationAirportId: "KSAT1",
+      destinationRunwayId: "27L",
+      spawnedAtSimMs: 0,
+      alertEligibility: "AMBIENT_SUPPRESSED",
+    },
+  });
+  ac.intent.lateral = {
+    type: "VISUAL_FINAL",
+    runwayId: "27L",
+    threshold: { xNm: 0, yNm: 0 },
+    headingDeg: 270,
+  };
+  const td = createTrackDisplay("unowned");
+  const derived = deriveScratchpads(ac, td);
+  expect(derived.sp1).toBe("");
 });
 
 test("T02-39: deriveScratchpads derives interim altitude to SP1 when no approach is set", () => {

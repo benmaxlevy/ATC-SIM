@@ -1,0 +1,126 @@
+{
+  "airportId": "KANB",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I05-Y",
+      "type": "ILS",
+      "runway": "05",
+      "name": "ILS RWY 05",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 52.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 52,
+        "climbToFt": 634,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "I05-Z",
+      "type": "ILS",
+      "runway": "05",
+      "name": "ILS RWY 05",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 52,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 52,
+        "climbToFt": 634,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "L05-Y",
+      "type": "LOC",
+      "runway": "05",
+      "name": "LOC RWY 05",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 52.5,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 52,
+        "climbToFt": 634,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "L05-Z",
+      "type": "LOC",
+      "runway": "05",
+      "name": "LOC RWY 05",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 52,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 52,
+        "climbToFt": 634,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "R05",
+      "type": "RNAV",
+      "runway": "05",
+      "name": "RNAV RWY 05",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW05",
+      "courseDeg": 52.3,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 1600,
+      "missed": {
+        "headingDeg": 52.4,
+        "climbToFt": 634,
+        "directFixId": "RW05"
+      }
+    },
+    {
+      "id": "R23",
+      "type": "RNAV",
+      "runway": "23",
+      "name": "RNAV RWY 23",
+      "locNavaidId": "IANB",
+      "gsNavaidId": "IANBGS",
+      "thresholdFixId": "RW23",
+      "courseDeg": 232.6,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.9,
+      "tchFt": 40,
+      "gsAngleDeg": 3,
+      "gsInterceptAltFt": 952,
+      "missed": {
+        "headingDeg": 232.5,
+        "climbToFt": 668,
+        "directFixId": "RW23"
+      }
+    }
+  ]
+}

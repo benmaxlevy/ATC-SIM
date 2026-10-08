@@ -140,4 +140,5 @@ export {
   pcm16ToFloat32,
 } from "./playback/radio-graph";
 export type { RadioGraph, RadioGraphNodes } from "./playback/radio-graph";
+export { readbackForTts } from "./tts-text";
 export const SPEECH_PACKAGE = "speech";

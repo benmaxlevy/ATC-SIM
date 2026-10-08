@@ -1,0 +1,93 @@
+{
+  "airportId": "52A",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 6.779997,
+      "yNm": 20.128167,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "DBN",
+      "kind": "VORDME",
+      "name": "DUBLIN",
+      "xNm": 31.499983,
+      "yNm": -62.919833,
+      "latDeg": 32.56346111111111,
+      "lonDeg": -82.83004444444444,
+      "freqMhz": 113.1,
+      "class": "T"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 33.766598,
+      "yNm": 48.423667,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "IRQ",
+      "kind": "VORDME",
+      "name": "COLLIERS",
+      "xNm": 64.8778,
+      "yNm": 5.713667,
+      "latDeg": 33.70735277777778,
+      "lonDeg": -82.1620638888889,
+      "freqMhz": 113.9,
+      "class": "T"
+    },
+    {
+      "id": "ODF",
+      "kind": "VORDME",
+      "name": "FOOTHILLS",
+      "xNm": 8.133998,
+      "yNm": 65.024833,
+      "latDeg": 34.69587222222222,
+      "lonDeg": -83.29766111111111,
+      "freqMhz": 113.4,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -82.895517,
+      "yNm": 33.026333,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    },
+    {
+      "id": "VNA",
+      "kind": "VORDME",
+      "name": "VIENNA",
+      "xNm": -1.839387,
+      "yNm": -83.921,
+      "latDeg": 32.21344166666667,
+      "lonDeg": -83.49725555555555,
+      "freqMhz": 116.5,
+      "class": "T"
+    },
+    {
+      "id": "WRB",
+      "kind": "VOR",
+      "name": "ROBINS",
+      "xNm": -6.502396,
+      "yNm": -58.2675,
+      "latDeg": 32.641,
+      "lonDeg": -83.590575,
+      "freqMhz": 135.3,
+      "class": "T"
+    }
+  ]
+}

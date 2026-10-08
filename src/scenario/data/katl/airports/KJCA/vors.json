@@ -1,0 +1,60 @@
+{
+  "airportId": "KJCA",
+  "vors": [
+    {
+      "id": "AHN",
+      "kind": "VORDME",
+      "name": "ATHENS",
+      "xNm": 11.761242,
+      "yNm": -13.712667,
+      "latDeg": 33.94759444444444,
+      "lonDeg": -83.32475833333334,
+      "freqMhz": 116.95,
+      "class": "H"
+    },
+    {
+      "id": "ELW",
+      "kind": "VORDME",
+      "name": "ELECTRIC CITY",
+      "xNm": 38.569957,
+      "yNm": 14.582833,
+      "latDeg": 34.41918611111111,
+      "lonDeg": -82.78468333333333,
+      "freqMhz": 108.6,
+      "class": "T"
+    },
+    {
+      "id": "IRQ",
+      "kind": "VORDME",
+      "name": "COLLIERS",
+      "xNm": 69.476086,
+      "yNm": -28.127167,
+      "latDeg": 33.70735277777778,
+      "lonDeg": -82.1620638888889,
+      "freqMhz": 113.9,
+      "class": "T"
+    },
+    {
+      "id": "ODF",
+      "kind": "VORDME",
+      "name": "FOOTHILLS",
+      "xNm": 13.106318,
+      "yNm": 31.184,
+      "latDeg": 34.69587222222222,
+      "lonDeg": -83.29766111111111,
+      "freqMhz": 113.4,
+      "class": "H"
+    },
+    {
+      "id": "RMG",
+      "kind": "VORDME",
+      "name": "ROME",
+      "xNm": -77.323165,
+      "yNm": -0.8145,
+      "latDeg": 34.16256388888889,
+      "lonDeg": -85.11940833333333,
+      "freqMhz": 115.4,
+      "class": "T"
+    }
+  ]
+}

@@ -42,6 +42,7 @@ export const DEFAULT_PROFILE: AircraftPerformanceProfile = Object.freeze({
   icaoType: "DEFAULT",
   representativeVariant: "legacy-default",
   representativeEngine: "legacy-default",
+  spokenAliases: Object.freeze([]),
   status: "SUPPORTED",
   limits: Object.freeze({
     minControlledSpeedKt: 0,
@@ -59,6 +60,44 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+const SPOKEN_ALIAS_PATTERN = /^[A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*$/;
+
+/**
+ * Validate and normalize authored pilot names. Aliases are data, not a value
+ * inferred from representativeVariant or an aircraft type string.
+ */
+export function normalizeSpokenAliases(value: unknown): readonly string[] {
+  if (value === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("spokenAliases must be an array when provided");
+  }
+  if (value.length === 0) {
+    throw new Error("spokenAliases must contain at least one alias when provided");
+  }
+
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+  for (const [index, rawAlias] of value.entries()) {
+    if (typeof rawAlias !== "string") {
+      throw new Error(`spokenAliases[${index}] must be a non-empty word or phrase`);
+    }
+    const alias = rawAlias.trim().replace(/\s+/g, " ");
+    if (!alias || !SPOKEN_ALIAS_PATTERN.test(alias)) {
+      throw new Error(`spokenAliases[${index}] must be a non-empty word or phrase`);
+    }
+    const key = alias.toUpperCase();
+    if (seen.has(key)) {
+      throw new Error("spokenAliases must not contain duplicates");
+    }
+    seen.add(key);
+    aliases.push(alias);
+  }
+
+  return Object.freeze(aliases);
 }
 
 function freezeDeep<T>(value: T): T {
@@ -207,6 +246,7 @@ function isUsableLegacyProfile(value: unknown): value is AircraftPerformanceProf
 export class AircraftPerformanceRegistry {
   private readonly defaults: AircraftProfileDefaults;
   private readonly aircraft: ReadonlyMap<string, AircraftProfileOverride>;
+  private readonly generalAviation: ReadonlyMap<string, AircraftProfileOverride>;
   private readonly cachedProfiles: Map<string, AircraftPerformanceProfile>;
 
   public constructor(dataset: unknown = profilesJson as unknown) {
@@ -216,6 +256,7 @@ export class AircraftPerformanceRegistry {
       // Legacy dataset handling: clone before freezing to protect source input
       this.defaults = FALLBACK_DEFAULTS;
       this.aircraft = new Map();
+      this.generalAviation = new Map();
       for (const profile of dataset.profiles) {
         if (isUsableLegacyProfile(profile)) {
           const key = profile.icaoType.trim().toUpperCase();
@@ -237,9 +278,22 @@ export class AircraftPerformanceRegistry {
         }
       }
       this.aircraft = acMap;
+      const gaMap = new Map<string, AircraftProfileOverride>();
+      if (isRecord(dataset.generalAviation)) {
+        for (const [k, v] of Object.entries(dataset.generalAviation as Record<string, unknown>)) {
+          if (isRecord(v)) {
+            const key = k.trim().toUpperCase();
+            if (key && key !== "DEFAULT" && !acMap.has(key)) {
+              gaMap.set(key, structuredClone(v) as AircraftProfileOverride);
+            }
+          }
+        }
+      }
+      this.generalAviation = gaMap;
     } else {
       this.defaults = FALLBACK_DEFAULTS;
       this.aircraft = new Map();
+      this.generalAviation = new Map();
     }
   }
 
@@ -252,7 +306,7 @@ export class AircraftPerformanceRegistry {
     if (cached) {
       return cached;
     }
-    const override = this.aircraft.get(key);
+    const override = this.aircraft.get(key) ?? this.generalAviation.get(key);
     if (!override) {
       return DEFAULT_PROFILE;
     }
@@ -263,7 +317,22 @@ export class AircraftPerformanceRegistry {
 
   public has(aircraftType: string): boolean {
     const key = aircraftType.trim().toUpperCase();
-    return this.aircraft.has(key) || this.cachedProfiles.has(key);
+    return this.aircraft.has(key) || this.generalAviation.has(key) || this.cachedProfiles.has(key);
+  }
+
+  /** True only for types in the separate `generalAviation` catalog object. */
+  public hasGeneralAviationType(aircraftType: string): boolean {
+    return this.generalAviation.has(aircraftType.trim().toUpperCase());
+  }
+
+  /** Sorted GA catalog keys. VFR mixes derive from this, never hand-listed. */
+  public listGeneralAviationTypes(): string[] {
+    return [...this.generalAviation.keys()].sort();
+  }
+
+  /** Preferred and alternate authored pilot names for an aircraft type. */
+  public getSpokenAliases(aircraftType?: string | null): readonly string[] {
+    return this.getProfile(aircraftType).spokenAliases ?? [];
   }
 
   private buildProfile(
@@ -348,6 +417,7 @@ export class AircraftPerformanceRegistry {
       icaoType: icao,
       representativeVariant: override.representativeVariant ?? icao,
       representativeEngine: override.representativeEngine ?? "generic",
+      spokenAliases: normalizeSpokenAliases(override.spokenAliases),
       status: "SUPPORTED",
       limits,
       regimes: Object.freeze(regimesObj) as Record<PerformanceRegime, PerformanceRegimeLimits>,
@@ -362,10 +432,24 @@ export const performanceRegistry = new AircraftPerformanceRegistry();
 /** Exported for production-data shape tests without exposing mutable internals. */
 export function isAircraftProfileDataset(value: unknown): value is AircraftProfileDataset {
   if (!isRecord(value)) return false;
+  const hasValidAliases = (catalog: unknown): boolean => {
+    if (!isRecord(catalog)) return true;
+    return Object.values(catalog).every((override) => {
+      if (!isRecord(override) || !("spokenAliases" in override)) return true;
+      try {
+        normalizeSpokenAliases(override.spokenAliases);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  };
   return (
     isRecord(value.defaults) &&
     isRecord(value.aircraft) &&
     isRecord(value.defaults.limits) &&
-    isRecord(value.defaults.regimes)
+    isRecord(value.defaults.regimes) &&
+    hasValidAliases(value.aircraft) &&
+    hasValidAliases(value.generalAviation)
   );
 }

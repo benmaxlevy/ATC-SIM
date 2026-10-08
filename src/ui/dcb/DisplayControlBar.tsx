@@ -47,7 +47,6 @@ import {
   armPlaceCenter,
   armPlaceRangeRing,
   beginAltitudeFilterChord,
-  cancelDcbSpinner,
   centerOnAirport,
   closeDcbMenu,
   commitDcbSpinner,
@@ -57,7 +56,6 @@ import {
   formatDcbRangeReadout,
   formatDcbRrReadout,
   formatFilterBand,
-  isLeaderDir,
   isRangeRingOffViewCenter,
   isVerticalDcbDock,
   isViewOffAirport,
@@ -82,8 +80,8 @@ import {
   DCB_RR_READOUT_ID,
   DcbCell,
   afterCell,
-  applyDirectNumericInput,
   cancelFilterIfEntering,
+  formatSpinnerCellReadout,
   onSpinnerWheel,
   renderMapSlot,
   renderPrefOpener,
@@ -135,7 +133,7 @@ export {
   type DisplayControlBarProps,
 } from "./dcbChrome";
 export { BRITE_GRID_LAYOUT, CHAR_SIZE_DCB_LAYOUT } from "./DisplayControlBarMenus";
-export { syncDisplayControlBar } from "./dcbChrome";
+export { formatSpinnerCellReadout, syncDisplayControlBar } from "./dcbChrome";
 
 function renderPhysicalMain(
   view: ScopeView,
@@ -183,7 +181,7 @@ function renderPhysicalMain(
           >
             <span className="dcb-cell-line">RANGE</span>
             <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
-              {view.camera.rangeNm}
+              {formatSpinnerCellReadout(view, "RANGE", view.camera.rangeNm)}
             </span>
           </DcbCell>
         );
@@ -233,7 +231,11 @@ function renderPhysicalMain(
           >
             <span className="dcb-cell-line">RR</span>
             <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
-              {formatDcbRrReadout(view.ringIntervalNm, view.showRings)}
+              {formatSpinnerCellReadout(
+                view,
+                "RR",
+                formatDcbRrReadout(view.ringIntervalNm, view.showRings),
+              )}
             </span>
           </DcbCell>
         );
@@ -302,7 +304,7 @@ function renderPhysicalMain(
             ariaLabel="Leader direction"
             dataDcb="ldr-dir"
             pressed={spinnerArmed(view, "LDR_DIR")}
-            onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+            onClick={() => toggleSpinner(view, onChange, "LDR_DIR", world)}
             onWheel={(event) =>
               onSpinnerWheel(
                 view,
@@ -321,7 +323,7 @@ function renderPhysicalMain(
           >
             <span className="dcb-cell-line">LDR DIR</span>
             <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
-              {dcbLeaderDirReadout(view, world)}
+              {formatSpinnerCellReadout(view, "LDR_DIR", dcbLeaderDirReadout(view, world))}
             </span>
           </DcbCell>
         );
@@ -351,7 +353,11 @@ function renderPhysicalMain(
           >
             <span className="dcb-cell-line">LDR</span>
             <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
-              {formatDcbLdrLengthReadout(view.leaderLengthPx)}
+              {formatSpinnerCellReadout(
+                view,
+                "LDR_LENGTH",
+                formatDcbLdrLengthReadout(view.leaderLengthPx),
+              )}
             </span>
           </DcbCell>
         );
@@ -429,7 +435,9 @@ function renderPhysicalMain(
             }}
           >
             <span className="dcb-cell-line">MODE</span>
-            <span className="dcb-cell-line">{view.modeFsl}</span>
+            <span className="dcb-cell-line">
+              {formatSpinnerCellReadout(view, "MODE_FSL", view.modeFsl)}
+            </span>
           </DcbCell>
         );
       case "shift":
@@ -497,7 +505,7 @@ export function renderMainLegacy(
         }
       >
         <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
-          {formatDcbRangeReadout(view.camera.rangeNm)}
+          {formatSpinnerCellReadout(view, "RANGE", formatDcbRangeReadout(view.camera.rangeNm))}
         </span>
       </DcbCell>
       <DcbCell
@@ -547,7 +555,11 @@ export function renderMainLegacy(
       >
         <span className="dcb-cell-line">RR</span>
         <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
-          {formatDcbRrReadout(view.ringIntervalNm, view.showRings)}
+          {formatSpinnerCellReadout(
+            view,
+            "RR",
+            formatDcbRrReadout(view.ringIntervalNm, view.showRings),
+          )}
         </span>
       </DcbCell>
       <DcbCell
@@ -575,7 +587,7 @@ export function renderMainLegacy(
         ariaLabel="Leader direction"
         dataDcb="ldr-dir"
         pressed={spinnerArmed(view, "LDR_DIR")}
-        onClick={() => toggleSpinner(view, onChange, "LDR_DIR")}
+        onClick={() => toggleSpinner(view, onChange, "LDR_DIR", world)}
         onWheel={(event) =>
           onSpinnerWheel(
             view,
@@ -588,7 +600,7 @@ export function renderMainLegacy(
       >
         <span className="dcb-cell-line">LDR DIR</span>
         <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
-          {dcbLeaderDirReadout(view, world)}
+          {formatSpinnerCellReadout(view, "LDR_DIR", dcbLeaderDirReadout(view, world))}
         </span>
       </DcbCell>
       <DcbCell
@@ -609,7 +621,11 @@ export function renderMainLegacy(
       >
         <span className="dcb-cell-line">LDR</span>
         <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
-          {formatDcbLdrLengthReadout(view.leaderLengthPx)}
+          {formatSpinnerCellReadout(
+            view,
+            "LDR_LENGTH",
+            formatDcbLdrLengthReadout(view.leaderLengthPx),
+          )}
         </span>
       </DcbCell>
       {/* CHAR SIZE / BRITE open CRC-analog submenus (T02-26). Not click-cycle. */}
@@ -721,7 +737,6 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                       ? "site-fused"
                       : undefined;
 
-  const typedBuffer = useRef<string>("");
   const submenuRef = useRef<HTMLDivElement>(null);
   const [submenuLeft, setSubmenuLeft] = useState<number | null>(null);
 
@@ -765,63 +780,6 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
     window.addEventListener("resize", measureSubmenu);
     return () => window.removeEventListener("resize", measureSubmenu);
   }, [showSubmenuOverlay, submenuTrigger, vertical]);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!view.dcbSpinner.armed || !view.dcbSpinner.cell) {
-        typedBuffer.current = "";
-        return;
-      }
-
-      if (e.key >= "0" && e.key <= "9") {
-        e.preventDefault();
-        e.stopPropagation();
-        typedBuffer.current += e.key;
-        if (view.dcbSpinner.cell === "LDR_DIR") {
-          const val = Number(typedBuffer.current);
-          if (isLeaderDir(val)) {
-            view.defaultLeaderDir = val;
-            commitDcbSpinner(view);
-            typedBuffer.current = "";
-            afterCell(onChange);
-          }
-        }
-        return;
-      }
-
-      if (e.key === "Backspace") {
-        e.preventDefault();
-        e.stopPropagation();
-        typedBuffer.current = typedBuffer.current.slice(0, -1);
-        return;
-      }
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
-        const num = Number(typedBuffer.current);
-        if (Number.isFinite(num) && typedBuffer.current.length > 0) {
-          applyDirectNumericInput(view, view.dcbSpinner.cell, num);
-        }
-        commitDcbSpinner(view);
-        typedBuffer.current = "";
-        afterCell(onChange);
-        return;
-      }
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        cancelDcbSpinner(view);
-        typedBuffer.current = "";
-        afterCell(onChange);
-        return;
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [view, onChange]);
 
   return (
     <div

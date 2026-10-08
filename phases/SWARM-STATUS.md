@@ -1,5 +1,266 @@
 # Swarm status
 
+## EIGHTY-SECOND SWARM — F6 AND F9 ORIGIN, DESTINATION, AND ROUTE DERIVATION (T02-203, 2026-09-22)
+
+Implemented and squash-merged on `feature/sattelite-traffic`:
+
+- T02-203 `7baec3a` — derive origin (`departureAirport`), destination (`airportId`), and intermediate filed route (`route`) from asterisk-delimited fix tokens in `<F6>` and `<F9>` entries. Updated `PreviewArmedAction`, `createFlightPlan`, and VFR amendment logic to keep FlightPlanModal and flight plan models fully populated.
+
+Final browser `npm run ci`: **251 files, 2,766 passed, 3 skipped**.
+
+**PHASE EXIT GREEN**
+
+## EIGHTY-FIRST SWARM — TOWER HANDOFF ELIGIBILITY AND VISUAL APPROACH RELAXATION (T04-104, 2026-09-22)
+
+Implemented and squash-merged on `feature/sattelite-traffic`:
+
+- T04-104 `62c2bcc` — relaxed tower handoff eligibility gate to 10 NM (`TOWER_HANDOFF_GATE_NM = 10`), added approach clearance and 45° final approach course intercept/established alignment checks, and preserved `VISUAL_FINAL` lateral mode across handoff through threshold landing despawn.
+
+Final browser `npm run ci`: **251 files, 2,764 passed, 3 skipped**.
+FAA JO 7110.65 §5-9-5 and §7-6-8 alignment verified: aircraft with approach clearances on intercept or established courses can be handed off to tower inside 10 NM for both instrument and visual approaches via `F5` and `CONTACT_TOWER`.
+
+**PHASE EXIT GREEN**
+
+## SEVENTY-NINTH SWARM — CONTACT TOWER/CENTER AND LANDING CLOSURE (T04-101–T04-103, 2026-09-20)
+
+Implemented and fast-forwarded on `feature/sattelite-traffic`:
+
+- T04-101 `63961de` — `CONTACT_TOWER` / `CONTACT_CENTER` Command IR,
+  typed/Path A/Path B/Path C/PTT/speech GBNF parity, readback, and shared
+  contracts.
+- T04-102 `aca2fd8` — generic tower/center transfer gates, VFR preservation,
+  Class B guard reuse, landing-based IFR plan closure, and read-only closed
+  plan history.
+- T04-103 `88ecc81` — integrated acceptance coverage, Help, user/phase/shared
+  documentation, and later-implementation constraints.
+
+Final browser `npm run ci`: **247 files, 2,692 passed, 4 skipped**. Focused
+acceptance: **18 passed**. `SPEECH_API_MOCK=1 .venv/bin/pytest`: **94 passed
+in 0.88s** outside the restricted sandbox. `git diff --check` passed. The
+restricted sandbox reproduced a minimal FastAPI `TestClient` thread-wakeup
+hang before application code ran; no speech-api files changed in T04-103.
+
+FAA grounding is recorded in the tickets and docs: JO 7110.65 §§2-1-15/16/17,
+7-6-8, and 5-1-9; AIM §§5-1-14/15. VFR remains VFR and does not receive Class
+B authorization. Contact transfer is separate from radar-service termination.
+Only an active IFR plan landing at an eligible functioning towered destination
+closes automatically; VFR/DVFR and non-towered IFR plans remain open. No
+frequency, facility lookup, individual tower/center entity, pilot request,
+or Raytheon STARS functionality was added. Unrelated `.worktrees/` and
+`speech-api/:memory:.ses` artifacts were preserved; no push performed.
+
+**PHASE EXIT GREEN** — no push performed; phase stopped at the configured
+boundary.
+
+## POST-AUDIT CORRECTIONS — VFR CLASS B PILOT REQUESTS (2026-09-20)
+
+Read-only subagent audit found and corrected runtime, clearance, Path C, and
+documentation gaps without creating new tickets. Existing T04-97–T04-100
+tickets were amended with the corrected invariants and acceptance coverage.
+
+- `0993ab0` — enforce VFR-only Class B request controls.
+- `bd299d7` — reject grounded aircraft, classify airport-bound routes by
+  endpoint, and refresh changed Class B plans before transmission.
+- `432c6bc` — harden Path C Class B evidence, route, sequence, and semantic
+  guards.
+- Follow-up commit — correct departure origin/destination details, contract
+  version, integration coverage, FAA AIM §3-5-5 citations, and user docs.
+
+Focused TypeScript tests: **150 passed**. Final browser `npm run ci`:
+**244 files, 2,667 passed, 4 skipped**. Speech mock gate passed **94 tests**
+with repository-compatible pytest 8 dependencies; pytest 9 remains a local
+FastAPI TestClient hang. No STARS behavior added. No unrelated artifacts
+staged.
+
+## SEVENTY-EIGHTH SWARM — VFR Class B PILOT REQUESTS (T04-97–T04-100, 2026-09-20)
+
+Completed on `feature/sattelite-traffic` with captain squash merges:
+
+- T04-97 `1db5215` — generic VFR Class B request schema, scheduling,
+  eligibility, route grounding, and lifecycle state.
+- T04-98 `4432dda` — deterministic Class B `say request` response and
+  standby/details lifecycle.
+- T04-99 `7d58c36` — `CLEARED AS REQUESTED`, Class B `UNABLE`, and complete
+  typed/Path A/Path B/Path C/PTT/speech GBNF parity.
+- T04-100 `24c0cb5` — runtime request association/resolution, integrated
+  acceptance, docs, shared contracts, and backlog update.
+
+Final browser `npm run ci`: **244 files passed, 2,657 passed, 4 skipped**.
+Full `SPEECH_API_MOCK=1 pytest`: **94 passed**. Focused speech parity,
+`py_compile`, and `git diff --check` passed. The default local speech venv
+had an incompatible latest FastAPI/Starlette TestClient hang; the full gate
+passed with dependency versions allowed by `requirements-ci.txt`.
+
+FAA grounding is recorded in the tickets/docs: JO 7110.65 §§2-1-18, 7-9-2,
+7-9-3 and AIM §§3-2-3, 3-5-7, 4-2-3. No Raytheon STARS manual was supplied or
+needed; no STARS behavior was added. No push performed. Unrelated
+`.worktrees/` and `speech-api/:memory:.ses` artifacts preserved.
+
+**PHASE EXIT GREEN** — no push performed; phase stopped at the configured
+boundary.
+
+## SEVENTY-FOURTH SWARM — AUDIT REMEDIATION HANDOFF BLOCKED (T02-202, T04-86–T04-91, 2026-09-19)
+
+Completed on `feature/sattelite-traffic` through T04-91 with captain squash
+commits:
+
+- T02-202 `bdfafb9` — DCB state routing and coupled-state restoration.
+- T04-86 `a39acb5` — regional source coverage and strict diagnostics.
+- T04-87 `194c417` — regional pack eligibility, provenance, and geometry invariants.
+- T04-88 `bbf32d6` — generic VFR destination eligibility and fallback parity.
+- T04-89 `d980c69` — IFR cancellation state recovery and Class B no-entry safety.
+- T04-90 `3827f64` — visual runway geometry fail-closed validation/application parity.
+- T04-91 `da9fa1b` — integrated acceptance, documentation, manual evidence, and
+  whitespace/EOF hygiene.
+
+Gates passed: focused ticket tests; independent manual reviews after each
+correction; final `npm run ci` (**240 files, 2608 passed, 4 skipped**); and
+`git diff --check`. The integrated acceptance test is
+`tests/integration/satellite-traffic-acceptance.test.ts`; Class B entry
+approval remains explicitly unsupported.
+
+Speech mock pytest passed outside the sandbox: `SPEECH_API_MOCK=1
+.venv/bin/pytest` (**94 passed, 1.27s**). The earlier sandbox timeout was
+caused by its Python 3.13 asyncio thread-wakeup restriction around Starlette
+`TestClient`, not by repository behavior. Unresolved manual leftovers: live
+KATL/browser sessions, speech latency, 60-FPS observation, and live-source/
+facility fidelity checks. No push.
+
+## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM COMPLETE — Cold Call Check-in, Enriched IFR Pickup Schema & Say-Request Direct Details (T04-84–T04-85, 2026-09-18)
+
+Ran on `feature/sattelite-traffic` across two sequential waves:
+- T04-84 (Wave A): Replaced initial unsolicited check-in info dump with authentic cold call (`"Atlanta Approach, <callsign>"` or `"Approach, <callsign>"`). Preserved complete flight details in `RadioRequestDetails` under `PENDING` status. Implemented and exported `formatIfrPickupRequest` supporting callsign, position report, aircraft type, destination, and requested altitude per FAA AIM §5-1-14.
+- T04-85 (Wave B): Eliminated parroted `"say request"` in readback. When ATC issues `REQUEST_DETAILS` (`"<callsign>, say request"`), pilot immediately responds with full request details (VFR flight following or airborne IFR pickup). Removed redundant delayed `AWAITING_DETAILS` polling in `vfrRequestQueue.ts` to prevent duplicate speech playback. Preserved `"standby"` readback on `STANDBY_REQUEST` with clean recovery on subsequent `say request`. Added multi-turn conversational sequence integration tests covering check-in, say request, standby, and decline flows.
+
+Captain squash commits: `2ddfa7b` (T04-84), `59e47f2` (T04-85). Planning commit: `9cba3b4`.
+
+Final `npm run ci`: **240 files, 2569 passed, 4 skipped**.
+Speech-api pytest: **94 passed**.
+Manual gates: no STARS manual supplied; non-interfering with core display.
+Worktrees cleaned up and local branches deleted.
+
+## AUTHENTIC RADIO CHECK-IN AND SAY-REQUEST DIRECT RESPONSE SWARM EXIT — PHASE EXIT GREEN
+
+Phase: authentic radio check-in and say-request direct response T04-84–85
+Merge target: `feature/sattelite-traffic`
+Merged: T04-84, T04-85
+Tests: final `npm run ci` green (2569 passed, 4 skipped); speech-api pytest green (94 passed)
+Notes: push authorized; cold call check-in parity; direct say-request response; multi-turn lifecycle verified
+
+## SATELLITE APPROACH & VISUAL AUTO-LAND SWARM COMPLETE — Arrival-Airport Approach Resolution, Satellite ILS, Visual Clearance & Autonomous VFR Auto-Land (T04-81–T04-83, 2026-09-16)
+
+Ran on `feature/sattelite-traffic` across three sequential waves:
+- T04-81 (Wave A): Resolved arrival-airport approach context against aircraft's intended arrival destination (via `destinationAirportId` or `destination`), allowing satellite airports with published approaches (e.g. KSAT1 / KPDK / KRYY) to be cleared for ILS approaches. Added `resolveRunwayGeometry` helper and verified cross-airport ILS isolation.
+- T04-82 (Wave B): Implemented visual approach clearance (`CLEARED_VISUAL`), Command IR instruction, typed parser shorthand (`CV <rwy>`, `CAPP VIS <rwy>`), spoken GBNF/phraseology, `VISUAL_FINAL` lateral and 3° glidepath vertical guidance, MSAW inhibition on final within 3 NM, missed approach breakout, datablock scratchpad `V<rwy>`, and full browser/speech-api Path-C synchronization.
+- T04-83 (Wave C): Replaced terminal despawn vanish of airport-bound ambient VFR traffic with autonomous straight-in visual final descent and touchdown. Seeded destination runway deterministically at spawn on `AmbientVfrState`, transitioned onto `VISUAL_FINAL` at ~3–5 NM along extended centerline, emitted `vfr.tower.handoff` en route and `nav.landed` at threshold, despawned cleanly, preserved standard VFR datablock presentation without clearance tags, and confirmed airborne IFR pickups and departures never auto-land.
+
+Captain squash commits: `6cf17fe` (T04-81), `18ee1e4` (T04-82), `87dba7a` (T04-83). Planning commit: `f19fe14`.
+Backlog documentation: `a3bd19e` (FAA JO 7110.65 "contact tower" phraseology added to `phases/LATER-IMPLEMENTATION-BACKLOG.md`).
+
+Final `npm run ci`: **236 files, 2471 passed, 4 skipped**.
+Speech-api pytest: **94 passed** (Path-C `CLEARED_VISUAL` parity guard, GBNF grammar, semantic validator, live eval corpus).
+Manual gates: no STARS manual supplied; non-interfering with core display.
+No push. Worktrees cleaned up and local branches deleted.
+
+## SATELLITE APPROACH & VISUAL AUTO-LAND SWARM EXIT — PHASE EXIT GREEN
+
+Phase: satellite approach & visual auto-land T04-81–T04-83
+Merge target: `feature/sattelite-traffic`
+Merged: T04-81, T04-82, T04-83
+Tests: final `npm run ci` green (2471 passed, 4 skipped); speech-api pytest green (94 passed)
+Notes: no push; arrival context generic; visual clearances synced with Path C; autonomous VFR auto-land complete
+
+Ran on `feature/sattelite-traffic` with one sequential session-default worker
+per ticket. T04-79 split the spawn paths: login-time initial population stays
+disc-spawned airborne, while every `step()`-driven entry lifts off near a
+scenario-derived satellite airport (eligible destinations minus the center
+airport, no hardcoded ICAO) with mission `SATELLITE_DEPARTURE`,
+`originAirportId`/`departureRunwayId` state, runway-aligned climbing liftoff,
+and `NO_DEPARTURE_AIRPORT` structured skip (never mid-air fallback).
+T04-80 added the departure-line corridor (runway-heading climb, 1-2 seeded
+wobble intermediates bounded at 3 NM, exit at exitRadius+2, `BOUNDARY_EXIT`
+terminal with removal), full swept Bravo guard with fail-closed
+`NO_SAFE_ROUTE`, integrated acceptance, and docs notes (`docs/USER.md`,
+`phases/04-procedures/README.md`).
+
+Captain squash commits: `b3f67f6` (T04-79), `936ae97` (T04-80). Planning
+commit: `9ee88ce`.
+
+Post-merge `npm run ci`: **232 files, 2427 passed, 4 skipped**. Speech-api
+pytest skipped: no speech paths changed. Manual gates: no STARS manual
+supplied for check-stars-manual; tickets change no STARS-manual-covered
+surface (spawner/navigation behavior only, no PPI/keys/grammar change).
+Manual KATL seeded live sessions (satellite liftoff watch, FAA edition and
+paragraph record, speech/perf samples) recorded as leftovers, not claimed.
+No push. `.worktrees/` additions are the two ticket worktrees; unrelated
+untracked artifacts and stale worktrees from other phases untouched.
+
+## SATELLITE VFR DEPARTURES SWARM EXIT — PHASE EXIT GREEN
+
+Phase: satellite VFR departures T04-79–80
+Merge target: feature/sattelite-traffic
+Merged: T04-79, T04-80
+Tests: final `npm run ci` green (2427 passed, 4 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; login disc population preserved; continuous entries satellite-origin
+
+## VFR SIMPLIFICATION SWARM COMPLETE — Training Box and Density Presets (T04-77–T04-78, 2026-09-16)
+
+Ran on `feature/sattelite-traffic` with one sequential `muse-spark-1.3`
+medium worker per ticket. T04-77 replaced named zones with a uniform
+ARP-centered 30 NM training box (seeded streams, Bravo guard, skip events
+unchanged; zone shims kept for compile). T04-78 added Off/Light/Moderate/Busy
+density presets plus derived Custom, a `<details>` tune disclosure mirroring
+help subsections, fixed 60/20/20 movement mix, deleted zone shims/fieldset,
+and docs addenda.
+
+Captain squash commits: `c24493d` (T04-77), `743845b` (T04-78). Planning
+commit: `cafdea6`.
+
+Post-merge `npm run ci`: **232 files, 2390 passed, 3 skipped**. Speech-api
+pytest skipped: no speech paths changed. Manual KATL both-config Moderate
+sessions recorded as leftover per standing authorization. Worker skip-rate
+probe noted for review: LOCAL spawns at 3000–5500 ft skip often under large
+Bravo discs (guard working as designed, no penetration). No push.
+`.agents/rules/`, `.worktrees/`, `GEMINI.md`, `audit.diff` untouched.
+Uncommitted local KATL regional pack files remain the user's call.
+
+## VFR SIMPLIFICATION SWARM EXIT — PHASE EXIT GREEN
+
+Phase: VFR simplification T04-77–78
+Merge target: `feature/sattelite-traffic`
+Merged: T04-77, T04-78
+Tests: final `npm run ci` green (2390 passed, 3 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; uniform box; presets + tune disclosure
+
+## SATELLITE TRAFFIC SWARM COMPLETE — Session Controls and Acceptance (T04-76, 2026-09-16)
+
+Resumed `feature/sattelite-traffic` for T04-76 only with `muse-spark-1.3` free
+medium worker (user override of `gpt-5.6-luna` `xhigh`). T04-69 through T04-75
+remained merged. Worker continued the existing `.worktrees/T04-76` dirty work,
+preserved every file, and delivered 5 progressive commits (`064a26a`,
+`8409ba8`, `655d75f`, `deceeaf`, `8490927`). Captain squash-merged `bd8829a`.
+
+Delivered: VFR population/request session controls with upstream validation and
+round-trip, N-number callsign parity, synthetic integrated acceptance, Atlanta
+source/provenance acceptance, Bravo no-entry geometry, long-session bounds with
+legacy IFR schedule identity, Help/docs addenda (`docs/USER.md`,
+`phases/04-procedures/README.md`, `tools/cifp-import/README.md`).
+
+Post-merge `npm run ci`: typecheck, lint, format, **231 files, 2367 passed,
+3 skipped**. Speech-api pytest skipped: no speech-api paths changed. Manual
+KATL both-runway-config acceptance recorded as leftover per user authorization;
+FAA edition/paragraphs, scenario/seed, unavailable speech/perf evidence recorded
+honestly in ticket handoff. No push. `.agents/rules/`, `.worktrees/`,
+`GEMINI.md`, `audit.diff` untouched.
+
+## SATELLITE TRAFFIC SWARM EXIT — PHASE EXIT GREEN
+
+Phase: Atlanta satellite traffic T04-69 through T04-76
+Merge target: `feature/sattelite-traffic`
+Merged: T04-69, T04-70, T04-71, T04-72, T04-73, T04-74, T04-75, T04-76
+Tests: final `npm run ci` green (2367 passed, 3 skipped); speech-api pytest skipped (no speech changes); manual KATL leftovers recorded
+Notes: no push; trainer deltas per ticket
+
 ## SEVENTY-SECOND SWARM COMPLETE — Cancel Approach Clearance Breakout (T04-66–T04-68)
 
 Completed sequentially on `feature/better-openap-usage` with one worker at a
@@ -1993,6 +2254,28 @@ push performed.
 
 **PHASE EXIT GREEN**
 
+## SEVENTY-FIFTH SWARM COMPLETE — IFR cancellation VFR continuation replanning (T04-92–T04-93)
+
+Completed sequentially on `feature/sattelite-traffic` with one configured Luna
+medium worker and captain squash merges. T04-92 makes IFR cancellation outside
+Class B preserve a safe VFR suffix or deterministically replan around the 3D
+Class B volume; cancellation remains rejected inside Class B or when no safe
+replacement exists. T04-93 adds integration coverage for atomic rejection,
+route safety, readback, and positive-time VFR movement, plus user, phase, and
+backlog documentation. Controller-issued VFR clearances through or into Class B
+remain deferred; no Class B clearance or Command IR/parser behavior was added.
+
+Captain commits: `c8c7ace`, `52677a3`, `5ab9611`, `f8c2d28`, `584e75b`.
+Final `npm run ci`: **240 files passed, 2,615 passed, 4 skipped, 0 failures**.
+`git diff --check` passed. Independent supplied-manual review passed with no
+FAIL or CONCERN after the positive-time movement correction. Live KATL/browser
+manual evidence was unavailable; the ticket records that limitation explicitly
+and does not present automated coverage as live proof.
+
+No speech API changes. No push performed; stop at configured boundary.
+
+**PHASE EXIT GREEN**
+
 ## SEVENTIETH SWARM COMPLETE — shared fix matching and per-span route evidence (T02-193–T02-196)
 
 Completed sequentially on `feature/clearances` with one configured worker and
@@ -2024,5 +2307,85 @@ Live GGUF evaluation was not run; mock/eval coverage is committed.
 The prior bad direct-route commit remains reverted by `6766512`. No new phase
 started, no push was performed, and unrelated `.agents/rules/`, `GEMINI.md`,
 and the separate T02-185 worktree were preserved.
+
+**PHASE EXIT GREEN**
+
+## DCB NUMERIC KEYBOARD ENTRY SWARM COMPLETE — T02-200–T02-201
+
+Completed sequentially on `feature/sattelite-traffic` with one configured worker
+and captain squash merges.
+
+- **T02-200**: Extended `DcbSpinnerState` with buffered numeric typing and initial
+  value capture. Added key routing in `handleScopeKeyDown` to intercept digits,
+  decimal point, Backspace, Enter, and Escape/Clear when a DCB spinner is armed,
+  preventing leakage into preview buffer or radio input. Enforced STARS manual limits
+  for Range (6–512), Range Rings (2/5/10/20), Leader Length (0–7), and PTL (0.0–5.0).
+- **T02-201**: Rendered live typed numeric buffer inside active DCB button labels
+  across physical MAIN, legacy MAIN, and submenus. Synchronized mouse wheel stepping
+  with buffer and initial value. Added user documentation in `docs/USER.md` and 18
+  end-to-end integration acceptance tests in `dcbSpinnerKeyboardAcceptance.test.ts`.
+
+Captain commits: `ebca2f4`, `0d85d9a`.
+Final `npm run ci`: **238 files passed, 2,506 passed, 4 skipped, 0 failures**.
+Independent supplied-manual gates passed for both tickets with verdict **PASS**.
+Authoritative citations: FAA/Raytheon STARS TI 6191.409 Revision 30 §2.5, §2.6, §4.4.1, §4.14.3, §6.1.1, §6.3.4.
+No push performed; stop at configured boundary.
+
+**PHASE EXIT GREEN**
+
+## SEVENTY-SEVENTH SWARM COMPLETE — VFR Class B clearance workflow (T04-94–T04-96)
+
+Completed sequentially on `feature/sattelite-traffic` with one isolated worker
+slot configured; captain fallback completed T04-95 and T04-96 after workers
+were idle. T04-94 adds the closed VFR Class B Command IR and parser parity,
+including the eight approved `TO_ENTER` aliases. T04-95 adds VFR-only
+validation, explicit clearance/restriction state, grouped 3D route checks,
+temporary altitude snapshot/resume, boundary events, and atomic rejection.
+T04-96 adds synthetic integrated acceptance coverage, generic ambient-traffic
+route execution under an active clearance, shared contracts, user/phase docs,
+and the existing backlog update.
+
+Captain commits: `5fde8d0`, `10dbe93`, `e11e875`. Final `npm run ci`:
+**243 files passed, 2,638 passed, 4 skipped, 0 failures**. Final speech API
+mock gate: **94 passed, 1 warning**. Focused parser/state/integration tests
+passed; `git diff --check` passed. FAA grounding remains JO 7110.65 §§7-9-2,
+7-9-3, 7-9-7 and AIM §3-2-3 as recorded in the tickets. No supplied Raytheon
+STARS manual was present and no STARS UI surface changed, so the STARS manual
+gate was not applicable.
+
+Manual leftover: live browser/controller review and operational suitability
+review were not run; automated coverage is trainer-fixture evidence only. The
+user separately authorized pushing the completed target branch after this
+phase; no other branch is pushed.
+
+**PHASE EXIT GREEN**
+
+## EIGHTIETH SWARM COMPLETE — aircraft spoken callsign aliases (T03-27–T03-31)
+
+Completed sequentially on `feature/sattelite-traffic` with one worker slot and
+captain squash merges. T03-27 adds explicit `spokenAliases` metadata to all
+seven VFR aircraft profiles. T03-28 makes pilot transmissions use the alias
+when available while preserving canonical N-number output. T03-29 grounds
+spoken `N123` and alias forms such as `Skyhawk 123` to the canonical callsign,
+with transcript-evidence and ambiguity rejection. T03-30 synchronizes the
+frontend parser, Path C instruction types, semantic validator, prompt, mock,
+tests, and GBNF; aliases are input evidence only and canonical N-number
+callsigns remain the output contract. T03-31 adds acceptance coverage, Help,
+user documentation, phase documentation, and the shared parse-pipeline
+contract.
+
+Captain commits: `ed3fb7c`, `b19572d`, `17b4d01`, `cd6a431`, `8035d4b`.
+Final `npm run ci`: **251 files passed, 2,753 passed, 4 skipped, 0 failures**.
+Focused alias acceptance and Help tests passed; `git diff --check` passed. The
+speech API mock gate passed **98 tests** after T03-30 and before T03-31's
+README-only speech change. A post-merge rerun hung in this container after
+initial collection and was terminated; no speech runtime files changed in
+T03-31. No supplied STARS manual was present and no STARS surface changed, so
+the manual gate was not applicable.
+
+Manual leftover: live browser/type/PTT/audio review and live GGUF evaluation
+were not run. Automated coverage is committed trainer-fixture evidence only.
+No unrelated worktree or session artifacts were staged. Push was authorized by
+the user and is the next captain action.
 
 **PHASE EXIT GREEN**

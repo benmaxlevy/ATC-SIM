@@ -90,6 +90,7 @@ export function terminalStripsFromWorld(world: World): {
         id: ac.id,
         stripType: "DEPARTURE",
         acid,
+        callsign: acid,
         revisionNumber: 0,
         rawType: aircraftType ?? "B738",
         aircraftCount: plan?.aircraftCount,
@@ -150,6 +151,7 @@ export function terminalStripsFromWorld(world: World): {
         id: ac.id,
         stripType: "ARRIVAL",
         acid,
+        callsign: acid,
         revisionNumber: 0,
         rawType: aircraftType ?? "A321",
         aircraftCount: plan?.aircraftCount,
@@ -166,9 +168,14 @@ export function terminalStripsFromWorld(world: World): {
           ? String(Math.round(arrivalAltitudeFt / 100)).padStart(3, "0")
           : undefined,
         altitudeRemarks: plan?.remarks,
-        flightRules: plan?.flightRules === "VFR" ? "VFR" : "IFR",
+        flightRules:
+          ac.activeClearance || ac.flightRules === "IFR"
+            ? "IFR"
+            : plan?.flightType === "VFR" || plan?.flightRules === "VFR" || ac.flightRules === "VFR"
+              ? "VFR"
+              : "IFR",
         minimumFuel: plan?.minimumFuel,
-        destinationAirport: plan?.airportId ?? airportId,
+        destinationAirport: plan?.airportId ?? ac.activeClearance?.limitId ?? airportId,
         remarks: plan?.remarks ?? "",
         box9A: plan?.airportId ?? airportId,
         box9B: "",

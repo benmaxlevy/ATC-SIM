@@ -1,0 +1,91 @@
+{
+  "airportId": "KCSG",
+  "stars": [],
+  "approaches": [
+    {
+      "id": "I06",
+      "type": "ILS",
+      "runway": "06",
+      "name": "ILS RWY 06",
+      "locNavaidId": "ICSG",
+      "gsNavaidId": "ICSGGS",
+      "thresholdFixId": "RW06",
+      "courseDeg": 56,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36,
+      "tchFt": 49,
+      "gsAngleDeg": 2.61,
+      "gsInterceptAltFt": 1000,
+      "missed": {
+        "headingDeg": 56,
+        "climbToFt": 425,
+        "directFixId": "RW06"
+      }
+    },
+    {
+      "id": "L06",
+      "type": "LOC",
+      "runway": "06",
+      "name": "LOC RWY 06",
+      "locNavaidId": "ICSG",
+      "gsNavaidId": "ICSGGS",
+      "thresholdFixId": "RW06",
+      "courseDeg": 56,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36,
+      "tchFt": 49,
+      "gsAngleDeg": 2.61,
+      "gsInterceptAltFt": 1000,
+      "missed": {
+        "headingDeg": 56,
+        "climbToFt": 425,
+        "directFixId": "RW06"
+      }
+    },
+    {
+      "id": "R06",
+      "type": "RNAV",
+      "runway": "06",
+      "name": "RNAV RWY 06",
+      "locNavaidId": "ICSG",
+      "gsNavaidId": "ICSGGS",
+      "thresholdFixId": "RW06",
+      "courseDeg": 55.7,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36,
+      "tchFt": 49,
+      "gsAngleDeg": 2.61,
+      "gsInterceptAltFt": 900
+    },
+    {
+      "id": "R13",
+      "type": "RNAV",
+      "runway": "13",
+      "name": "RNAV RWY 13",
+      "locNavaidId": "ICSG",
+      "gsNavaidId": "ICSGGS",
+      "thresholdFixId": "RW13",
+      "courseDeg": 128.9,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36,
+      "tchFt": 49,
+      "gsAngleDeg": 2.61,
+      "gsInterceptAltFt": 798
+    },
+    {
+      "id": "R24",
+      "type": "RNAV",
+      "runway": "24",
+      "name": "RNAV RWY 24",
+      "locNavaidId": "ICSG",
+      "gsNavaidId": "ICSGGS",
+      "thresholdFixId": "RW24",
+      "courseDeg": 236,
+      "lengthNm": 18,
+      "beamHalfWidthDeg": 2.36,
+      "tchFt": 49,
+      "gsAngleDeg": 2.61,
+      "gsInterceptAltFt": 729
+    }
+  ]
+}

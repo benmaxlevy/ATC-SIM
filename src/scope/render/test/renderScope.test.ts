@@ -99,7 +99,7 @@ test("history dots sit behind an eastbound track after 30 s", () => {
   expect(td!.history.eastNm[0]).toBeLessThan(ac.xNm);
 });
 
-test("IDENT stroke is yellow at 1 s and gone by 3 s", () => {
+test("IDENT shows datablock ID at 1 s and clears by 3 s without changing the symbol", () => {
   const ac = makeTestAircraft({ id: "ac-ident-draw", xNm: 0, yNm: 0, headingDeg: 90 });
   const world = createWorld({ aircraft: [ac], simTimeMs: 0 });
   const view = createScopeView();
@@ -110,7 +110,8 @@ test("IDENT stroke is yellow at 1 s and gone by 3 s", () => {
   expect(isIdentFlashing(view.tracks.get(ac.id)!, 1000)).toBe(true);
   expect(
     at1s.fillTexts.filter((t) => t.text === "*" && t.fillStyle === SELECTED_ACCENT_COLOR),
-  ).not.toHaveLength(0);
+  ).toHaveLength(0);
+  expect(at1s.fillTexts.some((t) => t.text.includes("ID"))).toBe(true);
 
   world.simTimeMs = 3000;
   const at3s = createMockCtx();
@@ -119,6 +120,7 @@ test("IDENT stroke is yellow at 1 s and gone by 3 s", () => {
   expect(
     at3s.fillTexts.filter((t) => t.text === "*" && t.fillStyle === SELECTED_ACCENT_COLOR),
   ).toHaveLength(0);
+  expect(at3s.fillTexts.some((t) => t.text.includes("ID"))).toBe(false);
 });
 
 test("drawing the PPI does not emit Command IR", () => {

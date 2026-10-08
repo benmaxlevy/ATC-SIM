@@ -63,6 +63,7 @@ describe("STARS System Lists & DCB Integration Acceptance", () => {
         ...makeArrival("ac-3", "N789V", 15, 10, 120),
         squawk: "1200",
         assignedSquawk: "1200",
+        flightFollowing: { active: true },
       },
     );
 

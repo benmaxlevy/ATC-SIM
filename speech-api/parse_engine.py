@@ -20,7 +20,7 @@ log = logging.getLogger("speech-api")
 
 SCHEMA_VERSION = "command-ir-v0"
 # Shared browser/service safety contract. Bump when semantic guard behavior changes.
-PARSE_CONTRACT_VERSION = "command-ir-v0-safe-1"
+PARSE_CONTRACT_VERSION = "command-ir-v0-safe-3"
 # Bounded increase over the original 128-token budget; remains below the
 # configured context window and is measured by the per-request timing log.
 PATH_C_MAX_OUTPUT_TOKENS = 192
@@ -39,6 +39,10 @@ INSTRUCTION_TYPES = frozenset(
         "CANCEL_APPROACH",
         "ASSIGN_SQUAWK",
         "MAINTAIN_VFR",
+        "CLASS_B_CLEARANCE",
+        "REMAIN_OUTSIDE_BRAVO",
+        "RESUME_APPROPRIATE_VFR_ALTITUDES",
+        "CLASS_B_CLEARANCE_AS_REQUESTED",
         "IFR_CLEARANCE",
         "IDENT",
         "SAY_HEADING",
@@ -49,6 +53,16 @@ INSTRUCTION_TYPES = frozenset(
         "CROSS",
         "GO_AROUND",
         "DELETE_SPEED_RESTRICTIONS",
+        "REQUEST_DETAILS",
+        "STANDBY_REQUEST",
+        "APPROVE_FLIGHT_FOLLOWING",
+        "DECLINE_REQUEST",
+        "RADAR_CONTACT",
+        "TERMINATE_RADAR_SERVICE",
+        "ACKNOWLEDGE_IFR_CANCELLATION",
+        "CONTACT_TOWER",
+        "CONTACT_CENTER",
+        "CLEARED_VISUAL",
     }
 )
 
@@ -61,6 +75,20 @@ TURN_DEGREES_DIRS = frozenset({"LEFT", "RIGHT"})
 ALTITUDE_VERBS = frozenset({"CLIMB", "DESCEND", "MAINTAIN"})
 SPEED_VERBS = frozenset({"MAINTAIN", "INCREASE", "REDUCE"})
 CROSS_RESTRICTIONS = frozenset({"AT", "AT_OR_ABOVE", "AT_OR_BELOW"})
+REQUEST_CONTROL_TYPES = frozenset(
+    {
+        "REQUEST_DETAILS",
+        "STANDBY_REQUEST",
+        "APPROVE_FLIGHT_FOLLOWING",
+        "DECLINE_REQUEST",
+        "RADAR_CONTACT",
+        "TERMINATE_RADAR_SERVICE",
+        "ACKNOWLEDGE_IFR_CANCELLATION",
+        "CLASS_B_CLEARANCE_AS_REQUESTED",
+        "CONTACT_TOWER",
+        "CONTACT_CENTER",
+    }
+)
 
 # Constrained JSON / GBNF target (Command IR v0). Loaded from parse_grammar.gbnf.
 GRAMMAR_PATH = Path(__file__).resolve().parent / "parse_grammar.gbnf"
@@ -69,13 +97,19 @@ SYSTEM_PROMPT = """Convert ATC radio into Command IR v0 JSON. Output JSON only; 
 
 Repair fused, slurred, and compact ASR when the intended clearance is clear. Normalize airline telephony to ICAO (Delta DAL, Southwest SWA, American AAL, United UAL, JetBlue JBU, Alaska ASA, Frontier FFT, Spirit NKS, FedEx FDX, UPS UPS), spoken digits to a callsign token, niner/tree/fife to 9/3/5, headings/altitudes to numbers, heading 360 to 0, and grouped thousands (one one thousand is 11000). Preserve a recognizable spoken callsign; use onFrequency only when its flight number uniquely repairs noisy audio. Never substitute selected or unrelated traffic.
 
+When aircraftCandidates/onFrequency includes an authored alias, a complete alias plus registration tail (for example Skyhawk 123 or Skyhawk one two three) is only evidence for the one matching canonical callsign. Alias-only, incomplete, unknown, or ambiguous alias evidence is PARSE_MISS. Emit only the listed canonical callsign in callsignToken; never emit alias text such as Skyhawk 123. This is local salvage using simulator-authored evidence, not FAA-complete natural-language understanding.
+
 “turn left heading 270” is FLY_HEADING with LEFT, never TURN_DEGREES. ASR “turn leftening 360” and “turn leftening one five zero” mean “turn left heading …” and are FLY_HEADING with LEFT. “zero niner zero” is heading 90. “fly heading” with no left/right is SHORTEST; never invent LEFT or RIGHT. “turn 20 degrees right” is TURN_DEGREES with RIGHT and degrees 20, never FLY_HEADING. TURN_DEGREES requires “degrees” without a heading. “present heading” is PRESENT_HEADING. “descend and maintain 4000” and ASR “descent and maintain 4000” are ALTITUDE with DESCEND and altitudeFt 4000. “cross <fix> at and maintain <altitude>” maps to {"type": "CROSS", "restriction": "AT"}. “maintain 210 knots” is SPEED with MAINTAIN and speedKt 210, never FLY_HEADING or ALTITUDE. “increase speed to 250 knots” is SPEED INCREASE; “reduce speed” is REDUCE. “maintain five thousand, maintain two one zero knots” is both ALTITUDE MAINTAIN 5000 and SPEED MAINTAIN 210; never drop one instruction. DESCEND_VIA and CLIMB_VIA require the word “via” plus a listed procedure; never use VIA for an altitude assignment; never map an unmatched spoken name onto a different listed procedure. “without delay” means expedite, never untilEstablished; “until established” belongs on ALTITUDE. IDENT, go around, localizer intercept, and cleared/expect approach retain their normal instruction meanings. Position reports never imply DIRECT.
 
 Position advisories are not commands, but never stop parsing later sentences. “You are 15 miles from a fix. Maintain 4000 until established on the localizer. Cleared ILS runway 09 approach.” has two instructions after the advisory: ALTITUDE with MAINTAIN, altitudeFt 4000, untilEstablished true; then CLEARED_APPROACH using the matching approaches= id. Preserve every independent instruction in spoken order. “Turn 40 degrees left. Intercept runway 09 localizer. Maintain 5000.” requires three instructions: TURN_DEGREES, INTERCEPT_LOCALIZER using the matching approaches= id, then ALTITUDE. Do not drop one instruction or combine it into another.
 
-Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
+Type meanings: DIRECT requires direct/proceed; EXPECT_APPROACH requires expect; CLEARED_APPROACH requires clear/cleared; CLEARED_VISUAL requires cleared visual approach plus runway; INTERCEPT_LOCALIZER requires intercept plus localizer; CANCEL_APPROACH requires the exact phrase cancel approach clearance and must be the first instruction; IDENT requires ident; SAY_HEADING and SAY_ALTITUDE require say; JOIN_PROCEDURE requires join; CROSS requires cross; GO_AROUND requires go around. CANCEL_APPROACH has no approachId, never means GO_AROUND, and cannot be followed by an approach or go-around instruction. Emit a type when the transcript supports that clearance, including fused ASR (leftening = left heading, descent = descend). Do not invent a type with no supporting phrase.
 
-New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+New command examples: “squawk 2222” and ASR “squad 2222” are ASSIGN_SQUAWK with code 2222 and source DISCRETE; repair squad only when exactly four octal digits follow it. “squawk vfr” is ASSIGN_SQUAWK with code 1200 and source VFR. “maintain vfr” is MAINTAIN_VFR; it is not an IFR clearance or VFR-on-top authorization. “say request” is REQUEST_DETAILS. “stand by” is STANDBY_REQUEST. “approve flight following” is APPROVE_FLIGHT_FOLLOWING. “unable flight following” and “unable to provide flight following” are DECLINE_REQUEST with service FLIGHT_FOLLOWING. “unable ifr pickup” and “unable to provide ifr pickup” are DECLINE_REQUEST with service IFR_PICKUP. “radar contact” alone is bare RADAR_CONTACT with only the type field; “radar contact <distance> miles [direction] from|of <reference>” is RADAR_CONTACT with distanceNm, referenceId, and referenceKind, where the reference may be a fix, navaid, or airport (referenceKind AIRPORT for airports, matched against airports=). Never emit a partial position: either all three position fields or none. “radar service terminated” is TERMINATE_RADAR_SERVICE. “ifr cancellation received” is ACKNOWLEDGE_IFR_CANCELLATION. “cleared visual approach runway 27L” and “cleared visual approach runway two seven left” are CLEARED_VISUAL with runwayId 27L. “cleared to KATL via direct”, “cleared to KATL via SIITH then direct”, “cleared to KATL via radar vectors”, “cleared to KATL via radar vectors then direct” (access type RADAR_VECTORS with thenDirect true), and “cleared to KATL as filed” are IFR_CLEARANCE with the matching access method. A SID clearance may include optional altitude, climb via, frequency, and squawk fields. “cleared direct ATL VOR” and “proceed direct ATL VOR” are tactical DIRECT only; they must not become IFR_CLEARANCE. “cleared to ATL VOR via direct” is an IFR clearance, not tactical DIRECT. Emit only the fields supported by the transcript; clearance limit and access are required, all other clearance fields are optional.
+
+CONTACT commands use “contact <facility-name> tower” or “contact <facility-name> center” with a required 1–4-token facilityName. Canonicalize the name to uppercase for the IR. Facility names are syntax/readback data only; never perform a catalog lookup, accept a frequency, or invent a facility.
+
+VFR Class B clearances use CLASS_B_CLEARANCE with operation TO_ENTER, THROUGH, or OUT_OF. TO_ENTER accepts only the controlled variants “cleared to enter/into [the] [class] bravo airspace”; THROUGH and OUT_OF stay canonical. The phrase must include “bravo airspace”. Optional VIA route legs are ordered catalog fixes/navaids, and an optional “maintain <altitude> while in bravo airspace” follows the route. “remain outside bravo airspace” is REMAIN_OUTSIDE_BRAVO. “resume appropriate VFR altitudes” is RESUME_APPROPRIATE_VFR_ALTITUDES. “cleared as requested” is CLASS_B_CLEARANCE_AS_REQUESTED. “unable class b clearance” and “unable to provide class b clearance” are DECLINE_REQUEST with service CLASS_B_ACCESS. These are VFR instructions only; never emit IFR clearance, flight-plan, beacon, or service state.
 
 Catalog lists are authoritative. Never default a facility, procedure, approach, airport, or fix. DIRECT/CROSS use only fixes= ids. IFR_CLEARANCE limitId may use only fixes= or the separate airports= clearance-limit candidates; airport candidates must never become generic DIRECT/CROSS fixes. DESCEND_VIA, CLIMB_VIA, and JOIN_PROCEDURE use only procedures= ids; JOIN is lateral-only, not VIA. EXPECT_APPROACH, CLEARED_APPROACH, and INTERCEPT_LOCALIZER use only approaches= ids. Procedures and approaches are separate namespaces. Repair a noisy name only when one listed id is unambiguous; otherwise return PARSE_MISS. In routeWindow, fixMatches groups alternatives by one transcript span. A malformed, ambiguous, unknown, airport, unsupported, or evidence-free segment is PARSE_MISS. DIRECT is an optional marker in an IFR route window; when absent, emit one direct segment per supplied fix/navaid candidate, preserving supplied transcript order and spans. Every route segment selects exactly one candidate from one listed fixMatches row; never use an ID from another span, concatenate tokens into an ID such as SWEPT_KIMMY, or move the clearance-limit airport into a tactical DIRECT. A complete route must cover every non-connector token in order; DIRECT and THEN are connectors. An IFR `clear/cleared to ... via ...` transcript is never tactical DIRECT. transitionId only when that transition is nested under the supplied catalog procedure and has transcript evidence. For an IFR clear/cleared-to/via transcript, never output tactical DIRECT. Never invent a field or segment. source is a hint, not another schema.
 """
@@ -129,16 +163,64 @@ class ParseEngine(Protocol):
 
 
 MAX_ROSTER = 64
+MAX_CALLSIGN_ALIASES = 8
+MAX_ALIAS_LENGTH = 64
 MAX_FIXES = 64
 MAX_PROCEDURES = 32
 MAX_APPROACHES = 32
 MAX_AIRPORTS = 64
 _CALLSIGN_RE = re.compile(r"^[A-Z0-9]{2,8}$")
+_CANONICAL_N_NUMBER_RE = re.compile(r"^N\d{1,5}[A-Z]{0,2}$")
+_CANONICAL_ICAO_CALLSIGN_RE = re.compile(r"^[A-Z]{3}\d{1,4}[A-Z]?$")
 _FIX_RE = re.compile(r"^[A-Z]{2,6}[0-9]{0,2}$")
 _NAVAID_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _PROC_RE = re.compile(r"^[A-Z]{2,8}[0-9]{0,2}$")
 _APPROACH_RE = re.compile(r"^[A-Z0-9]{2,10}$")
 _AIRPORT_RE = re.compile(r"^[A-Z]{4}$")
+
+
+def _is_canonical_callsign(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    token = value.strip().upper()
+    return bool(_CANONICAL_N_NUMBER_RE.fullmatch(token) or _CANONICAL_ICAO_CALLSIGN_RE.fullmatch(token))
+
+
+def _sanitize_callsign_candidates(raw: object) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    if not isinstance(raw, list):
+        return out
+    for item in raw:
+        if isinstance(item, str):
+            callsign = item.strip().upper()
+            raw_aliases: object = []
+        elif isinstance(item, dict):
+            callsign_raw = item.get("callsign")
+            callsign = callsign_raw.strip().upper() if isinstance(callsign_raw, str) else ""
+            raw_aliases = item.get("aliases")
+        else:
+            continue
+        if not _is_canonical_callsign(callsign) or callsign in seen:
+            continue
+        aliases: list[str] = []
+        alias_seen: set[str] = set()
+        if isinstance(raw_aliases, list):
+            for alias in raw_aliases:
+                if not isinstance(alias, str):
+                    continue
+                clean = " ".join(alias.strip().split())
+                key = clean.casefold()
+                if 1 <= len(clean) <= MAX_ALIAS_LENGTH and key not in alias_seen:
+                    alias_seen.add(key)
+                    aliases.append(clean)
+                if len(aliases) >= MAX_CALLSIGN_ALIASES:
+                    break
+        seen.add(callsign)
+        out.append({"callsign": callsign, "aliases": aliases})
+        if len(out) >= MAX_ROSTER:
+            break
+    return out
 
 
 def _sanitize_id_list(raw: object, pattern: re.Pattern[str], limit: int) -> list[str]:
@@ -466,7 +548,7 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     """Keep live-strip + catalog grounding tiny. Drop junk; never n-best or confidence."""
     if not isinstance(raw, dict):
         return None
-    callsigns = _sanitize_id_list(raw.get("callsigns") or [], _CALLSIGN_RE, MAX_ROSTER)
+    callsigns = _sanitize_callsign_candidates(raw.get("callsigns") or [])
     fixes = _sanitize_id_list(raw.get("fixes") or [], _FIX_RE, MAX_FIXES)
     procedures = _sanitize_procedures(raw.get("procedures") or [])
     approaches = _sanitize_approaches(raw.get("approaches") or [])
@@ -482,7 +564,7 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
     selected: str | None = None
     if isinstance(selected_raw, str):
         up = selected_raw.strip().upper()
-        if up and _CALLSIGN_RE.match(up):
+        if up and _is_canonical_callsign(up):
             selected = up
     if (
         not callsigns
@@ -514,16 +596,18 @@ def sanitize_parse_context(raw: object) -> dict[str, Any] | None:
 
 
 def build_parse_user_message(text: str, source: str, context: dict[str, Any] | None = None) -> str:
-    """User turn: transcript plus optional roster and catalog ids (not kinematics)."""
+    """User turn: transcript plus bounded grounding candidates (not kinematics)."""
     lines = [f"schemaVersion={SCHEMA_VERSION}", f"source={source}"]
     ctx = sanitize_parse_context(context) if context else None
     if ctx:
         roster = ctx.get("callsigns") or []
         if roster:
-            lines.append("onFrequency=" + ",".join(roster))
+            lines.append("onFrequency=" + ",".join(row["callsign"] for row in roster))
+            lines.append("aircraftCandidates=" + json.dumps(roster, separators=(",", ":")))
             lines.append(
-                "callsignToken MUST be one onFrequency ICAO token or null. "
-                "Match noisy ASR to the listed flight number."
+                "callsignToken MUST be one listed canonical onFrequency callsign or null. "
+                "Use aliases only as input evidence, and require the complete registration tail; "
+                "unknown, incomplete, or ambiguous aliases are PARSE_MISS."
             )
         selected = ctx.get("selectedCallsign")
         if selected:
@@ -619,6 +703,18 @@ def _as_number(value: object) -> int | float:
 def _exact_keys(obj: dict[str, Any], required: set[str], optional: set[str] | None = None) -> bool:
     allowed = required | (optional or set())
     return required.issubset(obj.keys()) and set(obj.keys()).issubset(allowed)
+
+
+_FACILITY_NAME_TOKEN = re.compile(r"^[A-Z0-9]+(?:-[A-Z0-9]+)*$")
+
+
+def _canonical_facility_name(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    tokens = value.strip().upper().split()
+    if not 1 <= len(tokens) <= 4 or any(not _FACILITY_NAME_TOKEN.fullmatch(token) for token in tokens):
+        return None
+    return " ".join(tokens)
 
 
 def validate_instruction(raw: object) -> dict[str, Any] | None:
@@ -726,6 +822,17 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         ):
             return None
         return {"type": "CLEARED_APPROACH", "approachId": raw["approachId"]}
+    if instr_type == "CLEARED_VISUAL":
+        if (
+            not _exact_keys(raw, {"type", "runwayId"})
+            or not isinstance(raw["runwayId"], str)
+            or not raw["runwayId"].strip()
+        ):
+            return None
+        rwy = raw["runwayId"].strip().upper()
+        if not re.fullmatch(r"\d{1,2}[LRC]?", rwy):
+            return None
+        return {"type": "CLEARED_VISUAL", "runwayId": rwy}
     if instr_type == "INTERCEPT_LOCALIZER":
         if (
             not _exact_keys(raw, {"type", "approachId"})
@@ -754,6 +861,36 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "MAINTAIN_VFR"}
+    if instr_type in {"REMAIN_OUTSIDE_BRAVO", "RESUME_APPROPRIATE_VFR_ALTITUDES", "CLASS_B_CLEARANCE_AS_REQUESTED"}:
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": instr_type}
+    if instr_type == "CLASS_B_CLEARANCE":
+        if not _exact_keys(raw, {"type", "operation"}, {"route", "altitudeFt"}):
+            return None
+        if raw["operation"] not in {"THROUGH", "TO_ENTER", "OUT_OF"}:
+            return None
+        route = raw.get("route")
+        if route is not None:
+            if not isinstance(route, list) or not route:
+                return None
+            for segment in route:
+                if (
+                    not isinstance(segment, dict)
+                    or not _exact_keys(segment, {"type", "fixId"})
+                    or segment["type"] != "DIRECT"
+                    or not isinstance(segment["fixId"], str)
+                    or not segment["fixId"]
+                ):
+                    return None
+        if "altitudeFt" in raw and not _is_finite_number(raw["altitudeFt"]):
+            return None
+        out: dict[str, Any] = {"type": "CLASS_B_CLEARANCE", "operation": raw["operation"]}
+        if route is not None:
+            out["route"] = route
+        if "altitudeFt" in raw:
+            out["altitudeFt"] = _as_number(raw["altitudeFt"])
+        return out
     if instr_type == "IFR_CLEARANCE":
         optional = {"altitudeFt", "climbVia", "frequency", "squawk"}
         if not _exact_keys(raw, {"type", "limitId", "access"}, optional):
@@ -764,8 +901,13 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not isinstance(access, dict) or not isinstance(access.get("type"), str):
             return None
         access_type = access["type"]
-        if access_type in {"AS_FILED", "DIRECT", "RADAR_VECTORS"}:
+        if access_type in {"AS_FILED", "DIRECT"}:
             if not _exact_keys(access, {"type"}):
+                return None
+        elif access_type == "RADAR_VECTORS":
+            if not _exact_keys(access, {"type"}, {"thenDirect"}):
+                return None
+            if "thenDirect" in access and not isinstance(access["thenDirect"], bool):
                 return None
         elif access_type == "FIX_THEN_DIRECT":
             if (
@@ -850,6 +992,62 @@ def validate_instruction(raw: object) -> dict[str, Any] | None:
         if not _exact_keys(raw, {"type"}):
             return None
         return {"type": "DELETE_SPEED_RESTRICTIONS"}
+    if instr_type == "REQUEST_DETAILS":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "REQUEST_DETAILS"}
+    if instr_type == "STANDBY_REQUEST":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "STANDBY_REQUEST"}
+    if instr_type == "APPROVE_FLIGHT_FOLLOWING":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "APPROVE_FLIGHT_FOLLOWING"}
+    if instr_type == "DECLINE_REQUEST":
+        if not _exact_keys(raw, {"type", "service"}):
+            return None
+        service = raw["service"]
+        if service not in {"FLIGHT_FOLLOWING", "IFR_PICKUP", "CLASS_B_ACCESS"}:
+            return None
+        return {"type": "DECLINE_REQUEST", "service": service}
+    if instr_type == "RADAR_CONTACT":
+        if _exact_keys(raw, {"type"}):
+            return {"type": "RADAR_CONTACT"}
+        if not _exact_keys(raw, {"type", "distanceNm", "referenceId", "referenceKind"}):
+            return None
+        if not _is_finite_number(raw["distanceNm"]):
+            return None
+        dist = _as_number(raw["distanceNm"])
+        if dist <= 0:
+            return None
+        ref_id = str(raw["referenceId"]).strip().upper()
+        ref_kind = raw["referenceKind"]
+        if not ref_id:
+            return None
+        if ref_kind not in {"FIX", "NAVAID", "AIRPORT"}:
+            return None
+        return {
+            "type": "RADAR_CONTACT",
+            "distanceNm": dist,
+            "referenceId": ref_id,
+            "referenceKind": ref_kind,
+        }
+    if instr_type == "TERMINATE_RADAR_SERVICE":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "TERMINATE_RADAR_SERVICE"}
+    if instr_type == "ACKNOWLEDGE_IFR_CANCELLATION":
+        if not _exact_keys(raw, {"type"}):
+            return None
+        return {"type": "ACKNOWLEDGE_IFR_CANCELLATION"}
+    if instr_type in {"CONTACT_TOWER", "CONTACT_CENTER"}:
+        if not _exact_keys(raw, {"type", "facilityName"}):
+            return None
+        facility_name = _canonical_facility_name(raw.get("facilityName"))
+        if facility_name is None:
+            return None
+        return {"type": instr_type, "facilityName": facility_name}
     if instr_type == "DESCEND_VIA":
         if (
             not _exact_keys(raw, {"type", "procedureId"}, {"transitionId"})
@@ -942,6 +1140,10 @@ def validate_parse_json(payload: object) -> ParseOutcome:
         return ParseOutcome(ok=False, error="SCHEMA")
     if isinstance(token, str) and token.strip() == "":
         token = None
+    if token is not None and not _is_canonical_callsign(token):
+        return ParseOutcome(ok=False, error="SCHEMA")
+    if isinstance(token, str):
+        token = token.strip().upper()
     raw_list = payload.get("instructions")
     if not isinstance(raw_list, list) or len(raw_list) == 0:
         return ParseOutcome(ok=False, error="SCHEMA")
@@ -952,6 +1154,10 @@ def validate_parse_json(payload: object) -> ParseOutcome:
             return ParseOutcome(ok=False, error="SCHEMA")
         instructions.append(checked)
     if cancel_approach_sequence_error(instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if request_control_sequence_error(instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if class_b_clearance_sequence_error(instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     return ParseOutcome(ok=True, callsign_token=token, instructions=instructions)
 
@@ -968,11 +1174,155 @@ def cancel_approach_sequence_error(instructions: list[dict[str, Any]]) -> str | 
         return "CANCEL_APPROACH may occur only once"
     if any(
         instruction.get("type")
-        in {"CLEARED_APPROACH", "INTERCEPT_LOCALIZER", "EXPECT_APPROACH", "GO_AROUND"}
+        in {"CLEARED_APPROACH", "CLEARED_VISUAL", "INTERCEPT_LOCALIZER", "EXPECT_APPROACH", "GO_AROUND"}
         for instruction in instructions[1:]
     ):
         return "CANCEL_APPROACH cannot be followed by approach or go-around instructions"
     return None
+
+
+def request_control_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
+    if any(instruction.get("type") in REQUEST_CONTROL_TYPES for instruction in instructions) and len(instructions) != 1:
+        return "request instruction must be the only instruction"
+    return None
+
+
+def class_b_clearance_sequence_error(instructions: list[dict[str, Any]]) -> str | None:
+    if any(instruction.get("type") == "CLASS_B_CLEARANCE" for instruction in instructions) and len(instructions) != 1:
+        return "CLASS_B_CLEARANCE must be the only instruction"
+    return None
+
+
+RUNWAY_DIGIT_WORDS: dict[str, set[str]] = {
+    "0": {"0", "zero"},
+    "1": {"1", "one"},
+    "2": {"2", "two"},
+    "3": {"3", "three", "tree"},
+    "4": {"4", "four"},
+    "5": {"5", "five", "fife"},
+    "6": {"6", "six"},
+    "7": {"7", "seven"},
+    "8": {"8", "eight"},
+    "9": {"9", "nine", "niner"},
+}
+
+
+def _runway_has_transcript_evidence(runway_id: str, text: str) -> bool:
+    rwy = runway_id.strip().upper()
+    if not rwy:
+        return False
+    # A heading or another number later in the clearance must not ground the
+    # visual approach runway. Only inspect a short span immediately after the
+    # runway cue (spoken forms use at most three tokens, e.g. "two seven left").
+    runway_cue = re.search(
+        r"\bvisual\s+(?:approach\s+)?runway\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,2})",
+        text.lower(),
+    )
+    if not runway_cue:
+        return False
+    lower = runway_cue.group(1)
+    if rwy.lower() in lower:
+        return True
+    m = re.match(r"^0?(\d{1,2})([LCR])?$", rwy)
+    if not m:
+        return False
+    digits, side = m.group(1), m.group(2)
+    if digits in lower:
+        digit_ok = True
+    elif len(digits) == 2:
+        group_words = {
+            "10": "ten", "11": "eleven", "12": "twelve", "13": "thirteen", "14": "fourteen",
+            "15": "fifteen", "16": "sixteen", "17": "seventeen", "18": "eighteen", "19": "nineteen",
+            "20": "twenty", "30": "thirty",
+        }
+        tens_words = {"2": "twenty", "3": "thirty"}
+        gw = group_words.get(digits)
+        group_match = bool(gw and re.search(rf"\b{gw}\b", lower))
+        w1 = RUNWAY_DIGIT_WORDS.get(digits[0], set())
+        w2 = RUNWAY_DIGIT_WORDS.get(digits[1], set())
+        single_match = any(re.search(rf"\b{w}\b", lower) for w in w1) and any(
+            re.search(rf"\b{w}\b", lower) for w in w2
+        )
+        ten_prefix = tens_words.get(digits[0])
+        ten_match = bool(
+            ten_prefix
+            and re.search(rf"\b{ten_prefix}\b", lower)
+            and any(re.search(rf"\b{w}\b", lower) for w in w2)
+        )
+        digit_ok = group_match or single_match or ten_match
+    elif len(digits) == 1:
+        w = RUNWAY_DIGIT_WORDS.get(digits, set())
+        digit_ok = any(re.search(rf"\b{word}\b", lower) for word in w)
+    else:
+        digit_ok = False
+    if not digit_ok:
+        return False
+    if side == "L" and not re.search(r"\b(?:left|l)\b", lower):
+        return False
+    if side == "R" and not re.search(r"\b(?:right|r)\b", lower):
+        return False
+    if side == "C" and not re.search(r"\b(?:center|centre|c)\b", lower):
+        return False
+    return True
+
+
+def _spoken_distance_matches(spoken: str, distance: int | float) -> bool:
+    try:
+        return float(spoken) == float(distance)
+    except ValueError:
+        words = spoken.split()
+        digits = {
+            "zero": "0", "one": "1", "two": "2", "three": "3", "tree": "3",
+            "four": "4", "five": "5", "fife": "5", "six": "6", "seven": "7",
+            "eight": "8", "nine": "9", "niner": "9",
+        }
+        # ATC often says two-digit distances as separate digits ("two five"
+        # for 25); ordinary cardinal forms such as "twenty five" also work.
+        if len(words) == 2 and all(word in digits for word in words):
+            return int("".join(digits[word] for word in words)) == float(distance)
+        cardinal = {
+            0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+            6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven",
+            12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen", 16: "sixteen",
+            17: "seventeen", 18: "eighteen", 19: "nineteen", 20: "twenty", 30: "thirty",
+            40: "forty", 50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety",
+        }
+        numeric = int(distance) if float(distance).is_integer() else -1
+        expected = cardinal.get(numeric)
+        if expected is None and 21 <= numeric <= 99:
+            expected = f"{cardinal[numeric // 10 * 10]} {cardinal[numeric % 10]}"
+        return spoken == expected
+
+
+_RADAR_POSITION_RE = re.compile(
+    r"\bradar\s+contact,?\s+(?P<distance>\d+(?:\.\d+)?|(?:zero|one|two|three|tree|four|five|fife|six|seven|eight|nine|niner|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|"
+    r"thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:\s+(?:one|two|three|four|five|six|seven|eight|nine))?)"
+    r"\s+miles?\s+(?:(?:north|south|east|west|north\s+east|south\s+east|north\s+west|south\s+west|"
+    r"northeast|northwest|southeast|southwest)\s+)?(?:from|of)\s+(?P<reference>[^,.!?;]+)",
+    re.IGNORECASE,
+)
+
+
+def _airport_reference_matches(phrase: str, airport_id: str, airports: list[dict[str, Any]]) -> bool:
+    # Generic airport descriptors vary across catalogs and spoken phraseology.
+    # Compare distinctive words from each supplied name/alias, and require the
+    # phrase to identify exactly one catalog candidate.
+    generic = {"airport", "international", "intl", "regional", "municipal", "county", "field"}
+
+    def words(value: str) -> set[str]:
+        return {part for part in re.findall(r"[a-z0-9]+", value.lower()) if part not in generic}
+
+    spoken = words(phrase)
+    if not spoken:
+        return False
+    matches: set[str] = set()
+    for airport in airports:
+        names = [str(airport.get("icao") or ""), str(airport.get("name") or "")]
+        names.extend(str(alias) for alias in airport.get("aliases") or [])
+        if any(spoken.issubset(words(name)) for name in names if name):
+            matches.add(str(airport.get("icao") or "").upper())
+    return len(matches) == 1 and airport_id.upper() in matches
 
 
 def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str) -> bool:
@@ -1018,15 +1368,56 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
             return False
         if instruction.get("source") == "VFR":
             return has(r"\bvfr\b")
-        return bool(re.search(r"\b[0-7]{4}\b", text))
+        return bool(re.search(r"\b[0-7]{4}\b", text)) or bool(
+            re.search(
+                r"\b(?:zero|one|two|three|four|five|six|seven)(?:\s+(?:zero|one|two|three|four|five|six|seven)){3}\b",
+                text,
+            )
+        )
     if instruction_type == "MAINTAIN_VFR":
         return has(r"\bmaintain\s+vfr\b")
+    if instruction_type == "CLASS_B_CLEARANCE":
+        operation = instruction.get("operation")
+        if operation == "TO_ENTER":
+            if not has(r"\bcleared\s+(?:to\s+enter|into)(?:\s+the)?(?:\s+class)?\s+bravo\s+airspace\b"):
+                return False
+        elif operation == "THROUGH":
+            if not has(r"\bcleared\s+through\s+bravo\s+airspace\b"):
+                return False
+        elif operation == "OUT_OF":
+            if not has(r"\bcleared\s+out\s+of\s+bravo\s+airspace\b"):
+                return False
+        else:
+            return False
+        has_via = has(r"\bvia\b")
+        route = instruction.get("route")
+        if has_via and (not isinstance(route, list) or not route):
+            return False
+        if route and not has_via:
+            return False
+        if "altitudeFt" in instruction and not has(
+            r"\bmaintain\b[\s\S]*\bwhile\s+in\s+(?:the\s+)?bravo\s+airspace\b"
+        ):
+            return False
+        return True
+    if instruction_type == "CLASS_B_CLEARANCE_AS_REQUESTED":
+        return has(r"\bcleared\s+as\s+requested\b")
+    if instruction_type == "REMAIN_OUTSIDE_BRAVO":
+        return has(r"\bremain\s+outside\s+(?:the\s+)?bravo\s+airspace\b")
+    if instruction_type == "RESUME_APPROPRIATE_VFR_ALTITUDES":
+        return has(r"\bresume\s+appropriate\s+vfr\s+altitudes\b")
     if instruction_type == "IFR_CLEARANCE":
         # Tactical "cleared/proceed direct FIX" is a DIRECT instruction. An
         # IFR clearance has the clearance limit and an explicit access method.
-        if not bool(
-            has(r"\b(?:cleared|clear)\s+to\b")
-            and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+        if not (
+            bool(
+                has(r"\b(?:cleared|clear)\s+to\b")
+                and has(r"\b(?:via|as\s+filed|direct|radar\s+vectors?)\b")
+            )
+            or bool(
+                has(r"\b(?:cleared|clear)?\s*via\s+radar\s+vectors?\b")
+                and has(r"\bto\b")
+            )
         ):
             return False
         access = instruction.get("access")
@@ -1037,6 +1428,14 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         return has(r"\bexpect\b") and has(r"\b(approach|ils|localizer|runway)\b")
     if instruction_type == "CLEARED_APPROACH":
         return has(r"\b(?:cleared|clear)\b") and has(r"\b(approach|ils|localizer|runway)\b")
+    if instruction_type == "CLEARED_VISUAL":
+        runway_id = str(instruction.get("runwayId") or "").strip().upper()
+        if not runway_id:
+            return False
+        return (
+            bool(has(r"\b(?:cleared|clear)\b") and has(r"\bvisual\b"))
+            and _runway_has_transcript_evidence(runway_id, text)
+        )
     if instruction_type == "INTERCEPT_LOCALIZER":
         return has(r"\bintercept\b") and has(r"\b(localizer|loc)\b")
     if instruction_type == "CANCEL_APPROACH":
@@ -1057,6 +1456,57 @@ def _instruction_has_transcript_evidence(instruction: dict[str, Any], text: str)
         return has(r"\bcross\b")
     if instruction_type == "GO_AROUND":
         return has(r"\bgo\w*\s*around\b|\bgo-around\b")
+    if instruction_type == "REQUEST_DETAILS":
+        return has(r"\bsay\s+request\b")
+    if instruction_type == "STANDBY_REQUEST":
+        return has(r"\bstand\s*by\b|\bstandby\b")
+    if instruction_type == "APPROVE_FLIGHT_FOLLOWING":
+        return has(r"\bapprove\s+flight\s+follow(?:ing)?\b")
+    if instruction_type == "DECLINE_REQUEST":
+        service = instruction.get("service")
+        if service == "FLIGHT_FOLLOWING":
+            return has(r"\bunable\s+(?:to\s+provide\s+)?flight\s+follow(?:ing)?\b")
+        if service == "IFR_PICKUP":
+            return has(r"\bunable\s+(?:to\s+provide\s+)?ifr\s+pickup\b")
+        if service == "CLASS_B_ACCESS":
+            return has(r"\bunable\s+(?:to\s+provide\s+)?class\s+b\s+clearance\b")
+        return False
+    if instruction_type == "RADAR_CONTACT":
+        if not has(r"\bradar\s+contact\b"):
+            return False
+        if "distanceNm" in instruction or "referenceId" in instruction or "referenceKind" in instruction:
+            distance = instruction.get("distanceNm")
+            ref_id = str(instruction.get("referenceId") or "").strip().lower()
+            if not _is_finite_number(distance) or not ref_id:
+                return False
+            # Bind the distance and reference to one position phrase. In
+            # particular, a later unrelated "miles from" phrase cannot ground
+            # fields invented for this RADAR_CONTACT.
+            position = _RADAR_POSITION_RE.search(text)
+            if not position:
+                return False
+            if not _spoken_distance_matches(position.group("distance"), distance):
+                return False
+            # Airport identifiers are often spoken as airport names, so their
+            # exact name is checked by guard_catalog_ids when catalog context
+            # is available. Fixes/navaids must be named in this phrase.
+            if instruction.get("referenceKind") != "AIRPORT":
+                reference = position.group("reference")
+                if not re.search(rf"(?<![a-z0-9]){re.escape(ref_id)}(?![a-z0-9])", reference):
+                    return False
+            return True
+        return True
+    if instruction_type == "TERMINATE_RADAR_SERVICE":
+        return has(r"\bradar\s+service\s+terminat\w*\b")
+    if instruction_type == "ACKNOWLEDGE_IFR_CANCELLATION":
+        return has(r"\bifr\s+cancellation\s+receiv\w*\b")
+    if instruction_type == "CONTACT_TOWER":
+        match = re.search(r"\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+tower\s*$", text)
+        return bool(match and match.group(1).upper() == str(instruction.get("facilityName", "")).upper())
+    if instruction_type == "CONTACT_CENTER":
+        match = re.search(r"\bcontact\s+([a-z0-9-]+(?:\s+[a-z0-9-]+){0,3})\s+center\s*$", text)
+        emitted_name = str(instruction.get("facilityName", "")).upper()
+        return bool(match and emitted_name in {match.group(1).upper(), f"{match.group(1).upper()} CENTER"})
     return False
 
 
@@ -1115,20 +1565,16 @@ def guard_instruction_semantics(text: str, outcome: ParseOutcome) -> ParseOutcom
         return outcome
     if cancel_approach_sequence_error(outcome.instructions) is not None:
         return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if request_control_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
+    if class_b_clearance_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     normalized = normalize_evidence_text(text)
-    kept = [
-        instruction
+    if not all(
+        _instruction_has_transcript_evidence(instruction, normalized)
         for instruction in outcome.instructions
-        if _instruction_has_transcript_evidence(instruction, normalized)
-    ]
-    if not kept:
+    ):
         return ParseOutcome(ok=False, error="PARSE_MISS")
-    if len(kept) != len(outcome.instructions):
-        return ParseOutcome(
-            ok=True,
-            callsign_token=outcome.callsign_token,
-            instructions=kept,
-        )
     return outcome
 
 
@@ -1363,6 +1809,265 @@ def _guard_route_window_ids(
     return outcome
 
 
+_CALLSIGN_DIGIT_WORDS: dict[str, str] = {
+    "zero": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "tree": "3",
+    "four": "4",
+    "five": "5",
+    "fife": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    "niner": "9",
+}
+
+
+GA_ALIAS_VARIANTS: dict[str, list[str]] = {
+    "cirrus": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "cirru": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "siriu": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "sirius": [
+        "cirrus",
+        "sirius",
+        "serious",
+        "cyrus",
+        "sir",
+        "sirs",
+        "service",
+        "cirus",
+        "cirru",
+        "siriu",
+    ],
+    "skyhawk": ["skyhawk", "sky hawk", "sky"],
+    "skylane": ["skylane", "sky lane"],
+    "bonanza": ["bonanza", "banana", "bonansa"],
+    "caravan": ["caravan", "carevan", "car van"],
+    "archer": ["archer", "arch"],
+}
+
+_PHONETIC_LETTERS: dict[str, list[str]] = {
+    "A": ["alpha", "alfa"],
+    "B": ["bravo"],
+    "C": ["charlie"],
+    "D": ["delta"],
+    "E": ["echo"],
+    "F": ["foxtrot"],
+    "G": ["golf", "gulf"],
+    "H": ["hotel"],
+    "I": ["india"],
+    "J": ["juliet"],
+    "K": ["kilo"],
+    "L": ["lima"],
+    "M": ["mike"],
+    "N": ["november"],
+    "O": ["oscar"],
+    "P": ["papa"],
+    "Q": ["quebec"],
+    "R": ["romeo"],
+    "S": ["sierra"],
+    "T": ["tango"],
+    "U": ["uniform"],
+    "V": ["victor"],
+    "W": ["whiskey"],
+    "X": ["xray", "x ray"],
+    "Y": ["yankee"],
+    "Z": ["zulu"],
+}
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if len(a) < len(b):
+        a, b = b, a
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for ca in a:
+        curr = [0] * (len(b) + 1)
+        curr[0] = prev[0] + 1
+        for j, cb in enumerate(b):
+            cost = 0 if ca == cb else 1
+            curr[j + 1] = min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost)
+        prev = curr
+    return prev[len(b)]
+
+
+def _word_matches_fuzzy(spoken: str, target: str) -> bool:
+    if spoken == target:
+        return True
+    if len(target) < 4 or len(spoken) < 3:
+        return False
+    max_dist = 2 if len(target) >= 6 else 1
+    return _levenshtein(spoken, target) <= max_dist
+
+
+def _callsign_tail_patterns(callsign: str) -> list[str]:
+    match = re.fullmatch(r"(?:N|[A-Z]{3})(\d{1,5})([A-Z]{0,2})", callsign)
+    if match is None:
+        return []
+    digits = match.group(1)
+    suffix = match.group(2)
+    words = " ".join(
+        {
+            "0": "zero",
+            "1": "one",
+            "2": "two",
+            "3": "three",
+            "4": "four",
+            "5": "five",
+            "6": "six",
+            "7": "seven",
+            "8": "eight",
+            "9": "nine",
+        }[digit]
+        for digit in digits
+    )
+    patterns = [digits, words]
+    if suffix:
+        patterns.append(f"{digits}{suffix.lower()}")
+        patterns.append(f"{digits} {suffix.lower()}")
+        patterns.append(f"{words} {suffix.lower()}")
+        import itertools
+
+        suffix_phonetics = [_PHONETIC_LETTERS.get(letter, [letter.lower()]) for letter in suffix]
+        for combo in itertools.product(*suffix_phonetics):
+            phonetic_str = " ".join(combo)
+            patterns.append(f"{digits} {phonetic_str}")
+            patterns.append(f"{words} {phonetic_str}")
+    return patterns
+
+
+def _alias_evidence_owners(text: str, candidates: list[dict[str, Any]]) -> set[str]:
+    normalized = normalize_evidence_text(text).casefold()
+    owners: set[str] = set()
+    tokens = normalized.split()
+    for candidate in candidates:
+        callsign = str(candidate.get("callsign") or "").upper()
+        alias_list = candidate.get("aliases") or []
+        tail_patterns = _callsign_tail_patterns(callsign)
+        for alias in alias_list:
+            primary = " ".join(str(alias).strip().split()).casefold()
+            if not primary:
+                continue
+            variants = [primary] + list(GA_ALIAS_VARIANTS.get(primary, []))
+            matched = False
+            for variant in variants:
+                for tail in tail_patterns:
+                    pattern = rf"\b{re.escape(variant)}\s+{re.escape(tail)}\b"
+                    if re.search(pattern, normalized):
+                        owners.add(callsign)
+                        matched = True
+                        break
+                    glued_pattern = rf"\b{re.escape(variant)}{re.escape(tail)}\b"
+                    if re.search(glued_pattern, normalized):
+                        owners.add(callsign)
+                        matched = True
+                        break
+                if matched:
+                    break
+            if not matched and tokens:
+                for variant in variants:
+                    if " " not in variant and _word_matches_fuzzy(tokens[0], variant):
+                        for tail in tail_patterns:
+                            tail_tokens = tail.split()
+                            if len(tokens) >= 1 + len(tail_tokens):
+                                if tokens[1 : 1 + len(tail_tokens)] == tail_tokens:
+                                    owners.add(callsign)
+                                    matched = True
+                                    break
+                    if matched:
+                        break
+    return owners
+
+
+def _callsign_alias_like(text: str) -> bool:
+    normalized = normalize_evidence_text(text).casefold().strip()
+    if not normalized:
+        return False
+    tokens = normalized.split()
+    if len(tokens) < 2:
+        return False
+    if re.fullmatch(r"n\d{1,5}[a-z]{0,2}", tokens[0]) or re.fullmatch(
+        r"[a-z]{3}\d{1,4}[a-z]?", tokens[0]
+    ):
+        return False
+    if tokens[0] in {"november", "delta", "southwest", "american", "united", "jetblue", "alaska", "frontier", "spirit", "fedex", "ups"}:
+        return False
+    return tokens[1].isdigit() or tokens[1] in _CALLSIGN_DIGIT_WORDS
+
+
+def _ground_callsign_token(
+    text: str, context: dict[str, Any], token: str | None
+) -> str | None:
+    if token is None:
+        return None
+    canonical = token.strip().upper()
+    if not _is_canonical_callsign(canonical):
+        return None
+    candidates = context.get("callsigns") or []
+    by_callsign = {
+        row["callsign"]: row
+        for row in candidates
+        if isinstance(row, dict) and isinstance(row.get("callsign"), str)
+    }
+    if not by_callsign:
+        return canonical
+    if canonical not in by_callsign:
+        return None
+    alias_owners = _alias_evidence_owners(text, list(by_callsign.values()))
+    if alias_owners:
+        return canonical if len(alias_owners) == 1 and canonical in alias_owners else None
+    normalized = normalize_evidence_text(text).casefold().strip()
+    if any(
+        normalized == " ".join(str(alias).split()).casefold()
+        or normalized.startswith(" ".join(str(alias).split()).casefold() + " ")
+        for row in by_callsign.values()
+        for alias in row.get("aliases") or []
+    ):
+        return None
+    if _callsign_alias_like(text):
+        return None
+    return canonical
+
+
 def guard_catalog_ids(
     text: str,
     context: dict[str, Any] | None,
@@ -1371,6 +2076,8 @@ def guard_catalog_ids(
     """When a catalog is provided, instruction ids must be listed ids."""
     if not outcome.ok:
         return outcome
+    if class_b_clearance_sequence_error(outcome.instructions) is not None:
+        return ParseOutcome(ok=False, error="BAD_CLEARANCE")
     ctx = sanitize_parse_context(context) if context else None
     if not ctx:
         return outcome
@@ -1380,12 +2087,10 @@ def guard_catalog_ids(
     airports = {row["icao"] for row in ctx.get("airports") or []}
     procedures = {row["id"] for row in ctx.get("procedures") or []}
     approaches = {row["id"] for row in ctx.get("approaches") or []}
-    roster = set(ctx.get("callsigns") or [])
-    token = outcome.callsign_token
-    if token and roster and token.upper() not in roster:
+    roster = {row["callsign"] for row in ctx.get("callsigns") or [] if isinstance(row, dict)}
+    token = _ground_callsign_token(text, ctx, outcome.callsign_token)
+    if outcome.callsign_token is not None and token is None:
         return ParseOutcome(ok=False, error="PARSE_MISS")
-    if token:
-        token = token.upper()
     for instruction in outcome.instructions:
         kind = instruction["type"]
         if kind in {"DIRECT", "CROSS"}:
@@ -1394,6 +2099,30 @@ def guard_catalog_ids(
             if instruction.get("fixId") in airports:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
             if fixes and instruction.get("fixId") not in fixes:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "RADAR_CONTACT":
+            ref_id = instruction.get("referenceId")
+            if ref_id is None:
+                continue
+            if instruction.get("referenceKind") == "AIRPORT":
+                if airports and ref_id not in airports:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                position = _RADAR_POSITION_RE.search(text)
+                if airports and (
+                    not position
+                    or not _airport_reference_matches(
+                        position.group("reference"),
+                        str(ref_id),
+                        ctx.get("airports") or [],
+                    )
+                ):
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                continue
+            if roster and ref_id in roster:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if ref_id in airports:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if fixes and ref_id not in fixes:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
         if kind == "IFR_CLEARANCE":
             limit_id = instruction.get("limitId")
@@ -1425,6 +2154,23 @@ def guard_catalog_ids(
                 return ParseOutcome(ok=False, error="PARSE_MISS")
             if approaches and str(instruction.get("approachId", "")).upper() not in approaches:
                 return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "CLEARED_VISUAL":
+            runway_id = str(instruction.get("runwayId") or "").strip().upper()
+            if not runway_id or not _runway_has_transcript_evidence(runway_id, text):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+        if kind == "CLASS_B_CLEARANCE":
+            route = instruction.get("route")
+            has_via = re.search(r"\bvia\b", text) is not None
+            if has_via and (not isinstance(route, list) or not route):
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            if route is not None:
+                if not isinstance(route, list) or not route or not has_via:
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
+                if not fixes or any(
+                    not isinstance(segment, dict) or segment.get("fixId") not in fixes
+                    for segment in route
+                ):
+                    return ParseOutcome(ok=False, error="PARSE_MISS")
     if token != outcome.callsign_token:
         return ParseOutcome(
             ok=True,
@@ -1531,6 +2277,21 @@ class MockParseEngine:
         # Explicit SCHEMA trigger so CI does not need a real model.
         if "[SCHEMA]" in stripped.upper() or stripped.upper().startswith("CHAT"):
             return ParseOutcome(ok=False, error="SCHEMA")
+        if isinstance(context, dict) and _callsign_alias_like(stripped):
+            ctx = sanitize_parse_context(context)
+            owners = _alias_evidence_owners(stripped, (ctx or {}).get("callsigns") or [])
+            if len(owners) != 1:
+                return ParseOutcome(ok=False, error="PARSE_MISS")
+            alias_outcome = ParseOutcome(
+                ok=True,
+                callsign_token=next(iter(owners)),
+                instructions=list(MOCK_PARSE_OK["instructions"]),  # type: ignore[arg-type]
+            )
+            return guard_catalog_ids(
+                stripped,
+                context,
+                guard_instruction_semantics(stripped, alias_outcome),
+            )
         if isinstance(context, dict) and context.get("routeWindow") is not None:
             route = _mock_route_parse(context)
             return guard_catalog_ids(stripped, context, guard_instruction_semantics(stripped, route))
@@ -1644,7 +2405,7 @@ class LlamaParseEngine:
         t0 = time.perf_counter()
         gguf, weights = _ensure_gguf(settings)
         n_gpu = _parse_n_gpu_layers()
-        n_ctx = int(os.environ.get("PARSE_CTX", "2048"))
+        n_ctx = int(os.environ.get("PARSE_CTX", "4096"))
         n_threads_raw = os.environ.get("PARSE_N_THREADS", "").strip()
         n_threads = int(n_threads_raw) if n_threads_raw else None
         device = _llm_device(n_gpu)

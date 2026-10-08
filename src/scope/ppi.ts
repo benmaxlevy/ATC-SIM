@@ -2,6 +2,7 @@ import {
   acceptPointout,
   handoffFor,
   flightPlanForAircraft,
+  isFlightPlanOperational,
   modifyFlightPlan,
   setSelectedAircraft,
   type World,
@@ -56,6 +57,7 @@ import {
   dropVfrListEntry,
   formatFlightPlanIndex,
   getFlightPlanEntries,
+  getVfrListEntries,
   isVfrAircraft,
   handleFlightPlanListClick,
   handleVideoMapsListClick,
@@ -66,6 +68,7 @@ import {
   scrollSystemList,
 } from "./systemLists";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
+import { cancelDcbSpinner } from "./dcb/dcbMenu";
 import { datablockLineHeightPx } from "./fonts";
 import {
   applyBeaconatorSlewToId,
@@ -124,11 +127,7 @@ function trackingFlidMatches(
       }
       return false;
     }
-    const droppedSet = view.vfrListDroppedCallsigns ?? new Set();
-    const vfrFlights = world.aircraft.filter(
-      (ac) =>
-        isVfrAircraft(ac, view.tracks, world) && !droppedSet.has(ac.callsign.trim().toUpperCase()),
-    );
+    const vfrFlights = getVfrListEntries(world, view.vfrListDroppedCallsigns, view.tracks);
     const vfrIdx = idx >= 14 ? idx - 14 : idx - 1;
     if (vfrFlights[vfrIdx]) {
       const td = view.tracks?.get(aircraftId);
@@ -169,7 +168,8 @@ function explicitPlanEntryForFlid(
   }
   const plans = world.flightPlans.filter(
     (plan) =>
-      plan.status !== "deleted" && (plan.acid === normalized || plan.assignedBeacon === normalized),
+      isFlightPlanOperational(plan) &&
+      (plan.acid === normalized || plan.assignedBeacon === normalized),
   );
   if (plans.length !== 1) {
     return undefined;
@@ -417,6 +417,9 @@ export function handlePpiLeftClick(
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
+  if (view.dcbSpinner.armed) {
+    cancelDcbSpinner(view);
+  }
   // A live CA command is a target-slew command, not a list interaction.
   // Handle it before any movable-list hit testing can consume the click.
   const liveTracking = previewTrackingSlew(view.preview);

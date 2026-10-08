@@ -48,6 +48,20 @@ ATC_CALLSIGN_PREFIXES = (
     "Hawaiian",
     "Air Canada",
     "Speedbird",
+    "Cirrus",
+    "Cirru",
+    "Siriu",
+    "Sirius",
+    "Skyhawk",
+    "Skylane",
+    "Bonanza",
+    "Caravan",
+    "Archer",
+    "Diamond",
+    "Cessna",
+    "Piper",
+    "Beechcraft",
+    "Mooney",
 )
 
 

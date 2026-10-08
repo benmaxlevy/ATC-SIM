@@ -21,7 +21,11 @@ SCHEMA_VERSION = "command-ir-v0"
 
 # Fictional second facility. Live Path C must map from this catalog, not KDEM.
 FACILITY: dict[str, Any] = {
-    "callsigns": ["UAL456", "AAL12", "SWA88"],
+    "callsigns": [
+        {"callsign": "UAL456", "aliases": []},
+        {"callsign": "AAL12", "aliases": []},
+        {"callsign": "SWA88", "aliases": []},
+    ],
     "selectedCallsign": "UAL456",
     "fixes": ["CEDAR", "RIVVR", "MOUNT"],
     "procedures": [
@@ -38,9 +42,49 @@ FACILITY: dict[str, Any] = {
     ],
 }
 
+ALIAS_FACILITY: dict[str, Any] = {
+    "callsigns": [{"callsign": "N12345", "aliases": ["Skyhawk"]}],
+    "selectedCallsign": "N12345",
+}
+
+AMBIGUOUS_ALIAS_FACILITY: dict[str, Any] = {
+    "callsigns": [
+        {"callsign": "UAL123", "aliases": ["Skyhawk"]},
+        {"callsign": "DAL123", "aliases": ["Skyhawk"]},
+    ]
+}
+
 CS = "UAL456"
 
 CASES: list[dict[str, Any]] = [
+    # --- aircraft alias grounding ---
+    {
+        "id": "callsign-alias-five-digit",
+        "text": "Skyhawk one two three four five turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {
+            "callsignToken": "N12345",
+            "instructions": [{"type": "FLY_HEADING", "headingDeg": 270, "turn": "LEFT"}],
+        },
+    },
+    {
+        "id": "callsign-alias-unknown",
+        "text": "Citation one two three turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "callsign-alias-incomplete",
+        "text": "Skyhawk turn left heading two seven zero",
+        "context": ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
+    {
+        "id": "callsign-alias-ambiguous",
+        "text": "Skyhawk one two three turn left heading two seven zero",
+        "context": AMBIGUOUS_ALIAS_FACILITY,
+        "expect": {"ok": False, "error": "PARSE_MISS"},
+    },
     # --- FLY_HEADING ---
     {
         "id": "hdg-left-clean",
@@ -227,6 +271,95 @@ CASES: list[dict[str, Any]] = [
         "id": "maintain-vfr",
         "text": "maintain vfr",
         "expect": {"instructions": [{"type": "MAINTAIN_VFR"}]},
+    },
+    {
+        "id": "class-b-enter-alias",
+        "text": "cleared into the class bravo airspace",
+        "expect": {"instructions": [{"type": "CLASS_B_CLEARANCE", "operation": "TO_ENTER"}]},
+    },
+    {
+        "id": "class-b-resume-vfr-altitudes",
+        "text": "resume appropriate vfr altitudes",
+        "expect": {"instructions": [{"type": "RESUME_APPROPRIATE_VFR_ALTITUDES"}]},
+    },
+    {
+        "id": "class-b-cleared-as-requested",
+        "text": "cleared as requested",
+        "expect": {"instructions": [{"type": "CLASS_B_CLEARANCE_AS_REQUESTED"}]},
+    },
+    {
+        "id": "class-b-unable",
+        "text": "unable class b clearance",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "CLASS_B_ACCESS"}]},
+    },
+    {
+        "id": "radar-contact-bare",
+        "text": "radar contact",
+        "expect": {"instructions": [{"type": "RADAR_CONTACT"}]},
+    },
+    {
+        "id": "radar-contact-position",
+        "text": "radar contact five miles from CEDAR",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 5, "referenceId": "CEDAR", "referenceKind": "FIX"}
+            ]
+        },
+    },
+    {
+        "id": "radar-contact-airport",
+        "text": "radar contact two five miles southeast of atlanta airport",
+        "expect": {
+            "instructions": [
+                {"type": "RADAR_CONTACT", "distanceNm": 25, "referenceId": "KATL", "referenceKind": "AIRPORT"}
+            ]
+        },
+    },
+    # --- Request-control commands ---
+    {
+        "id": "say-request",
+        "text": "say request",
+        "expect": {"instructions": [{"type": "REQUEST_DETAILS"}]},
+    },
+    {
+        "id": "standby",
+        "text": "stand by",
+        "expect": {"instructions": [{"type": "STANDBY_REQUEST"}]},
+    },
+    {
+        "id": "approve-flight-following",
+        "text": "approve flight following",
+        "expect": {"instructions": [{"type": "APPROVE_FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-flight-following",
+        "text": "unable flight following",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "FLIGHT_FOLLOWING"}]},
+    },
+    {
+        "id": "decline-ifr-pickup",
+        "text": "unable ifr pickup",
+        "expect": {"instructions": [{"type": "DECLINE_REQUEST", "service": "IFR_PICKUP"}]},
+    },
+    {
+        "id": "terminate-radar-service",
+        "text": "radar service terminated",
+        "expect": {"instructions": [{"type": "TERMINATE_RADAR_SERVICE"}]},
+    },
+    {
+        "id": "acknowledge-ifr-cancellation",
+        "text": "ifr cancellation received",
+        "expect": {"instructions": [{"type": "ACKNOWLEDGE_IFR_CANCELLATION"}]},
+    },
+    {
+        "id": "contact-tower",
+        "text": "contact Atlanta tower",
+        "expect": {"instructions": [{"type": "CONTACT_TOWER", "facilityName": "ATLANTA"}]},
+    },
+    {
+        "id": "contact-center",
+        "text": "contact Atlanta center",
+        "expect": {"instructions": [{"type": "CONTACT_CENTER", "facilityName": "ATLANTA"}]},
     },
     # --- IFR clearance forms ---
     {
@@ -424,6 +557,16 @@ CASES: list[dict[str, Any]] = [
         "id": "app-rnav-clean",
         "text": "cleared RNAV runway one eight approach",
         "expect": {"instructions": [{"type": "CLEARED_APPROACH", "approachId": "RNAV18"}]},
+    },
+    {
+        "id": "app-visual-clean",
+        "text": "cleared visual approach runway zero niner",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "09"}]},
+    },
+    {
+        "id": "app-visual-rwy",
+        "text": "cleared visual runway one eight",
+        "expect": {"instructions": [{"type": "CLEARED_VISUAL", "runwayId": "18"}]},
     },
     {
         "id": "loc-clean",
