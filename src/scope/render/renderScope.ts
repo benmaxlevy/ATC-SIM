@@ -6,7 +6,7 @@
  * localizer feather, generated range rings, optional coastline); rectangular PPI
  * filling the canvas (RANGE is still the nearest-edge NM; corners show extra);
  * **target** diamond + optional **history** dots (report arrival, cap 5, no phosphor);
- * full/limited **datablock** in IBM Plex Mono (not a STARS face); L1–L9 **leader**
+ * full/limited **datablock** in fonts converted from Vice's STARS bitmaps; L1–L9 **leader**
  * (pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step); **predicted track line** (PTL)
  * straight 1.0 min GS along ground track by default (AUX spinner 0.5/1/2/4),
  * default off, F7 toggles PTL ALL. CRC may offer extra minute presets / turn
@@ -15,7 +15,7 @@
  * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned green
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
- * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) on IBM Plex Mono. BRITE multiplies
+ * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) using native Vice bitmap sizes. BRITE multiplies
  * each drawn channel. Weather VIP fills paint after maps and before tracks
  * (display only). SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord

@@ -15,7 +15,7 @@
  * Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
-import { SCOPE_FONT_STACK } from "../fonts";
+import { datablockFontCss, scopeFontAsset, scopeFontStack } from "../fonts";
 import { PALETTE, historyTrailColor } from "../palette";
 import { ownershipStubChar, type TrackOwnership } from "../ownership";
 import {
@@ -41,9 +41,9 @@ export const HISTORY_DOT_SIZE_PX = 3;
 /** 1 px yellow selection box sits this far outside the symbol bounding box. */
 export const SELECTION_BOX_PAD_PX = 2;
 
-/** Stub/position font: IBM Plex Mono sized to match position symbol char size. */
-export const OWNERSHIP_STUB_FONT_PX = 9;
-export const OWNERSHIP_STUB_FONT = `${OWNERSHIP_STUB_FONT_PX}px ${SCOPE_FONT_STACK}`;
+/** Stub text uses the smallest native Vice ARTS bitmap face. */
+export const OWNERSHIP_STUB_FONT_PX = scopeFontAsset(0).height;
+export const OWNERSHIP_STUB_FONT = datablockFontCss(8);
 
 /** Solid blue background circle for secondary target symbol glyphs. */
 export const TARGET_PUCK_BG = "#175dc7";
@@ -428,7 +428,7 @@ export function drawOwnershipStub(
   ownership: TrackOwnership,
   color: string,
 ): void {
-  ctx.font = OWNERSHIP_STUB_FONT;
+  ctx.font = datablockFontCss(8);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = color;
@@ -503,7 +503,8 @@ export function drawTargetSymbol(
       textColor = options.ownership === "owned" ? PALETTE.owned : PALETTE.targetGreen;
     }
 
-    ctx.font = `${sizePx}px ${SCOPE_FONT_STACK}`;
+    const level = sizePx - 4;
+    ctx.font = `${scopeFontAsset(level).height}px ${scopeFontStack(level)}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = textColor;

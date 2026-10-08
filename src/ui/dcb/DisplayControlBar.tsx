@@ -40,7 +40,8 @@ import type { ReactNode } from "react";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 import {
   PALETTE,
-  SCOPE_FONT_STACK,
+  dcbFontStyle,
+  scopeFontAsset,
   applyBrite,
   applyRrCenter,
   armDcbSpinner,
@@ -708,7 +709,7 @@ export function renderMainLegacy(
 export function DisplayControlBar({ view, onChange, world }: DisplayControlBarProps) {
   const dcbRef = useRef<HTMLDivElement>(null);
   const trap = useDcbCursorTrap(view, dcbRef);
-  const dcbPx = view.charSizes.dcb;
+  const fontStyle = dcbFontStyle(view.charSizes.dcb);
   const dcbText = applyBrite(PALETTE.dcbText, view.brite.dcb);
   const dcbFill = applyBrite(PALETTE.dcbCap, view.brite.dcb);
   const dcbDisabledText = applyBrite(PALETTE.dcbDisabledText, view.brite.dcb);
@@ -794,8 +795,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
       style={{
         height: vertical ? DCB_WIDTH_PX : DCB_HEIGHT_PX,
         width: vertical ? DCB_HEIGHT_PX : "max-content",
-        fontFamily: SCOPE_FONT_STACK,
-        fontSize: dcbPx,
+        ...fontStyle,
+        fontSynthesis: "none",
+        ["--dcb-column" as string]: `${Math.max(72, scopeFontAsset(view.charSizes.dcb - 10).width * 8 + 8)}px`,
         backgroundColor: PALETTE.background,
         color: dcbText,
         ["--dcb-cap" as string]: dcbFill,

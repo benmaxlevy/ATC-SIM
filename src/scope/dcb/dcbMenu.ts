@@ -8,6 +8,16 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
+import { CHAR_SIZE_STEPS_PX, DCB_CHAR_SIZE_STEPS_PX, POS_SIZE_STEPS_PX } from "../fonts";
+
+function charSpinnerValues(cell: string): readonly number[] {
+  return cell === "CHAR_DCB"
+    ? DCB_CHAR_SIZE_STEPS_PX
+    : cell === "CHAR_POS"
+      ? POS_SIZE_STEPS_PX
+      : CHAR_SIZE_STEPS_PX;
+}
+
 export type DcbMenu =
   | "MAIN"
   | "AUX"
@@ -179,7 +189,9 @@ function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | 
                 : cell === "CHAR_TOOLS"
                   ? "tools"
                   : "pos";
-        return typeof h.charSizes?.[sub] === "number" ? h.charSizes[sub] : null;
+        return typeof h.charSizes?.[sub] === "number"
+          ? charSpinnerValues(cell).indexOf(h.charSizes[sub])
+          : null;
       }
       return null;
   }
@@ -289,9 +301,11 @@ function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: numbe
                   ? "tools"
                   : "pos";
         if (h.charSizes && typeof h.charSizes === "object") {
-          h.charSizes[sub] = val;
+          const token = charSpinnerValues(cell)[val];
+          if (token === undefined) return;
+          h.charSizes[sub] = token;
           if (sub === "dataBlocks" && "charSizePx" in h) {
-            h.charSizePx = val;
+            h.charSizePx = token;
           }
         }
       }
@@ -330,7 +344,7 @@ export function validateDcbSpinnerValue(cell: DcbSpinnerCell, val: number): bool
         return Number.isInteger(val) && val >= 0 && val <= 100;
       }
       if (cell.startsWith("CHAR_")) {
-        return Number.isInteger(val) && val >= 0 && val <= 50;
+        return Number.isInteger(val) && val >= 0 && val < charSpinnerValues(cell).length;
       }
       return true;
   }

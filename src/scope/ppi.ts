@@ -69,7 +69,7 @@ import {
 } from "./systemLists";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { cancelDcbSpinner, commitDcbSpinner } from "./dcb/dcbMenu";
-import { datablockLineHeightPx } from "./fonts";
+import { datablockLineHeightPx, scopeFontsReady } from "./fonts";
 import {
   applyBeaconatorSlewToId,
   clearTrackQuery,
@@ -826,6 +826,7 @@ export function paintPpi(
   view: ScopeView,
   dpr: number = globalThis.devicePixelRatio || 1,
 ): void {
+  if (!scopeFontsReady()) return;
   const { cssWidth, cssHeight } = fitCanvasToCss(canvas, dpr);
   if (cssWidth <= 0 || cssHeight <= 0) {
     return;

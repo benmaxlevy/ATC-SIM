@@ -243,7 +243,7 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–6 la
   expect(uiSources["../canvas/ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(weatherPaintSrc).toMatch(/drawImage/);
 
-  expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
+  expect(SCOPE_FONT_STACK).toContain("Vice ARTS");
   expect(SCOPE_FONT_STACK).toContain("monospace");
   expect(SCOPE_FONT_STACK.toLowerCase()).not.toMatch(/stars/);
 });

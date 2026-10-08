@@ -1,3 +1,4 @@
+import { DATABLOCK_LINE_HEIGHT_PX } from "../fonts";
 import { expect, test } from "vitest";
 import { makeTestAircraft } from "@core";
 import {
@@ -471,7 +472,7 @@ test("FDB Field 0 stays above callsign and keeps TSAS sequence separate", () => 
   expect(fdb.line1).not.toContain("EM");
   expect(fdb.line1).not.toContain("7");
   expect(datablockMetrics(fdb).heightPx).toBe(
-    datablockMetrics({ ...fdb, line0: undefined }).heightPx + 12,
+    datablockMetrics({ ...fdb, line0: undefined }).heightPx + DATABLOCK_LINE_HEIGHT_PX,
   );
 });
 
@@ -480,7 +481,7 @@ test("empty FDB Field 0 preserves three-row physical geometry", () => {
   const fdb = formatFullDatablock(ac);
 
   expect(fdb.line0).toBeUndefined();
-  expect(datablockMetrics(fdb).heightPx).toBe(2 * 12);
+  expect(datablockMetrics(fdb).heightPx).toBe(2 * DATABLOCK_LINE_HEIGHT_PX);
 });
 
 test.each(["EM", "RF", "HJ"] as const)("limited Field 0 preserves existing SPC %s", (spc) => {

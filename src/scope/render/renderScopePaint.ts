@@ -24,7 +24,12 @@ import {
   withInboundHandoffCue,
   type DatablockMode,
 } from "../datablock";
-import { datablockFontCss, datablockLineHeightPx, measureDatablockCellWidth } from "../fonts";
+import {
+  datablockFontCss,
+  datablockLineHeightPx,
+  measureDatablockCellWidth,
+  scopeFontAsset,
+} from "../fonts";
 import {
   pointInLayoutBounds,
   solveDatablockLayout,
@@ -164,7 +169,11 @@ export function collectDatablockProtectedGeometry(
       kind: "circle",
       aircraftId: ac.id,
       center: p,
-      radius: Math.max(7, view.charSizes.pos / 2 + 2),
+      radius: Math.max(
+        7,
+        view.charSizes.pos / 2 + 2,
+        scopeFontAsset(view.charSizes.pos - 4).height / 2 + 2,
+      ),
     });
     if (view.historyEnabled && td)
       for (const h of [historyDotsToDraw(td.history, view.historyDotCount)])
@@ -1036,6 +1045,22 @@ export function buildScopeDatablockPresentation(
   };
 }
 
+function measuredDatablockMetrics(
+  ctx: CanvasRenderingContext2D,
+  lines: Parameters<typeof datablockMetrics>[0],
+  cellWidth: number,
+  lineHeight: number,
+) {
+  const metrics = datablockMetrics(lines, cellWidth, lineHeight);
+  const widths = [lines.line0, lines.line1, lines.line2, lines.line3]
+    .filter((line): line is string => line != null)
+    .map((line) => {
+      const measured = ctx.measureText(line);
+      return Math.max(measured.width, measured.actualBoundingBoxRight || 0);
+    });
+  return { ...metrics, widthPx: Math.max(cellWidth, ...widths) };
+}
+
 export function drawDatablock(
   ctx: CanvasRenderingContext2D,
   ac: Aircraft,
@@ -1072,7 +1097,7 @@ export function drawDatablock(
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
   // Field 2 inhibit symbols occupy inline cells immediately after the ACID.
   const line1Prefix = line1WithoutAlert.startsWith(callsign) ? callsign : line1WithoutAlert;
-  const metrics = datablockMetrics(lines, view.datablockCellWidthPx, lineH);
+  const metrics = measuredDatablockMetrics(ctx, lines, view.datablockCellWidthPx, lineH);
   const origin = datablockTopLeft(
     trackLeaderDir(view, ac.id),
     metrics,
@@ -1185,6 +1210,13 @@ export function drawDatablock(
     }
   }
 }
+
+// Native cell heights can increase placement search work. Reuse a solved layout
+// only while every solver input (including measured text and obstacles) is equal.
+const datablockLayoutCache = new WeakMap<
+  ScopeView,
+  { key: string; layouts: ResolvedDatablockLayout[] }
+>();
 
 export function drawTracks(
   ctx: CanvasRenderingContext2D,
@@ -1307,7 +1339,8 @@ export function drawTracks(
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
       return [];
     }
-    const metrics = datablockMetrics(
+    const metrics = measuredDatablockMetrics(
+      ctx,
       lines,
       view.datablockCellWidthPx,
       datablockLineHeightPx(view.charSizes.dataBlocks),
@@ -1333,10 +1366,17 @@ export function drawTracks(
       },
     ];
   });
-  const layouts = solveDatablockLayout(layoutItems, {
+  const layoutOptions = {
     bounds: { x: 0, y: 0, width: size.widthPx, height: size.heightPx },
     protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
-  });
+  };
+  const layoutKey = JSON.stringify([layoutItems, layoutOptions]);
+  const cachedLayout = datablockLayoutCache.get(view);
+  const layouts =
+    cachedLayout?.key === layoutKey
+      ? cachedLayout.layouts
+      : solveDatablockLayout(layoutItems, layoutOptions);
+  if (cachedLayout?.key !== layoutKey) datablockLayoutCache.set(view, { key: layoutKey, layouts });
   const layoutById = new Map(layouts.map((layout) => [layout.aircraftId, layout]));
   view.datablockRenderSnapshot = {
     world,
@@ -1602,7 +1642,7 @@ export function drawTpaRings(
       const initialDigit = tpaRingDigitPlacement(shown.xNm, shown.yNm, radiusNm, datablockDir);
       const ringRadiusPx = tpaScreenRadiusPx(radiusNm, view.camera, size);
       const halfTextWidthPx = ctx.measureText(initialDigit.text).width / 2;
-      const halfTextHeightPx = view.charSizes.tools / 2;
+      const halfTextHeightPx = datablockLineHeightPx(view.charSizes.tools) / 2;
       const radialEastPx = initialDigit.eastNm - shown.xNm;
       const radialNorthPx = initialDigit.northNm - shown.yNm;
       const radialLengthNm = Math.hypot(radialEastPx, radialNorthPx) || 1;
@@ -1679,7 +1719,13 @@ export function drawManualTpaCones(
         world.navigation.magVarDeg,
       );
       const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
-      const gap = coneDigitGapBox(ctx, digit.text, p.x, p.y, view.charSizes.tools);
+      const gap = coneDigitGapBox(
+        ctx,
+        digit.text,
+        p.x,
+        p.y,
+        datablockLineHeightPx(view.charSizes.tools),
+      );
       strokeConeAroundDigits(ctx, pts, gap, size);
       ctx.fillText(digit.text, p.x, p.y);
     } else {
@@ -1815,7 +1861,13 @@ export function drawAtpaCones(
       });
       if (placed) {
         const digit = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
-        gap = coneDigitGapBox(ctx, placed.text, digit.x, digit.y, view.charSizes.tools);
+        gap = coneDigitGapBox(
+          ctx,
+          placed.text,
+          digit.x,
+          digit.y,
+          datablockLineHeightPx(view.charSizes.tools),
+        );
       }
     }
     strokeConeAroundDigits(ctx, pts, gap, size);
@@ -1910,9 +1962,8 @@ export function drawSsa(
 
   for (const item of ssaLines) {
     if (item.text === "▼") {
-      const listSize = view.charSizes.lists;
-      const triFontSize = Math.round(listSize * 1.25);
-      ctx.font = datablockFontCss(triFontSize);
+      const triFontSize = lineH;
+      ctx.font = datablockFontCss(view.charSizes.lists);
       const metrics = ctx.measureText(item.text);
       triW = metrics.width > 0 ? metrics.width : Math.round(triFontSize * 0.85);
       triH = Math.round(triFontSize * 0.9);

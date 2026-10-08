@@ -59,7 +59,7 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 | Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–33** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX, then a physical two-row MAIN skin). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
 | CRDA, FMA, ARV, timed approaches | Phase 4+. |
 | Weather mosaic, precipitation, wind barbs | T02-68–72 VIP mosaic shipped (IEM N0Q fills + WXC contours, display only). Wind still later. |
-| Real STARS bitmap font or any licensed NAS typeface | Metric-similar **monospace** only. |
+| Original vendor font provenance or licensed NAS typeface claims | Scope uses fonts converted from Vice’s STARS bitmaps, GPL-3.0-only; no vendor provenance claim. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
 | Full NAS multi-controller handoff, interfacility point-out, quick-look, pilot-executable flight-plan workflows | Local flight-plan creation, association, modification, deletion, beacon allocation/release, TAB list, and F3/F4 scope projections are implemented; full multi-controller semantics and pilot execution remain out. |
 | Auto-deconflict of overlapping datablocks | Trainer auto-layout is enabled when viewport capacity exists; impossible density keeps higher-priority blocks and reports `DATABLOCK DENSITY`. |
@@ -186,14 +186,15 @@ Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
 ### 6. Font
 
-Do **not** bundle or imitate a licensed STARS font.
+Scope text and DCB use **fonts converted from Vice’s ARTS STARS bitmaps**,
+GPL-3.0-only, without an original vendor provenance claim. Each CHAR SIZE level
+selects its authored face at its native cell height: 11/12/15/16/18/19 px.
+DATA BLOCKS/LISTS/TOOLS/POS allow 0–5; DCB allows 0–2. Existing saved level 6
+migrates to 5. Runtime always uses ARTS; there is no family selector.
 
-Use a **metric-similar monospace**, 11–13 px on a 1080p PPI (DCB **CHAR SIZE** cycles these):
-
-- Preferred webfont: **IBM Plex Mono** (SIL OFL, tabular figures) at 12px, or
-- System stack: `"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace`
-
-Datablock layout is **character-cell based** (columns of hundreds vs GS). Proportional fonts are a bug.
+Font loading settles before canvas measurement/rendering; failures use system
+monospace. Datablock placement, overlap and picking share measured text geometry.
+See `docs/VICE-FONTS.md` and `public/fonts/vice/NOTICE.txt`.
 
 ### 7. Full datablock content
 
@@ -258,7 +259,7 @@ Mode C hundreds only, with the current leader direction and a shorter leader.
 
 Default **leader** length is **36 CSS px** (pixel-constant, L8; LDR LEN step 3). L5 overlay remains length 0. DCB LDR LEN uses steps 0–7, adding 12 px (1/4 in) per step.
 
-Font: IBM Plex Mono or system monospace.
+Font: fonts converted from Vice’s ARTS STARS bitmaps; system monospace fallback.
 
 #### Runtime data status
 
@@ -431,7 +432,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
 | F1 Initiate Track (NAS associate) | F1 color stub |
 | Leader length + direction menus | Compass-named direction readouts; LDR LEN steps **0–7**, 12 px / 1/4 in each |
-| Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (Plex/system mono). T02-29 local PREF 1–8. Not a NAS pref host |
+| Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (native Vice ARTS bitmap faces/system mono fallback). T02-29 local PREF 1–8. Not a NAS pref host |
 | F1 as a STARS function | F1 = INIT CNTL; Help uses `?` / `Shift+/` / Help button |
 | Radio is a headset | Radio is the phase 1 command line |
 
@@ -443,7 +444,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | Continuous zoom / zoom-to-cursor sneaks in | T02-01 ACs forbid it |
 | Datablock overlap at 30 tracks | Auto-layout resolves visible blocks when capacity exists; no-free-slot density is reported and lower-priority blocks are omitted. |
 | Per-frame map rebuild / string alloc | Cache Path2D; format datablocks only when alt/GS change (or once per render is OK if bench passes) |
-| Font licensing | IBM Plex Mono OFL or system monospace; no STARS dump |
+| Font licensing | Fonts converted from Vice’s STARS bitmaps, GPL-3.0-only; no vendor provenance claim |
 | “Make it look exactly like CRC” | AGENT.md + this README; visual acceptance script scores *grammar* not pixels |
 | F3 grows into a handoff system | T02-08 out-of-scope list is explicit |
 | 60 FPS fails | T02-12 lands before T02-13; drop PTL/history default if needed **only after measuring** — do not skip datablocks |
@@ -888,3 +889,14 @@ destination, and remarks, and Boxes 9A–9C plus 10–18 remain present.
 ## Glossary reminders
 
 Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **track**, **CRC keys**. Distances NM, altitudes feet MSL, speed knots. Do not invent “zoom level,” “labels,” or “sprites” in user-facing UI copy — say **range**, **datablock**, **target**. Forbidden/required list: `phases/_shared/references.md`.
+
+
+## Vice bitmap font integration (2026-10-08)
+
+The explicitly requested font conversion lifts the earlier Plex-only font
+restriction for scope and DCB text. Fonts converted from Vice's STARS bitmaps
+preserve authored Set B/ARTS faces only. Runtime always uses ARTS; there is no font-family selector. Historical CHAR SIZE preference
+tokens remain readable and select native authored faces. All character-size channels allow levels 0–5 except DCB 0–2; old saved level 6 migrates to 5. No official NAS font provenance or compatibility is claimed. See
+`docs/VICE-FONTS.md` for source/license evidence and exhaustive
+conversion verification. Historical ticket records describe their shipped
+behavior and are not rewritten.

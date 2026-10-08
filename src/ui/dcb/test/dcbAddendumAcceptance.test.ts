@@ -236,7 +236,7 @@ test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply;
   expect(pref).not.toMatch(/<input/i);
   expect(DCB_PREF_SLOT_COUNT).toBe(32);
 
-  expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
+  expect(SCOPE_FONT_STACK).toContain("Vice ARTS");
   expect(SCOPE_FONT_STACK).toContain("monospace");
   expect(SCOPE_FONT_STACK.toLowerCase()).not.toMatch(/stars/);
   for (const [path, src] of Object.entries(appSources)) {
