@@ -1,5 +1,6 @@
 /** Acceptance: fonts converted from Vice's ARTS bitmaps, native sizes and load gate. */
 import { createAircraft, createWorld } from "@core";
+import { drawTargetSymbol } from "../render/targetSymbol";
 import { drawTracks } from "../render/renderScopePaint";
 import { syncTrackDisplays } from "../trackDisplay";
 import { createMockCtx } from "./mockCanvas";
@@ -129,6 +130,40 @@ describe("Vice ARTS font acceptance", () => {
       first.width,
     );
     expect(view.datablockRenderSnapshot!.presentations.has(ac.id)).toBe(true);
+  });
+
+  it("keeps position ink and stroked square strictly inside the enlarged fused circle", () => {
+    for (const size of POS_SIZE_STEPS_PX) {
+      const { ctx } = createMockCtx();
+      let radius = 0;
+      ctx.arc = (_x, _y, value) => {
+        radius = value;
+      };
+      ctx.measureText = () =>
+        ({
+          width: 28,
+          actualBoundingBoxLeft: 13,
+          actualBoundingBoxRight: 11,
+          actualBoundingBoxAscent: 8,
+          actualBoundingBoxDescent: 5,
+        }) as TextMetrics;
+      drawTargetSymbol(ctx, 0, 0, "#ffffff", { tracked: true, sectorId: "1N" }, size);
+      for (const x of [-13, 11])
+        for (const y of [-8, 5]) {
+          expect(Math.hypot(x, y)).toBeLessThan(radius);
+        }
+      expect(radius).toBeGreaterThanOrEqual(Math.max(5, Math.round(size * 0.65)) * 1.2);
+      drawTargetSymbol(
+        ctx,
+        0,
+        0,
+        "#ffffff",
+        { squawk: "1234", beaconSelect: new Set(["1234"]) },
+        size,
+      );
+      const outerHalf = (size + 1) / 2;
+      expect(Math.hypot(outerHalf, outerHalf)).toBeLessThan(radius);
+    }
   });
 
   it("ships verified ARTS assets and explicit symbol mappings with notices", () => {

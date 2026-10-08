@@ -413,8 +413,9 @@ function fillFusedPuck(
   y: number,
   sizePx: number,
   color: string = TARGET_PUCK_BG,
+  inkRadiusPx = 0,
 ): void {
-  const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
+  const radiusPx = Math.max(Math.max(5, Math.round(sizePx * 0.65)) * 1.2, inkRadiusPx);
   ctx.beginPath();
   ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -482,7 +483,15 @@ export function drawTargetSymbol(
     strokeDiamond(ctx, x, y, diamondSize);
   } else if (desc.shape === "square") {
     if (paint === "fused-puck") {
-      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
+      const outerHalf = (sizePx + TARGET_STROKE_PX) / 2;
+      fillFusedPuck(
+        ctx,
+        x,
+        y,
+        sizePx,
+        options.positionMarkColor ?? TARGET_PUCK_BG,
+        Math.hypot(outerHalf, outerHalf) + 1,
+      );
     }
 
     ctx.strokeStyle = color;
@@ -490,10 +499,6 @@ export function drawTargetSymbol(
     const half = sizePx / 2;
     ctx.strokeRect(x - half, y - half, sizePx, sizePx);
   } else {
-    if (paint === "fused-puck") {
-      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
-    }
-
     let textColor = color;
     if (
       color === POSITION_SYMBOL_COLOR ||
@@ -507,8 +512,30 @@ export function drawTargetSymbol(
     ctx.font = `${scopeFontAsset(level).height}px ${scopeFontStack(level)}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    const text = desc.char ?? desc.symbol;
+    if (paint === "fused-puck") {
+      const metrics = ctx.measureText(text);
+      const halfWidth = Math.max(
+        Math.abs(metrics.actualBoundingBoxLeft ?? metrics.width / 2),
+        Math.abs(metrics.actualBoundingBoxRight ?? metrics.width / 2),
+      );
+      const halfHeight = Math.max(
+        Math.abs(metrics.actualBoundingBoxAscent ?? scopeFontAsset(level).height / 2),
+        Math.abs(metrics.actualBoundingBoxDescent ?? scopeFontAsset(level).height / 2),
+      );
+      // Enclose the farthest ink-box corner with a one-CSS-pixel margin.
+      // Measure after setting the exact font, alignment, and baseline used below.
+      fillFusedPuck(
+        ctx,
+        x,
+        y,
+        sizePx,
+        options.positionMarkColor ?? TARGET_PUCK_BG,
+        Math.hypot(halfWidth, halfHeight) + 1,
+      );
+    }
     ctx.fillStyle = textColor;
-    ctx.fillText(desc.char ?? desc.symbol, x, y);
+    ctx.fillText(text, x, y);
   }
 }
 
