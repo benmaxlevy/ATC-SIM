@@ -132,9 +132,9 @@ describe("Vice ARTS font acceptance", () => {
     expect(view.datablockRenderSnapshot!.presentations.has(ac.id)).toBe(true);
   });
 
-  it("keeps position ink and stroked square strictly inside the enlarged fused circle", () => {
+  it("centers position ink inside a tighter fused circle and encloses square strokes", () => {
     for (const size of POS_SIZE_STEPS_PX) {
-      const { ctx } = createMockCtx();
+      const { ctx, fillTexts } = createMockCtx();
       let radius = 0;
       ctx.arc = (_x, _y, value) => {
         radius = value;
@@ -148,11 +148,17 @@ describe("Vice ARTS font acceptance", () => {
           actualBoundingBoxDescent: 5,
         }) as TextMetrics;
       drawTargetSymbol(ctx, 0, 0, "#ffffff", { tracked: true, sectorId: "1N" }, size);
-      for (const x of [-13, 11])
-        for (const y of [-8, 5]) {
+      expect(fillTexts.at(-1)).toMatchObject({ x: 1, y: 1.5 });
+      const nativeLevel = Math.max(0, size - 5);
+      expect(fillTexts.at(-1)!.font).toContain(
+        `${authoredHeights[nativeLevel]}px "Vice ARTS ${nativeLevel}"`,
+      );
+      for (const x of [-12, 12])
+        for (const y of [-6.5, 6.5]) {
           expect(Math.hypot(x, y)).toBeLessThan(radius);
         }
-      expect(radius).toBeGreaterThanOrEqual(Math.max(5, Math.round(size * 0.65)) * 1.2);
+      expect(radius).toBeGreaterThanOrEqual(Math.max(5, Math.round(size * 0.65)));
+      expect(radius).toBeLessThan(Math.hypot(13, 8) + 1);
       drawTargetSymbol(
         ctx,
         0,

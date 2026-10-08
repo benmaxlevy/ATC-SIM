@@ -15,7 +15,7 @@
  * Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
-import { datablockFontCss, scopeFontAsset, scopeFontStack } from "../fonts";
+import { datablockFontCss, scopeFontAsset, scopeFontStack, positionFontLevel } from "../fonts";
 import { PALETTE, historyTrailColor } from "../palette";
 import { ownershipStubChar, type TrackOwnership } from "../ownership";
 import {
@@ -415,7 +415,7 @@ function fillFusedPuck(
   color: string = TARGET_PUCK_BG,
   inkRadiusPx = 0,
 ): void {
-  const radiusPx = Math.max(Math.max(5, Math.round(sizePx * 0.65)) * 1.2, inkRadiusPx);
+  const radiusPx = Math.max(5, Math.round(sizePx * 0.65), inkRadiusPx);
   ctx.beginPath();
   ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -508,23 +508,25 @@ export function drawTargetSymbol(
       textColor = options.ownership === "owned" ? PALETTE.owned : PALETTE.targetGreen;
     }
 
-    const level = sizePx - 4;
+    const level = positionFontLevel(sizePx);
     ctx.font = `${scopeFontAsset(level).height}px ${scopeFontStack(level)}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const text = desc.char ?? desc.symbol;
+    let textX = x;
+    let textY = y;
     if (paint === "fused-puck") {
       const metrics = ctx.measureText(text);
-      const halfWidth = Math.max(
-        Math.abs(metrics.actualBoundingBoxLeft ?? metrics.width / 2),
-        Math.abs(metrics.actualBoundingBoxRight ?? metrics.width / 2),
-      );
-      const halfHeight = Math.max(
-        Math.abs(metrics.actualBoundingBoxAscent ?? scopeFontAsset(level).height / 2),
-        Math.abs(metrics.actualBoundingBoxDescent ?? scopeFontAsset(level).height / 2),
-      );
-      // Enclose the farthest ink-box corner with a one-CSS-pixel margin.
-      // Measure after setting the exact font, alignment, and baseline used below.
+      const left = metrics.actualBoundingBoxLeft ?? metrics.width / 2;
+      const right = metrics.actualBoundingBoxRight ?? metrics.width / 2;
+      const ascent = metrics.actualBoundingBoxAscent ?? scopeFontAsset(level).height / 2;
+      const descent = metrics.actualBoundingBoxDescent ?? scopeFontAsset(level).height / 2;
+      const halfWidth = (left + right) / 2;
+      const halfHeight = (ascent + descent) / 2;
+      // Center visible ink, not the font's advance cell or baseline padding.
+      // Centering permits a tighter circle while retaining a one-pixel gap.
+      textX += (left - right) / 2;
+      textY += (ascent - descent) / 2;
       fillFusedPuck(
         ctx,
         x,
@@ -535,7 +537,7 @@ export function drawTargetSymbol(
       );
     }
     ctx.fillStyle = textColor;
-    ctx.fillText(text, x, y);
+    ctx.fillText(text, textX, textY);
   }
 }
 

@@ -68,6 +68,11 @@ export function scopeFontStack(level: number): string {
     : `"${asset.cssFamily}", ${FALLBACK_SCOPE_FONT_STACK}`;
 }
 
+/** POS uses a smaller native face; levels 0 and 1 share the smallest asset. */
+export function positionFontLevel(sizePx: number): number {
+  return Math.max(0, sizePx - 5);
+}
+
 /** DCB values 10/11/12 represent levels 0/1/2. */
 export function dcbFontStyle(size: number) {
   const level = size - 10;

@@ -29,6 +29,7 @@ import {
   datablockLineHeightPx,
   measureDatablockCellWidth,
   scopeFontAsset,
+  positionFontLevel,
 } from "../fonts";
 import {
   pointInLayoutBounds,
@@ -172,7 +173,7 @@ export function collectDatablockProtectedGeometry(
       radius: Math.max(
         7,
         view.charSizes.pos / 2 + 2,
-        scopeFontAsset(view.charSizes.pos - 4).height / 2 + 2,
+        scopeFontAsset(positionFontLevel(view.charSizes.pos)).height / 2 + 2,
       ),
     });
     if (view.historyEnabled && td)

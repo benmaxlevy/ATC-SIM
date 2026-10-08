@@ -95,7 +95,10 @@ delta, filled triangles, square, and indexed STARS symbols.
 
 `src/scope/fonts.ts` resolves stored CHAR SIZE tokens to faces, not scalable
 versions of one outline. Historical 8–13 tokens represent levels 0–5; old saved level 6 migrates to 5. DCB tokens 10–12 select sizes 0–2. POS
-shape sizes remain historical 4–9 tokens; text selects authored sizes 0–5.
+shape sizes remain historical 4–9 tokens. Position IDs use smaller native faces:
+POS levels 0–5 select authored sizes 0/0/1/2/3/4 (11/11/12/15/16/18 px).
+Visible glyph bounds are centered inside a tightly fitted fused circle with a
+one-pixel gap. Glyph shapes remain unscaled.
 Runtime always uses ARTS, as explicitly requested. There is no font selector
 or family preference. The authored ARTS outline variants are also available in the specimen.
 Existing display preference schemas and CHAR SIZE values remain compatible.
