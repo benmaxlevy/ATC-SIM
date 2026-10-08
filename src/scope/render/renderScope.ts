@@ -15,7 +15,7 @@
  * suppress datablock / leader / PTL. F3 initiate-track color stub (unowned green
  * FDB / owned white FDB, CSI-like `*` / `G`); position symbol stays blue;
  * selected yellow box independent of ownership. CHAR SIZE is per-subsystem
- * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) using native Vice bitmap sizes. BRITE multiplies
+ * (DATA BLOCKS / LISTS / DCB / TOOLS / POS) using Vice bitmap faces at 10–15 CSS px. BRITE multiplies
  * each drawn channel. Weather VIP fills paint after maps and before tracks
  * (display only). SSA is screen-fixed top-left (sim time, KDEM 29.92 stub,
  * FILTER, RANGE, OFF CNTR, `OK/OK/NA` plus live SITE radar word) — not world-fixed. Live `*` TPA/ATPA chord

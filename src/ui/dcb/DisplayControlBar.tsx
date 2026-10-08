@@ -797,7 +797,7 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         width: vertical ? DCB_HEIGHT_PX : "max-content",
         ...fontStyle,
         fontSynthesis: "none",
-        ["--dcb-column" as string]: `${Math.max(72, scopeFontAsset(view.charSizes.dcb - 10).width * 8 + 8)}px`,
+        ["--dcb-column" as string]: `${Math.max(72, scopeFontAsset(view.charSizes.dcb - 10).width * (fontStyle.fontSize / scopeFontAsset(view.charSizes.dcb - 10).height) * 8 + 8)}px`,
         backgroundColor: PALETTE.background,
         color: dcbText,
         ["--dcb-cap" as string]: dcbFill,

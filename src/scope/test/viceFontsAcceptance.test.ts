@@ -29,22 +29,22 @@ import {
   cloneCharSizes,
 } from "../fonts";
 
-const authoredHeights = [11, 12, 15, 16, 18, 19];
+const displayHeights = [10, 11, 12, 13, 14, 15];
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
 describe("Vice ARTS font acceptance", () => {
-  it("selects each native face without scaling, retaining old CHAR SIZE tokens", () => {
+  it("uses a uniform 10–15 px progression while retaining old CHAR SIZE tokens", () => {
     for (const [level, token] of CHAR_SIZE_STEPS_PX.entries()) {
       const size = level;
-      expect(datablockFontCss(token)).toContain(`${authoredHeights[size]}px "Vice ARTS ${size}"`);
-      expect(datablockLineHeightPx(token)).toBe(authoredHeights[size]);
+      expect(datablockFontCss(token)).toContain(`${displayHeights[size]}px "Vice ARTS ${size}"`);
+      expect(datablockLineHeightPx(token)).toBe(displayHeights[size]);
     }
     for (const [level, token] of DCB_CHAR_SIZE_STEPS_PX.entries()) {
       expect(dcbFontStyle(token).fontFamily).toContain(`"Vice ARTS ${level}"`);
-      expect(dcbFontStyle(token).fontSize).toBe(authoredHeights[level]);
+      expect(dcbFontStyle(token).fontSize).toBe(displayHeights[level]);
     }
     const view = createScopeView();
     view.charSizes.dataBlocks = 13;
@@ -149,9 +149,9 @@ describe("Vice ARTS font acceptance", () => {
         }) as TextMetrics;
       drawTargetSymbol(ctx, 0, 0, "#ffffff", { tracked: true, sectorId: "1N" }, size);
       expect(fillTexts.at(-1)).toMatchObject({ x: 1, y: 1.5 });
-      const nativeLevel = Math.max(0, size - 5);
+      const nativeLevel = size - 4;
       expect(fillTexts.at(-1)!.font).toContain(
-        `${authoredHeights[nativeLevel]}px "Vice ARTS ${nativeLevel}"`,
+        `${displayHeights[nativeLevel]}px "Vice ARTS ${nativeLevel}"`,
       );
       for (const x of [-12, 12])
         for (const y of [-6.5, 6.5]) {
@@ -213,7 +213,7 @@ describe("Vice ARTS font acceptance", () => {
       await vi.advanceTimersByTimeAsync(25);
       await ready;
       expect(fonts.scopeFontsReady()).toBe(true);
-      expect(fonts.datablockFontCss(12)).toBe(`18px ${fonts.FALLBACK_SCOPE_FONT_STACK}`);
+      expect(fonts.datablockFontCss(12)).toBe(`14px ${fonts.FALLBACK_SCOPE_FONT_STACK}`);
       expect(fonts.dcbFontStyle(11).fontFamily).toBe(fonts.FALLBACK_SCOPE_FONT_STACK);
       vi.useRealTimers();
     }

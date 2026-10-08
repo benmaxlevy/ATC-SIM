@@ -188,7 +188,8 @@ Export as `src/scope/palette.ts`. Do not sprinkle hex literals in draw calls.
 
 Scope text and DCB use **fonts converted from Vice’s ARTS STARS bitmaps**,
 GPL-3.0-only, without an original vendor provenance claim. Each CHAR SIZE level
-selects its authored face at its native cell height: 11/12/15/16/18/19 px.
+selects its authored face at 10/11/12/13/14/15 CSS px (DCB 10/11/12 px).
+The assets retain native outlines/metrics; browser display scales them.
 DATA BLOCKS/LISTS/TOOLS/POS allow 0–5; DCB allows 0–2. Existing saved level 6
 migrates to 5. Runtime always uses ARTS; there is no family selector.
 
@@ -896,7 +897,7 @@ Use `phases/_shared/glossary.md` terms: **scope**, **PPI**, **datablock**, **tra
 The explicitly requested font conversion lifts the earlier Plex-only font
 restriction for scope and DCB text. Fonts converted from Vice's STARS bitmaps
 preserve authored Set B/ARTS faces only. Runtime always uses ARTS; there is no font-family selector. Historical CHAR SIZE preference
-tokens remain readable and select native authored faces. All character-size channels allow levels 0–5 except DCB 0–2; old saved level 6 migrates to 5. No official NAS font provenance or compatibility is claimed. See
+tokens remain readable and select authored faces at the configured CSS sizes. All character-size channels allow levels 0–5 except DCB 0–2; old saved level 6 migrates to 5. No official NAS font provenance or compatibility is claimed. See
 `docs/VICE-FONTS.md` for source/license evidence and exhaustive
 conversion verification. Historical ticket records describe their shipped
 behavior and are not rewritten.

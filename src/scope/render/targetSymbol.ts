@@ -15,7 +15,7 @@
  * Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
-import { datablockFontCss, scopeFontAsset, scopeFontStack, positionFontLevel } from "../fonts";
+import { datablockFontCss, scopeFontStack, positionFontLevel, scopeFontSizePx } from "../fonts";
 import { PALETTE, historyTrailColor } from "../palette";
 import { ownershipStubChar, type TrackOwnership } from "../ownership";
 import {
@@ -41,8 +41,8 @@ export const HISTORY_DOT_SIZE_PX = 3;
 /** 1 px yellow selection box sits this far outside the symbol bounding box. */
 export const SELECTION_BOX_PAD_PX = 2;
 
-/** Stub text uses the smallest native Vice ARTS bitmap face. */
-export const OWNERSHIP_STUB_FONT_PX = scopeFontAsset(0).height;
+/** Stub text uses the smallest displayed Vice ARTS face. */
+export const OWNERSHIP_STUB_FONT_PX = scopeFontSizePx(0);
 export const OWNERSHIP_STUB_FONT = datablockFontCss(8);
 
 /** Solid blue background circle for secondary target symbol glyphs. */
@@ -509,7 +509,7 @@ export function drawTargetSymbol(
     }
 
     const level = positionFontLevel(sizePx);
-    ctx.font = `${scopeFontAsset(level).height}px ${scopeFontStack(level)}`;
+    ctx.font = `${scopeFontSizePx(level)}px ${scopeFontStack(level)}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const text = desc.char ?? desc.symbol;
@@ -519,8 +519,8 @@ export function drawTargetSymbol(
       const metrics = ctx.measureText(text);
       const left = metrics.actualBoundingBoxLeft ?? metrics.width / 2;
       const right = metrics.actualBoundingBoxRight ?? metrics.width / 2;
-      const ascent = metrics.actualBoundingBoxAscent ?? scopeFontAsset(level).height / 2;
-      const descent = metrics.actualBoundingBoxDescent ?? scopeFontAsset(level).height / 2;
+      const ascent = metrics.actualBoundingBoxAscent ?? scopeFontSizePx(level) / 2;
+      const descent = metrics.actualBoundingBoxDescent ?? scopeFontSizePx(level) / 2;
       const halfWidth = (left + right) / 2;
       const halfHeight = (ascent + descent) / 2;
       // Center visible ink, not the font's advance cell or baseline padding.

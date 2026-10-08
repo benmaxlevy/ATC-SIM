@@ -28,7 +28,7 @@ import {
   datablockFontCss,
   datablockLineHeightPx,
   measureDatablockCellWidth,
-  scopeFontAsset,
+  scopeFontSizePx,
   positionFontLevel,
 } from "../fonts";
 import {
@@ -173,7 +173,7 @@ export function collectDatablockProtectedGeometry(
       radius: Math.max(
         7,
         view.charSizes.pos / 2 + 2,
-        scopeFontAsset(positionFontLevel(view.charSizes.pos)).height / 2 + 2,
+        scopeFontSizePx(positionFontLevel(view.charSizes.pos)) / 2 + 2,
       ),
     });
     if (view.historyEnabled && td)
@@ -1212,7 +1212,7 @@ export function drawDatablock(
   }
 }
 
-// Native cell heights can increase placement search work. Reuse a solved layout
+// Display cell heights can increase placement search work. Reuse a solved layout
 // only while every solver input (including measured text and obstacles) is equal.
 const datablockLayoutCache = new WeakMap<
   ScopeView,

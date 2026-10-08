@@ -1,7 +1,7 @@
 /**
  * Fonts converted from Vice's STARS bitmaps (GPL-3.0-only).
  * Stored CHAR SIZE values remain compatibility tokens; each selects an authored
- * bitmap face at its native cell height. No outline scaling or synthetic weight.
+ * bitmap face at 10–15 CSS px. Assets retain their original metrics.
  */
 import viceMetrics from "./viceFontMetrics.json";
 
@@ -68,9 +68,14 @@ export function scopeFontStack(level: number): string {
     : `"${asset.cssFamily}", ${FALLBACK_SCOPE_FONT_STACK}`;
 }
 
-/** POS uses a smaller native face; levels 0 and 1 share the smallest asset. */
+/** Uniform display progression; converted assets retain authored dimensions. */
+export function scopeFontSizePx(level: number): number {
+  return 10 + scopeFontAsset(level).size;
+}
+
+/** Historical POS tokens 4–9 represent levels 0–5. */
 export function positionFontLevel(sizePx: number): number {
-  return Math.max(0, sizePx - 5);
+  return Math.max(0, sizePx - 4);
 }
 
 /** DCB values 10/11/12 represent levels 0/1/2. */
@@ -78,7 +83,7 @@ export function dcbFontStyle(size: number) {
   const level = size - 10;
   return {
     fontFamily: scopeFontStack(level),
-    fontSize: scopeFontAsset(level).height,
+    fontSize: scopeFontSizePx(level),
   };
 }
 
@@ -86,7 +91,7 @@ export function dcbFontStyle(size: number) {
 export const DATABLOCK_FONT_PX = 12;
 
 /**
- * CHAR SIZE DATA BLOCKS/LISTS/TOOLS levels 0–5, stored as historical px tokens; select authored faces.
+ * CHAR SIZE DATA BLOCKS/LISTS/TOOLS levels 0–5, stored as historical px tokens; select authored faces at 10–15 CSS px.
  * Readouts show levels; state keeps compatibility tokens.
  */
 export const CHAR_SIZE_STEPS_PX = [8, 9, 10, 11, 12, 13] as const;
@@ -94,8 +99,8 @@ export type CharSizePx = (typeof CHAR_SIZE_STEPS_PX)[number];
 export const DEFAULT_CHAR_SIZE_PX: CharSizePx = 12;
 
 /**
- * DCB cell text. Native text fits the shipped 80 px DCB.
- * CHAR SIZE DCB levels 0–2, stored as historical 10/11/12 tokens; select authored faces.
+ * DCB cell text. Display text fits the shipped 80 px DCB.
+ * CHAR SIZE DCB levels 0–2, stored as historical 10/11/12 tokens; display at 10/11/12 CSS px.
  */
 export const DCB_CHAR_SIZE_STEPS_PX = [10, 11, 12] as const;
 export type DcbCharSizePx = (typeof DCB_CHAR_SIZE_STEPS_PX)[number];
@@ -151,24 +156,26 @@ export function cloneCharSizes(
 }
 
 /** Character-cell line box; matches font size so Mode C columns stack. */
-export const DATABLOCK_LINE_HEIGHT_PX = scopeFontAsset(DATABLOCK_FONT_PX - 8).height;
+export const DATABLOCK_LINE_HEIGHT_PX = scopeFontSizePx(DATABLOCK_FONT_PX - 8);
 
 export const DATABLOCK_FONT = datablockFontCss(DATABLOCK_FONT_PX);
 
 export function datablockFontCss(sizePx: number = DATABLOCK_FONT_PX): string {
   const level = sizePx - 8;
-  return `${scopeFontAsset(level).height}px ${scopeFontStack(level)}`;
+  return `${scopeFontSizePx(level)}px ${scopeFontStack(level)}`;
 }
 
 export function datablockLineHeightPx(sizePx: number = DATABLOCK_FONT_PX): number {
-  return scopeFontAsset(sizePx - 8).height;
+  return scopeFontSizePx(sizePx - 8);
 }
 
 /**
  * Fallback when Canvas `measureText("0")` is 0 (jsdom / tests).
- * Native ARTS default advance when canvas measurement is unavailable.
+ * ARTS default advance scaled to its displayed size when measurement is unavailable.
  */
-export const DEFAULT_DATABLOCK_CELL_PX = scopeFontAsset(DATABLOCK_FONT_PX - 8).advances[48]!;
+export const DEFAULT_DATABLOCK_CELL_PX =
+  scopeFontAsset(DATABLOCK_FONT_PX - 8).advances[48]! *
+  (DATABLOCK_LINE_HEIGHT_PX / scopeFontAsset(DATABLOCK_FONT_PX - 8).height);
 
 export function measureDatablockCellWidth(ctx: {
   measureText(text: string): { width: number };

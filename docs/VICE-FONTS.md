@@ -93,23 +93,25 @@ sample is followed by an independently generated SVG of the original occupied
 cells. Inspect at DPR 1 and 2. Samples include letters, digits, punctuation,
 delta, filled triangles, square, and indexed STARS symbols.
 
-`src/scope/fonts.ts` resolves stored CHAR SIZE tokens to faces, not scalable
-versions of one outline. Historical 8–13 tokens represent levels 0–5; old saved level 6 migrates to 5. DCB tokens 10–12 select sizes 0–2. POS
-shape sizes remain historical 4–9 tokens. Position IDs use smaller native faces:
-POS levels 0–5 select authored sizes 0/0/1/2/3/4 (11/11/12/15/16/18 px).
-Visible glyph bounds are centered inside a tightly fitted fused circle with a
-one-pixel gap. Glyph shapes remain unscaled.
+`src/scope/fonts.ts` resolves stored CHAR SIZE tokens to authored faces and
+applies a uniform display progression. DATA BLOCKS/LISTS/TOOLS/POS levels 0–5
+render at **10/11/12/13/14/15 CSS px**; DCB levels 0–2 render at **10/11/12 CSS px**.
+Stored compatibility tokens remain 8–13 for text, 4–9 for POS, and 10–12 for DCB;
+old saved level 6 migrates to 5. Each level keeps its corresponding authored face.
+Font assets retain native outlines/metrics; browser display scales them to the
+requested CSS sizes. Position IDs remain centered by their visible ink bounds
+inside a tightly fitted fused circle with a one-pixel gap.
 Runtime always uses ARTS, as explicitly requested. There is no font selector
 or family preference. The authored ARTS outline variants are also available in the specimen.
 Existing display preference schemas and CHAR SIZE values remain compatible.
 
 All six runtime ARTS faces settle before mounting the scope and before starting
 canvas paint/measurement. Each face has a bounded 5-second load deadline.
-Rejected, empty, or timed-out loads use system monospace at the same native
+Rejected, empty, or timed-out loads use system monospace at the same displayed
 cell height; layout measures the fallback actually used. No late automatic
 font swap changes picking geometry. DCB has no synthetic weight or letter
 spacing. Datablock placement/overlap and picking share measured render snapshots,
-including actual measured advances. List hit rows use the selected native
+including actual measured advances. List hit rows use the selected display
 line height. Layout caching compares every solver input, including text metrics,
 targets, bounds, and protected geometry. Conservative geometry bounds avoid
 expensive exact intersection tests when obstacles are far from the text box.
