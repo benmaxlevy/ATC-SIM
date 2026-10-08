@@ -90,6 +90,7 @@ export interface DcbSpinnerState {
 /** Structural host so this module stays DOM-free and does not import scopeView. */
 export interface DcbMenuHost {
   dcbMenu: DcbMenu;
+  dcbMenuParent?: "MAIN" | "AUX";
   dcbSpinner: DcbSpinnerState;
 }
 
@@ -491,30 +492,37 @@ export function applyDcbShift(host: DcbMenuHost): void {
 
 export function openDcbMenu(host: DcbMenuHost, menu: DcbMenu): void {
   cancelDcbSpinner(host);
+  if (host.dcbMenu === "MAIN" || host.dcbMenu === "AUX") {
+    host.dcbMenuParent = host.dcbMenu;
+  }
   host.dcbMenu = menu;
 }
 
 export function toggleDcbMenu(host: DcbMenuHost, menu: "MAPS" | "LDR"): void {
   cancelDcbSpinner(host);
-  host.dcbMenu = host.dcbMenu === menu ? "MAIN" : menu;
+  if (host.dcbMenu === menu) {
+    closeDcbMenu(host);
+  } else {
+    openDcbMenu(host, menu);
+  }
 }
 
-/** DONE: leave a submenu (or AUX) for MAIN. */
+/** DONE returns a submenu to its opening menu; AUX returns to MAIN. */
 export function closeDcbMenu(host: DcbMenuHost): void {
   cancelDcbSpinner(host);
-  host.dcbMenu = "MAIN";
+  host.dcbMenu = isDcbSubmenu(host.dcbMenu) ? (host.dcbMenuParent ?? "MAIN") : "MAIN";
 }
 
 /**
  * Esc: if a spinner is armed, disarm with no extra mutation.
- * Else if a submenu is open, return to MAIN.
+ * Else if a submenu is open, return to its opening menu.
  */
 export function handleDcbEscape(host: DcbMenuHost): boolean {
   if (cancelDcbSpinner(host)) {
     return true;
   }
   if (isDcbSubmenu(host.dcbMenu)) {
-    host.dcbMenu = "MAIN";
+    closeDcbMenu(host);
     return true;
   }
   return false;

@@ -153,6 +153,7 @@ export interface ScopeView {
   leaderLengthPx: LeaderLengthPx;
   /** DCB menu machine: MAIN/AUX via SHIFT; MAPS/LDR replace the bar. */
   dcbMenu: DcbMenu;
+  dcbMenuParent?: "MAIN" | "AUX";
   /** RANGE / RR / LDR DIR / LDR length / HISTORY / PTL spinner arm+wheel. Display only. */
   dcbSpinner: DcbSpinnerState;
   /** GEO MAPS on-PPI list (video map catalog). Display only. */

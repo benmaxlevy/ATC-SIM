@@ -816,7 +816,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         aria-hidden={false}
         data-dcb-submenu-open={showSubmenuOverlay ? "true" : undefined}
       >
-        {menu === "AUX" ? renderAux(view, onChange) : renderPhysicalMain(view, onChange, world)}
+        {(showSubmenuOverlay ? view.dcbMenuParent : menu) === "AUX"
+          ? renderAux(view, onChange)
+          : renderPhysicalMain(view, onChange, world)}
       </div>
       {showSubmenuOverlay ? (
         <div
