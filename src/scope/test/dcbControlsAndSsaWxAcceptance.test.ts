@@ -1,3 +1,4 @@
+import { emptyWxMosaic } from "../wx/mosaic";
 import { describe, expect, test } from "vitest";
 import {
   createScopeView,
@@ -17,6 +18,22 @@ import {
 } from "@scope";
 import { createCaAlertTone, CA_TONE_GAIN } from "../../app/ca-alert-tone";
 import { createWorld, makeTestAircraft } from "@core";
+
+function availableMosaic(fetchedAtMs = 1) {
+  return {
+    ...emptyWxMosaic({ fetchedAtMs }),
+    widthPx: 1,
+    heightPx: 1,
+    vipMasks: [
+      new Uint8Array([1]),
+      new Uint8Array([1]),
+      new Uint8Array([1]),
+      new Uint8Array([1]),
+      new Uint8Array([1]),
+      new Uint8Array([0]),
+    ] as ReturnType<typeof emptyWxMosaic>["vipMasks"],
+  };
+}
 
 describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () => {
   test("AC1 — DCB VOL modulates CA alert tone gain and preserves pilot voice independence", () => {
@@ -144,7 +161,7 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
     expect(getBackgroundColor(view.brite.bkc)).toBe("#0A0E16");
   });
 
-  test("AC4 — SSA WX telemetry displays timestamp, age, and staleness alert; SSA FILTER toggles visibility", () => {
+  test("AC4 — SSA WX displays selected levels regardless of age; SSA FILTER toggles visibility", () => {
     const fetchedAt = new Date("2026-09-01T15:00:00Z").getTime();
     const now10MinLater = fetchedAt + 10 * 60 * 1000;
     const now25MinLater = fetchedAt + 25 * 60 * 1000;
@@ -158,11 +175,11 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
       filter: DEFAULT_ALTITUDE_FILTER,
       filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
       wxLevels: [true, false, false, false, false, false],
-      wxMosaic: { fetchedAtMs: fetchedAt },
+      wxMosaic: availableMosaic(fetchedAt),
     });
-    const freshWx = freshSsa.find((l) => l.text.startsWith("WX 1500Z"));
+    const freshWx = freshSsa.find((l) => l.text === "(1) 2 3 4 5");
     expect(freshWx).toBeDefined();
-    expect(freshWx?.text).toBe("WX 1500Z  WX HIST 10M");
+    expect(freshWx?.text).toBe("(1) 2 3 4 5");
     expect(freshWx?.style).toBe("normal");
 
     // Stale WX data (>15m)
@@ -174,12 +191,12 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
       filter: DEFAULT_ALTITUDE_FILTER,
       filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
       wxLevels: [true, false, false, false, false, false],
-      wxMosaic: { fetchedAtMs: fetchedAt },
+      wxMosaic: availableMosaic(fetchedAt),
     });
-    const staleWx = staleSsa.find((l) => l.text.startsWith("WX 1500Z"));
+    const staleWx = staleSsa.find((l) => l.text === "(1) 2 3 4 5");
     expect(staleWx).toBeDefined();
-    expect(staleWx?.text).toBe("WX 1500Z  WX HIST 25M STALE");
-    expect(staleWx?.style).toBe("alert");
+    expect(staleWx?.text).toBe("(1) 2 3 4 5");
+    expect(staleWx?.style).toBe("normal");
 
     // SSA FILTER WX hides the line
     const hiddenSsa = buildSsaLines({
@@ -190,7 +207,7 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
       filter: DEFAULT_ALTITUDE_FILTER,
       filterEntry: idleFilterEntry(DEFAULT_ALTITUDE_FILTER),
       wxLevels: [true, false, false, false, false, false],
-      wxMosaic: { fetchedAtMs: fetchedAt },
+      wxMosaic: availableMosaic(fetchedAt),
       visibility: {
         TIME: true,
         ALTSTG: true,
@@ -202,7 +219,7 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
         WX: false,
       },
     });
-    expect(hiddenSsa.some((l) => l.startsWith("WX"))).toBe(false);
+    expect(hiddenSsa).not.toContain("(1) 2 3 4 5");
   });
 
   test("AC5 — PREF saves and restores VOL, MODE FSL, BRITE BKC, and SSA FILTER WX state", () => {

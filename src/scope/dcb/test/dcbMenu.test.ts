@@ -143,3 +143,34 @@ test("action caps are a momentary inset, not a latch", () => {
   expect(dcbActionCapPressed(true, false)).toBe(true);
   expect(dcbActionCapPressed(true, true)).toBe(true);
 });
+
+test("AUX submenus preserve their parent through submenu switches and DONE/Esc", () => {
+  const h = host("AUX");
+  openDcbMenu(h, "TPA_ATPA");
+  expect(h.dcbMenuParent).toBe("AUX");
+  openDcbMenu(h, "PREF");
+  closeDcbMenu(h);
+  expect(h.dcbMenu).toBe("AUX");
+  openDcbMenu(h, "TPA_ATPA");
+  handleDcbEscape(h);
+  expect(h.dcbMenu).toBe("AUX");
+  applyDcbShift(h);
+  openDcbMenu(h, "MAPS");
+  closeDcbMenu(h);
+  expect(h.dcbMenu).toBe("MAIN");
+});
+
+test("typed RANGE remains adjustable through scope range stepping", () => {
+  const view = createScopeView();
+  armDcbSpinner(view, "RANGE");
+  view.dcbSpinner.buffer = "37";
+  expect(commitDcbSpinner(view)).toBe(true);
+  expect(view.camera.rangeNm).toBe(37);
+  stepRange(view.camera, 1);
+  expect(view.camera.rangeNm).toBe(40);
+  armDcbSpinner(view, "RANGE");
+  view.dcbSpinner.buffer = "37";
+  commitDcbSpinner(view);
+  stepRange(view.camera, -1);
+  expect(view.camera.rangeNm).toBe(30);
+});

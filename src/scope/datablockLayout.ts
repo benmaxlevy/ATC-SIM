@@ -139,6 +139,25 @@ export function protectedGeometryOverlaps(rect: LayoutRect, obstacle: ProtectedG
   }
   const pts = obstacle.kind === "segment" ? [obstacle.from, obstacle.to] : obstacle.points;
   const stroke = (obstacle.strokePx ?? 1) / 2 + 1;
+  // Conservative broad-phase rejection preserves the exact stroke/edge tests
+  // below while avoiding them for geometry far from a native-size text box.
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const point of pts) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  if (
+    r.x + r.width < minX - stroke ||
+    r.x > maxX + stroke ||
+    r.y + r.height < minY - stroke ||
+    r.y > maxY + stroke
+  )
+    return false;
   const orient = (a: LayoutPoint, b: LayoutPoint, c: LayoutPoint) =>
     (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
   const on = (a: LayoutPoint, b: LayoutPoint, p: LayoutPoint) =>

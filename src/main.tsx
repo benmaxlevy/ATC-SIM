@@ -19,6 +19,7 @@ import {
   hasActiveUninhibitedConflict,
   hasActiveUninhibitedMsaw,
   loadDcbPrefFromStorage,
+  loadScopeFonts,
   paintPpi,
   parseDigitalMap,
   startMetarPolling,
@@ -35,6 +36,7 @@ import {
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
+import "./scope/viceFonts.css";
 
 const search = window.location.search;
 const requestedScenario = new URLSearchParams(search).get("scenario")?.trim().toLowerCase();
@@ -116,12 +118,6 @@ if (!root) {
   throw new Error("Missing #root");
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <Shell app={handles} scenario={scenario} scopeView={scopeView} />
-  </StrictMode>,
-);
-
 const acc = createAccumulator();
 let lastFrameMs = 0;
 const fpsDebugOn = isFpsDebugEnabled(window.location.search);
@@ -159,6 +155,14 @@ function onFrame(nowMs: number): void {
   requestAnimationFrame(onFrame);
 }
 
-requestAnimationFrame(onFrame);
+void loadScopeFonts().then(() => {
+  createRoot(root).render(
+    <StrictMode>
+      <Shell app={handles} scenario={scenario} scopeView={scopeView} />
+    </StrictMode>,
+  );
+
+  requestAnimationFrame(onFrame);
+});
 
 window.addEventListener("resize", paintCurrentPpi);

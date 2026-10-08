@@ -1,0 +1,30 @@
+Fonts converted from Vice's STARS bitmaps
+
+Copyright(c) 2022-2025 vice contributors
+SPDX-License-Identifier: GPL-3.0-only
+
+Source repository: https://github.com/mmp/vice
+Bitmap source commit: afec9e5282d09697d542f5de1e11072206afd1db
+https://github.com/mmp/vice/blob/afec9e5282d09697d542f5de1e11072206afd1db/stars/font-bitmaps.go
+https://github.com/mmp/vice/blob/afec9e5282d09697d542f5de1e11072206afd1db/stars/fonts.go
+https://github.com/mmp/vice/blob/afec9e5282d09697d542f5de1e11072206afd1db/renderer/font.go
+
+ATC-SIM modifications, 2026-10-08:
+Converted occupied bitmap cells into exact orthogonal TrueType contours;
+added Unicode aliases, font naming/metrics tables, and WOFF2 compression.
+No smoothing, resampling, or reconstructed vendor artwork.
+These are fonts converted from Vice's STARS bitmaps. No original vendor
+provenance, official STARS font authorization, or NAS compatibility is claimed.
+
+Corresponding source is provided alongside these fonts:
+  corresponding-source.zip
+The archive contains unmodified pinned bitmap definitions, the complete Go AST
+export JSON, conversion/verification scripts, exact dependency pins, licenses,
+and regeneration instructions. The working converter directory is not retained.
+Regenerate from the ATC-SIM repository root: npm run fonts:regenerate
+The command extracts source to a temporary directory and cleans it automatically.
+
+The specific bitmap source file declares GPL-3.0-only. Vice's general credits
+also describe OFL/Apache fonts; those general statements do not replace this
+file's explicit GPL notice. UPSTREAM-CREDITS.txt preserves those credits.
+See LICENSE.txt for the complete GNU General Public License, Version 3.

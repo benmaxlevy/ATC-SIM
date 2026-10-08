@@ -35,7 +35,7 @@
  * Trainer delta: PageUp/Down + wheel; no extra CRC presets; right-drag slew
  * (middle-drag still works) is not CRC. History records on each surveillance report, cap 5 dots, no phosphor. PTL is straight
  * 1.0 min, default off. Trainer-authored JSON maps, not OSM / tiles (R12).
- * IBM Plex Mono, not a STARS face. Not NAS STARS.
+ * Fonts converted from Vice's STARS bitmaps. Not NAS STARS.
  */
 export { PpiPlaceholder, PpiPlaceholderId } from "./ppi-placeholder";
 export type { RangeNm, ScopeCamera, ScopeViewSize } from "./camera";
@@ -828,6 +828,11 @@ export {
   DEFAULT_POS_SIZE_PX,
   POS_SIZE_STEPS_PX,
   SCOPE_FONT_STACK,
+  dcbFontStyle,
+  scopeFontAsset,
+  scopeFontStack,
+  scopeFontsReady,
+  loadScopeFonts,
   cloneCharSizes,
   datablockFontCss,
   datablockLineHeightPx,

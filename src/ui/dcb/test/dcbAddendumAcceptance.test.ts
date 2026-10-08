@@ -236,7 +236,7 @@ test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply;
   expect(pref).not.toMatch(/<input/i);
   expect(DCB_PREF_SLOT_COUNT).toBe(32);
 
-  expect(SCOPE_FONT_STACK).toContain("IBM Plex Mono");
+  expect(SCOPE_FONT_STACK).toContain("Vice ARTS");
   expect(SCOPE_FONT_STACK).toContain("monospace");
   expect(SCOPE_FONT_STACK.toLowerCase()).not.toMatch(/stars/);
   for (const [path, src] of Object.entries(appSources)) {
@@ -403,6 +403,8 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   applyDcbShift(view);
   openDcbMenu(view, "TPA_ATPA");
   const tpa = dcbHtml(view);
+  expect(tpa).toContain('data-dcb-layout="AUX"');
+  expect(tpa).not.toContain('data-dcb-layout="MAIN"');
   expect(tpa).toContain("DONE");
   expect(tpa).toMatch(/data-dcb-cell="done"/);
   expect(tpa).toMatch(/data-dcb-cell="tpa-on"/);
@@ -416,5 +418,8 @@ test("addendum grammar — MAIN/AUX/submenus, discrete RANGE, WX latches / disab
   expect(TPA_RADIUS_NM).toEqual([2, 3, 5, 10]);
   expect(shouldPaintAtpaGeometry("monitor")).toBe(true);
   closeDcbMenu(view);
+  expect(view.dcbMenu).toBe("AUX");
+  expect(dcbHtml(view)).toContain('data-dcb-layout="AUX"');
+  applyDcbShift(view);
   expect(dcbHtml(view)).toContain("RANGE 20");
 });

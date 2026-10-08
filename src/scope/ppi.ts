@@ -68,8 +68,8 @@ import {
   scrollSystemList,
 } from "./systemLists";
 import { toggleVideoMap } from "./dcb/dcbFunctions";
-import { cancelDcbSpinner } from "./dcb/dcbMenu";
-import { datablockLineHeightPx } from "./fonts";
+import { cancelDcbSpinner, commitDcbSpinner } from "./dcb/dcbMenu";
+import { datablockLineHeightPx, scopeFontsReady } from "./fonts";
 import {
   applyBeaconatorSlewToId,
   clearTrackQuery,
@@ -414,12 +414,16 @@ export function handlePpiLeftClick(
   commandText?: string,
   onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
+  if (view.dcbSpinner.armed) {
+    if (view.dcbSpinner.cell === "RANGE") {
+      commitDcbSpinner(view);
+    } else {
+      cancelDcbSpinner(view);
+    }
+  }
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
   recordLastClick(view, nm.eastNm, nm.northNm);
-  if (view.dcbSpinner.armed) {
-    cancelDcbSpinner(view);
-  }
   // A live CA command is a target-slew command, not a list interaction.
   // Handle it before any movable-list hit testing can consume the click.
   const liveTracking = previewTrackingSlew(view.preview);
@@ -822,6 +826,7 @@ export function paintPpi(
   view: ScopeView,
   dpr: number = globalThis.devicePixelRatio || 1,
 ): void {
+  if (!scopeFontsReady()) return;
   const { cssWidth, cssHeight } = fitCanvasToCss(canvas, dpr);
   if (cssWidth <= 0 || cssHeight <= 0) {
     return;

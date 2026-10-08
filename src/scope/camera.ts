@@ -112,6 +112,13 @@ function presetIndex(rangeNm: RangeNm): number {
 export function stepRange(cam: ScopeCamera, delta: number): void {
   const i = presetIndex(cam.rangeNm);
   if (i < 0) {
+    const preset =
+      delta > 0
+        ? RANGE_PRESETS_NM.find((range) => range > cam.rangeNm)
+        : delta < 0
+          ? [...RANGE_PRESETS_NM].reverse().find((range) => range < cam.rangeNm)
+          : undefined;
+    if (preset !== undefined) cam.rangeNm = preset;
     return;
   }
   const next = i + delta;

@@ -67,7 +67,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
   - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `F8` or `*HIST <count>`).
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (`*R`).
 - **Target Proximity Alert (TPA)**: Selectable J-rings / separation halos (1–30 NM via `*J`) and ground-track predictive cones (1–30 NM via `*P`) for spacing management.
-- **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (11–15 px).
+- **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (levels 0–5, 10/11/12/13/14/15 CSS px).
 - **Display Control Bar (DCB)**: Green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN 0–7, BRITE channels including CMP and BCN, CHAR SIZE including TOOLS, H_RATE, DWELL hover brightening, CURSOR HOME, CSR SPD, VOL alert volume, MODE FSL), altitude filters, and persistent local PREF slots stored in `localStorage`.
 - **System Status Area (SSA)**: Top-left status showing UTC/sim time, altimeter setting (29.92), active altitude filter limits, and sensor mode. Relocatable via `<MULTI FUNC>S<SLEW LOCATION>` (`*S` + click) and resettable via Shift+click.
 - **On-Scope System Lists**: Movable, draggable operational data windows including TAB List (`*T`), Tower Lists (`*P1`–`*P3`), VFR List (`*TV`), Video Maps Directory (`*TX`), Alert Status Box LA/CA/MCI (`*TM`), CRDA Status (`*TN`), Coast/Suspend (`*TC`), and Sign-On (`*TS`). All lists feature click-and-drag title headers, Shift+click default reset, collision warning frames, interactive row clicks, and persistent layout retention via DCB `PREF`. STARS system list commands strictly use authorized `<MULTI FUNC>` prefix syntax without aliases.
@@ -564,7 +564,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `Ctrl + F2` | `<MAPS>` Video Maps Menu | Opens DCB `MAPS` submenu. |
 | `Ctrl + F3` | `<BRITE>` Brightness Menu | Opens DCB `BRITE` submenu (display channels, CMP, BCN, WX). |
 | `Ctrl + F4` | `<LDR>` Leader Menu | Opens DCB `LDR` leader controls. `LDR LEN` uses steps 0–7; each step adds 1/4 in. |
-| `Ctrl + F5` | `<CHAR SIZE>` Font Size Menu | Opens DCB `CHAR SIZE` submenu (datablocks, lists, tools). |
+| `Ctrl + F5` | `<CHAR SIZE>` Font Size Menu | Opens DCB `CHAR SIZE` submenu (datablocks, lists, tools, POS: 0–5; DCB: 0–2). |
 | `Ctrl + F7` | `<SHIFT>` Menu Shift | Toggles DCB between `MAIN` and `AUX` menu rows. |
 | `Ctrl + F8` | `<DCB>` Display Control Bar | Toggles DCB on-screen visibility. |
 | `Ctrl + F9` | `<RNG RING>` Range Rings | Arms the DCB Range Ring (`RR`) interval spinner. |
@@ -815,3 +815,23 @@ Commands strictly deferred to future milestones (not parsed in the current relea
 - Multi-controller handoff chords and pointout TCP/consol/QL protocols (`+HOLD`, `+UNS`, `+R`, `/ALL`).
 - Target Demand Metering (TDM) `*G`.
 - Full list reference: [`phases/LATER-IMPLEMENTATION-BACKLOG.md`](../phases/LATER-IMPLEMENTATION-BACKLOG.md).
+
+
+### Scope fonts
+
+Scope text and DCB caps always use **ARTS (Set B) fonts converted from Vice's
+STARS bitmaps**. There is no font-family selector. Existing CHAR SIZE values
+and display preferences remain compatible.
+
+Font assets preserve Vice's authored shapes, advances, offsets, and baselines.
+DATA BLOCKS/LISTS/TOOLS/POS levels 0–5 display at **10/11/12/13/14/15 CSS px**;
+DCB levels 0–2 display at **10/11/12 CSS px**. Browser rendering scales each
+level's authored face to its display size. Old saved level 6 becomes 5.
+Position IDs stay centered inside their tightly fitted circles. Font files load before
+scope text is measured or painted. If a font fails to load within 5 seconds,
+system monospace provides a usable fallback; its appearance differs.
+
+These converted fonts retain Vice's bitmap-file GPL-3.0-only notice. They are
+not claimed to have original vendor provenance. See
+[conversion, notices, and regeneration](VICE-FONTS.md) and the
+[browser specimen](../public/fonts/vice/specimen.html).

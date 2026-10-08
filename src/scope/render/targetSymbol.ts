@@ -15,7 +15,7 @@
  * Not a sprite (R12). Not an airplane. Not NAS STARS.
  */
 
-import { SCOPE_FONT_STACK } from "../fonts";
+import { datablockFontCss, scopeFontStack, positionFontLevel, scopeFontSizePx } from "../fonts";
 import { PALETTE, historyTrailColor } from "../palette";
 import { ownershipStubChar, type TrackOwnership } from "../ownership";
 import {
@@ -41,9 +41,9 @@ export const HISTORY_DOT_SIZE_PX = 3;
 /** 1 px yellow selection box sits this far outside the symbol bounding box. */
 export const SELECTION_BOX_PAD_PX = 2;
 
-/** Stub/position font: IBM Plex Mono sized to match position symbol char size. */
-export const OWNERSHIP_STUB_FONT_PX = 9;
-export const OWNERSHIP_STUB_FONT = `${OWNERSHIP_STUB_FONT_PX}px ${SCOPE_FONT_STACK}`;
+/** Stub text uses the smallest displayed Vice ARTS face. */
+export const OWNERSHIP_STUB_FONT_PX = scopeFontSizePx(0);
+export const OWNERSHIP_STUB_FONT = datablockFontCss(8);
 
 /** Solid blue background circle for secondary target symbol glyphs. */
 export const TARGET_PUCK_BG = "#175dc7";
@@ -413,8 +413,9 @@ function fillFusedPuck(
   y: number,
   sizePx: number,
   color: string = TARGET_PUCK_BG,
+  inkRadiusPx = 0,
 ): void {
-  const radiusPx = Math.max(5, Math.round(sizePx * 0.65));
+  const radiusPx = Math.max(5, Math.round(sizePx * 0.65), inkRadiusPx);
   ctx.beginPath();
   ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -428,7 +429,7 @@ export function drawOwnershipStub(
   ownership: TrackOwnership,
   color: string,
 ): void {
-  ctx.font = OWNERSHIP_STUB_FONT;
+  ctx.font = datablockFontCss(8);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = color;
@@ -482,7 +483,15 @@ export function drawTargetSymbol(
     strokeDiamond(ctx, x, y, diamondSize);
   } else if (desc.shape === "square") {
     if (paint === "fused-puck") {
-      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
+      const outerHalf = (sizePx + TARGET_STROKE_PX) / 2;
+      fillFusedPuck(
+        ctx,
+        x,
+        y,
+        sizePx,
+        options.positionMarkColor ?? TARGET_PUCK_BG,
+        Math.hypot(outerHalf, outerHalf) + 1,
+      );
     }
 
     ctx.strokeStyle = color;
@@ -490,10 +499,6 @@ export function drawTargetSymbol(
     const half = sizePx / 2;
     ctx.strokeRect(x - half, y - half, sizePx, sizePx);
   } else {
-    if (paint === "fused-puck") {
-      fillFusedPuck(ctx, x, y, sizePx, options.positionMarkColor ?? TARGET_PUCK_BG);
-    }
-
     let textColor = color;
     if (
       color === POSITION_SYMBOL_COLOR ||
@@ -503,11 +508,36 @@ export function drawTargetSymbol(
       textColor = options.ownership === "owned" ? PALETTE.owned : PALETTE.targetGreen;
     }
 
-    ctx.font = `${sizePx}px ${SCOPE_FONT_STACK}`;
+    const level = positionFontLevel(sizePx);
+    ctx.font = `${scopeFontSizePx(level)}px ${scopeFontStack(level)}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    const text = desc.char ?? desc.symbol;
+    let textX = x;
+    let textY = y;
+    if (paint === "fused-puck") {
+      const metrics = ctx.measureText(text);
+      const left = metrics.actualBoundingBoxLeft ?? metrics.width / 2;
+      const right = metrics.actualBoundingBoxRight ?? metrics.width / 2;
+      const ascent = metrics.actualBoundingBoxAscent ?? scopeFontSizePx(level) / 2;
+      const descent = metrics.actualBoundingBoxDescent ?? scopeFontSizePx(level) / 2;
+      const halfWidth = (left + right) / 2;
+      const halfHeight = (ascent + descent) / 2;
+      // Center visible ink, not the font's advance cell or baseline padding.
+      // Centering permits a tighter circle while retaining a one-pixel gap.
+      textX += (left - right) / 2;
+      textY += (ascent - descent) / 2;
+      fillFusedPuck(
+        ctx,
+        x,
+        y,
+        sizePx,
+        options.positionMarkColor ?? TARGET_PUCK_BG,
+        Math.hypot(halfWidth, halfHeight) + 1,
+      );
+    }
     ctx.fillStyle = textColor;
-    ctx.fillText(desc.char ?? desc.symbol, x, y);
+    ctx.fillText(text, textX, textY);
   }
 }
 

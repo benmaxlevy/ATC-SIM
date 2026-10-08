@@ -7,7 +7,7 @@
  * default about airport ref; PLACE RR sets a world-NM origin (not glued to the
  * airport). RR CNTR lights when that origin ≠ view **center**. Leader direction
  * is L1–L9; length is a discrete 0–7 step set (12 px per step) on this view. CHAR SIZE is
- * per-subsystem Plex/system mono (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
+ * per-subsystem fonts converted from Vice's STARS bitmaps (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
  * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
@@ -133,7 +133,7 @@ export interface ScopeView {
   /** World origin of generated **range rings** (NM east/north). */
   rangeRingEastNm: number;
   rangeRingNorthNm: number;
-  /** DCB CHAR SIZE per subsystem. IBM Plex Mono / system mono only. */
+  /** DCB CHAR SIZE compatibility tokens selecting native ARTS bitmap faces. */
   charSizes: CharSizes;
   /** Alias of `charSizes.dataBlocks` (FDB/LDB). Pick/hit-test still read this. */
   charSizePx: CharSizePx;
@@ -153,6 +153,7 @@ export interface ScopeView {
   leaderLengthPx: LeaderLengthPx;
   /** DCB menu machine: MAIN/AUX via SHIFT; MAPS/LDR replace the bar. */
   dcbMenu: DcbMenu;
+  dcbMenuParent?: "MAIN" | "AUX";
   /** RANGE / RR / LDR DIR / LDR length / HISTORY / PTL spinner arm+wheel. Display only. */
   dcbSpinner: DcbSpinnerState;
   /** GEO MAPS on-PPI list (video map catalog). Display only. */
