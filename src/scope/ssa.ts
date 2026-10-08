@@ -15,6 +15,9 @@
  * (R05 FOA STARS display data).
  */
 
+import { vipMaskHasPixels } from "./wx/mosaic";
+import type { VipLevel, WxMosaic } from "./wx/types";
+
 import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
 import { formatDcbRangeReadout, type RangeNm } from "./camera";
 
@@ -107,36 +110,14 @@ export interface SsaWxTelemetry {
 
 export function formatSsaWxTelemetry(
   wxLevels?: readonly boolean[],
-  wxMosaic?: { fetchedAtMs?: number; source?: string },
-  nowMs?: number,
+  wxMosaic?: WxMosaic,
+  _nowMs?: number,
 ): SsaWxTelemetry {
-  const isAnyLevelOn = wxLevels ? wxLevels.some(Boolean) : false;
-  if (!isAnyLevelOn && (!wxMosaic || !wxMosaic.fetchedAtMs)) {
-    return { text: "WX OFF", isStale: false };
-  }
-  if (!isAnyLevelOn) {
-    return { text: "WX OFF", isStale: false };
-  }
-
-  const fetchedAtMs = wxMosaic?.fetchedAtMs ?? 0;
-  if (fetchedAtMs <= 0) {
-    return { text: "WX ON", isStale: false };
-  }
-
-  const d = new Date(fetchedAtMs);
-  const hh = pad2(d.getUTCHours());
-  const mm = pad2(d.getUTCMinutes());
-  const timeStr = `${hh}${mm}Z`;
-
-  const currentMs = nowMs ?? Date.now();
-  const ageMs = Math.max(0, currentMs - fetchedAtMs);
-  const ageMinutes = Math.floor(ageMs / 60000);
-
-  const isStale = ageMinutes >= WX_STALE_THRESHOLD_MINUTES;
-  const staleTag = isStale ? " STALE" : "";
-  const text = `WX ${timeStr}  WX HIST ${ageMinutes}M${staleTag}`;
-
-  return { text, isStale };
+  const text = Array.from({ length: 6 }, (_, index) => index + 1)
+    .filter((level) => wxMosaic && vipMaskHasPixels(wxMosaic, level as VipLevel))
+    .map((level) => (wxLevels?.[level - 1] ? `(${level})` : String(level)))
+    .join(" ");
+  return { text, isStale: false };
 }
 
 export interface SsaInput {
@@ -179,8 +160,8 @@ export interface SsaInput {
   /** DCB WX level latches. */
   wxLevels?: readonly boolean[];
   /** Weather radar mosaic composite metadata. */
-  wxMosaic?: { fetchedAtMs?: number; source?: string };
-  /** Explicit weather status string override (e.g. "WX OFF"). */
+  wxMosaic?: WxMosaic;
+  /** Explicit weather status string override. */
   wxStatus?: string;
   /** Current time for weather staleness calculation. */
   nowMs?: number;
@@ -267,7 +248,7 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
     });
   }
 
-  // 5. Weather Radar Mosaic Telemetry: WX 1432Z  WX HIST 3M / WX OFF
+  // 5. Available weather levels; selected levels are parenthesized.
   if (vis.WX) {
     if (input.wxStatus) {
       result.push({
@@ -280,10 +261,9 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
         input.wxMosaic,
         input.nowMs ?? input.simTimeMs,
       );
-      result.push({
-        text: tel.text,
-        style: tel.isStale ? "alert" : "normal",
-      });
+      if (tel.text) {
+        result.push({ text: tel.text, style: "normal" });
+      }
     }
   }
 
