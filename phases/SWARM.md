@@ -6117,4 +6117,14 @@ If blocked, return exactly `PHASE EXIT BLOCKED` with the failing gate/conflict,
 merged and unmerged ticket IDs, and the concrete action needed. Stop after this
 feature; do not merge into master or start a later phase without new authority.
 
+## Eighty-third swarm started — minimum-separation graphics (2026-10-10)
+
+Execution authorized by the user on `feature/minimum-separation-graphics`
+abiding by the supplied STARS manual and Figure 6-1 graphics. The captain runs
+T02-204, T02-205, and T02-206 sequentially with one isolated worker at a time,
+enforces the merge lock, runs required tests, and validates manual evidence
+without pushing. Unrelated untracked artifacts (`.worktrees/`, `:memory:.ses`,
+`speech-api/:memory:.ses`) remain preserved.
+
+
 
