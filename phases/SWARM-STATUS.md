@@ -1,6 +1,24 @@
 # Swarm status
 
-## EIGHTY-SECOND SWARM — F6 AND F9 ORIGIN, DESTINATION, AND ROUTE DERIVATION (T02-203, 2026-09-22)
+## EIGHTY-THIRD SWARM — MINIMUM SEPARATION GRAPHICS (T02-204–T02-206, 2026-10-10)
+
+Implemented and squash-merged on `feature/minimum-separation-graphics`:
+
+- T02-204 `149cad6` — Pure kinematic report-backed minimum separation prediction model, straight-line projection, magVar conversion, distance calculations, and session state.
+- T02-205 `ec4b6d5` — Dedicated unmodified `Delete` key with scope focus for `<MIN>`, Preview Area entry/armed lifecycle, report-backed track targeting, disambiguation, exact `DUP TRK`, `ILL TRK`, and `FORMAT` errors, and Enter clear.
+- T02-206 `ddb2fcf` — Canvas paint stage for Figure 6-1 graphics (upright CPA triangles, connecting line segment, boxed two-decimal distance, exact `NO XING` beneath when increasing, `0.00 NM` zero separation regardless of altitude, TLS brightness / TOOLS char size modulation), datablock protected geometry, track drop / despawn / report loss lifecycle cleanup, session reset, and full acceptance.
+
+Final browser `npm run ci`: **254 files, 2,885 passed, 4 skipped**.
+`git diff --check`: **0 errors**.
+
+Raytheon STARS TI 6191.409 §6.4, Figure 6-1, §4.9.1, §4.10, §2.14, Table B-1, Tables D-2/D-3 verified:
+- Independent subagent STARS manual review: **PASS**.
+- Figure 6-1 raster confirmed: exact `NO XING` without OCR `?`, upright CPA triangles, boxed distance.
+- Dedicated `Del` scope-only mapping, linear predictor without route prediction, and atomic recovery documented as explicit trainer choices.
+- Manual leftover: live interactive browser visual check unrun in headless environment; automated mockCanvas recordings cover geometry and typography.
+
+**PHASE EXIT GREEN**
+
 
 Implemented and squash-merged on `feature/sattelite-traffic`:
 
