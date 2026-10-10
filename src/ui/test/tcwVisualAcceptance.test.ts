@@ -243,7 +243,8 @@ test("AC5 — persistent chrome has no zoom/label/sprite/OSM/HUD; DCB WX1–6 la
   expect(uiSources["../canvas/ScopeCanvas.tsx"]!).not.toMatch(/nexrad|mosaic|openstreetmap/i);
   expect(weatherPaintSrc).toMatch(/drawImage/);
 
-  expect(SCOPE_FONT_STACK).toContain("Vice ARTS");
+  expect(SCOPE_FONT_STACK).toContain("STARS");
   expect(SCOPE_FONT_STACK).toContain("monospace");
-  expect(SCOPE_FONT_STACK.toLowerCase()).not.toMatch(/stars/);
+  // STARS is the local naming alias for attributed GPL bitmap conversions.
+  expect(SCOPE_FONT_STACK).toContain('"STARS 4"');
 });

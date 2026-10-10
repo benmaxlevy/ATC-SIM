@@ -36,7 +36,7 @@ import {
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
 import "./index.css";
-import "./scope/viceFonts.css";
+import "./scope/starsFonts.css";
 
 const search = window.location.search;
 const requestedScenario = new URLSearchParams(search).get("scenario")?.trim().toLowerCase();

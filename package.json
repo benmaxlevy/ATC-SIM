@@ -27,7 +27,7 @@
     "aircraft:profiles": "python3 tools/aircraft-profiles/build_profiles.py",
     "aircraft:profiles:check": "python3 tools/aircraft-profiles/build_profiles.py --check",
     "aircraft:profiles:test": "python3 -m unittest discover -s tools/aircraft-profiles -p \"test_*.py\"",
-    "fonts:regenerate": "python3 -c 'import os, pathlib, subprocess, sys, tempfile, zipfile; work = tempfile.TemporaryDirectory(prefix=\"atc-vice-fonts-source-\"); zipfile.ZipFile(\"public/fonts/vice/corresponding-source.zip\").extractall(work.name); subprocess.run([sys.executable, str(pathlib.Path(work.name)/\"tools/vice-fonts/regenerate.py\"), \"--output-root\", os.getcwd(), *sys.argv[1:]], check=True)'"
+    "fonts:regenerate": "python3 -c 'import os, pathlib, subprocess, sys, tempfile, zipfile; work = tempfile.TemporaryDirectory(prefix=\"atc-stars-fonts-source-\"); zipfile.ZipFile(\"public/fonts/stars/corresponding-source.zip\").extractall(work.name); subprocess.run([sys.executable, str(pathlib.Path(work.name)/\"tools/stars-fonts/regenerate.py\"), \"--output-root\", os.getcwd(), *sys.argv[1:]], check=True)'"
   },
   "dependencies": {
     "react": "^18.3.1",

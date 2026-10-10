@@ -195,7 +195,7 @@ migrates to 5. Runtime always uses ARTS; there is no family selector.
 
 Font loading settles before canvas measurement/rendering; failures use system
 monospace. Datablock placement, overlap and picking share measured text geometry.
-See `docs/VICE-FONTS.md` and `public/fonts/vice/NOTICE.txt`.
+See `docs/STARS-FONTS.md` and `public/fonts/stars/NOTICE.txt`.
 
 ### 7. Full datablock content
 
@@ -433,7 +433,7 @@ Implementers will be tempted to “just copy CRC.” Freeze this delta in the he
 | Full DCB | Green cell grid (T02-16); MAPS/RR/LDR/BRITE in T02-17; trainer MAIN/AUX/submenus in T02-22–30. Disabled WX; local PREF 1–8. Not NAS |
 | F1 Initiate Track (NAS associate) | F1 color stub |
 | Leader length + direction menus | Compass-named direction readouts; LDR LEN steps **0–7**, 12 px / 1/4 in each |
-| Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (native Vice ARTS bitmap faces/system mono fallback). T02-29 local PREF 1–8. Not a NAS pref host |
+| Pref sets, brightness, charsize | T02-26 CHAR SIZE per subsystem + BRITE channels (native STARS bitmap faces/system mono fallback). T02-29 local PREF 1–8. Not a NAS pref host |
 | F1 as a STARS function | F1 = INIT CNTL; Help uses `?` / `Shift+/` / Help button |
 | Radio is a headset | Radio is the phase 1 command line |
 
@@ -898,6 +898,6 @@ The explicitly requested font conversion lifts the earlier Plex-only font
 restriction for scope and DCB text. Fonts converted from Vice's STARS bitmaps
 preserve authored Set B/ARTS faces only. Runtime always uses ARTS; there is no font-family selector. Historical CHAR SIZE preference
 tokens remain readable and select authored faces at the configured CSS sizes. All character-size channels allow levels 0–5 except DCB 0–2; old saved level 6 migrates to 5. No official NAS font provenance or compatibility is claimed. See
-`docs/VICE-FONTS.md` for source/license evidence and exhaustive
+`docs/STARS-FONTS.md` for source/license evidence and exhaustive
 conversion verification. Historical ticket records describe their shipped
 behavior and are not rewritten.

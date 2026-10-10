@@ -1,0 +1,109 @@
+/* Fonts converted from Vice's STARS bitmaps; GPL-3.0-only. */
+@font-face {
+  font-family: "STARS 0";
+  src:
+    url("stars-0.woff2") format("woff2"),
+    url("stars-0.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS 1";
+  src:
+    url("stars-1.woff2") format("woff2"),
+    url("stars-1.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS 2";
+  src:
+    url("stars-2.woff2") format("woff2"),
+    url("stars-2.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS 3";
+  src:
+    url("stars-3.woff2") format("woff2"),
+    url("stars-3.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS 4";
+  src:
+    url("stars-4.woff2") format("woff2"),
+    url("stars-4.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS 5";
+  src:
+    url("stars-5.woff2") format("woff2"),
+    url("stars-5.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 0";
+  src:
+    url("stars-outline-0.woff2") format("woff2"),
+    url("stars-outline-0.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 1";
+  src:
+    url("stars-outline-1.woff2") format("woff2"),
+    url("stars-outline-1.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 2";
+  src:
+    url("stars-outline-2.woff2") format("woff2"),
+    url("stars-outline-2.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 3";
+  src:
+    url("stars-outline-3.woff2") format("woff2"),
+    url("stars-outline-3.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 4";
+  src:
+    url("stars-outline-4.woff2") format("woff2"),
+    url("stars-outline-4.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "STARS Outline 5";
+  src:
+    url("stars-outline-5.woff2") format("woff2"),
+    url("stars-outline-5.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

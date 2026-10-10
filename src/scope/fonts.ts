@@ -3,11 +3,11 @@
  * Stored CHAR SIZE values remain compatibility tokens; each selects an authored
  * bitmap face at 10–15 CSS px. Assets retain their original metrics.
  */
-import viceMetrics from "./viceFontMetrics.json";
+import starsMetrics from "./starsFontMetrics.json";
 
 export const FALLBACK_SCOPE_FONT_STACK =
   'ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace';
-export const SCOPE_FONT_STACK = `"Vice ARTS 4", ${FALLBACK_SCOPE_FONT_STACK}`;
+export const SCOPE_FONT_STACK = `"STARS 4", ${FALLBACK_SCOPE_FONT_STACK}`;
 
 const failedFonts = new Set<string>();
 let loading: Promise<void> | undefined;
@@ -24,13 +24,13 @@ export function loadScopeFonts(
 ): Promise<void> {
   if (loading) return loading;
   if (!fontSet) {
-    for (const asset of viceMetrics) failedFonts.add(asset.cssFamily);
+    for (const asset of starsMetrics) failedFonts.add(asset.cssFamily);
     fontsReady = true;
     return Promise.resolve();
   }
   fontsReady = false;
   loading = Promise.all(
-    viceMetrics
+    starsMetrics
       .filter((asset) => asset.family === "arts")
       .map(async (asset) => {
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -56,8 +56,8 @@ export function loadScopeFonts(
 
 export function scopeFontAsset(level: number) {
   const size = Math.max(0, Math.min(5, Math.round(level)));
-  const asset = viceMetrics.find((entry) => entry.size === size);
-  if (!asset) throw new Error(`Missing Vice ARTS font ${size}`);
+  const asset = starsMetrics.find((entry) => entry.size === size);
+  if (!asset) throw new Error(`Missing STARS font ${size}`);
   return asset;
 }
 

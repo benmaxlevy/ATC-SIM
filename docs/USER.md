@@ -833,5 +833,5 @@ system monospace provides a usable fallback; its appearance differs.
 
 These converted fonts retain Vice's bitmap-file GPL-3.0-only notice. They are
 not claimed to have original vendor provenance. See
-[conversion, notices, and regeneration](VICE-FONTS.md) and the
-[browser specimen](../public/fonts/vice/specimen.html).
+[conversion, notices, and regeneration](STARS-FONTS.md) and the
+[browser specimen](../public/fonts/stars/specimen.html).

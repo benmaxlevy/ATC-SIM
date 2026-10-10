@@ -41,7 +41,7 @@ export const HISTORY_DOT_SIZE_PX = 3;
 /** 1 px yellow selection box sits this far outside the symbol bounding box. */
 export const SELECTION_BOX_PAD_PX = 2;
 
-/** Stub text uses the smallest displayed Vice ARTS face. */
+/** Stub text uses the smallest displayed STARS face. */
 export const OWNERSHIP_STUB_FONT_PX = scopeFontSizePx(0);
 export const OWNERSHIP_STUB_FONT = datablockFontCss(8);
 

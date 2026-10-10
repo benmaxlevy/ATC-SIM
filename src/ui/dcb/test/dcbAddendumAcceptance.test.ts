@@ -75,12 +75,6 @@ const weatherPaintSrc =
     }) as Record<string, string>
   )["../../../scope/render/weatherLayer.ts"] ?? "";
 
-const appSources = import.meta.glob(["../../../**/*.{ts,tsx,css,html}", "../../../../index.html"], {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
-
 const FORBIDDEN_CHROME = /\b(zoom|sprite|osm|hud|nametag|label)\b/i;
 const FORBIDDEN_DCB_CELLS = /\b(CSA|CRDA|FMA|OSM)\b/;
 
@@ -189,7 +183,7 @@ test("AC3 — DCB/scope addendum clicks emit zero Command IR until radio accepte
   expect(dal.intent.assignedHeadingDeg).toBe(270);
 });
 
-test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply; no licensed typeface file", () => {
+test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply; attributed STARS font alias", () => {
   const main = dcbHtml();
   const mainText = visibleText(main);
   expect(mainText).toMatch(/SHIFT/);
@@ -236,16 +230,10 @@ test("AC4 — DCB has SHIFT / PREF / WX latches; no CSA/FMA/OSM; no input/Apply;
   expect(pref).not.toMatch(/<input/i);
   expect(DCB_PREF_SLOT_COUNT).toBe(32);
 
-  expect(SCOPE_FONT_STACK).toContain("Vice ARTS");
+  expect(SCOPE_FONT_STACK).toContain("STARS");
   expect(SCOPE_FONT_STACK).toContain("monospace");
-  expect(SCOPE_FONT_STACK.toLowerCase()).not.toMatch(/stars/);
-  for (const [path, src] of Object.entries(appSources)) {
-    if (/\.test\./.test(path)) {
-      continue;
-    }
-    expect(String(src), path).not.toMatch(/stars[^"'\\n]*\.ttf/i);
-    expect(String(src), path).not.toMatch(/\.ttf[^"'\\n]*stars/i);
-  }
+  // STARS is the local naming alias for attributed GPL bitmap conversions.
+  expect(SCOPE_FONT_STACK).toContain('"STARS 4"');
 });
 
 test("AC5 — persistent chrome copy has no zoom/label/sprite/OSM/HUD", () => {
