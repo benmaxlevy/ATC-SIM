@@ -1,3 +1,6 @@
+import { syncDisplayControlBar } from "../../../ui/dcb/DisplayControlBar";
+import { ensureWxMosaic } from "../ensure";
+import { N0Q_RGB_DBZ_RAMP, WX_REFRESH_MS, emptyWxMosaic } from "../index";
 import {
   buildWeatherComposite,
   type WeatherCompositeInput,
@@ -367,6 +370,83 @@ test("WX without workers yields between row batches before installing canvas", a
   } finally {
     resetWeatherLayerCache();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+
+test("WX AVL updates without clicks only after all tiles complete and only for populated VIPs", async () => {
+  const view = createScopeView(0, 0, { arp: { latDeg: 0, lonDeg: 0 } });
+  const captions = Array.from({ length: 6 }, () => ({ textContent: "" }));
+  vi.stubGlobal("document", {
+    getElementById: (id: string) => {
+      const match = /^dcb-wx-(\d)-avl$/.exec(id);
+      return match ? captions[Number(match[1]) - 1] : null;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  });
+  try {
+    syncDisplayControlBar(view);
+    expect(captions.map((caption) => caption.textContent)).toEqual(["", "", "", "", "", ""]);
+    const cover = planIemN0qCover(bboxFromArp(view.arp));
+    const original = view.wxMosaic;
+    const intense = N0Q_RGB_DBZ_RAMP.find((stop) => stop.dbz === 51)!;
+    const png = new Uint8Array(
+      encodeRgbaPng(2, 1, new Uint8Array([0, 255, 0, 255, intense.r, intense.g, intense.b, 255])),
+    );
+    let lastRequested!: () => void;
+    const finalRequest = new Promise<void>((resolve) => {
+      lastRequested = resolve;
+    });
+    let releaseLast!: () => void;
+    const finalResponse = new Promise<void>((resolve) => {
+      releaseLast = resolve;
+    });
+    let calls = 0;
+    const loading = ensureWxMosaic(view, {
+      nowMs: 1000,
+      fetchImpl: async () => {
+        if (++calls === cover.tiles.length) {
+          lastRequested();
+          await finalResponse;
+        }
+        return new Response(png, { status: 200 });
+      },
+    });
+    await finalRequest;
+    syncDisplayControlBar(view);
+    expect(view.wxMosaic).toBe(original);
+    expect(captions.every((caption) => caption.textContent === "")).toBe(true);
+    releaseLast();
+    await loading;
+    syncDisplayControlBar(view);
+    expect(captions.map((caption) => caption.textContent)).toEqual(["AVL", "", "", "", "", "AVL"]);
+    expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+    // New clear-weather batch removes previously available captions.
+    const clear = new Uint8Array(encodeRgbaPng(1, 1, new Uint8Array([0, 0, 0, 0])));
+    await ensureWxMosaic(view, {
+      nowMs: 1000 + WX_REFRESH_MS,
+      fetchImpl: async () => new Response(clear, { status: 200 }),
+    });
+    syncDisplayControlBar(view);
+    expect(captions.every((caption) => caption.textContent === "")).toBe(true);
+    // Packed padding is not weather at any real pixel.
+    view.wxMosaic = {
+      ...emptyWxMosaic(),
+      widthPx: 1,
+      heightPx: 1,
+      vipMasks: [
+        new Uint8Array([0b10000000]),
+        new Uint8Array(1),
+        new Uint8Array(1),
+        new Uint8Array(1),
+        new Uint8Array(1),
+        new Uint8Array(1),
+      ],
+    };
+    syncDisplayControlBar(view);
+    expect(captions.every((caption) => caption.textContent === "")).toBe(true);
+  } finally {
     vi.unstubAllGlobals();
   }
 });
