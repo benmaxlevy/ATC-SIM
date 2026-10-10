@@ -1,8 +1,15 @@
 # Later implementation backlog
 
 This is the backlog of follow-ups implied by features that are already shipped.
-It is intentionally not a list of untouched phases or features that have never
-been started.
+It also includes the controller-training gaps approved after the STARS manual
+audit on 2026-10-10. It is not a general roadmap for untouched phases.
+
+Manual references below use Raytheon TI 6191.409, Full STARS FSL TCW/TDW
+Operator's Manual, Final Revision 30, 20 August 2019 (the supplied
+`full_manual.pdf`). Page numbers are the printed chapter-page numbers, not PDF
+viewer indices. The audit covers simulator-relevant controller functions;
+external NAS/TBFM exchanges, sensor protocols, workstation administration,
+military workflows, and operational facility adaptation are not new scope.
 
 ## Priority order
 
@@ -13,41 +20,46 @@ value. Items already shipped or limited to manual validation are excluded.
 
 1. MCI evaluator, suppression state, and `CA M` command semantics.
 2. Predicted MSAW.
-3. 30-second coast/suspend lifecycle, dead reckoning, and re-correlation.
-4. CSMM, duplicate-beacon world-level detection, and `NO FP` datablock indicator.
+3. Two-phase coast (nominal 30-second total), suspend/unsuspend, dead reckoning, and re-correlation.
+4. CSMM and duplicate-beacon world-level detection; cancellation-derived `NO FP` remains conditional on a modeled cancellation workflow.
 5. Wake-aware live datablock output, including `NOWGT`.
-6. Adapted ATPA eligibility and per-position adaptation.
+6. ATPA exclusion criteria, per-track eligibility override, and per-position adaptation.
 
 ### P1 — controller operations
 
-7. Departure exit-gate/fix resolution.
-8. Adapted 2.5 NM ATPA eligibility.
-9. Quicklook sector filtering and SSA status.
-10. Complete pointout-to-datablock binding.
-11. TSAS runtime.
-12. Flight-plan amendment modals and target-click deletion.
-13. Scratchpad and tactical altitude/heading/speed command chords.
-14. Advanced track states: `HOLD`, `UNS`, reposition, and `/ ALL`.
-15. Clearance/plan synchronization, readback validation, route conformance, and audit state.
-16. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
+7. Pairwise minimum-separation graphics.
+8. Dynamic range-bearing lines.
+9. Controller-created restriction areas and annotations.
+10. Emergency-airport/heliport lookup and bearing/range readout.
+11. Departure exit-gate/fix resolution.
+12. Adapted 2.5 NM ATPA eligibility.
+13. Quicklook by track, owner TCP, and region, including live SSA status.
+14. Complete pointout-to-datablock binding.
+15. Locally simulated TSAS scheduling and display tools.
+16. Flight-plan amendment modals and target-click deletion.
+17. Scratchpad and assigned altitude/heading/speed display-data command chords.
+18. Unsupported datablocks, flight-plan hold state, datablock/plan repositioning, and `/ ALL`.
+19. Local coordination messages and redirected handoffs.
+20. Clearance/plan synchronization, readback validation, route conformance, and audit state.
+21. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
 
 ### P2 — facility and display expansion
 
-17. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
-18. CRDA ghost prediction, cones, tie lines, and keyboard grammar.
-19. MOA and selected-beacon workflows.
-20. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
-21. Pilot barometric corrections and weather-driven deviation behavior.
-22. Additional PTL prediction geometry and presets.
-23. AVL restyle and remaining CRC-style DCB parity.
-24. Handwritten strip annotations and cross-rack/window strip movement.
+22. Live multi-sensor radar health and beacon-bank exhaustion telemetry.
+23. CRDA ghost prediction, qualification regions, ghost datablock controls, and runway-pair modes.
+24. MOA and selected-beacon workflows.
+25. Richer SSA/facility status, ATIS broadcasts, and weather source handling.
+26. Pilot barometric corrections and weather-driven deviation behavior.
+27. Additional PTL prediction geometry and presets.
+28. AVL restyle and remaining CRC-style DCB parity.
+29. Handwritten strip annotations and cross-rack/window strip movement.
 
 ### P3 — procedure and voice follow-ups
 
-25. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
-26. Airways and richer route grammar; RNAV/hold/RF in-sim FMS guidance.
-27. General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB").
-28. Frequency assignment, receiving-position simulation, and facility communications entities.
+30. Unsupported ARINC leg flying: `RF`, holds, arcs, and vector legs.
+31. Airways and richer route grammar; RNAV/hold/RF in-sim FMS guidance.
+32. Session-grounded abbreviated GA registration tails; complete make/model-plus-tail input is shipped.
+33. Frequency assignment, receiving-position simulation, and facility communications entities.
 
 The priority list is a planning view; detailed sections below are the source
 of truth for shipped behavior, constraints, and scope boundaries.
@@ -57,7 +69,7 @@ basic RNAV/fix-to-fix flying, climb-via/descend-via, SID/STAR transitions,
 CIFP parsing/closure/packing, KATL catalog/map integration, core TPA/PTL,
 WX mosaic, catalog map management, core DCB controls, typed strip annotations,
 handoff ownership, IFR clearance execution, VFR Class B, generic tower/center
-transfer, and pilot-side GA telephony.
+transfer, and complete GA make/model-plus-tail typed/spoken input and pilot telephony.
 
 ## Scope and display
 
@@ -86,7 +98,8 @@ PREF named sets (T02-73) and per-track PTL (T02-74) are shipped.
 Deliberately missing:
 
 - live sensor / network-health telemetry. SSA keeps the `OK/OK/NA` stub.
-- 30-second coast after a missed report. Out of coverage drops immediately.
+- two-phase coast after missing surveillance updates, with a nominal 30-second
+  total coast duration. Out of coverage currently drops immediately.
 - aural ATPA (CA remains the only conflict audio).
 
 WX mosaic stays the other swarm (T02-68–72). Do not fold weather paint or
@@ -98,8 +111,8 @@ Constraints later work must keep:
 - no `src/` import of `tools/cifp-import`; no airport-id site branch;
 - empty `[]` remains implicit FUSED; range checks at report time belong
   to the sampler, not a KDEM-only fallback;
-- World / FMS / CA / MSAW stay 20 Hz truth; display consumers keep last
-  report pose. No 30 s coast.
+- World / FMS / CA / MSAW stay 20 Hz truth; display consumers use sampled
+  reports. Future coast extrapolation is display state, never aircraft motion.
 
 ### Limited datablock beacon display commands (`*BE`, `*BI`, `*B [slew]`)
 
@@ -134,6 +147,11 @@ NAS/STARS color displays use flashing red **LA** (NTSB A-06-44; JO 7110.65
 5-14). CRC R07 names Low-Altitude / MSAW alert status. The live tag now
 flashes; predicted MSAW (look-ahead still showing **LA** in red) is not modeled.
 
+Manual evidence: §2.16.3, pp. 2-102–105, and Figure 2-37 describe predicted
+and actual MSAW with the same LA presentation. Later prediction must use
+generic aircraft trajectories and trainer MVA geometry with an explicit
+look-ahead horizon; do not invent certified STARS prediction parameters.
+
 Later work must keep: FDB glyph **LA** (not the letters MSAW); no GPWS/TAWS;
 no datablock/target tint from MSAW; CA remains the only conflict audio. Do
 not restore yellow MSAW without a cited STARS two-color MSAW rule.
@@ -149,6 +167,11 @@ steps; no per-track or beacon-scoped MCI suppression state; and no controller
 `CA M` command. Do not represent MCI as a CA alias: later work must add its
 own detection, suppression, and command semantics while retaining CA's
 independent alert and inhibit behavior.
+
+Manual evidence: §2.16.3, pp. 2-102–104; §7.17, pp. 7-28–29, for
+owned-track/selected-beacon MCI suppression; and §8.2, p. 8-4, for the
+system-wide `CA M` processing control. Suppression commands and display
+latches must remain distinct from evaluator enablement.
 
 ### Real ATPA pairing and predicted geometry
 
@@ -194,6 +217,13 @@ minimum. Later work must keep the JSON-minima path and must **not** infer
 categories from aircraft type or display text.
 
 Deliberately missing, each of which later work must keep the JSON-minima path:
+- **ATPA exclusion criteria and per-track override.** §6.21.19, p. 6-186,
+  excludes non-IFR tracks, tracks without valid established Mode C, and
+  adapted excluded beacon codes or ACIDs. The per-track override bypasses
+  only those exclusions; all other qualifying conditions still apply. Current
+  geometry-based pairing does not provide this complete predicate or override.
+  Keep exclusions authored in generic data and preserve existing volume,
+  warning/alert, wake-minimum, and display-inhibit behavior.
 - **Adapted 2.5 NM eligibility** beyond "both tracks inside
   `reducedWithinNm` of the threshold along the final." Real STARS reduces
   only under extra conditions (leader type, runway occupancy, facility
@@ -241,17 +271,35 @@ Deliberately missing:
   no Terminal Sequencing and Spacing scheduler. Later work would need eligible
   arrivals, runway assignment, sequence, target delivery time, advised speed,
   early/late calculation, sequence number, enable/inhibit state, and live
-  updates. Do not imply TSAS exists merely because its literals format.
-- **`NO FP` datablock indicator.** While canonical association exists, the
-  datablock adapter does not yet dynamically evaluate and project `NO FP` for
-  unassociated or unfiled tracks in controlled airspace.
-- **CSMM detection.** Add an independent ADS-B Flight ID and compare it to the
-  filed aircraft identification. Emit `CSMM` only on an exact mismatch; do
-  not derive it from the displayed callsign.
+  updates. Manual §6.29, pp. 6-201–213, also describes slot markers,
+  trajectories, timelines, and secondary datablock ETA/STA/speed-advisory
+  fields; §§6.29.28–29 cover sequence swaps and runway-mismatch acknowledgement.
+  A future trainer implementation should generate schedules locally, with
+  explicit eligibility and coast/frozen-track cleanup, rather than require a
+  live TBFM service. Do not imply TSAS exists merely because its literals format.
+- **`NO FP` datablock indicator.** Figure 2-20, p. 2-67, defines this Field 6
+  indication for a Cancellation (CX) message received while the flight is in
+  the Coordination list, resulting in conversion to a local flight plan.
+  Formatting exists, but the cancellation/conversion source lifecycle does
+  not. Do not show `NO FP` merely because a target is unassociated, unfiled,
+  or in controlled airspace. Keep this follow-up conditional on a modeled
+  local cancellation workflow; do not add an external NAS exchange to supply it.
+- **CSMM detection.** Manual §2.12, p. 2-61, defines a mismatch between the
+  associated interfacility IFR flight plan's ACID and independently received
+  sensor target identification; §5.7.11, p. 5-200, covers indicator removal.
+  A trainer may model that independent Flight ID as authored surveillance
+  data without implementing ADS-B protocols. Compare identities exactly;
+  never derive the sensor identity from the displayed callsign or show CSMM
+  merely because a display alias differs.
 - **Duplicate beacon detection.** Existing beacon mismatch formatting is not
-  duplicate-code detection. Add world-level detection of two tracks using the
-  same Mode 3/A code, identify affected tracks, and provide `DB` plus the
-  reported code. Keep this separate from assigned-versus-reported mismatch.
+  duplicate-code detection. Manual §2.12, p. 2-61, defines `DB` on an
+  associated track when another associated or unassociated track in the
+  adapted auto-acquisition area reports the same discrete code as that
+  associated track's assigned beacon. Add world-level detection with generic
+  authored acquisition geometry and live datablock projection; do not flag
+  every shared non-discrete code such as 1200. Include the per-track indicator
+  inhibit from §5.6.4, p. 5-149. Keep this separate from assigned-versus-reported
+  mismatch and never scan/associate other aircraft when one squawk changes.
 - **MOA and selected-beacon sources.** Field 6 accepts `MOA` and selected
   beacon values, but no live MOA assignment or selected-beacon workflow feeds
   them.
@@ -262,6 +310,78 @@ Deliberately missing:
 Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
 workflow, and new Field 2 glyphs. Those remain out of scope until their
 underlying surveillance services exist.
+
+### Pairwise minimum-separation graphics
+
+Visible now: CA evaluates conflicts, ATPA evaluates in-trail spacing, and PTL
+draws track prediction lines. None supplies the controller-selected pairwise
+minimum-separation tool.
+
+Missing: manual §6.4, pp. 6-17–18, permits `<MIN>` followed by two track
+selections to display dynamically updated predicted closest horizontal
+separation and the two projected positions. `<MIN><ENTER>` removes the
+graphics; selecting a new pair replaces the old pair. Figure 6-1 includes
+`NO XING?` when horizontal separation begins increasing and `0.00 NM` for
+predicted zero horizontal separation regardless of vertical separation.
+
+Constraints later work must keep: scope-local observational graphics, no
+Command IR or kinematic mutation; reject duplicate/invalid track selections;
+remove stale geometry when either track drops; use generic motion/coordinate
+helpers and the appropriate surveillance display state. This is a horizontal
+measurement aid, not a replacement for CA or a claim of safe vertical separation.
+
+### Dynamic range-bearing lines
+
+Visible now: range rings, scope range, and PTLs work. No live range-bearing
+line model, endpoint-selection workflow, or renderer exists.
+
+Missing: manual §§6.7–6.8, pp. 6-55–58, describe up to nine numbered lines
+between fixes, scope locations, or tracks. Moving endpoints update bearing
+and range; exactly one track endpoint also supplies traversal time from
+ground speed. Lines have explicit single/all removal and off-screen label
+handling. Bearing must use authored magnetic variation, not raw ENU angles.
+
+Constraints later work must keep: scope-only measurement, no route/intent
+changes; generic fix lookup and stable track identity; explicit cleanup of
+missing endpoints. The manual's `*T` entry collides with the trainer's existing
+list grammar, so planning must resolve command-state routing without regressing
+list management or guessing aliases.
+
+### Controller-created restriction areas and annotations
+
+Visible now: catalog video maps and their authored labels render. Procedure
+restriction labels are not controller-created restriction areas.
+
+Missing: manual §6.6, pp. 6-35–52, describes creating text, circles, and
+open/closed polygons with text; moving/deleting areas; editing/hiding text;
+showing/hiding areas; acknowledging blinking text; and maintaining a live
+Restriction area list. These support temporary exercise boundaries and scope
+annotations. The manual distinguishes controller-created IDs 1–100 from
+adapted IDs 101–200; future identity handling must preserve that distinction.
+
+Constraints later work must keep: generic local geometry and authored data,
+separate from immutable map packs; controller annotations do not themselves
+authorize flight, alter Class B clearance, generate avoidance, or change
+kinematics. No operational TFR/NAS feed, military-only color workflow, or
+external propagation is required for this trainer slice.
+
+### Emergency-airport and heliport lookup
+
+Visible now: airport catalogs and regional geometry support navigation and
+weather displays. No scope emergency-destination lookup/readout exists.
+
+Missing: manual §§7.1–7.2, pp. 7-3–6, describe bearing/range to a selected
+known airport/heliport and a nearest-suitable lookup by aircraft category and
+optional lighting requirement. Repeated Enter cycles matching candidates;
+the chosen location receives a temporary blinking marker. Readout includes
+identity, elevation, bearing/range, and available runway/helipad dimensions,
+surface, lighting, and communications information.
+
+Constraints later work must keep: suitability facts must come from generic
+authored regional data; do not infer unprovided runway capability, lighting,
+or frequencies. Preserve category filtering and explicit `NOT FOUND` behavior.
+Lookup is advisory scope information, not an automatic diversion clearance,
+pilot action, or guarantee that an airport is operationally suitable.
 
 ### Richer TPA controls
 
@@ -292,17 +412,22 @@ The following specialized or multi-subsystem command sets remain deliberately de
    - `* A [Callsign] <ENTER>`: Create abbreviated flight plan modal (typed `*M <flid> ...` field edit and `*B <flid>` release are shipped).
    - `* DEL <ENTER> [Click Target]`: Delete flight plan / drop flight plan association by clicking target (typed `*DEL <index>` queue deletion is shipped).
 
-2. **Scratchpads & Tactical Target Autopilot Overrides:**
-   - `* [Text] <ENTER> [Click Target]`: Set Scratchpad 1 (up to 3 characters).
+2. **Scratchpads & Assigned Display Data:**
+   - `* [Text] <ENTER> [Click Target]`: Set Scratchpad 1 (length and reserved-token rules require manual validation).
    - `* /[Text] <ENTER> [Click Target]`: Set Scratchpad 2.
    - `* [Alt] <ENTER> [Click Target]`: Set assigned altitude (e.g. `* 050`).
    - `* H[Heading] <ENTER> [Click Target]`: Set assigned heading (e.g. `* H240`).
    - `* S[Speed] <ENTER> [Click Target]`: Set assigned airspeed (e.g. `* S210`).
 
+   These are deferred trainer spellings, not validated manual contracts. Scope
+   entries update plan/display data only; they are not autopilot overrides and
+   must never mutate pilot intent or aircraft motion.
+
 3. **Advanced Track States & Unsupported Blocks:**
-   - `+ HOLD <ENTER> [Click Target]`: Place target into coast/suspend state.
-   - `+ UNS <ENTER> [Click Scope]`: Create an Unsupported Data Block at cursor coordinates.
-   - `+ R <ENTER> [Click Target]`: Reposition kinematic track coordinates.
+   - `<TRK SUSP>`: Suspend a flight plan; `<INIT CNTL>` unsuspends according to §§5.4.3–4, pp. 5-71–76. This is distinct from hold state and automatic coast.
+   - `<MULTI FUNC>ZZ`: Toggle flight-plan hold state, showing `HL` and retaining a frozen unsupported block with `ZZ` after coast-out (§5.4.5, p. 5-77). This does not command airborne holding.
+   - Unsupported datablocks: Activate a plan at a scope location without a radar target, retain a frozen independent display anchor, and support later association (§5.4.1, p. 5-66). Do not invent a literal `+ UNS` manual command.
+   - `<TRK RPOS>`: Move the full datablock and flight-plan association to an unassociated target or scope location (§5.7.3, pp. 5-187–189). Never reposition aircraft kinematics.
    - `/ ALL <ENTER>`: Drop track on all owned targets simultaneously.
 
 4. **Converging Runway Display Aid (CRDA):**
@@ -333,6 +458,26 @@ Possible future follow-ups:
 - quick-look multi-facility track filters;
 - host automated flight-plan amendments and route conformance monitoring.
 
+#### Local coordination messages and redirected handoffs
+
+Visible now: inbound/outbound handoffs, pointouts, simulated receiver
+acceptance, and departure-release coordination lists are shipped. These are
+not a general coordination-message lifecycle or redirected handoff workflow.
+
+Missing: manual §5.1.5, p. 5-12, describes redirected handoffs;
+§§5.2.1–3, pp. 5-41–43, describe creation, display, and transmission of
+coordination messages. A trainer follow-up can model local messages and
+redirects between synthetic receiving positions, with observable pending,
+accepted/rejected, cancelled, and completed state as applicable to each
+manual-backed workflow. Complete `RD`/pointout datablock binding remains
+under **Datablock runtime sources not yet modeled**.
+
+Constraints later work must keep: no live NAS/ARTS messages or external
+controller service; preserve the shipped ownership/communications distinction,
+white previously-owned FDB rule, receiver retention, and explicit F4 action.
+Quicklook never transfers ownership or redirects a handoff. Any future radio
+command changes must retain Command IR/Path C parity.
+
 #### Post-acceptance handoff ownership cue
 
 The supplied STARS manual (TI 6191.409 Rev. 30, General Rules p. 5-9;
@@ -362,16 +507,24 @@ Remaining possible follow-ups:
 - pilot aircraft barometric kinematic corrections;
 - source timestamps, stale-data handling, and alerting.
 
-### Quicklook (`QL`) Status & Facility-Wide Sector Filtering
+### Quicklook (`QL`) by track, owner TCP, and region
 
-In real STARS operations, the SSA includes a Quicklook indicator (`QL: ALL` or `QL: <sector>`) showing whether the workstation is monitoring all sector tracks or filtering data blocks to assigned control sectors:
-* **Required Implementation:**
-  1. Keyboard command `Q <sector>` / `Q ALL` to toggle quicklook display modes.
-  2. Scope datablock filtering and handoff routing based on active quicklook configuration.
-  3. Displaying `QL: ALL` or `QL: <sectors>` in the SSA.
+Visible now: SSA formatting accepts Quicklook status text, but no complete live
+Quicklook selection/presentation state feeds it.
 
-Any live-data design must preserve the self-hosted speech rule and must not
-silently introduce a metered vendor dependency.
+Missing: manual §2.12, p. 2-60, and §6.13, pp. 6-84–106, describe displaying
+other owners' tracks with full datablocks by individual track, owner TCP,
+all-owner selection, and adapted region; Quicklook Plus uses the owned color.
+The workflow includes force-Quicklook actions (§6.12.6, p. 6-69), active
+TCP/region readout, per-selection removal, and live SSA status.
+
+Constraints later work must keep: Quicklook controls display visibility and
+presentation, not ownership, aircraft control, or handoff routing. Do not
+treat it as a general filter that removes locally owned tracks. Use generic
+synthetic TCPs/regions and preserve PDB/FDB and previously-owned color rules.
+Exact keyboard grammar must be grounded in the manual during planning; the
+old `Q <sector>` sketch was not a complete validated command contract. No
+external multi-facility network or metered dependency is required.
 
 ### PTL targeting
 
@@ -464,15 +617,54 @@ Deferred to future simulation phases:
 - **Live Ghost Target Generation**: Mathematical projection of master runway approach tracks onto slave runway approach centerlines based on threshold crossing time estimates.
 - **Stagger Cones & Tie Lines**: Dynamic display of spacing cones and connecting tie lines between real aircraft and projected ghosts for converging and dependent runway operations.
 - **STARS Table 26 CRDA Keyboard Grammar**: Keyboard commands for pairing activation/deactivation, spacing distance adjustment, and runway configuration switching.
+- **Qualification and ghost presentation**: Runway qualification regions and
+  course-line segments, per-pair/per-runway/per-track ghost visibility,
+  force/unforce qualification, ghost leader direction, parent-track readout,
+  and full/partial ghost datablock presentation (§6.5, pp. 6-19–34).
+- **Live runway-pair modes and status**: Tie/stagger/disabled modes with
+  truthful list/SSA state and cleanup when a pair is disabled (§8.7,
+  pp. 8-11–12). Existing formatted RPC rows are not evidence of active ghosting.
 
-### Surveillance Drop-Out Coast/Suspend Track Lifecycle (30s Timeout)
+Constraints later work must keep: runway pairs and qualification geometry are
+generic authored trainer data; ghosts are display projections, never new
+physical aircraft or altered pilot trajectories. Keep projected ghosts separate
+from live targets in selection, CA/ATPA, and ownership. Do not require
+operational facility adaptation or infer pair enablement from placeholder SSA text.
 
-Visible now: `COAST/SUSPEND` list formatting displaying track status (`C` for Coasting), transponder beacon code, and last received Mode C altitude in hundreds of feet.
+### Surveillance drop-out, two-phase coast, suspend, and reacquisition
 
-Deferred to future simulation phases:
-- **30-Second Target Drop Timeout**: Automated detection of radar/ADS-B target signal loss, moving the track into the Coast list after 30 seconds of missing surveillance returns.
-- **Dead-Reckoning Extrapolation**: Kinematic position extrapolation along the last known ground track vector during the coast period.
-- **Automated Target Re-Correlation**: Seamless track resumption and full datablock restoration when radar returns resume on the assigned squawk code.
+Visible now: `COAST/SUSPEND` formatting accepts entries, but its live renderer
+receives an empty list. Missing coverage removes display reports immediately;
+F3/Track Suspend is consumed without a lifecycle mutation.
+
+Manual evidence: §2.15.2, pp. 2-93–94, Figure 2-29/Table 2-23, describes
+two coast phases. Phase 1 starts when an expected single-source update is
+missing, or updates from all sources are missing in MULTI/FUSED. The position
+symbol changes to the coast symbol and altitude becomes `CST`. Phase 2 removes
+the track from the scope and places its flight data in Coast/Suspend. The
+nominal **30 seconds is total coast duration**, not a delay before Phase 1.
+Manual durations are adapted; the trainer needs an explicit deterministic
+timing contract rather than treating 30 seconds as universal.
+
+Deliberately missing:
+- **Live coast lifecycle**: Missing-report detection, both phases, current
+  list entries/status, and cleanup of track-dependent tools and alert inhibits.
+- **Display dead reckoning**: Extrapolate the last reported ground-track
+  vector during coast as a documented trainer display behavior, never by
+  advancing or relocating the actual aircraft. This audit does not establish
+  a certified STARS extrapolation algorithm.
+- **Suspend/unsuspend**: Manual §§5.4.3–4, pp. 5-71–76, distinguish explicit
+  plan suspension from automatic coast. Implement eligibility restrictions,
+  `C` versus `S` list state, and reactivation/association behavior. Suspended
+  plans remain until explicitly terminated; do not auto-delete them.
+- **Re-correlation**: Restore the appropriate associated display on valid
+  returning reports. Preserve canonical plan identity and reject ambiguous
+  beacon matches instead of associating solely because a code is shared.
+
+Constraints later work must keep: World/FMS/alert evaluation uses live truth;
+coast, unsupported anchors, and stale-report extrapolation are separate display
+state. Do not require real sensor protocols or reuse flight-plan hold state as
+coast/suspend. **STARS preview area** owns the remaining command-entry gaps.
 
 ### SSA Multi-Sensor Fusion Telemetry and Network Health
 
@@ -771,34 +963,30 @@ Constraints later work must keep:
 - Do not add VFR-on-top, SVFR, Class C/D authorization, cloud speech, or implicit route
   repair from an unrelated command.
 
-### General aviation make/model callsigns in STT and controller commands ("Skyhawk 172SP", "Cirrus 210AB")
+### GA callsign aliases — shipped complete tails, deferred abbreviation
 
-Visible now: Pilot telephony and speech synthesis support GA aircraft make/model names (e.g.
-"Skyhawk 172SP", "Cherokee 4821V", "Cirrus 210AB"), title-casing the manufacturer/model and
-expanding the alphanumeric tail phonetically for initial check-ins and readbacks
-(`formatCallsignSpeech` in `src/pilot/telephony.ts`, `readbackForTts` in `src/speech/tts-text.ts`).
-In controller input, `N<digits>` ("November 1 2 3"), numeric suffixes ("123"), or track selection
-without callsign are accepted across typed commands and spoken paths (Path A, B, and C).
+Visible now: T03-27–31 ship authored aircraft make/model aliases, pilot
+check-in/readback/TTS output, complete alias-plus-registration-tail input in
+typed commands and spoken Paths A/B, and bounded Path C alias grounding.
+For example, `Skyhawk 172SP` resolves to the live canonical `N172SP` when the
+authored alias and complete tail match uniquely. Aliases remain input/output
+presentation; Command IR carries canonical identity. Acceptance coverage is in
+`src/parse/test/aircraftCallsignAliasAcceptance.test.ts`; self-hosted Path C
+prompt/validation accepts only listed canonical identities.
 
-Deliberately missing: Spoken input (STT) and typed commands do not accept GA aircraft make/model
-names followed by flight/tail numbers (e.g., controller speaking `"Skyhawk 172SP, turn left heading 270"`
-or `"Cirrus 210AB, squawk 0421"`). In the spoken frontend parser (Path A/B), non-airline prefixes
-trigger an `unknown_telephony` error because GA makes/models are absent from
-`src/parse/spoken/telephony.json`. In typed commands, space-separated tokens reject make words as
-`UNKNOWN_TOKEN`. In Path C (`speech-api/parse_engine.py`), `_CALLSIGN_RE` enforces single tokens
-`^[A-Z0-9]{2,8}$` without spaces, and prompt/normalization rules only map airline ICAO telephony to
-on-frequency callsigns.
+Deliberately missing: session-grounded abbreviated registration tails, such
+as `Skyhawk 2SP` for `N172SP`. The current contract requires the complete tail;
+unknown, incomplete, or ambiguous alias evidence rejects without falling back
+to the selected aircraft. Abbreviation requires an explicit later contract,
+not relaxed fuzzy repair. Complete make/model-plus-tail input is not backlog.
 
 Constraints later work must keep:
-- Keep aircraft profiles, make/model aliases, and telephony data-first (e.g. extending aircraft
-  profiles or telephony catalogs, not hardcoded switch-cases or facility branches).
-- Synchronize across all paths: Path A (grammar), Path B (pattern matcher / spoken telephony),
-  Path C (`speech-api/parse_engine.py`, GBNF, prompt, few-shots, and evaluation corpus), and typed
-  command parser.
-- Grounding resolution must map make/model + tail/suffix (or abbreviated tail) to the matching
-  on-frequency target (e.g., `"Skyhawk 172SP"` or `"Skyhawk 2SP"` resolving to aircraft with callsign
-  `N172SP` or `Skyhawk 172SP`), without ambiguity or misidentifying other aircraft.
-- Self-hosted speech and parsing only; no cloud inference or metered SDKs.
+- Aircraft profiles and aliases remain data-first, with no facility branches.
+- Synchronize any grounding change across typed input, Paths A/B/C, Command IR
+  grounding, speech-api prompt/semantic validator/GBNF, mocks, evals, and docs.
+- Preserve unique live-target grounding and canonical identity; never let an
+  ambiguous suffix or explicit invalid alias use selected-aircraft fallback.
+- Self-hosted speech only; no cloud inference or unconstrained fuzzy repair.
 
 ## Explicit boundary
 
