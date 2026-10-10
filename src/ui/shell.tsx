@@ -39,6 +39,7 @@ import {
   resetSystemListToDefault,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  clearMinSepState,
   clearPerTrackPtl,
   parseDigitalMap,
   applyRadarSites,
@@ -46,6 +47,7 @@ import {
   type ScopeView,
   type FlightPlanModalRequest,
 } from "@scope";
+
 import { flightPlanForAircraft, handoffFor, isFlightPlanOperational, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
@@ -532,6 +534,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           );
           scopeView.tracks.clear();
           clearPerTrackPtl(scopeView);
+          clearMinSepState(scopeView.minSep);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           // Session apply uses the same generic site bind as boot (T02-77).

@@ -593,7 +593,8 @@ Clicking or selecting a numeric DCB adjustment button (Range, Range Rings, Leade
 | `B` then `<digits>` | Beacon Code Select | Table 30 beacon select chord (e.g. `B45` Enter for block 45; `B4501` for discrete). |
 | `/` | Slew / Drop Prefix | Buffers `/` into Preview Area (drop track `TERM CNTL`, set leader length, or toggle PDB ↔ FDB). |
 | `*` | Multi-Function Prefix | Buffers `*` into Preview Area for system lists, display commands, filters, and TPA chords. |
-| `Delete` (`Del`) | Minimum-Separation `<MIN>` | Starts/restarts pending Minimum-Separation entry. Left-click two displayed tracks to activate pairwise predicted minimum separation. Scope `Enter` clears active and pending state; `Escape` cancels pending. Native text editors, modals, and radio retain forward delete. |
+| `Delete` (`Del`) | Minimum-Separation `<MIN>` | Starts/restarts pending Minimum-Separation entry. Left-click two displayed tracks to activate pairwise predicted minimum separation. Shows white projection lines to CPA, upright triangle markers, connecting distance segment, and a boxed horizontal distance (`#.## NM`, horizontal zero displays exact `0.00 NM`). Displays `NO XING` beneath the distance when separation begins increasing. Scope `Enter` clears active and pending graphics; `Escape` cancels pending. Predictor is a straight-line constant-motion model from the latest displayed reports (trainer choice; not certified intent/turn forecasting). Keyboard mapping to `Del` is a trainer choice; real STARS TCW keyboards use dedicated `<MIN>` (Appendix D). Native text editors, modals, and radio retain forward delete. |
+
 
 ---
 

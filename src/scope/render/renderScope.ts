@@ -46,6 +46,7 @@ import {
   drawChordHint,
   drawMapLayers,
   drawMapLists,
+  drawMinimumSeparation,
   drawSsa,
   drawSystemLists,
   drawTracks,
@@ -66,15 +67,21 @@ export function renderScope(
     return;
   }
 
-  syncTrackDisplays(view.tracks, world, {
-    mode: view.surveillanceMode,
-    sites: view.radarSites,
-    historyRateSec: view.historyRateSec,
-  });
+  syncTrackDisplays(
+    view.tracks,
+    world,
+    {
+      mode: view.surveillanceMode,
+      sites: view.radarSites,
+      historyRateSec: view.historyRateSec,
+    },
+    view,
+  );
 
   drawWeatherLayer(ctx, view, size);
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
+  drawMinimumSeparation(ctx, world, view, size);
   drawTracks(ctx, world, view, size);
 
   const ssaInfo = drawSsa(ctx, world, view, cssWidth, cssHeight);

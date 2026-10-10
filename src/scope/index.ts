@@ -980,10 +980,12 @@ export {
   isMinSepPending,
   isValidMinSepTrackInput,
   minSepInputFromReport,
+  resolveActiveMinSep,
   selectMinSepAircraft,
 } from "./minimumSeparation";
 export type {
   ActiveMinSepPair,
+  ActiveMinSepResolved,
   MinSepPrediction,
   MinSepSelectionResult,
   MinSepState,
@@ -992,3 +994,10 @@ export type {
 export { handleMinSepClick, isMinSepTargetEligibleAndDisplayed, pickMinSepTargetAt } from "./pick";
 export type { MinSepPickResult } from "./pick";
 export { isMinSepDeleteKey } from "./scopeKeys";
+export {
+  drawMinimumSeparation,
+  drawUprightCpaTriangle,
+  calculateMinSepBoxMetrics,
+  clampMinSepBoxCenter,
+  formatMinSepDistance,
+} from "./render";

@@ -866,7 +866,24 @@ match the five-column geometry; arrival Box 9 contains altitude/remarks, arrival
 Box 9A contains destination/minimum-fuel data, departure Box 9 contains route,
 destination, and remarks, and Boxes 9A–9C plus 10–18 remain present.
 
+### Phase 2 addendum (T02-204–206 Minimum-Separation Graphics)
+
+Pure constant-motion prediction model from latest displayed surveillance reports,
+dedicated `Del` scope-focused keybinding, report-backed two-track selection,
+clear/cancel lifecycle, and Figure 6-1 minimum-separation graphics: white projection
+lines to CPA, upright CPA triangle markers, connecting distance segment, boxed
+two-decimal NM readout (horizontal zero exact `0.00 NM`), and `NO XING` cue beneath
+the distance when horizontal separation is increasing. Modulated by TLS brightness
+and sized with TOOLS character size.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-204](tickets/T02-204-minimum-separation-model-and-prediction.md) | Minimum-separation model and prediction | P1 | M | none | Shipped |
+| [T02-205](tickets/T02-205-minimum-separation-input-and-selection.md) | Minimum-separation input and selection | P1 | M | T02-204 | Shipped |
+| [T02-206](tickets/T02-206-minimum-separation-graphics-and-acceptance.md) | Minimum-separation graphics and acceptance | P1 | M | T02-204, T02-205 | Shipped |
+
 ## Launching an agent
+
 
 1. Confirm phase 1 README exit is green.
 2. Paste **[AGENT.md](AGENT.md)** as the whole-phase prompt, **or** paste one ticket and say: implement only this ticket, stop when ACs are checked.

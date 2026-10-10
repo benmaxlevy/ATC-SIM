@@ -27,21 +27,21 @@ value. Items already shipped or limited to manual validation are excluded.
 
 ### P1 — controller operations
 
-7. Pairwise minimum-separation graphics.
-8. Dynamic range-bearing lines.
-9. Controller-created restriction areas and annotations.
-10. Emergency-airport/heliport lookup and bearing/range readout.
-11. Departure exit-gate/fix resolution.
-12. Adapted 2.5 NM ATPA eligibility.
-13. Quicklook by track, owner TCP, and region, including live SSA status.
-14. Complete pointout-to-datablock binding.
-15. Locally simulated TSAS scheduling and display tools.
-16. Flight-plan amendment modals and target-click deletion.
-17. Scratchpad and assigned altitude/heading/speed display-data command chords.
-18. Unsupported datablocks, flight-plan hold state, datablock/plan repositioning, and `/ ALL`.
-19. Local coordination messages and redirected handoffs.
-20. Clearance/plan synchronization, readback validation, route conformance, and audit state.
-21. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
+7. Dynamic range-bearing lines.
+8. Controller-created restriction areas and annotations.
+9. Emergency-airport/heliport lookup and bearing/range readout.
+10. Departure exit-gate/fix resolution.
+11. Adapted 2.5 NM ATPA eligibility.
+12. Quicklook by track, owner TCP, and region, including live SSA status.
+13. Complete pointout-to-datablock binding.
+14. Locally simulated TSAS scheduling and display tools.
+15. Flight-plan amendment modals and target-click deletion.
+16. Scratchpad and assigned altitude/heading/speed display-data command chords.
+17. Unsupported datablocks, flight-plan hold state, datablock/plan repositioning, and `/ ALL`.
+18. Local coordination messages and redirected handoffs.
+19. Clearance/plan synchronization, readback validation, route conformance, and audit state.
+20. Full `<MULTI FUNC>` M/C/Y commands and limited-datablock beacon toggles.
+
 
 ### P2 — facility and display expansion
 
@@ -69,7 +69,9 @@ basic RNAV/fix-to-fix flying, climb-via/descend-via, SID/STAR transitions,
 CIFP parsing/closure/packing, KATL catalog/map integration, core TPA/PTL,
 WX mosaic, catalog map management, core DCB controls, typed strip annotations,
 handoff ownership, IFR clearance execution, VFR Class B, generic tower/center
-transfer, and complete GA make/model-plus-tail typed/spoken input and pilot telephony.
+transfer, complete GA make/model-plus-tail typed/spoken input and pilot telephony,
+and pairwise minimum-separation graphics.
+
 
 ## Scope and display
 
@@ -311,25 +313,27 @@ Keep deferred: Field 1 ADS-B markers, ADS-B loss/duplicate-address (`DA`)
 workflow, and new Field 2 glyphs. Those remain out of scope until their
 underlying surveillance services exist.
 
-### Pairwise minimum-separation graphics
+### Pairwise minimum-separation graphics (T02-204 / T02-205 / T02-206)
 
-Visible now: the pure prediction model, dedicated `Del` keyboard activation,
-two-track report-backed selection, clear/cancel lifecycle, and exact rejection
-handling (`DUP TRK`, `ILL TRK`, `FORMAT`) exist (T02-204, T02-205). The
-rendered on-scope graphics and paint stages remain pending under T02-206.
-
-Missing: manual §6.4, pp. 6-17–18, permits `<MIN>` followed by two track
-selections to display dynamically updated predicted closest horizontal
-separation and the two projected positions. `<MIN><ENTER>` removes the
-graphics; selecting a new pair replaces the old pair. Figure 6-1 includes
-`NO XING` when horizontal separation begins increasing and `0.00 NM` for
-predicted zero horizontal separation regardless of vertical separation.
+Shipped: manual §6.4, pp. 6-17–18, allows `<MIN>` (trainer mapped to dedicated `Del`
+under scope focus) followed by two track selections to display dynamically updated
+predicted closest horizontal separation and the two projected positions.
+`<MIN><ENTER>` removes the graphics; selecting a new pair replaces the old pair.
+Figure 6-1 includes upright CPA triangles, connecting distance segment, boxed
+two-decimal NM value (`0.00 NM` for predicted zero horizontal separation regardless
+of vertical separation), and `NO XING` (without an OCR question mark) directly
+beneath the mileage when horizontal separation begins increasing. Projections
+draw in white `PALETTE.ptl` modulated by `view.brite.tls` (zero TLS hides ink),
+and text uses `view.charSizes.tools`. Geometry is protected from datablock overlap.
+Active pair clears on track drop (F4/TERM CNTL and slash-symbol drop), track
+despawn, report loss, or session reset in `src/ui/shell.tsx`. Excluded from PREF.
 
 Constraints later work must keep: scope-local observational graphics, no
 Command IR or kinematic mutation; reject duplicate/invalid track selections;
 remove stale geometry when either track drops; use generic motion/coordinate
 helpers and the appropriate surveillance display state. This is a horizontal
 measurement aid, not a replacement for CA or a claim of safe vertical separation.
+
 
 ### Dynamic range-bearing lines
 

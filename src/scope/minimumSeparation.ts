@@ -186,6 +186,21 @@ export function invalidateMinSepPair(state: MinSepState): void {
 }
 
 /**
+ * Remove active MIN pair if the specified aircraftId is a member of the pair.
+ */
+export function pruneMinSepTrack(state: MinSepState, aircraftId: string): void {
+  if (
+    state.activePair &&
+    (state.activePair.aircraftIdA === aircraftId || state.activePair.aircraftIdB === aircraftId)
+  ) {
+    state.activePair = null;
+  }
+  if (state.pendingFirstId === aircraftId) {
+    state.pendingFirstId = null;
+  }
+}
+
+/**
  * Extract MinSepTrackInput from a displayed SurveillanceReport.
  */
 export function minSepInputFromReport(report: SurveillanceReport): MinSepTrackInput {
@@ -362,4 +377,49 @@ export function cancelPendingMinSepIfArmed(view: ScopeView): void {
       cancelPreviewArea(view.preview);
     }
   }
+}
+
+export interface ActiveMinSepResolved {
+  pair: ActiveMinSepPair;
+  trackA: MinSepTrackInput;
+  trackB: MinSepTrackInput;
+  prediction: MinSepPrediction;
+}
+
+/**
+ * Resolve the currently active MIN pair against view tracks.
+ * Returns null and clears activePair if either aircraft is missing or lacks a valid report.
+ */
+export function resolveActiveMinSep(
+  state: MinSepState,
+  tracks: Map<string, { lastReport?: SurveillanceReport }>,
+  magVarDeg = 0,
+): ActiveMinSepResolved | null {
+  if (!state.activePair) {
+    return null;
+  }
+  const { aircraftIdA, aircraftIdB } = state.activePair;
+  const reportA = tracks.get(aircraftIdA)?.lastReport;
+  const reportB = tracks.get(aircraftIdB)?.lastReport;
+  if (!reportA || !reportB) {
+    state.activePair = null;
+    return null;
+  }
+  const trackA = minSepInputFromReport(reportA);
+  const trackB = minSepInputFromReport(reportB);
+  if (!isValidMinSepTrackInput(trackA) || !isValidMinSepTrackInput(trackB)) {
+    state.activePair = null;
+    return null;
+  }
+  const prediction = computeMinimumSeparation(trackA, trackB, magVarDeg);
+  if (!prediction) {
+    state.activePair = null;
+    return null;
+  }
+  return {
+    pair: state.activePair,
+    trackA,
+    trackB,
+    prediction,
+  };
 }

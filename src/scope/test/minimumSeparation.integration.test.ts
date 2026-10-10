@@ -17,13 +17,21 @@ import { handlePpiLeftClick } from "../ppi";
 import { formatPreviewReadout } from "../previewArea";
 import { handleScopeKeyDown, type ScopeKeyEvent } from "../scopeKeys";
 import { createScopeView, type ScopeView } from "../scopeView";
-import { isMinSepPending } from "../minimumSeparation";
+import {
+  clearMinSepState,
+  isMinSepPending,
+  pruneMinSepTrack,
+  resolveActiveMinSep,
+} from "../minimumSeparation";
 import { armDcbSpinner } from "../dcb/dcbMenu";
 import { armPlaceCenter, armPlaceRangeRing } from "../dcb/dcbFunctions";
-import { ensureTrackDisplay } from "../trackDisplay";
+import { applyDcbPref, serializeDcbPref } from "../dcb/dcbPref";
+import { datablockFontCss } from "../fonts";
+import { ensureTrackDisplay, terminateTrackWithPlan } from "../trackDisplay";
 import type { SurveillanceReport } from "../surveillance";
 import { createMockCtx } from "./mockCanvas";
 import { renderScope } from "../render/renderScope";
+import { collectDatablockProtectedGeometry } from "../render/renderScopePaint";
 
 const CSS_W = 800;
 const CSS_H = 800;
@@ -667,6 +675,437 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       );
       expect(view.helpOpen).toBe(true);
       expect(isMinSepPending(view)).toBe(false);
+    });
+  });
+
+  describe("T02-206 AC2: Graphics rendering, Canvas recordings, styling, and font modulation", () => {
+    it("Draws projection lines, upright triangles, connecting segment, and boxed NM text in white/TLS brite", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.brite.tls = 100;
+
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 0,
+        yNm: -10,
+        headingDeg: 0,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 0, yNm: -10, headingDeg: 0, speedKt: 300 });
+
+      // Del, click A, click B
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(-10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(0, -10, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "ac-1", aircraftIdB: "ac-2" });
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      // Verify stroke rect (boxed readout)
+      expect(mock.strokeRects.length).toBeGreaterThanOrEqual(1);
+      const boxRect = mock.strokeRects.find((r) => r.strokeStyle.toUpperCase() === "#FFFFFF");
+      expect(boxRect).toBeDefined();
+
+      // Verify fillText includes distance readout with " NM"
+      const distText = mock.fillTexts.find((t) => t.text.includes("NM"));
+      expect(distText).toBeDefined();
+      expect(distText?.text).toMatch(/^\d+\.\d{2} NM$/);
+      expect(distText?.font).toBe(datablockFontCss(view.charSizes.tools));
+
+      // Verify filled upright triangles (fill count incremented)
+      expect(mock.fills.count).toBeGreaterThanOrEqual(2);
+
+      // Verify 3 distinct path strokes: proj A, proj B, and connecting segment in white
+      const minStrokes = mock.pathStrokes.filter((s) => s.strokeStyle.toUpperCase() === "#FFFFFF");
+      expect(minStrokes.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it("Draws exact 0.00 NM for horizontal crossing with differing altitudes", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Head-on horizontal collision at origin, different altitudes
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        altitudeFt: 5000,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: 0,
+        altitudeFt: 10000,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, {
+        xNm: -10,
+        yNm: 0,
+        altitudeFt: 5000,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      attachReport(view, acB.id, {
+        xNm: 10,
+        yNm: 0,
+        altitudeFt: 10000,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(-10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const distText = mock.fillTexts.find((t) => t.text.includes("NM"));
+      expect(distText).toBeDefined();
+      expect(distText?.text).toBe("0.00 NM");
+      // No NO XING cue since tracks are converging towards 0.00 NM CPA
+      const noXing = mock.fillTexts.find((t) => t.text === "NO XING");
+      expect(noXing).toBeUndefined();
+    });
+
+    it("Draws 'NO XING' without question mark when horizontal separation is increasing", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Diverging aircraft (moving away from each other)
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -5,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 5,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -5, yNm: 0, headingDeg: 270, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 5, yNm: 0, headingDeg: 90, speedKt: 300 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(-5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const noXing = mock.fillTexts.find((t) => t.text === "NO XING");
+      expect(noXing).toBeDefined();
+      expect(mock.fillTexts.find((t) => t.text.includes("NO XING?"))).toBeUndefined();
+    });
+
+    it("Does not show 'NO XING' for equal-velocity parallel tracks", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Parallel identical velocities (constant separation)
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: 0,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 0,
+        yNm: 5,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 0, yNm: 5, headingDeg: 90, speedKt: 300 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(0, 5, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const noXing = mock.fillTexts.find((t) => t.text === "NO XING");
+      expect(noXing).toBeUndefined();
+      const dist = mock.fillTexts.find((t) => t.text.includes("5.00 NM"));
+      expect(dist).toBeDefined();
+    });
+
+    it("TLS 0 hides MIN ink without clearing active pair; independent of PTL switches", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.ptlOn = false; // PTL switch off
+      view.brite.tls = 0; // TLS 0
+
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0, headingDeg: 270, speedKt: 300 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(-10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "ac-1", aircraftIdB: "ac-2" });
+
+      const mock0 = createMockCtx();
+      renderScope(mock0.ctx, world, view, CSS_W, CSS_H);
+      // No MIN text rendered because TLS is 0
+      expect(mock0.fillTexts.find((t) => /^\d+\.\d{2} NM$/.test(t.text))).toBeUndefined();
+
+      // Restore TLS brite: MIN ink immediately reappears while PTL is still off
+      view.brite.tls = 80;
+      const mock80 = createMockCtx();
+      renderScope(mock80.ctx, world, view, CSS_W, CSS_H);
+      expect(mock80.fillTexts.find((t) => /^\d+\.\d{2} NM$/.test(t.text))).toBeDefined();
+    });
+
+    it("Clamps mileage box inside viewport when nominal midpoint is outside", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Tracks far off to the east (x = 100 NM, nominal midpoint offscreen)
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: 90,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 110,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: 90, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 110, yNm: 0, headingDeg: 270, speedKt: 300 });
+
+      // Directly set active pair
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const boxRect = mock.strokeRects[0];
+      expect(boxRect).toBeDefined();
+      // Right edge of box must be within CSS_W
+      expect(boxRect.x + boxRect.w).toBeLessThanOrEqual(CSS_W);
+      expect(boxRect.x).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("T02-206 AC3: Protected geometry and datablock layout integration", () => {
+    it("Includes MIN projection lines, CPA markers, and boxed rect in collectDatablockProtectedGeometry", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0, headingDeg: 270, speedKt: 300 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      const geom = collectDatablockProtectedGeometry(world, view, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+
+      // Must have segment geometries for projections & connecting line
+      const segments = geom.filter((g) => g.kind === "segment");
+      expect(segments.length).toBeGreaterThanOrEqual(3);
+
+      // Must have circle geometries for CPA triangles
+      const circles = geom.filter((g) => g.kind === "circle" && g.radius === 6);
+      expect(circles.length).toBe(2);
+
+      // Must have rect geometry for boxed readout
+      const rects = geom.filter((g) => g.kind === "rect");
+      expect(rects.length).toBe(1);
+    });
+
+    it("Accounts for session magnetic variation in CPA projection and graphics", () => {
+      const world = createWorld();
+      world.navigation.magVarDeg = 15; // 15 degrees East
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0, headingDeg: 270, speedKt: 300 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
+      expect(resolved).not.toBeNull();
+      // True heading = 90 + 15 = 105 for A, 270 + 15 = 285 for B
+      expect(resolved?.prediction.posANm).toBeDefined();
+    });
+  });
+
+  describe("T02-206 AC4: Lifecycle cleanup, drops, despawn, and PREF exclusion", () => {
+    it("F4 drop removes active MIN pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -10, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 10, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      // Select acA and press F4
+      setSelectedAircraft(world, acA.id);
+      handleScopeKeyDown(makeKeyEvent({ key: "F4", code: "F4" }), view, "scope", world, 1000);
+
+      expect(view.minSep.activePair).toBeNull();
+    });
+
+    it("Slash-symbol TERM CNTL removes active MIN pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -10, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 10, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      // Direct call to terminateTrackWithPlan with caState (view)
+      terminateTrackWithPlan(view.tracks, world, acA.id, view);
+      expect(view.minSep.activePair).toBeNull();
+    });
+
+    it("Despawn or loss of surveillance report prunes active MIN pair during sync", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -10, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 10, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      // acA report drops (radar coverage lost / sampler drops report)
+      const tdA = view.tracks.get(acA.id)!;
+      delete tdA.lastReport;
+      pruneMinSepTrack(view.minSep, acA.id);
+      expect(view.minSep.activePair).toBeNull();
+    });
+
+    it("Session reset clears active and pending MIN state", () => {
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+      view.minSep.pendingFirstId = "ac-3";
+
+      clearMinSepState(view.minSep);
+      expect(view.minSep.activePair).toBeNull();
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.lastError).toBeNull();
+    });
+
+    it("PREF serialization excludes MIN session state", () => {
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+      view.minSep.pendingFirstId = "ac-1";
+
+      const pref = serializeDcbPref(view);
+      expect((pref as unknown as { minSep?: unknown }).minSep).toBeUndefined();
+
+      const targetView = createScopeView(0, 0);
+      applyDcbPref(targetView, pref);
+      expect(targetView.minSep.activePair).toBeNull();
+      expect(targetView.minSep.pendingFirstId).toBeNull();
     });
   });
 });

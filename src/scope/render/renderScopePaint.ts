@@ -30,6 +30,7 @@ import {
   measureDatablockCellWidth,
   scopeFontSizePx,
   positionFontLevel,
+  scopeFontAsset,
 } from "../fonts";
 import {
   pointInLayoutBounds,
@@ -89,7 +90,13 @@ import {
   surveillanceModeWord,
 } from "../surveillance";
 import type { TrackOwnership } from "../ownership";
-import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, isAlertBlinkOn } from "../palette";
+import {
+  BLINK_HALF_PERIOD_MS,
+  PALETTE,
+  applyBrite,
+  isAlertBlinkOn,
+  getBackgroundColor,
+} from "../palette";
 import {
   TARGET_PUCK_BG,
   drawHistoryDot,
@@ -121,6 +128,7 @@ import {
   type ListRect,
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+import { resolveActiveMinSep } from "../minimumSeparation";
 
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
@@ -275,6 +283,71 @@ export function collectDatablockProtectedGeometry(
       aircraftIds: [trailing.id, leading.id],
       points: pts,
       strokePx: TPA_STROKE_PX,
+    });
+  }
+  const minResolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
+  if (minResolved) {
+    const { trackA, trackB, prediction, pair } = minResolved;
+    const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
+    const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
+    const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
+    const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+    // Projection lines
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdA,
+      from: ptA,
+      to: cpaA,
+      strokePx: PTL_STROKE_PX,
+    });
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdB,
+      from: ptB,
+      to: cpaB,
+      strokePx: PTL_STROKE_PX,
+    });
+    // Separation segment
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdA,
+      from: cpaA,
+      to: cpaB,
+      strokePx: PTL_STROKE_PX,
+    });
+    // CPA triangles
+    out.push({
+      kind: "circle",
+      aircraftId: pair.aircraftIdA,
+      center: cpaA,
+      radius: 6,
+    });
+    out.push({
+      kind: "circle",
+      aircraftId: pair.aircraftIdB,
+      center: cpaB,
+      radius: 6,
+    });
+    // Boxed readout rect
+    const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
+    const nominalMidX = (cpaA.x + cpaB.x) / 2;
+    const nominalMidY = (cpaA.y + cpaB.y) / 2;
+    const clampedMid = clampMinSepBoxCenter(
+      nominalMidX,
+      nominalMidY,
+      boxMetrics.width,
+      boxMetrics.height,
+      size,
+    );
+    out.push({
+      kind: "rect",
+      aircraftId: pair.aircraftIdA,
+      rect: {
+        x: clampedMid.x - boxMetrics.width / 2,
+        y: clampedMid.y - boxMetrics.height / 2,
+        width: boxMetrics.width,
+        height: boxMetrics.height,
+      },
     });
   }
   return out;
@@ -2346,5 +2419,193 @@ export function drawSystemLists(
     const movingX = view.listDrag.movingCurrentPos.x - view.listDrag.movingOffset.x;
     const movingY = view.listDrag.movingCurrentPos.y - view.listDrag.movingOffset.y;
     ctx.strokeRect(movingX - 2, movingY - 2, anchor.width + 4, anchor.height + 4);
+  }
+}
+
+/** Triangle marker dimensions in pixels. Upright triangle pointing north. */
+export const MIN_SEP_TRIANGLE_HALF_BASE_PX = 5;
+export const MIN_SEP_TRIANGLE_HEIGHT_PX = 9;
+
+export interface MinSepBoxMetrics {
+  text1: string;
+  text2: string | null;
+  width: number;
+  height: number;
+  lineHeight: number;
+  padX: number;
+  padY: number;
+}
+
+export function formatMinSepDistance(distanceNm: number): string {
+  // If predicted separation is 0 (or rounds to 0.00), show exact 0.00 NM
+  const rounded = Math.abs(distanceNm) < 0.005 ? "0.00" : distanceNm.toFixed(2);
+  return `${rounded} NM`;
+}
+
+export function calculateMinSepBoxMetrics(
+  view: ScopeView,
+  prediction: { distanceNm: number; isIncreasingDistance: boolean },
+): MinSepBoxMetrics {
+  const text1 = formatMinSepDistance(prediction.distanceNm);
+  const text2 = prediction.isIncreasingDistance ? "NO XING" : null;
+  const fontLevel = view.charSizes.tools - 8;
+  const lineHeight = scopeFontSizePx(fontLevel);
+  // Monospace font character advance estimation
+  const charWidth =
+    scopeFontAsset(fontLevel).advances[48]! * (lineHeight / scopeFontAsset(fontLevel).height);
+  const maxChars = Math.max(text1.length, text2?.length ?? 0);
+  const padX = 4;
+  const padY = 3;
+  const textWidth = Math.ceil(maxChars * charWidth);
+  const textHeight = text2 !== null ? lineHeight * 2 + 2 : lineHeight;
+  const width = textWidth + padX * 2;
+  const height = textHeight + padY * 2;
+  return {
+    text1,
+    text2,
+    width,
+    height,
+    lineHeight,
+    padX,
+    padY,
+  };
+}
+
+export function clampMinSepBoxCenter(
+  midX: number,
+  midY: number,
+  boxWidth: number,
+  boxHeight: number,
+  size: ScopeViewSize,
+): { x: number; y: number } {
+  const halfW = boxWidth / 2;
+  const halfH = boxHeight / 2;
+  const margin = 2;
+  const clampedX = Math.max(halfW + margin, Math.min(size.widthPx - halfW - margin, midX));
+  const clampedY = Math.max(halfH + margin, Math.min(size.heightPx - halfH - margin, midY));
+  return { x: clampedX, y: clampedY };
+}
+
+/**
+ * Draws upright CPA triangle marker centered at (x, y).
+ * Upright means base is horizontal at bottom, apex points north (up).
+ */
+export function drawUprightCpaTriangle(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  const halfBase = MIN_SEP_TRIANGLE_HALF_BASE_PX;
+  const h = MIN_SEP_TRIANGLE_HEIGHT_PX;
+  // Center triangle vertically around y: apex at y - h/2, base at y + h/2
+  ctx.beginPath();
+  ctx.moveTo(x, y - h / 2);
+  ctx.lineTo(x + halfBase, y + h / 2);
+  ctx.lineTo(x - halfBase, y + h / 2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * Paint stage for Minimum-Separation Graphics (Raytheon STARS §6.4, Figure 6-1).
+ *
+ * - Draws projection lines from each track report pose to its CPA position.
+ * - Draws two filled upright triangle markers at CPA positions.
+ * - Draws connecting line segment between CPA positions.
+ * - Draws rectangular mileage box at segment midpoint, clamped to viewport.
+ * - Shows boxed two-decimal NM value, plus 'NO XING' underneath when separation is increasing.
+ * - Ink uses white PALETTE.ptl modulated by view.brite.tls. Zero TLS hides ink.
+ * - Text uses view.charSizes.tools.
+ */
+export function drawMinimumSeparation(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
+  if (!resolved) {
+    return;
+  }
+  const tlsBrite = view.brite.tls ?? 100;
+  if (tlsBrite <= 0) {
+    // Zero brightness hides all MIN ink while retaining active pair
+    return;
+  }
+
+  const { trackA, trackB, prediction } = resolved;
+  const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
+  const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
+  const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
+  const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+
+  const white = applyBrite(PALETTE.ptl, tlsBrite);
+  const bg = getBackgroundColor(view.brite?.bkc ?? 100);
+
+  ctx.save();
+  try {
+    ctx.strokeStyle = white;
+    ctx.fillStyle = white;
+    ctx.lineWidth = PTL_STROKE_PX;
+
+    // 1. Projection line from report A to CPA A
+    ctx.beginPath();
+    ctx.moveTo(ptA.x, ptA.y);
+    ctx.lineTo(cpaA.x, cpaA.y);
+    ctx.stroke();
+
+    // 2. Projection line from report B to CPA B
+    ctx.beginPath();
+    ctx.moveTo(ptB.x, ptB.y);
+    ctx.lineTo(cpaB.x, cpaB.y);
+    ctx.stroke();
+
+    // 3. Separation line segment joining CPA A and CPA B
+    ctx.beginPath();
+    ctx.moveTo(cpaA.x, cpaA.y);
+    ctx.lineTo(cpaB.x, cpaB.y);
+    ctx.stroke();
+
+    // 4. Upright CPA triangle markers
+    drawUprightCpaTriangle(ctx, cpaA.x, cpaA.y);
+    drawUprightCpaTriangle(ctx, cpaB.x, cpaB.y);
+
+    // 5. Boxed distance readout and optional NO XING cue
+    const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
+    const nominalMidX = (cpaA.x + cpaB.x) / 2;
+    const nominalMidY = (cpaA.y + cpaB.y) / 2;
+    const clampedMid = clampMinSepBoxCenter(
+      nominalMidX,
+      nominalMidY,
+      boxMetrics.width,
+      boxMetrics.height,
+      size,
+    );
+
+    const boxX = Math.round(clampedMid.x - boxMetrics.width / 2);
+    const boxY = Math.round(clampedMid.y - boxMetrics.height / 2);
+
+    // Fill background so line/geometry behind box doesn't obscure text
+    ctx.fillStyle = bg;
+    ctx.fillRect(boxX, boxY, boxMetrics.width, boxMetrics.height);
+
+    // Stroke rectangular mileage box border
+    ctx.strokeStyle = white;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX, boxY, boxMetrics.width, boxMetrics.height);
+
+    // Draw text inside box using TOOLS font
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = white;
+
+    if (boxMetrics.text2 !== null) {
+      const lineSpacing = boxMetrics.lineHeight + 2;
+      const firstLineY = boxY + boxMetrics.padY + boxMetrics.lineHeight / 2;
+      const secondLineY = firstLineY + lineSpacing;
+      ctx.fillText(boxMetrics.text1, clampedMid.x, firstLineY);
+      ctx.fillText(boxMetrics.text2, clampedMid.x, secondLineY);
+    } else {
+      ctx.fillText(boxMetrics.text1, clampedMid.x, clampedMid.y);
+    }
+  } finally {
+    ctx.restore();
   }
 }

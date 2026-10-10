@@ -1037,7 +1037,7 @@ function applyPreviewCntl(
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
     if (apply.aircraftId) {
-      terminateTrackWithPlan(view.tracks, world, apply.aircraftId);
+      terminateTrackWithPlan(view.tracks, world, apply.aircraftId, view);
     } else if (apply.planId) {
       // Plan-only TERM remains a plan deletion; there is no radar target to
       // mark unassociated.
@@ -1616,7 +1616,7 @@ export function handleScopeKeyDown(
   if (event.key === "F4") {
     if (world && selectedTrackId(world)) {
       const aircraftId = selectedTrackId(world)!;
-      terminateTrackWithPlan(view.tracks, world, aircraftId);
+      terminateTrackWithPlan(view.tracks, world, aircraftId, view);
       cancelPreviewArea(view.preview);
     } else {
       armPreviewCntl(view.preview, "termCntl", nowMs);

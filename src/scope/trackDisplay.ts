@@ -29,6 +29,7 @@ import {
 import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
+import { pruneMinSepTrack, type MinSepState } from "./minimumSeparation";
 
 /** Display IDENT window (~2 s sim) for datablock "ID" text. Symbol does not flash. */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
@@ -154,14 +155,20 @@ export interface TrackDisplayState {
   acknowledgedAlertPairs: Set<string>;
   /** CA C setting applies to current and later pairs with two locally owned tracks. */
   caControllerOwnedPairsInhibited?: boolean;
+  /** Minimum-Separation session state. Cleaned up when track drops or despawns. */
+  minSep?: MinSepState;
 }
 
-export function createTrackDisplayState(tracks?: Map<string, TrackDisplay>): TrackDisplayState {
+export function createTrackDisplayState(
+  tracks?: Map<string, TrackDisplay>,
+  minSep?: MinSepState,
+): TrackDisplayState {
   return {
     tracks: tracks ?? new Map(),
     caInhibitedPairs: new Set(),
     acknowledgedAlertPairs: new Set(),
     caControllerOwnedPairsInhibited: false,
+    minSep,
   };
 }
 
@@ -244,6 +251,9 @@ export function pruneCaPairInhibitsForTrack(
     if (parts.includes(trackIdOrCallsign)) {
       state.acknowledgedAlertPairs.delete(key);
     }
+  }
+  if (state.minSep) {
+    pruneMinSepTrack(state.minSep, trackIdOrCallsign);
   }
 }
 
@@ -1115,7 +1125,11 @@ export function syncTrackDisplays(
       }
     } else {
       delete td.lastReport;
+      if (caState?.minSep) {
+        pruneMinSepTrack(caState.minSep, ac.id);
+      }
     }
+
     noteIdentAccepted(td, ac, world.simTimeMs);
     const ho = handoffFor(world, ac.id);
     if (
