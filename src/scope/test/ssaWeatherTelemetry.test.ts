@@ -41,6 +41,34 @@ describe("SSA weather level selection", () => {
     });
   });
 
+  test("reuses SSA WX text and mask availability until selection or weather changes", () => {
+    const mosaic = availableMosaic();
+    let reads = 0;
+    mosaic.vipMasks = mosaic.vipMasks.map(
+      (mask) =>
+        new Proxy(mask, {
+          get(target, key) {
+            if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+            return Reflect.get(target, key, target);
+          },
+        }),
+    ) as unknown as typeof mosaic.vipMasks;
+    const levels = [false, false, false, false, false, false];
+    const initial = formatSsaWxTelemetry(levels, mosaic, 1);
+    const firstReads = reads;
+    expect(firstReads).toBeGreaterThan(0);
+    for (let frame = 0; frame < 60; frame++) {
+      expect(formatSsaWxTelemetry(levels, mosaic, frame * 16)).toBe(initial);
+    }
+    expect(reads).toBe(firstReads);
+    levels[0] = true;
+    expect(formatSsaWxTelemetry(levels, mosaic).text).toBe("(1) 2 3 4 5");
+    expect(reads).toBe(firstReads);
+    levels[0] = false;
+    expect(formatSsaWxTelemetry(levels, mosaic)).toBe(initial);
+    expect(formatSsaWxTelemetry(levels, emptyWxMosaic()).text).toBe("");
+  });
+
   test("missing or empty weather data displays no levels, even when selected", () => {
     const selected = [true, true, true, true, true, true];
     expect(formatSsaWxTelemetry(selected).text).toBe("");

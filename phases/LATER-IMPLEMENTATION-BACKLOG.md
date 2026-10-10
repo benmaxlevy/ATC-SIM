@@ -424,7 +424,13 @@ in the trainer's local coordinate system. Coverage is bounded to 64 tiles and
 resampling. Available WX intensity layers build once per mosaic update in a module worker,
 with a row-batched fallback when workers are unavailable, including while every
 WX latch is off. Toggles combine cached layers immediately; brightness applies
-at paint time without rebuilding pixels. The previous layer set remains visible
+at paint time without rebuilding pixels. Rendering clips each source layer and
+stipple mask to the visible viewport before scaling, and caches the composed
+weather canvas with a 128 CSS-pixel margin at the display pixel ratio. Small pans
+shift and crop that cached composition; crossing the margin or changing range,
+viewport, selection, brightness, or mosaic rebuilds it. Every frame draws the
+cached composition once. SSA WX text is cached per mosaic and selection;
+SSA and DCB share availability computed once per completed weather batch. The previous layer set remains visible
 until the replacement is ready; stale results are ignored, and disabling every
 WX level hides the layer immediately.
 This is a trainer coverage choice, not a manual-required sensor

@@ -67,6 +67,19 @@ export function vipMaskHasPixels(mosaic: WxMosaic, level: VipLevel): boolean {
   return remainingBits > 0 && ((mask[fullBytes] ?? 0) & ((1 << remainingBits) - 1)) !== 0;
 }
 
+const populatedLevels = new WeakMap<WxMosaic, readonly VipLevel[]>();
+
+/** Completed mosaics are immutable snapshots; scan availability once per update. */
+export function availableVipLevels(mosaic: WxMosaic): readonly VipLevel[] {
+  const cached = populatedLevels.get(mosaic);
+  if (cached) return cached;
+  const available = ([1, 2, 3, 4, 5, 6] as const).filter((level) =>
+    vipMaskHasPixels(mosaic, level),
+  );
+  populatedLevels.set(mosaic, available);
+  return available;
+}
+
 export function emptyWxMosaic(
   bounds?: Partial<WxBbox> & { fetchedAtMs?: number; source?: WxMosaic["source"] },
 ): WxMosaic {

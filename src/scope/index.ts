@@ -956,6 +956,7 @@ export {
   startMetarPolling,
   vipAtNm,
   vipMaskHasPixels,
+  availableVipLevels,
 } from "./wx";
 export type {
   EnsureWxMosaicOpts,

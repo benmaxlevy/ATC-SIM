@@ -42,6 +42,7 @@ export {
   shouldRefetch,
   vipAtNm,
   vipMaskHasPixels,
+  availableVipLevels,
 } from "./mosaic";
 export type { FetchWxMosaicOpts } from "./mosaic";
 export {

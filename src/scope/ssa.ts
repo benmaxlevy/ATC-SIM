@@ -15,8 +15,8 @@
  * (R05 FOA STARS display data).
  */
 
-import { vipMaskHasPixels } from "./wx/mosaic";
-import type { VipLevel, WxMosaic } from "./wx/types";
+import { availableVipLevels } from "./wx/mosaic";
+import type { WxMosaic } from "./wx/types";
 
 import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
 import { formatDcbRangeReadout, type RangeNm } from "./camera";
@@ -108,16 +108,30 @@ export interface SsaWxTelemetry {
   isStale: boolean;
 }
 
+const wxTelemetry = new WeakMap<WxMosaic, Map<number, SsaWxTelemetry>>();
+const EMPTY_WX_TELEMETRY: SsaWxTelemetry = { text: "", isStale: false };
+
 export function formatSsaWxTelemetry(
   wxLevels?: readonly boolean[],
   wxMosaic?: WxMosaic,
   _nowMs?: number,
 ): SsaWxTelemetry {
-  const text = Array.from({ length: 6 }, (_, index) => index + 1)
-    .filter((level) => wxMosaic && vipMaskHasPixels(wxMosaic, level as VipLevel))
-    .map((level) => (wxLevels?.[level - 1] ? `(${level})` : String(level)))
+  if (!wxMosaic) return EMPTY_WX_TELEMETRY;
+  let selected = 0;
+  for (let level = 0; level < 6; level++) if (wxLevels?.[level]) selected |= 1 << level;
+  let selections = wxTelemetry.get(wxMosaic);
+  if (!selections) {
+    selections = new Map();
+    wxTelemetry.set(wxMosaic, selections);
+  }
+  const cached = selections.get(selected);
+  if (cached) return cached;
+  const text = availableVipLevels(wxMosaic)
+    .map((level) => (selected & (1 << (level - 1)) ? `(${level})` : String(level)))
     .join(" ");
-  return { text, isStale: false };
+  const telemetry = { text, isStale: false };
+  selections.set(selected, telemetry);
+  return telemetry;
 }
 
 export interface SsaInput {

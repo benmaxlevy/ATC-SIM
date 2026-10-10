@@ -41,7 +41,7 @@ import {
   stepDcbSpinner,
   toggleVideoMap,
   toggleWxLevel,
-  vipMaskHasPixels,
+  availableVipLevels,
   videoMapByDcbNumber,
   effectiveSurveillanceMode,
   setSurveillanceMode,
@@ -250,17 +250,6 @@ export function tpaMiSpinnerArmed(view: ScopeView): boolean {
   return view.dcbSpinner.armed && view.dcbSpinner.cell === "TPA_MI";
 }
 
-// Mosaics are replaced after a tile batch completes. Scan each packed plane once.
-const wxAvailability = new WeakMap<ScopeView["wxMosaic"], readonly boolean[]>();
-
-function wxAvailableLevels(mosaic: ScopeView["wxMosaic"]): readonly boolean[] {
-  const cached = wxAvailability.get(mosaic);
-  if (cached) return cached;
-  const available = ([1, 2, 3, 4, 5, 6] as const).map((level) => vipMaskHasPixels(mosaic, level));
-  wxAvailability.set(mosaic, available);
-  return available;
-}
-
 /**
  * Keep RANGE / MAPS / RR / LDR DIR / LDR LEN / CHAR / BRITE / HISTORY / PTL in sync
  * with keyboard chords.
@@ -375,11 +364,11 @@ export function syncDisplayControlBar(
       setPressed(el, surveillanceModesEqual(liveSiteMode(view), { siteId }));
     }
   }
-  const availableWxLevels = wxAvailableLevels(view.wxMosaic);
+  const availableWxLevels = availableVipLevels(view.wxMosaic);
   for (let i = 0; i < 6; i += 1) {
     setPressed(doc.querySelector(`[data-dcb-cell="wx${i + 1}"]`), view.wxLevels[i] === true);
     const caption = doc.getElementById(`dcb-wx-${i + 1}-avl`);
-    const text = availableWxLevels[i] ? "AVL" : "";
+    const text = availableWxLevels.includes((i + 1) as 1 | 2 | 3 | 4 | 5 | 6) ? "AVL" : "";
     if (caption && caption.textContent !== text) caption.textContent = text;
   }
   setText(DCB_HISTORY_RATE_READOUT_ID, formatDcbHistoryRateReadout(view.historyRateSec));
@@ -807,7 +796,7 @@ export function renderSite(view: ScopeView, onChange: () => void) {
 }
 
 export function renderWxCell(view: ScopeView, onChange: () => void, n: 1 | 2 | 3 | 4 | 5 | 6) {
-  const available = vipMaskHasPixels(view.wxMosaic, n);
+  const available = availableVipLevels(view.wxMosaic).includes(n);
   return (
     <DcbCell
       key={n}

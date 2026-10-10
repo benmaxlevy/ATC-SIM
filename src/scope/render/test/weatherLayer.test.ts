@@ -4,6 +4,7 @@ import { createScopeView } from "../../scopeView";
 import {
   WX_BACKGROUND_HEX,
   WX_PATTERN_TILE_SIZE,
+  WX_VIEWPORT_PADDING_PX,
   WX_STIPPLE_HEX,
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,
@@ -31,8 +32,9 @@ function mockDrawCtx(): {
 } {
   const drawImages: { image: unknown; dx: number; dy: number; dw: number; dh: number }[] = [];
   const ctx = {
-    drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number) {
-      drawImages.push({ image, dx, dy, dw, dh });
+    drawImage(image: unknown, ...coordinates: number[]) {
+      const [dx, dy, dw, dh] = coordinates.length === 8 ? coordinates.slice(4) : coordinates;
+      drawImages.push({ image, dx: dx!, dy: dy!, dw: dw!, dh: dh! });
     },
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, drawImages };
@@ -242,7 +244,7 @@ test("one enabled level draws one cached composite", () => {
   const panned = mockDrawCtx();
   drawWeatherLayer(panned.ctx, view, size);
   expect(panned.drawImages[0]!.image).toBe(first.drawImages[0]!.image);
-  expect(panned.drawImages[0]!.dx).not.toBe(first.drawImages[0]!.dx);
+  expect(panned.drawImages[0]!.dx).toBe(0);
 
   view.brite.wx = 50;
   const dim = mockDrawCtx();
@@ -279,12 +281,12 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     view.wxLevels = [false, true, false, false, false, false];
     const draw = mockDrawCtx();
     drawWeatherLayer(draw.ctx, view, size);
-    expect(draw.drawImages).toHaveLength(2);
+    expect(draw.drawImages).toHaveLength(1);
     expect(draw.drawImages[0]!.dw).toBeGreaterThan(0);
-    expect(draw.drawImages[1]!.dx).toBe(0);
-    expect(draw.drawImages[1]!.dy).toBe(0);
-    expect(draw.drawImages[1]!.dw).toBe(800);
-    expect(draw.drawImages[1]!.dh).toBe(800);
+    expect(draw.drawImages[0]!.dx).toBe(0);
+    expect(draw.drawImages[0]!.dy).toBe(0);
+    expect(draw.drawImages[0]!.dw).toBe(800);
+    expect(draw.drawImages[0]!.dh).toBe(800);
   }
 
   {
@@ -293,7 +295,7 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     view.wxLevels = [false, false, true, false, false, false];
     const draw = mockDrawCtx();
     drawWeatherLayer(draw.ctx, view, size);
-    expect(draw.drawImages).toHaveLength(2);
+    expect(draw.drawImages).toHaveLength(1);
   }
 
   {
@@ -311,7 +313,7 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     view.wxLevels = [false, false, false, false, true, false];
     const draw = mockDrawCtx();
     drawWeatherLayer(draw.ctx, view, size);
-    expect(draw.drawImages).toHaveLength(2);
+    expect(draw.drawImages).toHaveLength(1);
   }
 
   {
@@ -320,7 +322,7 @@ test("compositing screen-space patterns for WX2, WX3, WX5, and WX6 over VIP regi
     view.wxLevels = [false, false, false, false, false, true];
     const draw = mockDrawCtx();
     drawWeatherLayer(draw.ctx, view, size);
-    expect(draw.drawImages).toHaveLength(2);
+    expect(draw.drawImages).toHaveLength(1);
   }
 });
 
@@ -330,7 +332,10 @@ test("pattern origin translates with camera pan so marks do not parallax", () =>
   view.wxMosaic = syntheticLevelMosaic(2);
   view.wxLevels = [false, true, false, false, false, false];
 
-  const scratch = acquireScratchCanvas(size.widthPx, size.heightPx);
+  const scratch = acquireScratchCanvas(
+    size.widthPx + WX_VIEWPORT_PADDING_PX * 2,
+    size.heightPx + WX_VIEWPORT_PADDING_PX * 2,
+  );
   const translations: { x: number; y: number }[] = [];
   const origGetContext = scratch.getContext;
   scratch.getContext = (id: string) => {
@@ -371,7 +376,7 @@ test("WXC in brite controls stipple brightness: off = no stipple, 100% = #6c7070
   expect(wxStippleHex(100)).toBe(applyBrite("#6c7070", 100));
   const draw100 = mockDrawCtx();
   drawWeatherLayer(draw100.ctx, view, size);
-  expect(draw100.drawImages).toHaveLength(2);
+  expect(draw100.drawImages).toHaveLength(1);
 
   view.brite.wxc = 0;
   const drawOff = mockDrawCtx();

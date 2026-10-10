@@ -4,7 +4,7 @@
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
-import { nmToScreen, type ScopeViewSize } from "../camera";
+import { nmToScreen, pxPerNm, type ScopeViewSize } from "../camera";
 import { applyBrite, snapBriteLevel } from "../palette";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
@@ -16,6 +16,8 @@ import {
   type WeatherCompositeInput,
   type WeatherCompositePixels,
 } from "./weatherComposite";
+
+import { weatherViewportCrop, type WeatherCrop } from "./weatherViewport";
 
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
@@ -95,6 +97,8 @@ export type WxImageData = {
 
 export type Wx2dContext = {
   globalCompositeOperation?: string;
+  globalAlpha?: number;
+  setTransform?(a: number, b: number, c: number, d: number, e: number, f: number): void;
   imageSmoothingEnabled?: boolean;
   fillStyle?: string | CanvasPattern | CanvasGradient;
   save?(): void;
@@ -102,7 +106,7 @@ export type Wx2dContext = {
   translate?(x: number, y: number): void;
   clearRect?(x: number, y: number, w: number, h: number): void;
   fillRect?(x: number, y: number, w: number, h: number): void;
-  drawImage?(image: CanvasImageSource, dx: number, dy: number, dw?: number, dh?: number): void;
+  drawImage?(image: CanvasImageSource, ...coordinates: number[]): void;
   createPattern?(image: CanvasImageSource, repetition: string): CanvasPattern | null;
   createImageData?(width: number, height: number): ImageData | WxImageData;
   putImageData?(imageData: ImageData | WxImageData, dx: number, dy: number): void;
@@ -408,6 +412,7 @@ function cancelComposite(): void {
 
 export function resetWeatherLayerCache(): void {
   cachedMosaicState = null;
+  cachedViewport = null;
   cancelComposite();
   cachedScratchCanvas = null;
   cachedScratchWidth = 0;
@@ -471,21 +476,52 @@ function prepareWeatherLayers(mosaic: WxMosaic): CachedMosaicState | undefined {
   return cachedMosaicState ?? undefined;
 }
 
+interface CachedWeatherViewport {
+  layers: CachedMosaicState;
+  appearance: string;
+  geometry: string;
+  canvas: WxCanvas;
+  anchorX: number;
+  anchorY: number;
+}
+
+/** CSS-pixel margin amortizes composition across ordinary drags. */
+export const WX_VIEWPORT_PADDING_PX = 128;
+
+let cachedViewport: CachedWeatherViewport | null = null;
+
+function drawCroppedLayer(ctx: Wx2dContext, canvas: WxCanvas, crop: WeatherCrop): void {
+  ctx.drawImage?.(
+    canvas as unknown as CanvasImageSource,
+    crop.sx,
+    crop.sy,
+    crop.sw,
+    crop.sh,
+    crop.dx,
+    crop.dy,
+    crop.dw,
+    crop.dh,
+  );
+}
+
 function drawScreenPattern(
-  ctx: CanvasRenderingContext2D,
+  ctx: Wx2dContext,
   maskCanvas: WxCanvas,
   kind: WxPatternKind,
   briteWxc: number,
   destX: number,
   destY: number,
-  destW: number,
-  destH: number,
+  crop: WeatherCrop,
   size: ScopeViewSize,
+  resolution: number,
 ): void {
   if (snapBriteLevel(briteWxc) <= 0) {
     return;
   }
-  const scratchCanvas = acquireScratchCanvas(size.widthPx, size.heightPx);
+  const scratchCanvas = acquireScratchCanvas(
+    Math.ceil(size.widthPx * resolution),
+    Math.ceil(size.heightPx * resolution),
+  );
   if (!scratchCanvas || typeof scratchCanvas.getContext !== "function") {
     return;
   }
@@ -496,16 +532,14 @@ function drawScreenPattern(
 
   const pattern = getOrCreatePattern(scratchCtx, kind, briteWxc);
 
-  if (typeof scratchCtx.clearRect === "function") {
-    scratchCtx.clearRect(0, 0, size.widthPx, size.heightPx);
-  }
+  scratchCtx.setTransform?.(1, 0, 0, 1, 0, 0);
+  scratchCtx.clearRect?.(0, 0, scratchCanvas.width, scratchCanvas.height);
+  scratchCtx.setTransform?.(resolution, 0, 0, resolution, 0, 0);
 
   scratchCtx.globalCompositeOperation = "source-over";
   scratchCtx.imageSmoothingEnabled = false;
 
-  if (typeof scratchCtx.drawImage === "function") {
-    scratchCtx.drawImage(maskCanvas as unknown as CanvasImageSource, destX, destY, destW, destH);
-  }
+  drawCroppedLayer(scratchCtx, maskCanvas, crop);
 
   scratchCtx.globalCompositeOperation = "source-in";
   const originX = Math.round(destX);
@@ -527,7 +561,7 @@ function drawScreenPattern(
   }
 
   scratchCtx.globalCompositeOperation = "source-over";
-  ctx.drawImage(scratchCanvas as unknown as CanvasImageSource, 0, 0, size.widthPx, size.heightPx);
+  ctx.drawImage?.(scratchCanvas as unknown as CanvasImageSource, 0, 0, size.widthPx, size.heightPx);
 }
 
 export function drawWeatherLayer(
@@ -539,45 +573,105 @@ export function drawWeatherLayer(
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
     cancelComposite();
     cachedMosaicState = null;
+    cachedViewport = null;
     return;
   }
   const layers = prepareWeatherLayers(mosaic);
-  if (!layers || !anyLevelOn(view.wxLevels)) return;
+  if (!layers || !anyLevelOn(view.wxLevels) || size.widthPx <= 0 || size.heightPx <= 0) return;
   const arp = resolveArp(view);
   const nw = latLonToNm({ latDeg: layers.mosaic.northLat, lonDeg: layers.mosaic.westLon }, arp);
   const se = latLonToNm({ latDeg: layers.mosaic.southLat, lonDeg: layers.mosaic.eastLon }, arp);
   const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
-  const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
   const destX = nwPx.x;
   const destY = nwPx.y;
-  const destW = sePx.x - nwPx.x;
-  const destH = sePx.y - nwPx.y;
+  // Derive span independently of pan to avoid floating-point cache invalidations.
+  const scale = pxPerNm(view.camera, size);
+  const destW = (se.xNm - nw.xNm) * scale;
+  const destH = (nw.yNm - se.yNm) * scale;
 
-  const imageSmoothingEnabled = ctx.imageSmoothingEnabled;
-  ctx.imageSmoothingEnabled = false;
-
-  const alpha = ctx.globalAlpha ?? 1;
-  const briteWxc = view.brite.wxc ?? 100;
-  for (let level = 0; level < 6; level++) {
-    const canvas = layers.layers[level];
-    if (!view.wxLevels[level] || !canvas) continue;
-    ctx.globalAlpha = (alpha * snapBriteLevel(view.brite.wx)) / 100;
-    ctx.drawImage(canvas as unknown as CanvasImageSource, destX, destY, destW, destH);
-    ctx.globalAlpha = alpha;
-    if (snapBriteLevel(briteWxc) > 0 && level !== 0 && level !== 3) {
-      drawScreenPattern(
-        ctx,
-        canvas,
-        level === 1 || level === 4 ? "square" : "rectangle",
-        briteWxc,
-        destX,
-        destY,
-        destW,
-        destH,
-        size,
-      );
+  const transform = ctx.getTransform?.();
+  const resolution = Math.max(
+    1,
+    transform ? Math.hypot(transform.a, transform.b) : globalThis.devicePixelRatio || 1,
+  );
+  const padding = WX_VIEWPORT_PADDING_PX;
+  const bufferedSize = {
+    widthPx: size.widthPx + padding * 2,
+    heightPx: size.heightPx + padding * 2,
+  };
+  const width = Math.ceil(bufferedSize.widthPx * resolution);
+  const height = Math.ceil(bufferedSize.heightPx * resolution);
+  const appearance = `${view.wxLevels.join(",")}:${snapBriteLevel(view.brite.wx)}:${snapBriteLevel(view.brite.wxc)}`;
+  const geometry = `${destW}:${destH}:${size.widthPx}:${size.heightPx}:${resolution}`;
+  if (
+    !cachedViewport ||
+    cachedViewport.layers !== layers ||
+    cachedViewport.appearance !== appearance ||
+    cachedViewport.geometry !== geometry ||
+    Math.abs(destX - cachedViewport.anchorX) > padding ||
+    Math.abs(destY - cachedViewport.anchorY) > padding
+  ) {
+    // Reuse viewport storage while dragging. New data or appearance gets a new canvas.
+    const canvas =
+      cachedViewport?.layers === layers &&
+      cachedViewport.appearance === appearance &&
+      cachedViewport.canvas.width === width &&
+      cachedViewport.canvas.height === height
+        ? cachedViewport.canvas
+        : createOffscreenCanvas(width, height);
+    const viewport = canvas.getContext?.("2d");
+    if (!viewport) return;
+    viewport.setTransform?.(1, 0, 0, 1, 0, 0);
+    viewport.clearRect?.(0, 0, width, height);
+    viewport.setTransform?.(resolution, 0, 0, resolution, 0, 0);
+    viewport.imageSmoothingEnabled = false;
+    viewport.globalCompositeOperation = "source-over";
+    const crop = weatherViewportCrop(
+      layers.mosaic.widthPx,
+      layers.mosaic.heightPx,
+      destX + padding,
+      destY + padding,
+      destW,
+      destH,
+      bufferedSize,
+    );
+    if (crop) {
+      const briteWxc = view.brite.wxc ?? 100;
+      for (let level = 0; level < 6; level++) {
+        const layer = layers.layers[level];
+        if (!view.wxLevels[level] || !layer) continue;
+        viewport.globalAlpha = snapBriteLevel(view.brite.wx) / 100;
+        drawCroppedLayer(viewport, layer, crop);
+        viewport.globalAlpha = 1;
+        if (snapBriteLevel(briteWxc) > 0 && level !== 0 && level !== 3) {
+          drawScreenPattern(
+            viewport,
+            layer,
+            level === 1 || level === 4 ? "square" : "rectangle",
+            briteWxc,
+            destX + padding,
+            destY + padding,
+            crop,
+            bufferedSize,
+            resolution,
+          );
+        }
+      }
     }
+    cachedViewport = { layers, appearance, geometry, canvas, anchorX: destX, anchorY: destY };
   }
-  ctx.globalAlpha = alpha;
-  ctx.imageSmoothingEnabled = imageSmoothingEnabled;
+  const smoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    cachedViewport.canvas as unknown as CanvasImageSource,
+    (padding - (destX - cachedViewport.anchorX)) * resolution,
+    (padding - (destY - cachedViewport.anchorY)) * resolution,
+    size.widthPx * resolution,
+    size.heightPx * resolution,
+    0,
+    0,
+    size.widthPx,
+    size.heightPx,
+  );
+  ctx.imageSmoothingEnabled = smoothing;
 }

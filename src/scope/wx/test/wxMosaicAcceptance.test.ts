@@ -1,3 +1,5 @@
+import { createMockCtx } from "../../test/mockCanvas";
+import { weatherViewportCrop } from "../../render/weatherViewport";
 import { syncDisplayControlBar } from "../../../ui/dcb/DisplayControlBar";
 import { ensureWxMosaic } from "../ensure";
 import { N0Q_RGB_DBZ_RAMP, WX_REFRESH_MS, emptyWxMosaic } from "../index";
@@ -27,6 +29,7 @@ import {
   wxVipContourHex,
   wxVipFillHex,
   resetWeatherLayerCache,
+  WX_VIEWPORT_PADDING_PX,
 } from "../../render/weatherLayer";
 import {
   bboxCovers,
@@ -317,22 +320,22 @@ test("WX update precomputes available layers once; toggles reuse them and refres
     const second = paint()[0]!.image;
     expect(second).not.toBe(first);
     view.wxLevels = [true, true, false, false, false, false];
-    expect(paint()).toHaveLength(3);
+    expect(paint()).toHaveLength(1);
     view.brite.wx = 50;
-    expect(paint()[0]!.image).toBe(first);
+    const priorViewport = paint()[0]!.image;
     expect(TestWorker.instances).toHaveLength(1);
     const built = buildWeatherComposite(TestWorker.instances[0]!.input);
     expect(built.layers.slice(2)).toEqual([null, null, null, null]);
     view.wxMosaic = vip1Mosaic();
-    expect(paint()[0]!.image).toBe(first);
+    expect(paint()[0]!.image).toBe(priorViewport);
     const stale = TestWorker.instances[1]!;
     view.wxMosaic = vip1Mosaic();
-    expect(paint()[0]!.image).toBe(first);
+    expect(paint()[0]!.image).toBe(priorViewport);
     expect(stale.terminated).toBe(true);
     stale.complete();
-    expect(paint()[0]!.image).toBe(first);
+    expect(paint()[0]!.image).toBe(priorViewport);
     TestWorker.instances[2]!.complete();
-    expect(paint()[0]!.image).not.toBe(first);
+    expect(paint()[0]!.image).not.toBe(priorViewport);
     expect(paint()).toHaveLength(1);
     view.wxLevels = [false, false, false, false, false, false];
     expect(paint()).toHaveLength(0);
@@ -447,6 +450,136 @@ test("WX AVL updates without clicks only after all tiles complete and only for p
     syncDisplayControlBar(view);
     expect(captions.every((caption) => caption.textContent === "")).toBe(true);
   } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test.each([
+  { x: -9600, y: -9600, w: 20000, h: 20000, sx: 983.04, sw: 81.92, dx: 0, dw: 800 },
+  { x: 400, y: 400, w: 800, h: 800, sx: 0, sw: 1024, dx: 400, dw: 400 },
+])("WX clips source before scaling at $x,$y", ({ x, y, w, h, sx, sw, dx, dw }) => {
+  const crop = weatherViewportCrop(2048, 2048, x, y, w, h, { widthPx: 800, heightPx: 800 })!;
+  expect(crop.sx).toBeCloseTo(sx);
+  expect(crop.sy).toBeCloseTo(sx);
+  expect(crop.sw).toBeCloseTo(sw);
+  expect(crop.sh).toBeCloseTo(sw);
+  expect(crop.dx).toBe(dx);
+  expect(crop.dy).toBe(dx);
+  expect(crop.dw).toBe(dw);
+  expect(crop.dh).toBe(dw);
+  expect(
+    weatherViewportCrop(2048, 2048, 900, 900, 800, 800, { widthPx: 800, heightPx: 800 }),
+  ).toBeUndefined();
+});
+
+test("WX viewport crops layers and masks, reuses unchanged frames, and invalidates on view changes", () => {
+  resetWeatherLayerCache();
+  const sourceDraws: Array<{ image: unknown; coordinates: number[] }> = [];
+  let uploads = 0;
+  const canvases: Array<{ width: number; height: number }> = [];
+  vi.stubGlobal("Worker", undefined);
+  vi.stubGlobal("devicePixelRatio", 1);
+  vi.stubGlobal("document", {
+    createElement: () => {
+      const mock = createMockCtx();
+      const ctx = {
+        ...mock.ctx,
+        drawImage: (image: unknown, ...coordinates: number[]) => {
+          sourceDraws.push({ image, coordinates });
+        },
+        putImageData: (data: { width: number }) => {
+          if (data.width === 64) uploads++;
+        },
+        createPattern: () => ({}),
+      };
+      const canvas = { width: 0, height: 0, getContext: () => ctx };
+      canvases.push(canvas);
+      return canvas;
+    },
+  });
+  try {
+    const view = createScopeView(0, 0, { arp: { latDeg: 33.6, lonDeg: -84.4 } });
+    const rgba = new Uint8Array(64 * 64 * 4);
+    for (let index = 0; index < 64 * 64; index++) {
+      const stop = N0Q_RGB_DBZ_RAMP.find((entry) => entry.dbz === (index % 2 ? 30 : 18))!;
+      rgba.set([stop.r, stop.g, stop.b, 255], index * 4);
+    }
+    view.wxMosaic = decodeRgbaToVipMasks(rgba, 64, 64, bboxFromArp(view.arp), 1000);
+    view.wxLevels = [true, true, false, false, false, false];
+    let size = { widthPx: 800, heightPx: 800 };
+    const main = createMockCtx();
+    const blits: number[][] = [];
+    main.ctx.drawImage = (image: CanvasImageSource, ...coordinates: number[]) => {
+      main.drawImages.push(image);
+      blits.push(coordinates);
+    };
+    const paint = () => drawWeatherLayer(main.ctx, view, size);
+    paint();
+    expect(uploads).toBe(2);
+    const count = sourceDraws.length;
+    const crops = sourceDraws.filter((draw) => draw.coordinates.length === 8);
+    // Backgrounds and stipple masks crop their source and never scale beyond the viewport.
+    expect(crops).toHaveLength(3);
+    for (const { coordinates } of crops) {
+      expect(coordinates[2]!).toBeLessThan(64);
+      expect(coordinates[3]!).toBeLessThan(64);
+      expect(coordinates[6]!).toBeLessThanOrEqual(800 + WX_VIEWPORT_PADDING_PX * 2);
+      expect(coordinates[7]!).toBeLessThanOrEqual(800 + WX_VIEWPORT_PADDING_PX * 2);
+    }
+    paint();
+    paint();
+    expect(sourceDraws).toHaveLength(count);
+    expect(main.drawImages).toHaveLength(3);
+    const canvasCount = canvases.length;
+    view.camera.centerEastNm = 2;
+    paint();
+    expect(sourceDraws).toHaveLength(count);
+    expect(canvases).toHaveLength(canvasCount);
+    expect(blits.at(-1)![0]).toBeCloseTo(WX_VIEWPORT_PADDING_PX + 40);
+    expect(blits.at(-1)![4]).toBe(0);
+    // Sustained short pans use one cached blit without layer/mask recomposition.
+    for (let frame = 0; frame < 60; frame++) {
+      view.camera.centerEastNm = 2 + (frame % 4) * 0.2;
+      view.camera.centerNorthNm = (frame % 3) * 0.2;
+      paint();
+    }
+    expect(sourceDraws).toHaveLength(count);
+    view.camera.centerEastNm = 20;
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(count);
+    const afterPan = sourceDraws.length;
+    paint();
+    expect(sourceDraws).toHaveLength(afterPan);
+    view.camera.rangeNm = 40;
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(afterPan);
+    const afterRange = sourceDraws.length;
+    view.wxLevels = [false, true, false, false, false, false];
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(afterRange);
+    const afterToggle = sourceDraws.length;
+    view.brite.wxc = 0;
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(afterToggle);
+    const afterBrite = sourceDraws.length;
+    size = { widthPx: 1000, heightPx: 800 };
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(afterBrite);
+    const afterSize = sourceDraws.length;
+    vi.stubGlobal("devicePixelRatio", 2);
+    paint();
+    expect(sourceDraws.length).toBeGreaterThan(afterSize);
+    const viewport = main.drawImages.at(-1) as { width: number; height: number };
+    expect(viewport.width).toBe((1000 + WX_VIEWPORT_PADDING_PX * 2) * 2);
+    expect(viewport.height).toBe((800 + WX_VIEWPORT_PADDING_PX * 2) * 2);
+    const beforeOutside = sourceDraws.length;
+    view.camera.centerEastNm = 2000;
+    paint();
+    paint();
+    expect(sourceDraws).toHaveLength(beforeOutside);
+    expect(uploads).toBe(2);
+  } finally {
+    resetWeatherLayerCache();
     vi.unstubAllGlobals();
   }
 });
