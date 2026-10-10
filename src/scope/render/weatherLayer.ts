@@ -10,6 +10,13 @@ import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
 import { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
+import {
+  buildWeatherComposite,
+  buildWeatherCompositeAsync,
+  type WeatherCompositeInput,
+  type WeatherCompositePixels,
+} from "./weatherComposite";
+
 export { WX_VIP_FILL_HEX } from "./wxStarsFill";
 
 export const DEFAULT_WX_ALPHA = 255;
@@ -53,23 +60,8 @@ export function wxVipContourHex(level: 1 | 2 | 3 | 4 | 5 | 6, briteWxc: number):
   return applyBrite(WX_VIP_CONTOUR_HEX[level - 1]!, briteWxc);
 }
 
-function maskBit(mask: Uint8Array, index: number): boolean {
-  return ((mask[index >> 3] ?? 0) & (1 << (index & 7))) !== 0;
-}
-
 function anyLevelOn(levels: WxLevels): boolean {
   return levels[0] || levels[1] || levels[2] || levels[3] || levels[4] || levels[5];
-}
-
-function levelsMatch(a: WxLevels, b: WxLevels): boolean {
-  return (
-    a[0] === b[0] &&
-    a[1] === b[1] &&
-    a[2] === b[2] &&
-    a[3] === b[3] &&
-    a[4] === b[4] &&
-    a[5] === b[5]
-  );
 }
 
 function parseHexRgb(hex: string): [number, number, number] {
@@ -181,16 +173,6 @@ function writeCompositePixels(canvas: WxCanvas, pixels: Uint8ClampedArray): void
       : { width, height, data: new Uint8ClampedArray(width * height * 4), colorSpace: "srgb" };
   imageData.data.set(pixels);
   ctx.putImageData(imageData as ImageData, 0, 0);
-}
-
-function highestVipAt(mosaic: WxMosaic, levels: WxLevels, index: number): number {
-  let vip = 0;
-  for (let level = 0; level < 6; level++) {
-    if (levels[level] && maskBit(mosaic.vipMasks[level]!, index)) {
-      vip = level + 1;
-    }
-  }
-  return vip;
 }
 
 /** Procedural fill / 1px outline. Not a mosaic-bin flood. */
@@ -409,24 +391,24 @@ export function wxProceduralTextureRgb(
   return fill;
 }
 
-export interface WxCompositeLayers {
-  baseCanvas: WxCanvas;
-  squaresMask: WxCanvas | null;
-  rectanglesMask: WxCanvas | null;
-}
-
-interface CachedMosaicState extends WxCompositeLayers {
+interface CachedMosaicState {
   mosaic: WxMosaic;
-  levels: WxLevels;
-  briteWx: number;
-  briteWxc: number;
-  scale: number;
+  layers: Array<WxCanvas | null>;
 }
 
 let cachedMosaicState: CachedMosaicState | null = null;
+let pendingMosaic: WxMosaic | null = null;
+let compositeWorker: Worker | null = null;
+
+function cancelComposite(): void {
+  pendingMosaic = null;
+  compositeWorker?.terminate();
+  compositeWorker = null;
+}
 
 export function resetWeatherLayerCache(): void {
   cachedMosaicState = null;
+  cancelComposite();
   cachedScratchCanvas = null;
   cachedScratchWidth = 0;
   cachedScratchHeight = 0;
@@ -434,114 +416,59 @@ export function resetWeatherLayerCache(): void {
   patternCache.clear();
 }
 
-function rebuildComposite(
-  mosaic: WxMosaic,
-  levels: WxLevels,
-  briteWx: number,
-  scale: number = WX_TEXTURE_SCALE,
-): WxCompositeLayers {
-  const width = Math.max(1, Math.round(mosaic.widthPx * scale));
-  const height = Math.max(1, Math.round(mosaic.heightPx * scale));
-  const totalPixels = width * height;
-  const basePixels = new Uint8ClampedArray(totalPixels * 4);
-  const mw = mosaic.widthPx;
-  const mh = mosaic.heightPx;
-
-  const squaresActive = levels[1] || levels[4];
-  const rectanglesActive = levels[2] || levels[5];
-
-  let squaresMaskPixels: Uint8ClampedArray | null = null;
-  let rectanglesMaskPixels: Uint8ClampedArray | null = null;
-
-  if (squaresActive) {
-    squaresMaskPixels = new Uint8ClampedArray(totalPixels * 4);
-  }
-  if (rectanglesActive) {
-    rectanglesMaskPixels = new Uint8ClampedArray(totalPixels * 4);
-  }
-
-  let hasSquareMarks = false;
-  let hasRectangleMarks = false;
-
-  for (let row = 0; row < height; row++) {
-    const mosaicRow = Math.min(mh - 1, Math.floor(row / scale));
-    for (let col = 0; col < width; col++) {
-      const mosaicCol = Math.min(mw - 1, Math.floor(col / scale));
-      const index = mosaicRow * mw + mosaicCol;
-      const vip = highestVipAt(mosaic, levels, index);
-      if (vip === 0) {
-        continue;
-      }
-      const o = (row * width + col) * 4;
-      const bgHex = WX_BACKGROUND_HEX[vip - 1]!;
-      const [r, g, b] = parseHexRgb(applyBrite(bgHex, briteWx));
-      basePixels[o] = r;
-      basePixels[o + 1] = g;
-      basePixels[o + 2] = b;
-      basePixels[o + 3] = DEFAULT_WX_ALPHA;
-
-      if (squaresActive && (vip === 2 || vip === 5)) {
-        squaresMaskPixels![o] = 255;
-        squaresMaskPixels![o + 1] = 255;
-        squaresMaskPixels![o + 2] = 255;
-        squaresMaskPixels![o + 3] = 255;
-        hasSquareMarks = true;
-      }
-
-      if (rectanglesActive && (vip === 3 || vip === 6)) {
-        rectanglesMaskPixels![o] = 255;
-        rectanglesMaskPixels![o + 1] = 255;
-        rectanglesMaskPixels![o + 2] = 255;
-        rectanglesMaskPixels![o + 3] = 255;
-        hasRectangleMarks = true;
-      }
-    }
-  }
-
-  const baseCanvas = createOffscreenCanvas(width, height);
-  writeCompositePixels(baseCanvas, basePixels);
-
-  let squaresMask: WxCanvas | null = null;
-  if (squaresActive && hasSquareMarks && squaresMaskPixels) {
-    squaresMask = createOffscreenCanvas(width, height);
-    writeCompositePixels(squaresMask, squaresMaskPixels);
-  }
-
-  let rectanglesMask: WxCanvas | null = null;
-  if (rectanglesActive && hasRectangleMarks && rectanglesMaskPixels) {
-    rectanglesMask = createOffscreenCanvas(width, height);
-    writeCompositePixels(rectanglesMask, rectanglesMaskPixels);
-  }
-
-  return { baseCanvas, squaresMask, rectanglesMask };
-}
-
-function reuseOrRebuildComposite(
-  mosaic: WxMosaic,
-  levels: WxLevels,
-  briteWx: number,
-  briteWxc: number,
-): WxCompositeLayers {
-  if (
-    cachedMosaicState &&
-    cachedMosaicState.mosaic === mosaic &&
-    levelsMatch(cachedMosaicState.levels, levels) &&
-    cachedMosaicState.briteWx === briteWx &&
-    cachedMosaicState.briteWxc === briteWxc &&
-    cachedMosaicState.scale === WX_TEXTURE_SCALE
-  ) {
+/** Warm all available levels even while every WX latch is off. */
+function prepareWeatherLayers(mosaic: WxMosaic): CachedMosaicState | undefined {
+  if (cachedMosaicState?.mosaic === mosaic) {
+    cancelComposite();
     return cachedMosaicState;
   }
-  const layers = rebuildComposite(mosaic, levels, briteWx, WX_TEXTURE_SCALE);
-  cachedMosaicState = {
-    ...layers,
-    mosaic,
-    levels,
-    briteWx,
-    briteWxc,
-    scale: WX_TEXTURE_SCALE,
+  if (pendingMosaic === mosaic) return cachedMosaicState ?? undefined;
+  cancelComposite();
+  const input: WeatherCompositeInput = {
+    width: mosaic.widthPx,
+    height: mosaic.heightPx,
+    masks: mosaic.vipMasks,
+    colors: WX_BACKGROUND_HEX.map((color) => parseHexRgb(color)),
   };
-  return cachedMosaicState;
+  const finish = (pixels: WeatherCompositePixels | undefined): void => {
+    if (pendingMosaic !== mosaic || !pixels) return;
+    const layers = pixels.layers.map((data) => {
+      if (!data) return null;
+      const canvas = createOffscreenCanvas(pixels.width, pixels.height);
+      writeCompositePixels(canvas, data);
+      return canvas;
+    });
+    cachedMosaicState = { mosaic, layers };
+    cancelComposite();
+  };
+  pendingMosaic = mosaic;
+  // Small DOM-free fixtures fit within a bounded synchronous batch.
+  if (input.width * input.height <= 4096 && typeof Worker !== "function") {
+    finish(buildWeatherComposite(input));
+    return cachedMosaicState ?? undefined;
+  }
+  const fallback = (): void => {
+    compositeWorker?.terminate();
+    compositeWorker = null;
+    void buildWeatherCompositeAsync(input, () => pendingMosaic === mosaic).then(finish);
+  };
+  try {
+    if (typeof Worker !== "function") fallback();
+    else {
+      compositeWorker = new Worker(new URL("./weatherComposite.worker.ts", import.meta.url), {
+        type: "module",
+      });
+      compositeWorker.onmessage = (event: MessageEvent<WeatherCompositePixels>) =>
+        finish(event.data);
+      compositeWorker.onerror = () => {
+        if (pendingMosaic === mosaic) fallback();
+      };
+      compositeWorker.postMessage(input);
+    }
+  } catch {
+    fallback();
+  }
+  return cachedMosaicState ?? undefined;
 }
 
 function drawScreenPattern(
@@ -608,22 +535,17 @@ export function drawWeatherLayer(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
-  if (!anyLevelOn(view.wxLevels)) {
-    return;
-  }
   const mosaic = view.wxMosaic;
   if (!mosaic || mosaic.widthPx <= 0 || mosaic.heightPx <= 0) {
+    cancelComposite();
+    cachedMosaicState = null;
     return;
   }
-  const { baseCanvas, squaresMask, rectanglesMask } = reuseOrRebuildComposite(
-    mosaic,
-    view.wxLevels,
-    view.brite.wx,
-    view.brite.wxc,
-  );
+  const layers = prepareWeatherLayers(mosaic);
+  if (!layers || !anyLevelOn(view.wxLevels)) return;
   const arp = resolveArp(view);
-  const nw = latLonToNm({ latDeg: mosaic.northLat, lonDeg: mosaic.westLon }, arp);
-  const se = latLonToNm({ latDeg: mosaic.southLat, lonDeg: mosaic.eastLon }, arp);
+  const nw = latLonToNm({ latDeg: layers.mosaic.northLat, lonDeg: layers.mosaic.westLon }, arp);
+  const se = latLonToNm({ latDeg: layers.mosaic.southLat, lonDeg: layers.mosaic.eastLon }, arp);
   const nwPx = nmToScreen(nw.xNm, nw.yNm, view.camera, size);
   const sePx = nmToScreen(se.xNm, se.yNm, view.camera, size);
   const destX = nwPx.x;
@@ -634,18 +556,19 @@ export function drawWeatherLayer(
   const imageSmoothingEnabled = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = false;
 
-  ctx.drawImage(baseCanvas as unknown as CanvasImageSource, destX, destY, destW, destH);
-
+  const alpha = ctx.globalAlpha ?? 1;
   const briteWxc = view.brite.wxc ?? 100;
-  if (snapBriteLevel(briteWxc) > 0) {
-    if (squaresMask) {
-      drawScreenPattern(ctx, squaresMask, "square", briteWxc, destX, destY, destW, destH, size);
-    }
-    if (rectanglesMask) {
+  for (let level = 0; level < 6; level++) {
+    const canvas = layers.layers[level];
+    if (!view.wxLevels[level] || !canvas) continue;
+    ctx.globalAlpha = (alpha * snapBriteLevel(view.brite.wx)) / 100;
+    ctx.drawImage(canvas as unknown as CanvasImageSource, destX, destY, destW, destH);
+    ctx.globalAlpha = alpha;
+    if (snapBriteLevel(briteWxc) > 0 && level !== 0 && level !== 3) {
       drawScreenPattern(
         ctx,
-        rectanglesMask,
-        "rectangle",
+        canvas,
+        level === 1 || level === 4 ? "square" : "rectangle",
         briteWxc,
         destX,
         destY,
@@ -655,6 +578,6 @@ export function drawWeatherLayer(
       );
     }
   }
-
+  ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = imageSmoothingEnabled;
 }

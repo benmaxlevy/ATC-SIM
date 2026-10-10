@@ -49,9 +49,9 @@ test("binVip honors a data-provided break array without facility branches", () =
   expect(binVip(55, custom)).toBe(6);
 });
 
-test("bboxFromArp at lat 0 uses 80/60 deg lon pad", () => {
+test("bboxFromArp at lat 0 uses 512/60 deg lon pad", () => {
   const bbox = bboxFromArp({ latDeg: 0, lonDeg: 0 });
-  const padDeg = 80 / 60;
+  const padDeg = 512 / 60;
   expect(bbox.westLon).toBeCloseTo(-padDeg, 9);
   expect(bbox.eastLon).toBeCloseTo(padDeg, 9);
   expect(bbox.southLat).toBeCloseTo(-padDeg, 9);
@@ -61,8 +61,8 @@ test("bboxFromArp at lat 0 uses 80/60 deg lon pad", () => {
 test("bboxFromArp at CONUS-like ARP 33.6,-84.4 is ARP-driven not an airport id", () => {
   const arp = { latDeg: 33.6, lonDeg: -84.4 };
   const bbox = bboxFromArp(arp);
-  const latPad = 80 / 60;
-  const lonPad = 80 / (60 * Math.cos((33.6 * Math.PI) / 180));
+  const latPad = 512 / 60;
+  const lonPad = 512 / (60 * Math.cos((33.6 * Math.PI) / 180));
   expect(bbox.southLat).toBeCloseTo(33.6 - latPad, 9);
   expect(bbox.northLat).toBeCloseTo(33.6 + latPad, 9);
   expect(bbox.westLon).toBeCloseTo(-84.4 - lonPad, 9);
@@ -86,10 +86,10 @@ test("N0Q tile URL is /wx-iem XYZ with no WMS query", () => {
   expect(IEM_N0Q_TILE_SIZE_PX).toBe(256);
 });
 
-test("N0Q cover around ARP pad is at most four tiles and never WMS", () => {
+test("N0Q cover around ARP pad is at most 64 tiles and never WMS", () => {
   const cover = planIemN0qCover(bboxFromArp({ latDeg: 0, lonDeg: 0 }));
   expect(cover.tiles.length).toBeGreaterThanOrEqual(1);
-  expect(cover.tiles.length).toBeLessThanOrEqual(4);
+  expect(cover.tiles.length).toBeLessThanOrEqual(64);
   expect(cover.z).toBeLessThanOrEqual(IEM_N0Q_TILE_Z);
   expect(cover.bbox.westLon).toBeLessThan(0);
   expect(cover.bbox.eastLon).toBeGreaterThan(0);

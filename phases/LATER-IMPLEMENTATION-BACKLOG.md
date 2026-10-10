@@ -404,7 +404,8 @@ change; each capability needs its own data and acceptance criteria.
 Shipped display-only path: IEM N0Q VIP 1–6 fills, MAIN WX1–6, `*WX`, BRITE
 WX/WXC contours, BRITE BKC background contrast, SSA WX / WX HIST telemetry, and
 SSA FILTER WX toggle. `ensureWxMosaic` on the session rAF fetches one IEM N0Q
-XYZ tile when any latch is on and the mosaic is empty or older than 5 min.
+XYZ tile cover when the mosaic is empty, older than 5 min, or no longer covers
+the full airport pad. Fetching continues with every WX latch off.
 Extra WX clicks do not refetch. Default levels remain off. Live tiles need
 Vite `/wx-iem` (`npm run dev`). Not WMS GetMap — IEM MapServer FILTER
 rejects the `nexrad-n0q` layer group.
@@ -416,6 +417,22 @@ Still later:
 Manual leftover: Chrome KATL live IEM walk. skip-with-reason: no visual
 operator in this worker worktree. Automated tests cover DCB / `*WX` /
 BRITE / cached paint / SSA WX telemetry. Do not invent a visual pass.
+
+Airport-centered WX now requests a ±512 NM square, covering the 512 NM radius
+in the trainer's local coordinate system. Coverage is bounded to 64 tiles and
+2048×2048 pixels, with four concurrent requests and Mercator-to-latitude
+resampling. Available WX intensity layers build once per mosaic update in a module worker,
+with a row-batched fallback when workers are unavailable, including while every
+WX latch is off. Toggles combine cached layers immediately; brightness applies
+at paint time without rebuilding pixels. The previous layer set remains visible
+until the replacement is ready; stale results are ignored, and disabling every
+WX level hides the layer immediately.
+This is a trainer coverage choice, not a manual-required sensor
+radius (STARS manual §4.4.1 p. 4-33; §4.6 p. 4-42). It does not guarantee
+coverage of a panned viewport or rectangular display corners beyond this area.
+Polar requests extending beyond Web Mercator latitude limits return empty
+weather on the normal retry cadence; future polar-source work must preserve
+bounded fetching, generic ARP coordinates, and truthful coverage metadata.
 
 ### Manual Inhibit Commands and Safety Inhibit Glyphs
 

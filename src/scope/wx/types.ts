@@ -24,7 +24,10 @@ export const DEFAULT_WX_LEVELS: WxLevels = [false, false, false, false, false, f
 export const DEFAULT_WX_VIP_BREAKS_DBZ: readonly number[] = [18, 30, 36, 41, 46, 51];
 
 export const WX_REFRESH_MS = 5 * 60 * 1000;
-export const DEFAULT_WX_PAD_NM = 80;
+/** Airport-centered square covering the maximum range circle; a trainer choice,
+ * not a sensor radius specified by STARS manual §4.6 (p. 4-42).
+ */
+export const DEFAULT_WX_PAD_NM = 512;
 export const WX_GETMAP_MIN_PX = 256;
 export const WX_GETMAP_MAX_PX = 512;
 

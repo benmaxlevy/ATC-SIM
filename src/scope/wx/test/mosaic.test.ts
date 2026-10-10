@@ -96,7 +96,7 @@ test("vipMaskHasPixels is isolated by level and ignores packed padding", () => {
   expect(vipMaskHasPixels(mosaic, 6)).toBe(true);
 });
 
-test("shouldRefetch is 5 min, in-pad ARP stays, never-fetched empty refetches", () => {
+test("shouldRefetch is 5 min, full pad stays covered, never-fetched empty refetches", () => {
   const arp = { latDeg: 33.6, lonDeg: -84.4 };
   const bbox = bboxFromArp(arp);
   const fetched = {
@@ -108,7 +108,7 @@ test("shouldRefetch is 5 min, in-pad ARP stays, never-fetched empty refetches", 
   expect(shouldRefetch(fetched, 10_000 + WX_REFRESH_MS - 1, arp, DEFAULT_WX_PAD_NM)).toBe(false);
   expect(shouldRefetch(fetched, 10_000 + WX_REFRESH_MS, arp, DEFAULT_WX_PAD_NM)).toBe(true);
   const inPad = { latDeg: arp.latDeg + 0.2, lonDeg: arp.lonDeg + 0.2 };
-  expect(shouldRefetch(fetched, 11_000, inPad, DEFAULT_WX_PAD_NM)).toBe(false);
+  expect(shouldRefetch(fetched, 11_000, inPad, DEFAULT_WX_PAD_NM)).toBe(true);
   const outPad = { latDeg: arp.latDeg + 3, lonDeg: arp.lonDeg };
   expect(shouldRefetch(fetched, 11_000, outPad, DEFAULT_WX_PAD_NM)).toBe(true);
 });

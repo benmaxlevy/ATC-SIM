@@ -82,7 +82,7 @@ test("ensureWxMosaic fetches once when a level is on and mosaic is empty", async
   const fetchImpl = mockFetch(calls);
   await ensureWxMosaic(view, { nowMs: 5_000, fetchImpl });
   expect(calls.length).toBeGreaterThanOrEqual(1);
-  expect(calls.length).toBeLessThanOrEqual(4);
+  expect(calls.length).toBeLessThanOrEqual(64);
   expect(calls[0]).toMatch(/^\/wx-iem\//);
   expect(view.wxMosaic.widthPx).toBeGreaterThan(0);
   expect(view.wxMosaic.fetchedAtMs).toBe(5_000);
@@ -105,7 +105,7 @@ test("ensureWxMosaic shares one in-flight tile fetch and refetches after 5 min",
   await first;
   const batch = calls.length;
   expect(batch).toBeGreaterThanOrEqual(1);
-  expect(batch).toBeLessThanOrEqual(4);
+  expect(batch).toBeLessThanOrEqual(64);
 
   await ensureWxMosaic(view, { nowMs: WX_REFRESH_MS, fetchImpl });
   expect(calls).toHaveLength(batch * 2);

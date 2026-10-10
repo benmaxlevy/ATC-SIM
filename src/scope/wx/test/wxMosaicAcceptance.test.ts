@@ -1,3 +1,8 @@
+import {
+  buildWeatherComposite,
+  type WeatherCompositeInput,
+  type WeatherCompositePixels,
+} from "../../render/weatherComposite";
 /**
  * T02-72 combined WX mosaic acceptance: DCB latches, preview `*WX`, BRITE
  * WX/WXC, and cached VIP fill/contour paint share one display-only path.
@@ -5,7 +10,7 @@
  * Manual Chrome KATL live IEM walk is skip-with-reason: no visual operator.
  * Do not invent a visual pass.
  */
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { INSTRUCTION_TYPES, SessionLog, createWorld, makeTestAircraft } from "@core";
 import { handleRadioText } from "@pilot";
 import { applyBrite } from "../../palette";
@@ -18,8 +23,18 @@ import {
   drawWeatherLayer,
   wxVipContourHex,
   wxVipFillHex,
+  resetWeatherLayerCache,
 } from "../../render/weatherLayer";
-import { bboxFromArp, decodeRgbaToVipMasks } from "../index";
+import {
+  bboxCovers,
+  bboxFromArp,
+  decodeRgbaToVipMasks,
+  encodeRgbaPng,
+  fetchWxMosaic,
+  planIemN0qCover,
+  shouldRefetch,
+  vipAtNm,
+} from "../index";
 
 function keyEvent(key: string) {
   return {
@@ -163,5 +178,195 @@ test("T02-72 — weather paint has no OSM, facility-id branch, or per-frame deco
     }
     expect(src, path).not.toMatch(/openstreetmap/i);
     expect(src, path).not.toMatch(/icao\s*===/);
+  }
+});
+
+test.each([
+  { latDeg: 0, lonDeg: 0 },
+  { latDeg: 33.6, lonDeg: -84.4 },
+  { latDeg: 60, lonDeg: 10 },
+  { latDeg: -49, lonDeg: 179 },
+])("512 NM cover is complete and bounded at $latDeg,$lonDeg", (arp) => {
+  const required = bboxFromArp(arp);
+  const cover = planIemN0qCover(required);
+  expect(bboxCovers(cover.bbox, required)).toBe(true);
+  expect(cover.tiles.length).toBeLessThanOrEqual(64);
+  expect(cover.widthPx).toBeLessThanOrEqual(2048);
+  expect(cover.heightPx).toBeLessThanOrEqual(2048);
+  for (const tile of cover.tiles) {
+    const parts = tile.url.split("/");
+    const x = Number(parts.at(-2));
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x).toBeLessThan(2 ** cover.z);
+  }
+});
+
+test("512 NM fetch bounds concurrency and preserves Mercator latitude alignment", async () => {
+  const arp = { latDeg: 49, lonDeg: 10 };
+  const cover = planIemN0qCover(bboxFromArp(arp));
+  let active = 0;
+  let peak = 0;
+  let calls = 0;
+  // Synthetic north/south band at 50 degrees; encode each tile in Mercator coordinates.
+  const boundaryY = ((1 - Math.asinh(Math.tan((50 * Math.PI) / 180)) / Math.PI) / 2) * 2 ** cover.z;
+  const mosaic = await fetchWxMosaic({
+    arp,
+    nowMs: 1000,
+    fetchImpl: async (input) => {
+      calls++;
+      active++;
+      peak = Math.max(peak, active);
+      await Promise.resolve();
+      const y = Number(String(input).split("/").at(-1)!.replace(".png", ""));
+      const pixels = new Uint8Array(256 * 256 * 4);
+      for (let row = 0; row < 256; row++) {
+        if (y + (row + 0.5) / 256 >= boundaryY) continue;
+        for (let col = 0; col < 256; col++) {
+          const offset = (row * 256 + col) * 4;
+          pixels[offset + 1] = 255;
+          pixels[offset + 3] = 255;
+        }
+      }
+      const response = new Response(new Uint8Array(encodeRgbaPng(256, 256, pixels)), {
+        status: 200,
+      });
+      active--;
+      return response;
+    },
+  });
+  expect(calls).toBe(cover.tiles.length);
+  expect(peak).toBe(4);
+  expect(vipAtNm(mosaic, 0, (50.3 - arp.latDeg) * 60, arp)).toBe(1);
+  expect(vipAtNm(mosaic, 0, (49.7 - arp.latDeg) * 60, arp)).toBe(0);
+  expect(shouldRefetch(mosaic, 2000, arp)).toBe(false);
+  // Center containment alone must not reuse a cover that lacks the required pad.
+  expect(shouldRefetch({ ...mosaic, ...bboxFromArp(arp, 80) }, 2000, arp)).toBe(true);
+});
+
+test("512 NM partial failures retain successful tiles; unsupported polar bounds stay empty", async () => {
+  const arp = { latDeg: 0, lonDeg: 0 };
+  const pixels = new Uint8Array([0, 255, 0, 255]);
+  let calls = 0;
+  const mosaic = await fetchWxMosaic({
+    arp,
+    nowMs: 1000,
+    fetchImpl: async () => {
+      if (++calls === 1) throw new Error("offline tile");
+      return new Response(new Uint8Array(encodeRgbaPng(1, 1, pixels)), { status: 200 });
+    },
+  });
+  expect(mosaic.widthPx).toBeGreaterThan(0);
+  expect(bboxCovers(mosaic, bboxFromArp(arp))).toBe(true);
+  expect(mosaic.vipMasks[0].some((byte) => byte !== 0)).toBe(true);
+  const polarArp = { latDeg: 80, lonDeg: 0 };
+  const polar = await fetchWxMosaic({
+    arp: polarArp,
+    nowMs: 1000,
+    fetchImpl: async () => {
+      throw new Error("must not request unsupported bounds");
+    },
+  });
+  expect(polar.widthPx).toBe(0);
+  expect(shouldRefetch(polar, 2000, polarArp)).toBe(false);
+});
+
+test("WX update precomputes available layers once; toggles reuse them and refresh swaps atomically", () => {
+  class TestWorker {
+    static instances: TestWorker[] = [];
+    onmessage?: (event: { data: WeatherCompositePixels }) => void;
+    onerror?: () => void;
+    input!: WeatherCompositeInput;
+    terminated = false;
+    constructor() {
+      TestWorker.instances.push(this);
+    }
+    postMessage(input: WeatherCompositeInput): void {
+      this.input = input;
+    }
+    terminate(): void {
+      this.terminated = true;
+    }
+    complete(): void {
+      this.onmessage?.({ data: buildWeatherComposite(this.input) });
+    }
+  }
+  vi.stubGlobal("Worker", TestWorker);
+  resetWeatherLayerCache();
+  try {
+    const view = createScopeView();
+    view.wxMosaic = vip1Mosaic();
+    // Second available plane at another pixel; remaining levels stay unavailable.
+    view.wxMosaic.vipMasks[1][0] = 0b10;
+    view.wxLevels = [false, false, false, false, false, false];
+    const size = { widthPx: 800, heightPx: 800 };
+    const paint = () => {
+      const draw = mockDrawCtx();
+      drawWeatherLayer(draw.ctx, view, size);
+      return draw.drawImages;
+    };
+    expect(paint()).toHaveLength(0);
+    expect(TestWorker.instances).toHaveLength(1);
+    TestWorker.instances[0]!.complete();
+    expect(paint()).toHaveLength(0);
+    view.wxLevels = [true, false, false, false, false, false];
+    const first = paint()[0]!.image;
+    view.wxLevels = [false, true, false, false, false, false];
+    const second = paint()[0]!.image;
+    expect(second).not.toBe(first);
+    view.wxLevels = [true, true, false, false, false, false];
+    expect(paint()).toHaveLength(3);
+    view.brite.wx = 50;
+    expect(paint()[0]!.image).toBe(first);
+    expect(TestWorker.instances).toHaveLength(1);
+    const built = buildWeatherComposite(TestWorker.instances[0]!.input);
+    expect(built.layers.slice(2)).toEqual([null, null, null, null]);
+    view.wxMosaic = vip1Mosaic();
+    expect(paint()[0]!.image).toBe(first);
+    const stale = TestWorker.instances[1]!;
+    view.wxMosaic = vip1Mosaic();
+    expect(paint()[0]!.image).toBe(first);
+    expect(stale.terminated).toBe(true);
+    stale.complete();
+    expect(paint()[0]!.image).toBe(first);
+    TestWorker.instances[2]!.complete();
+    expect(paint()[0]!.image).not.toBe(first);
+    expect(paint()).toHaveLength(1);
+    view.wxLevels = [false, false, false, false, false, false];
+    expect(paint()).toHaveLength(0);
+  } finally {
+    resetWeatherLayerCache();
+    vi.unstubAllGlobals();
+  }
+});
+
+test("WX without workers yields between row batches before installing canvas", async () => {
+  vi.stubGlobal("Worker", undefined);
+  vi.useFakeTimers();
+  resetWeatherLayerCache();
+  try {
+    const view = createScopeView();
+    const pixels = new Uint8Array(128 * 128 * 4);
+    for (let index = 0; index < 128 * 128; index++) {
+      pixels[index * 4 + 1] = 255;
+      pixels[index * 4 + 3] = 255;
+    }
+    view.wxMosaic = decodeRgbaToVipMasks(pixels, 128, 128, bboxFromArp(view.arp), 1000);
+    view.wxLevels = [true, false, false, false, false, false];
+    const size = { widthPx: 800, heightPx: 800 };
+    const initial = mockDrawCtx();
+    drawWeatherLayer(initial.ctx, view, size);
+    expect(initial.drawImages).toHaveLength(0);
+    await vi.advanceTimersToNextTimerAsync();
+    const pending = mockDrawCtx();
+    drawWeatherLayer(pending.ctx, view, size);
+    expect(pending.drawImages).toHaveLength(0);
+    await vi.runAllTimersAsync();
+    const ready = mockDrawCtx();
+    drawWeatherLayer(ready.ctx, view, size);
+    expect(ready.drawImages).toHaveLength(1);
+  } finally {
+    resetWeatherLayerCache();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   }
 });

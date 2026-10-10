@@ -1,7 +1,7 @@
 import { nmToLatLon, type LatLon } from "@core";
-import { bboxContains, bboxFromArp } from "./bbox";
+import { bboxCovers, bboxFromArp } from "./bbox";
 import { N0Q_VIP_EDGES_HEIGHT, N0Q_VIP_EDGES_WIDTH, n0qVipEdgesRgba } from "./fixture";
-import { planIemN0qCover } from "./iemUrl";
+import { IEM_N0Q_FETCH_CONCURRENCY, planIemN0qCover, type WxTileCover } from "./iemUrl";
 import { rgbToDbz } from "./n0qRamp";
 import { decodePngToRgba, isPng } from "./png";
 import {
@@ -135,14 +135,14 @@ export async function decodePngToVipMasks(
 }
 
 /**
- * 5 min cadence. Pan/ARP still inside the fetched pad does not refetch.
+ * 5 min cadence. Reuses data only while the full required ARP pad is covered.
  * Never-fetched empty (fetchedAtMs 0) always refetches.
  */
 export function shouldRefetch(
   mosaic: WxMosaic,
   nowMs: number,
   arp: LatLon,
-  _padNm: number = DEFAULT_WX_PAD_NM,
+  padNm: number = DEFAULT_WX_PAD_NM,
 ): boolean {
   if (mosaic.fetchedAtMs === 0 && mosaic.widthPx === 0) {
     return true;
@@ -150,7 +150,7 @@ export function shouldRefetch(
   if (nowMs - mosaic.fetchedAtMs >= WX_REFRESH_MS) {
     return true;
   }
-  return !bboxContains(mosaic, arp);
+  return !bboxCovers(mosaic, bboxFromArp(arp, padNm));
 }
 
 export interface FetchWxMosaicOpts {
@@ -180,15 +180,44 @@ function blitRgba(
   }
 }
 
+/** Resample Mercator rows to the linear latitude grid used by paint and sampling. */
+function geographicRows(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  cover: WxTileCover,
+): Uint8Array {
+  const result = new Uint8Array(rgba.length);
+  const stride = width * 4;
+  for (let row = 0; row < height; row++) {
+    const lat =
+      cover.bbox.northLat - ((row + 0.5) / height) * (cover.bbox.northLat - cover.bbox.southLat);
+    const rad = (lat * Math.PI) / 180;
+    const tileY = ((1 - Math.asinh(Math.tan(rad)) / Math.PI) / 2) * 2 ** cover.z;
+    const sourceRow = Math.max(
+      0,
+      Math.min(height - 1, Math.floor(((tileY - cover.y0) * height) / cover.rows)),
+    );
+    result.set(rgba.subarray(sourceRow * stride, (sourceRow + 1) * stride), row * stride);
+  }
+  return result;
+}
+
 /**
  * Fetch IEM N0Q tiles that cover ARP ± pad and stitch them. `fetchImpl` is
- * required in tests. HTTP or decode failure returns an empty mosaic;
+ * required in tests. Failed tiles remain transparent; total failure returns an empty mosaic;
  * never throws to boot. Not WMS — IEM GetMap FILTER rejects the n0q group.
  */
 export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> {
   const padNm = opts.padNm ?? DEFAULT_WX_PAD_NM;
   const pad = bboxFromArp(opts.arp, padNm);
-  const cover = planIemN0qCover(pad);
+  let cover: WxTileCover;
+  try {
+    cover = planIemN0qCover(pad);
+  } catch {
+    // Unsupported polar bounds stay empty and retry on the normal cadence.
+    return emptyWxMosaic({ ...pad, fetchedAtMs: opts.nowMs });
+  }
   const failed = (): WxMosaic => emptyWxMosaic({ ...cover.bbox, fetchedAtMs: opts.nowMs });
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const fixtureMosaic = (): WxMosaic => ({
@@ -227,29 +256,36 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
       height: number;
       rgba: Uint8Array;
     }> = [];
-    for (const tile of cover.tiles) {
-      const res = await fetchImpl(tile.url);
-      if (!res.ok) {
-        continue;
-      }
-      const png = new Uint8Array(await res.arrayBuffer());
-      if (!isPng(png)) {
-        continue;
-      }
-      const decoded = await decodePngToRgba(png);
-      decodedTiles.push({
-        x: tile.x,
-        y: tile.y,
-        width: decoded.width,
-        height: decoded.height,
-        rgba: decoded.rgba,
-      });
-    }
+    let nextTile = 0;
+    await Promise.all(
+      Array.from({ length: IEM_N0Q_FETCH_CONCURRENCY }, async () => {
+        while (nextTile < cover.tiles.length) {
+          const tile = cover.tiles[nextTile++]!;
+          try {
+            const res = await fetchImpl(tile.url);
+            if (!res.ok) continue;
+            const png = new Uint8Array(await res.arrayBuffer());
+            if (!isPng(png)) continue;
+            const decoded = await decodePngToRgba(png);
+            decodedTiles.push({ x: tile.x, y: tile.y, ...decoded });
+          } catch {
+            // A failed tile leaves unknown pixels; other tiles remain usable.
+          }
+        }
+      }),
+    );
     if (decodedTiles.length === 0) {
       return failed();
     }
     const tileW = decodedTiles[0]!.width;
     const tileH = decodedTiles[0]!.height;
+    if (
+      tileW > 256 ||
+      tileH > 256 ||
+      decodedTiles.some((tile) => tile.width !== tileW || tile.height !== tileH)
+    ) {
+      return failed();
+    }
     const widthPx = cover.cols * tileW;
     const heightPx = cover.rows * tileH;
     const rgba = new Uint8Array(widthPx * heightPx * 4);
@@ -259,7 +295,14 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
       blitRgba(rgba, widthPx, part.rgba, part.width, part.height, dx, dy);
     }
     return {
-      ...decodeRgbaToVipMasks(rgba, widthPx, heightPx, cover.bbox, opts.nowMs, opts.breaks),
+      ...decodeRgbaToVipMasks(
+        geographicRows(rgba, widthPx, heightPx, cover),
+        widthPx,
+        heightPx,
+        cover.bbox,
+        opts.nowMs,
+        opts.breaks,
+      ),
       source: "iem",
     };
   } catch {

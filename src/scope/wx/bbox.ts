@@ -2,8 +2,8 @@ import { nmToLatLon, type LatLon } from "@core";
 import { DEFAULT_WX_PAD_NM, type WxBbox } from "./types";
 
 /**
- * Geographic pad about `arp` for mosaic coverage checks. Default ±80 NM.
- * At lat 0, lon pad is 80/60 deg (flat-earth `nmToLatLon`).
+ * Geographic pad about `arp` for mosaic coverage checks. Default ±512 NM.
+ * At lat 0, lon pad is 512/60 deg (flat-earth `nmToLatLon`).
  */
 export function bboxFromArp(arp: LatLon, padNm: number = DEFAULT_WX_PAD_NM): WxBbox {
   const sw = nmToLatLon({ xNm: -padNm, yNm: -padNm }, arp);

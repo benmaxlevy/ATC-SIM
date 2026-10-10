@@ -10,11 +10,14 @@ export const IEM_N0Q_TILE_LAYER = "nexrad-n0q-900913";
 /** Prefer this zoom so one tile is ~scope-sized, not a 300 NM square. */
 export const IEM_N0Q_TILE_Z = 8;
 
-export const IEM_N0Q_COVER_MAX_TILES = 4;
+export const IEM_N0Q_COVER_MAX_TILES = 64;
 
 export const IEM_N0Q_TILE_SIZE_PX = 256;
 
 export const IEM_N0Q_TILE_PATH = `${WX_IEM_PROXY_PREFIX}/cache/tile.py/1.0.0/${IEM_N0Q_TILE_LAYER}`;
+
+export const IEM_N0Q_FETCH_CONCURRENCY = 4;
+export const IEM_N0Q_COVER_MAX_SIDE = 8;
 
 const WEB_MERCATOR_MAX_LAT = 85.05112878;
 
@@ -91,14 +94,31 @@ export interface WxTileCover {
  * `IEM_N0Q_COVER_MAX_TILES`. XYZ y increases south.
  */
 export function planIemN0qCover(bbox: WxBbox): WxTileCover {
-  for (let z = IEM_N0Q_TILE_Z; z >= 5; z--) {
-    const x0 = lonToTileX(bbox.westLon, z);
-    const x1 = lonToTileX(bbox.eastLon, z);
+  if (
+    !Object.values(bbox).every(Number.isFinite) ||
+    bbox.eastLon <= bbox.westLon ||
+    bbox.eastLon - bbox.westLon > 360 ||
+    bbox.northLat <= bbox.southLat ||
+    bbox.southLat < -WEB_MERCATOR_MAX_LAT ||
+    bbox.northLat > WEB_MERCATOR_MAX_LAT
+  ) {
+    throw new Error("WX bounds outside supported Web Mercator coverage");
+  }
+  // Keep unwrapped columns for stitching across the antimeridian.
+  for (let z = IEM_N0Q_TILE_Z; z >= 0; z--) {
+    const x0 = Math.floor(((bbox.westLon + 180) / 360) * 2 ** z);
+    const x1 = Math.ceil(((bbox.eastLon + 180) / 360) * 2 ** z) - 1;
     const y0 = latToTileY(bbox.northLat, z);
     const y1 = latToTileY(bbox.southLat, z);
     const cols = x1 - x0 + 1;
     const rows = y1 - y0 + 1;
-    if (cols < 1 || rows < 1 || cols * rows > IEM_N0Q_COVER_MAX_TILES) {
+    if (
+      cols < 1 ||
+      rows < 1 ||
+      cols * rows > IEM_N0Q_COVER_MAX_TILES ||
+      cols > IEM_N0Q_COVER_MAX_SIDE ||
+      rows > IEM_N0Q_COVER_MAX_SIDE
+    ) {
       continue;
     }
     const tiles: WxTile[] = [];
@@ -109,7 +129,7 @@ export function planIemN0qCover(bbox: WxBbox): WxTileCover {
           x,
           y,
           bbox: tileBbox(x, y, z),
-          url: buildIemN0qTileUrl(z, x, y),
+          url: buildIemN0qTileUrl(z, ((x % 2 ** z) + 2 ** z) % 2 ** z, y),
         });
       }
     }
@@ -130,19 +150,5 @@ export function planIemN0qCover(bbox: WxBbox): WxTileCover {
       },
     };
   }
-  const mid = planIemN0qTile({
-    latDeg: (bbox.southLat + bbox.northLat) / 2,
-    lonDeg: (bbox.westLon + bbox.eastLon) / 2,
-  });
-  return {
-    z: mid.z,
-    x0: mid.x,
-    y0: mid.y,
-    tiles: [mid],
-    cols: 1,
-    rows: 1,
-    widthPx: IEM_N0Q_TILE_SIZE_PX,
-    heightPx: IEM_N0Q_TILE_SIZE_PX,
-    bbox: mid.bbox,
-  };
+  throw new Error("WX tile budget cannot cover requested bounds");
 }
