@@ -35,12 +35,14 @@ import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
 import {
   HIT_RADIUS_CSS_PX,
+  handleMinSepClick,
   middleClickAircraftAt,
   pickAircraftAt,
   pickAircraftHitAt,
   selectOrAcceptAircraftAt,
   type AircraftPickHit,
 } from "./pick";
+import { isMinSepPending } from "./minimumSeparation";
 import { shouldDrawPtlForTrack } from "./ptl";
 import { renderScope } from "./render";
 import {
@@ -414,6 +416,14 @@ export function handlePpiLeftClick(
   commandText?: string,
   onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
+  if (isMinSepPending(view)) {
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    if (handleMinSepClick(view, world, cssX, cssY, cssWidth, cssHeight)) {
+      return;
+    }
+  }
   if (view.dcbSpinner.armed) {
     if (view.dcbSpinner.cell === "RANGE") {
       commitDcbSpinner(view);

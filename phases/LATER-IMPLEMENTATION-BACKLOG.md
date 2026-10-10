@@ -313,15 +313,16 @@ underlying surveillance services exist.
 
 ### Pairwise minimum-separation graphics
 
-Visible now: CA evaluates conflicts, ATPA evaluates in-trail spacing, and PTL
-draws track prediction lines. None supplies the controller-selected pairwise
-minimum-separation tool.
+Visible now: the pure prediction model, dedicated `Del` keyboard activation,
+two-track report-backed selection, clear/cancel lifecycle, and exact rejection
+handling (`DUP TRK`, `ILL TRK`, `FORMAT`) exist (T02-204, T02-205). The
+rendered on-scope graphics and paint stages remain pending under T02-206.
 
 Missing: manual §6.4, pp. 6-17–18, permits `<MIN>` followed by two track
 selections to display dynamically updated predicted closest horizontal
 separation and the two projected positions. `<MIN><ENTER>` removes the
 graphics; selecting a new pair replaces the old pair. Figure 6-1 includes
-`NO XING?` when horizontal separation begins increasing and `0.00 NM` for
+`NO XING` when horizontal separation begins increasing and `0.00 NM` for
 predicted zero horizontal separation regardless of vertical separation.
 
 Constraints later work must keep: scope-local observational graphics, no

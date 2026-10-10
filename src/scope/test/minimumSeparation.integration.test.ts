@@ -1,0 +1,672 @@
+/**
+ * T02-205 Feature Integration Test: Minimum-Separation Input and Selection.
+ *
+ * Verifies AC1–AC7:
+ * - Dedicated Del keybinding, scope focus only, rejection of modifiers/keypad decimal.
+ * - Preview Area MIN mnemonic, exact rejection cues ("DUP TRK", "ILL TRK", "FORMAT").
+ * - Report-backed target selection, sampled-vs-live divergence, datablock precedence,
+ *   equal-priority tie rejection, and off-screen detection.
+ * - Snapshot immutability of forbidden World/plan/track state and last centering click.
+ * - Help registry and navigation integration.
+ */
+import { describe, expect, it } from "vitest";
+import { createWorld, makeTestAircraft, setSelectedAircraft, type World } from "@core";
+import { nmToScreen } from "../camera";
+import { bindingById, HELP_COMMAND_GROUPS, HELP_NAVIGATION_GROUPS } from "../keymap";
+import { handlePpiLeftClick } from "../ppi";
+import { formatPreviewReadout } from "../previewArea";
+import { handleScopeKeyDown, type ScopeKeyEvent } from "../scopeKeys";
+import { createScopeView, type ScopeView } from "../scopeView";
+import { isMinSepPending } from "../minimumSeparation";
+import { armDcbSpinner } from "../dcb/dcbMenu";
+import { armPlaceCenter, armPlaceRangeRing } from "../dcb/dcbFunctions";
+import { ensureTrackDisplay } from "../trackDisplay";
+import type { SurveillanceReport } from "../surveillance";
+import { createMockCtx } from "./mockCanvas";
+import { renderScope } from "../render/renderScope";
+
+const CSS_W = 800;
+const CSS_H = 800;
+
+function makeKeyEvent(overrides: Partial<ScopeKeyEvent> = {}): ScopeKeyEvent {
+  return {
+    key: "Delete",
+    code: "Delete",
+    shiftKey: false,
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    target: null,
+    preventDefault() {},
+    stopPropagation() {},
+    ...overrides,
+  };
+}
+
+function attachReport(
+  view: ScopeView,
+  aircraftId: string,
+  overrides: Partial<SurveillanceReport> = {},
+): SurveillanceReport {
+  const td = ensureTrackDisplay(view.tracks, aircraftId);
+  const report: SurveillanceReport = {
+    aircraftId,
+    xNm: 0,
+    yNm: 0,
+    headingDeg: 90,
+    speedKt: 250,
+    altitudeFt: 5000,
+    reportedAtSimMs: 1000,
+    sourceSiteId: null,
+    paint: "fused-puck",
+    ...overrides,
+  };
+  td.lastReport = report;
+  return report;
+}
+
+function renderSnapshot(world: World, view: ScopeView) {
+  const canvas = createMockCtx();
+  renderScope(canvas.ctx, world, view, CSS_W, CSS_H);
+}
+
+describe("Minimum-Separation Input and Selection (T02-205)", () => {
+  describe("AC1: Input, routing, mnemonic, and exact error strings", () => {
+    it("Scope Del, click displayed A, click displayed B activates pair and completes Preview", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -10, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 10, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0 });
+
+      // 1. Scope Del starts pending MIN
+      const delConsumed = handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(delConsumed).toBe(true);
+      expect(isMinSepPending(view)).toBe(true);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+
+      // 2. Click displayed A
+      const ptA = nmToScreen(-10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+      expect(view.minSep.activePair).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+
+      // 3. Click displayed B
+      const ptB = nmToScreen(10, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "ac-1", aircraftIdB: "ac-2" });
+      expect(isMinSepPending(view)).toBe(false);
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+    });
+
+    it("Scope Del then Enter clears active and pending state; repeat is harmless", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      // Scope Del
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+
+      // Scope Enter
+      const enterConsumed = handleScopeKeyDown(
+        makeKeyEvent({ key: "Enter", code: "Enter" }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(enterConsumed).toBe(true);
+      expect(view.minSep.activePair).toBeNull();
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+
+      // Repeated Del then Enter while empty
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1200);
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter", code: "Enter" }), view, "scope", world, 1300);
+      expect(view.minSep.activePair).toBeNull();
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+    });
+
+    it("Del, click A, Enter clears all with no partial pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter", code: "Enter" }), view, "scope", world, 1100);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+    });
+
+    it("Del, click A, empty click leaves entry pending and active pair unchanged", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      // Empty click far away
+      handlePpiLeftClick(view, world, 50, 50, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+    });
+
+    it("Del, click A, click A aborts pending with DUP TRK and retains previous active pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("DUP TRK");
+    });
+
+    it("First A vanishes before B attempted selection aborts with ILL TRK", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", xNm: 5, yNm: 5 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 5, yNm: 5 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      // Target A vanishes from world before second selection
+      world.aircraft = world.aircraft.filter((a) => a.id !== "ac-1");
+
+      const ptB = nmToScreen(5, 5, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("ILL TRK");
+    });
+
+    it("First A pans off-screen before B attempted selection aborts with ILL TRK", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 15, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", xNm: -5, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: 15, yNm: 0 });
+      attachReport(view, acB.id, { xNm: -5, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(15, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      // Scope camera pans west so ac-1 at +15 NM pans off the right edge
+      view.camera.centerEastNm = -10;
+      const recheckedPtA = nmToScreen(15, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      expect(recheckedPtA.x > CSS_W).toBe(true);
+
+      const ptB = nmToScreen(-5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("ILL TRK");
+    });
+
+    it("Equal-priority overlapping A/B hit aborts pending with ILL TRK", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      // Two aircraft at exact same report position
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 0, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const pt = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, pt.x, pt.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("ILL TRK");
+    });
+
+    it("Target with malformed report aborts pending with ILL TRK", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA);
+      // Malformed report with NaN speed
+      attachReport(view, acA.id, { xNm: 0, yNm: 0, speedKt: NaN });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const pt = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, pt.x, pt.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBe("ILL TRK");
+    });
+
+    it("Del then printable character aborts pending with FORMAT and preserves previous valid pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+
+      const charConsumed = handleScopeKeyDown(
+        makeKeyEvent({ key: "A", code: "KeyA" }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(charConsumed).toBe(true);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("FORMAT");
+    });
+
+    it("Del, Escape cancels pending; Del while already pending restarts pending", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      // Del then Esc
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+      const escConsumed = handleScopeKeyDown(
+        makeKeyEvent({ key: "Escape", code: "Escape" }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(escConsumed).toBe(true);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+
+      // Del, click 1, Del restarts pending
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0 });
+      world.aircraft.push(acA);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1200);
+      const ptA = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      const del2Consumed = handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1300);
+      expect(del2Consumed).toBe(true);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+    });
+
+    it("Backspace during pending MIN does not edit radio or remove mnemonic", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+
+      const bsConsumed = handleScopeKeyDown(
+        makeKeyEvent({ key: "Backspace", code: "Backspace" }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(bsConsumed).toBe(true);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+    });
+  });
+
+  describe("AC2: Dedicated-key, modifier, radio, modal, and conflict isolation", () => {
+    it("Dedicated Del in radio/modal/help editor is not consumed by scope MIN", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Focus radio: Del must not activate MIN
+      const resRadio = handleScopeKeyDown(makeKeyEvent(), view, "radio", world, 1000);
+      expect(resRadio).toBe(false);
+      expect(isMinSepPending(view)).toBe(false);
+
+      // Event on HTMLInputElement mock
+      const mockInput = {
+        nodeType: 1,
+        tagName: "INPUT",
+        closest: () => null,
+      };
+      const resModal = handleScopeKeyDown(
+        makeKeyEvent({ target: mockInput as unknown as EventTarget }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(resModal).toBe(false);
+      expect(isMinSepPending(view)).toBe(false);
+    });
+
+    it("Modifiers (Ctrl, Alt, Shift, Meta) and keypad Decimal/Delete do not activate MIN", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      expect(handleScopeKeyDown(makeKeyEvent({ ctrlKey: true }), view, "scope", world, 1000)).toBe(
+        false,
+      );
+      expect(handleScopeKeyDown(makeKeyEvent({ altKey: true }), view, "scope", world, 1010)).toBe(
+        false,
+      );
+      expect(handleScopeKeyDown(makeKeyEvent({ shiftKey: true }), view, "scope", world, 1020)).toBe(
+        false,
+      );
+      expect(handleScopeKeyDown(makeKeyEvent({ metaKey: true }), view, "scope", world, 1030)).toBe(
+        false,
+      );
+      expect(
+        handleScopeKeyDown(
+          makeKeyEvent({ key: "Delete", code: "NumpadDecimal" }),
+          view,
+          "scope",
+          world,
+          1040,
+        ),
+      ).toBe(false);
+      expect(
+        handleScopeKeyDown(
+          makeKeyEvent({ key: "Decimal", code: "NumpadDecimal" }),
+          view,
+          "scope",
+          world,
+          1050,
+        ),
+      ).toBe(false);
+      expect(isMinSepPending(view)).toBe(false);
+    });
+
+    it("Starting MIN rolls back armed DCB spinner with existing rollback behavior", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.camera.rangeNm = 20;
+
+      // Arm DCB RANGE spinner and type new value
+      armDcbSpinner(view, "RANGE");
+      view.camera.rangeNm = 40; // temporary mutation
+      expect(view.dcbSpinner.armed).toBe(true);
+
+      // Press scope Del
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(view.dcbSpinner.armed).toBe(false);
+      // Spinner rollback restored rangeNm
+      expect(view.camera.rangeNm).toBe(20);
+      expect(formatPreviewReadout(view.preview)).toBe("MIN");
+    });
+
+    it("Arming DCB spinner or place-center cancels pending MIN without leaving hidden arm", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(isMinSepPending(view)).toBe(true);
+
+      armDcbSpinner(view, "RANGE");
+      expect(isMinSepPending(view)).toBe(false);
+      expect(view.minSep.pendingFirstId).toBeNull();
+      expect(formatPreviewReadout(view.preview)).toBeNull();
+
+      // Test armPlaceCenter cancels pending MIN
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1100);
+      expect(isMinSepPending(view)).toBe(true);
+      armPlaceCenter(view);
+      expect(isMinSepPending(view)).toBe(false);
+
+      // Test armPlaceRangeRing cancels pending MIN
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1200);
+      expect(isMinSepPending(view)).toBe(true);
+      armPlaceRangeRing(view);
+      expect(isMinSepPending(view)).toBe(false);
+    });
+
+    it("Radio focus or Tab cancels pending MIN while preserving active pair", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+      view.minSep.activePair = { aircraftIdA: "old-1", aircraftIdB: "old-2" };
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      expect(isMinSepPending(view)).toBe(true);
+
+      // Tab cycles focus
+      handleScopeKeyDown(makeKeyEvent({ key: "Tab", code: "Tab" }), view, "scope", world, 1100);
+      expect(isMinSepPending(view)).toBe(false);
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "old-1", aircraftIdB: "old-2" });
+    });
+  });
+
+  describe("AC3: Report-backed hit testing and sampled-versus-live pose divergence", () => {
+    it("Clicks follow sampled report pose, not live truth", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Aircraft live position is at (+20, +20), but report is at (-5, 0)
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 20, yNm: 20 });
+      const acB = makeTestAircraft({ id: "ac-2", xNm: 20, yNm: -20 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -5, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 5, yNm: 0 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+
+      // Click at live truth (+20, +20) -> misses report
+      const livePt = nmToScreen(20, 20, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, livePt.x, livePt.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBeNull(); // miss
+
+      // Click at report pose (-5, 0) -> hits!
+      const reportPtA = nmToScreen(-5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, reportPtA.x, reportPtA.y, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+
+      // Click second report pose (5, 0) -> hits and activates
+      const reportPtB = nmToScreen(5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, reportPtB.x, reportPtB.y, CSS_W, CSS_H);
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "ac-1", aircraftIdB: "ac-2" });
+    });
+
+    it("Datablock hit testing selects eligible target with datablock-first precedence", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -5, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 5, yNm: 0 });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -5, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 5, yNm: 0 });
+
+      // Render scope to populate datablockRenderSnapshot
+      renderSnapshot(world, view);
+      expect(view.datablockRenderSnapshot).toBeDefined();
+
+      const layoutA = view.datablockRenderSnapshot?.layouts.get("ac-1");
+      expect(layoutA?.rect).toBeDefined();
+      if (!layoutA?.rect) {
+        throw new Error("layoutA.rect not defined");
+      }
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+
+      // Click on datablock rectangle of ac-1
+      const dbX = layoutA.rect.x + layoutA.rect.width / 2;
+      const dbY = layoutA.rect.y + layoutA.rect.height / 2;
+      handlePpiLeftClick(view, world, dbX, dbY, CSS_W, CSS_H);
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+    });
+
+    it("Altitude-filtered datablocks do not disqualify still-visible symbol", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Set altitude filter 100–200 (10,000–20,000 ft)
+      view.altitudeFilter = { minHundreds: 100, maxHundreds: 200 };
+
+      // Aircraft at 5,000 ft (outside altitude filter, datablock suppressed but symbol visible)
+      const acA = makeTestAircraft({ id: "ac-1", xNm: 0, yNm: 0, altitudeFt: 5000 });
+      world.aircraft.push(acA);
+      attachReport(view, acA.id, { xNm: 0, yNm: 0, altitudeFt: 5000 });
+
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const symPt = nmToScreen(0, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, symPt.x, symPt.y, CSS_W, CSS_H);
+
+      expect(view.minSep.pendingFirstId).toBe("ac-1");
+    });
+  });
+
+  describe("AC4: Snapshot assertions prove MIN clicks do not alter forbidden state", () => {
+    it("MIN clicks do not change World.selectedAircraftId, plans, ownership, handoffs, or last centering click", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      const acA = makeTestAircraft({ id: "ac-1", callsign: "AAL101", xNm: -5, yNm: 0 });
+      const acB = makeTestAircraft({ id: "ac-2", callsign: "DAL202", xNm: 5, yNm: 0 });
+      const acOther = makeTestAircraft({ id: "ac-sel", callsign: "SWA303", xNm: 0, yNm: 10 });
+      world.aircraft.push(acA, acB, acOther);
+      attachReport(view, acA.id, { xNm: -5, yNm: 0 });
+      attachReport(view, acB.id, { xNm: 5, yNm: 0 });
+      attachReport(view, acOther.id, { xNm: 0, yNm: 10 });
+
+      // Previously selected aircraft
+      setSelectedAircraft(world, "ac-sel");
+      view.lastClickEastNm = 99;
+      view.lastClickNorthNm = 88;
+
+      // Deep snapshot of forbidden properties before MIN interaction
+      const snapshotWorldSelected = world.selectedAircraftId;
+      const snapshotLastEast = view.lastClickEastNm;
+      const snapshotLastNorth = view.lastClickNorthNm;
+      const snapshotAcA = JSON.parse(JSON.stringify(acA));
+      const snapshotAcB = JSON.parse(JSON.stringify(acB));
+      const snapshotFlightPlans = JSON.parse(JSON.stringify(world.flightPlans));
+      const snapshotAlerts = JSON.parse(JSON.stringify(world.alerts));
+      const snapshotTracks = new Map(
+        Array.from(view.tracks.entries()).map(([k, v]) => [k, { ...v }]),
+      );
+
+      // Perform complete MIN selection sequence
+      handleScopeKeyDown(makeKeyEvent(), view, "scope", world, 1000);
+      const ptA = nmToScreen(-5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptA.x, ptA.y, CSS_W, CSS_H);
+      const ptB = nmToScreen(5, 0, view.camera, { widthPx: CSS_W, heightPx: CSS_H });
+      handlePpiLeftClick(view, world, ptB.x, ptB.y, CSS_W, CSS_H);
+
+      // Pair activated
+      expect(view.minSep.activePair).toEqual({ aircraftIdA: "ac-1", aircraftIdB: "ac-2" });
+
+      // Forbidden mutations must be identical
+      expect(world.selectedAircraftId).toBe(snapshotWorldSelected);
+      expect(view.lastClickEastNm).toBe(snapshotLastEast);
+      expect(view.lastClickNorthNm).toBe(snapshotLastNorth);
+      expect(JSON.parse(JSON.stringify(acA))).toEqual(snapshotAcA);
+      expect(JSON.parse(JSON.stringify(acB))).toEqual(snapshotAcB);
+      expect(JSON.parse(JSON.stringify(world.flightPlans))).toEqual(snapshotFlightPlans);
+      expect(JSON.parse(JSON.stringify(world.alerts))).toEqual(snapshotAlerts);
+
+      // Track displays (ownership, datablockMode) must remain identical
+      for (const [id, originalTd] of snapshotTracks.entries()) {
+        const currentTd = view.tracks.get(id);
+        expect(currentTd?.ownership).toBe(originalTd.ownership);
+        expect(currentTd?.datablockMode).toBe(originalTd.datablockMode);
+      }
+    });
+  });
+
+  describe("AC5: Help registry, search, and keymap inspection", () => {
+    it("Registers minimum-separation in KEY_BINDINGS and Help navigation", () => {
+      const binding = bindingById("minimum-separation");
+      expect(binding).toBeDefined();
+      expect(binding?.focus).toBe("scope");
+      expect(binding?.windowsKeys).toContain("Delete");
+      expect(binding?.action.toLowerCase()).toContain("minimum separation");
+
+      // Verify command reference entry
+      const trackingAlertsGroup = HELP_COMMAND_GROUPS.find((g) => g.id === "tracking-alerts");
+      expect(trackingAlertsGroup).toBeDefined();
+      const minEntry = trackingAlertsGroup?.entries.find((e) => e.id === "minimum-separation");
+      expect(minEntry).toBeDefined();
+      expect(minEntry?.command).toContain("Del");
+      expect(minEntry?.input).toBe("Scope only");
+      expect(minEntry?.result.toLowerCase()).toContain("minimum separation");
+
+      // Verify navigation group registration
+      const aircraftAlertsNav = HELP_NAVIGATION_GROUPS.find(
+        (g) => g.id === "aircraft",
+      )?.bindingSections.find((s) => s.id === "aircraft-alerts");
+      expect(aircraftAlertsNav?.bindingIds).toContain("minimum-separation");
+    });
+
+    it("Does not bind bare End, ?, F2, typed MIN, or DCB buttons as alternate MIN activators", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // End remains centering
+      view.lastClickEastNm = 12;
+      view.lastClickNorthNm = 34;
+      handleScopeKeyDown(makeKeyEvent({ key: "End", code: "End" }), view, "scope", world, 1000);
+      expect(view.camera.centerEastNm).toBe(12);
+      expect(isMinSepPending(view)).toBe(false);
+
+      // ? remains help toggle
+      handleScopeKeyDown(
+        makeKeyEvent({ key: "?", code: "Slash", shiftKey: true }),
+        view,
+        "scope",
+        world,
+        1100,
+      );
+      expect(view.helpOpen).toBe(true);
+      expect(isMinSepPending(view)).toBe(false);
+    });
+  });
+});

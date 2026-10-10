@@ -36,6 +36,7 @@ import type { VipLevel } from "./wx";
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
+  | { readonly type: "minSep" }
   | {
       readonly type: "createFlightPlan";
       pendingDiscrete: boolean;

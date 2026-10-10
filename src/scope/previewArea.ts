@@ -1187,13 +1187,32 @@ export function handlePreviewBufferKey(
   return { consumed: false, action: null };
 }
 
-function rejectPreviewAreaWithReason(state: PreviewAreaState, nowMs: number, reason: string): void {
+export function rejectPreviewAreaWithReason(
+  state: PreviewAreaState,
+  nowMs: number,
+  reason: string,
+): void {
   state.rejection = reason;
   state.phase = "idle";
   state.buffer = "";
   state.mnemonic = "";
   state.flid = null;
   state.armed = null;
+  state.lastKeyAtMs = nowMs;
+}
+
+/**
+ * Arm Preview Area for Minimum-Separation (MIN) entry.
+ * Displays the MIN mnemonic while waiting for target selection.
+ */
+export function armPreviewMinSep(state: PreviewAreaState, nowMs: number): void {
+  state.phase = "armed";
+  state.mnemonic = "MIN";
+  state.flid = null;
+  state.buffer = "";
+  state.armed = { type: "minSep" };
+  state.slewAction = null;
+  state.rejection = null;
   state.lastKeyAtMs = nowMs;
 }
 

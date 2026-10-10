@@ -67,6 +67,7 @@ import {
   applyPreviewBeaconAction,
   applyPreviewWxAction,
   armPreviewCntl,
+  armPreviewMinSep,
   armPreviewRelocateList,
   armPreviewSlewAction,
   beginPreviewBeaconEntry,
@@ -81,6 +82,7 @@ import {
   previewAreaIsLive,
   previewBufferCharFromKey,
   rejectPreviewArea,
+  rejectPreviewAreaWithReason,
   executeCaSingleTrackInhibit,
   executeCaPairToggle,
   executeCaControllerPairs,
@@ -88,6 +90,13 @@ import {
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
+import {
+  beginMinSepSelection,
+  cancelMinSepPending,
+  cancelPendingMinSepIfArmed,
+  clearMinSepState,
+  isMinSepPending,
+} from "./minimumSeparation";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import {
@@ -202,6 +211,7 @@ export interface ScopeKeyEvent {
   shiftKey?: boolean;
   ctrlKey?: boolean;
   altKey?: boolean;
+  metaKey?: boolean;
   target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
@@ -229,17 +239,34 @@ export interface ScopeKeyUi {
 }
 
 function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
-  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
-    return false;
+  if (typeof HTMLElement !== "undefined" && target instanceof HTMLElement) {
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.isContentEditable
+    ) {
+      return true;
+    }
+    return target.closest('[role="dialog"][aria-modal="true"]') !== null;
   }
-  if (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target.isContentEditable
-  ) {
-    return true;
+  if (target && typeof target === "object") {
+    const candidate = target as {
+      tagName?: string;
+      isContentEditable?: boolean;
+      closest?: (selector: string) => unknown;
+    };
+    if (
+      candidate.tagName === "INPUT" ||
+      candidate.tagName === "TEXTAREA" ||
+      candidate.isContentEditable === true
+    ) {
+      return true;
+    }
+    if (typeof candidate.closest === "function") {
+      return candidate.closest('[role="dialog"][aria-modal="true"]') !== null;
+    }
   }
-  return target.closest('[role="dialog"][aria-modal="true"]') !== null;
+  return false;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -320,6 +347,48 @@ function isReservedScopeLetterShortcut(key: string): boolean {
   );
 }
 
+/**
+ * Dedicated unmodified Delete key, scope focus only.
+ * Requires event.key === "Delete", dedicated keyboard code "Delete" when code supplied,
+ * no Shift/Ctrl/Alt/Meta. Rejects NumpadDecimal.
+ */
+export function isMinSepDeleteKey(event: ScopeKeyEvent): boolean {
+  if (event.key !== "Delete") {
+    return false;
+  }
+  if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) {
+    return false;
+  }
+  if (event.code && event.code !== "Delete") {
+    return false;
+  }
+  return true;
+}
+
+function isCompetingTargetingKey(event: ScopeKeyEvent): boolean {
+  if (event.ctrlKey) {
+    return /^F[1-9]|F10|F11$/.test(event.key);
+  }
+  return (
+    event.key === "F1" ||
+    event.key === "F3" ||
+    event.key === "F4" ||
+    event.key === "F5" ||
+    event.key === "F6" ||
+    event.key === "F7" ||
+    event.key === "F8" ||
+    event.key === "F9" ||
+    event.key === "F10" ||
+    event.key === "F11" ||
+    event.key === "Insert" ||
+    event.key === "Ins" ||
+    event.key === "FPL" ||
+    event.code === "FPL" ||
+    event.key === "VFR" ||
+    event.code === "VFR"
+  );
+}
+
 /** Keep T02-49 `*` chords on starsChordEntry so slew-click and *J tests stay green. */
 function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
   if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
@@ -333,6 +402,7 @@ function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
 function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
   view.pendingChord = null;
   beginPreviewBufferEntry(view.preview, ch, nowMs);
   if (ch === "*") {
@@ -346,6 +416,7 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
 function startFltDataEntry(view: ScopeView, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
   view.pendingChord = null;
   view.starsChordArmed = null;
   cancelStarsChordEntry(view.starsChordEntry);
@@ -355,6 +426,7 @@ function startFltDataEntry(view: ScopeView, nowMs: number): void {
 function startVfrEntry(view: ScopeView, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
   view.pendingChord = null;
   view.starsChordArmed = null;
   cancelStarsChordEntry(view.starsChordEntry);
@@ -1005,6 +1077,76 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  if (focus === "scope" && isMinSepPending(view)) {
+    if (isMinSepDeleteKey(event)) {
+      consume(event);
+      beginMinSepSelection(view.minSep);
+      armPreviewMinSep(view.preview, nowMs);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      clearMinSepState(view.minSep);
+      cancelPreviewArea(view.preview);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Escape") {
+      consume(event);
+      cancelMinSepPending(view.minSep);
+      cancelPreviewArea(view.preview);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace") {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "PageUp" || event.key === "PageDown") {
+      // Allow camera range preset step below without cancelling pending MIN
+    } else if (
+      event.key === "Home" ||
+      (event.key === "End" && !event.shiftKey && !event.ctrlKey && !event.altKey)
+    ) {
+      // Allow centering below without cancelling pending MIN
+    } else if (isCycleFocusKey(event.key)) {
+      cancelPendingMinSepIfArmed(view);
+    } else if (isHelpToggleKey(event)) {
+      // Help
+    } else if (isCompetingTargetingKey(event)) {
+      cancelPendingMinSepIfArmed(view);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      consume(event);
+      cancelMinSepPending(view.minSep);
+      rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
+      ui?.onHandled?.();
+      return true;
+    }
+  }
+
+  if (focus === "scope" && isMinSepDeleteKey(event)) {
+    consume(event);
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+    cancelDcbPrefSaveAs(view);
+    view.pendingChord = null;
+    cancelStarsChordEntry(view.starsChordEntry);
+    view.starsChordArmed = null;
+    view.placeCenterArmed = false;
+    view.placeRangeRingArmed = false;
+    view.f1DropArmed = false;
+    view.stagedListAnchor = null;
+    cancelPreviewArea(view.preview);
+    beginMinSepSelection(view.minSep);
+    armPreviewMinSep(view.preview, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   if (view.dcbSpinner.armed) {
     if (event.key === "Escape" || event.code === "Escape" || event.key === "Clear") {
       consume(event);
@@ -1210,6 +1352,7 @@ export function handleScopeKeyDown(
     if (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target)) {
       return false;
     }
+    cancelPendingMinSepIfArmed(view);
     consume(event);
     if (ui?.cycleFocus) {
       ui.cycleFocus();
@@ -1410,6 +1553,7 @@ export function handleScopeKeyDown(
     if (view.starsChordEntry.phase !== "idle") {
       cancelStarsChordEntry(view.starsChordEntry);
     }
+    cancelPendingMinSepIfArmed(view);
   }
 
   if (isHandoffKey(event)) {

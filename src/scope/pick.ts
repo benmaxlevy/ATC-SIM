@@ -18,6 +18,13 @@ import { pointInDatablock } from "./datablock";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
 import { datablockRenderSnapshotKey } from "./render/renderScopePaint";
 import type { ScopeView } from "./scopeView";
+import {
+  cancelMinSepPending,
+  isMinSepPending,
+  isValidMinSepTrackInput,
+  minSepInputFromReport,
+} from "./minimumSeparation";
+import { cancelPreviewArea, rejectPreviewAreaWithReason } from "./previewArea";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -224,4 +231,246 @@ export function middleClickAircraftAt(
     handleTrackMiddleClick(tracks, world, hit.id);
   }
   return hit;
+}
+
+/**
+ * Check whether an aircraft is living in world, has a valid finite surveillance report,
+ * and its displayed symbol lies inside the current rectangular PPI.
+ */
+export function isMinSepTargetEligibleAndDisplayed(
+  world: World,
+  view: ScopeView,
+  aircraftId: string,
+  cssWidth: number,
+  cssHeight: number,
+): boolean {
+  const ac = world.aircraft.find((a) => a.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  const td = view.tracks.get(aircraftId);
+  const report = td?.lastReport;
+  if (!report || !isValidMinSepTrackInput(minSepInputFromReport(report))) {
+    return false;
+  }
+  if (!Number.isFinite(report.altitudeFt)) {
+    return false;
+  }
+  const size = { widthPx: cssWidth, heightPx: cssHeight };
+  const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+  if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
+    return false;
+  }
+  if (symPt.x < 0 || symPt.x > cssWidth || symPt.y < 0 || symPt.y > cssHeight) {
+    return false;
+  }
+  return true;
+}
+
+export type MinSepPickResult =
+  { kind: "hit"; aircraftId: string } | { kind: "miss" } | { kind: "error"; error: "ILL TRK" };
+
+/**
+ * Report-aware hit testing for Minimum-Separation (MIN) selection.
+ *
+ * Rules:
+ * - Only selects living aircraft with finite last surveillance reports.
+ * - Displayed symbol must lie inside the current rectangular PPI.
+ * - Datablock-first precedence using rendered datablock hit geometry.
+ * - Unresolved equal-distance ties or malformed reports reject with "ILL TRK".
+ * - Selection follows sampled report pose, never live truth.
+ */
+export function pickMinSepTargetAt(
+  world: World,
+  view: ScopeView,
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+): MinSepPickResult {
+  const size = { widthPx: cssWidth, heightPx: cssHeight };
+  const snapshot = view.datablockRenderSnapshot;
+  const snapshotValid = Boolean(
+    snapshot &&
+    snapshot.world === world &&
+    snapshot.simTimeMs === world.simTimeMs &&
+    snapshot.widthPx === cssWidth &&
+    snapshot.heightPx === cssHeight &&
+    snapshot.camera.rangeNm === view.camera.rangeNm &&
+    snapshot.camera.centerEastNm === view.camera.centerEastNm &&
+    snapshot.camera.centerNorthNm === view.camera.centerNorthNm,
+  );
+
+  // 1. Datablock-first precedence
+  if (snapshotValid && snapshot) {
+    const datablockHits: { ac: Aircraft; dist: number }[] = [];
+    for (const ac of world.aircraft) {
+      const presentation = snapshot.presentations.get(ac.id);
+      const layout = snapshot.layouts.get(ac.id);
+      if (
+        presentation &&
+        layout?.rect &&
+        pointInDatablock(cssX, cssY, {
+          x: layout.rect.x,
+          y: layout.rect.y,
+          w: layout.rect.width,
+          h: layout.rect.height,
+        })
+      ) {
+        // Datablock hit: verify eligibility
+        if (!isMinSepTargetEligibleAndDisplayed(world, view, ac.id, cssWidth, cssHeight)) {
+          return { kind: "error", error: "ILL TRK" };
+        }
+        const dist = Math.hypot(
+          layout.rect.x + layout.rect.width / 2 - cssX,
+          layout.rect.y + layout.rect.height / 2 - cssY,
+        );
+        datablockHits.push({ ac, dist });
+      }
+    }
+
+    if (datablockHits.length > 0) {
+      let minDist = Infinity;
+      for (const h of datablockHits) {
+        if (h.dist < minDist) minDist = h.dist;
+      }
+      const closest = datablockHits.filter((h) => Math.abs(h.dist - minDist) < 1e-4);
+      const distinctIds = new Set(closest.map((h) => h.ac.id));
+      if (distinctIds.size > 1) {
+        return { kind: "error", error: "ILL TRK" };
+      }
+      return { kind: "hit", aircraftId: closest[0]!.ac.id };
+    }
+  }
+
+  // 2. Report-backed symbol hit testing
+  const symbolHits: { ac: Aircraft; dist: number }[] = [];
+  for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    const report = td?.lastReport;
+    if (!report) {
+      continue;
+    }
+    if (!Number.isFinite(report.xNm) || !Number.isFinite(report.yNm)) {
+      continue;
+    }
+    const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+    if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
+      continue;
+    }
+    const dist = Math.hypot(symPt.x - cssX, symPt.y - cssY);
+    if (dist <= HIT_RADIUS_CSS_PX) {
+      if (!isMinSepTargetEligibleAndDisplayed(world, view, ac.id, cssWidth, cssHeight)) {
+        return { kind: "error", error: "ILL TRK" };
+      }
+      symbolHits.push({ ac, dist });
+    }
+  }
+
+  if (symbolHits.length > 0) {
+    let minDist = Infinity;
+    for (const h of symbolHits) {
+      if (h.dist < minDist) minDist = h.dist;
+    }
+    const closest = symbolHits.filter((h) => Math.abs(h.dist - minDist) < 1e-4);
+    const distinctIds = new Set(closest.map((h) => h.ac.id));
+    if (distinctIds.size > 1) {
+      return { kind: "error", error: "ILL TRK" };
+    }
+    return { kind: "hit", aircraftId: closest[0]!.ac.id };
+  }
+
+  return { kind: "miss" };
+}
+
+/**
+ * Handle PPI left click when Minimum-Separation (MIN) entry is pending.
+ * Returns true when consumed.
+ * Intercepts all clicks on scope before ordinary target selection, handoff
+ * acceptance, datablock toggle, list actions, and centering click.
+ */
+export function handleMinSepClick(
+  view: ScopeView,
+  world: World,
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!isMinSepPending(view)) {
+    return false;
+  }
+
+  const pickResult = pickMinSepTargetAt(world, view, cssX, cssY, cssWidth, cssHeight);
+
+  if (pickResult.kind === "miss") {
+    // Empty PPI/list space clicks do not advance phase, clear selection, change maps/lists, or emit an error.
+    return true;
+  }
+
+  if (pickResult.kind === "error") {
+    cancelMinSepPending(view.minSep);
+    rejectPreviewAreaWithReason(view.preview, nowMs, pickResult.error);
+    return true;
+  }
+
+  const clickedId = pickResult.aircraftId;
+
+  if (view.minSep.pendingFirstId === null) {
+    // First target selection
+    const eligible = isMinSepTargetEligibleAndDisplayed(
+      world,
+      view,
+      clickedId,
+      cssWidth,
+      cssHeight,
+    );
+    if (!eligible) {
+      cancelMinSepPending(view.minSep);
+      rejectPreviewAreaWithReason(view.preview, nowMs, "ILL TRK");
+      return true;
+    }
+    view.minSep.pendingFirstId = clickedId;
+    view.minSep.lastError = null;
+    return true;
+  }
+
+  // Second target selection
+  const firstId = view.minSep.pendingFirstId;
+
+  if (firstId === clickedId) {
+    // Same target clicked twice
+    cancelMinSepPending(view.minSep);
+    rejectPreviewAreaWithReason(view.preview, nowMs, "DUP TRK");
+    return true;
+  }
+
+  // Re-verify both first target and second target are living, have finite reports,
+  // and have displayed symbols inside rectangular PPI.
+  const firstValid = isMinSepTargetEligibleAndDisplayed(world, view, firstId, cssWidth, cssHeight);
+  const secondValid = isMinSepTargetEligibleAndDisplayed(
+    world,
+    view,
+    clickedId,
+    cssWidth,
+    cssHeight,
+  );
+
+  if (!firstValid || !secondValid) {
+    cancelMinSepPending(view.minSep);
+    rejectPreviewAreaWithReason(view.preview, nowMs, "ILL TRK");
+    return true;
+  }
+
+  // Atomically replace active pair and complete preview
+  view.minSep.activePair = {
+    aircraftIdA: firstId,
+    aircraftIdB: clickedId,
+  };
+  view.minSep.pendingFirstId = null;
+  view.minSep.lastError = null;
+  cancelPreviewArea(view.preview);
+
+  return true;
 }

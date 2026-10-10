@@ -579,6 +579,13 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "PPI or Preview Area",
         result: "Selects a beacon block or discrete code.",
       },
+      {
+        id: "minimum-separation",
+        command: "Del, click 2 tracks (Enter clears, Esc cancels)",
+        example: "Del, click A, click B",
+        input: "Scope only",
+        result: "Displays predicted minimum separation between two tracks.",
+      },
     ],
   },
   {
@@ -642,7 +649,7 @@ export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
       {
         id: "aircraft-alerts",
         title: "Alerts and tracking controls",
-        bindingIds: ["ca-inhibit"],
+        bindingIds: ["ca-inhibit", "minimum-separation"],
       },
       {
         id: "aircraft-mouse",
@@ -991,6 +998,13 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "* then J/P/D+/AE/BE/DE, Enter commits",
     action: "Runs a TPA or ATPA command.",
     crcAnalog: "CRC STARS TPA/ATPA Table 36 (*J *P **J **P *D+ *AE *BE *DE)",
+  },
+  {
+    id: "minimum-separation",
+    focus: "scope",
+    windowsKeys: "Delete (Del)",
+    action: "Starts minimum separation selection for two displayed tracks.",
+    crcAnalog: "STARS §6.4 <MIN> (trainer maps dedicated Del, scope focus only)",
   },
 ];
 

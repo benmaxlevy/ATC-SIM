@@ -972,10 +972,12 @@ export type {
 export {
   beginMinSepSelection,
   cancelMinSepPending,
+  cancelPendingMinSepIfArmed,
   clearMinSepState,
   computeMinimumSeparation,
   createMinSepState,
   invalidateMinSepPair,
+  isMinSepPending,
   isValidMinSepTrackInput,
   minSepInputFromReport,
   selectMinSepAircraft,
@@ -987,3 +989,6 @@ export type {
   MinSepState,
   MinSepTrackInput,
 } from "./minimumSeparation";
+export { handleMinSepClick, isMinSepTargetEligibleAndDisplayed, pickMinSepTargetAt } from "./pick";
+export type { MinSepPickResult } from "./pick";
+export { isMinSepDeleteKey } from "./scopeKeys";

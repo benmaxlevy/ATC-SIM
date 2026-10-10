@@ -30,6 +30,8 @@
 
 import { magneticToTrueDeg } from "@core";
 import type { SurveillanceReport } from "./surveillance";
+import type { ScopeView } from "./scopeView";
+import { cancelPreviewArea } from "./previewArea";
 
 /** Minimum relative velocity squared threshold (in (NM/s)^2) matching CA helper guard. */
 const EPSILON_VELOCITY_SQ = 1e-12;
@@ -340,4 +342,24 @@ export function computeMinimumSeparation(
     distanceNm,
     isIncreasingDistance: false,
   };
+}
+
+/**
+ * Check whether Minimum-Separation (MIN) selection or entry is pending on the scope view.
+ */
+export function isMinSepPending(view: ScopeView): boolean {
+  return view.preview.armed?.type === "minSep" || view.minSep.pendingFirstId !== null;
+}
+
+/**
+ * Cancel pending MIN selection and preview if armed.
+ * Preserves any active pair.
+ */
+export function cancelPendingMinSepIfArmed(view: ScopeView): void {
+  if (view.minSep.pendingFirstId !== null || view.preview.armed?.type === "minSep") {
+    cancelMinSepPending(view.minSep);
+    if (view.preview.armed?.type === "minSep") {
+      cancelPreviewArea(view.preview);
+    }
+  }
 }

@@ -85,6 +85,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
 - **Conflict Alert (CA)**: Kinematic CPA prediction uses the active pair's lower airspace type (Type 1–4). Only Line 0 indicators blink: unacknowledged CA and MSAW flash red `CA` and `LA` at 800 ms on / 800 ms off; each stays solid after an empty-Preview slew-click acknowledgement. Concurrent MSAW and CA is one `LA/CA` indication and blinks as one unit until both conditions are acknowledged. Field 2 inhibit marks sit beside the ACID: upright `Δ` for CA/MCI, `*` for MSAW, and `+` when both are inhibited. The LA/CA/MCI list always remains green; CA rows read `CA <ACID>*<ACID>`. Use the `CA` commands below; `F11` buffers `CA `.
 - **Minimum Safe Altitude Warning (MSAW)**: Polygon-based Minimum Vectoring Altitude (MVA) floor checks that alert when aircraft descend below safe sector altitudes. `<MULTI FUNC>Q` (`*Q`, then owned alerting-track slew) suppresses only that current LA alert; `<MULTI FUNC>V` (`*V`, then owned-track slew) toggles persistent per-track MSAW processing. Both display the ACID `*`, are scope-local trainer controls, and are not certified MSAW. `*LA` remains only the altitude-filter command.
 - **Mode C Intruder (MCI)**: Alerts when an untracked VFR/Mode C transponder target penetrates protected airspace around tracked flights. Toggled on/off globally via `*MCI`.
+- **Minimum-Separation (MIN)**: Controller-selected pairwise horizontal separation tool (STARS TI 6191.409 §6.4). Dedicated unmodified scope-focus `Delete` key starts or restarts entry with the `MIN` mnemonic. Left-click two displayed tracks to activate the pair. Scope `Enter` (or `NumpadEnter`) clears active and pending MIN state; `Escape` cancels pending MIN while preserving any active pair; `Backspace` does not edit the radio; extra printable input aborts with `FORMAT`. Duplicate target click returns `DUP TRK`; vanished, unassociated, or off-screen target returns `ILL TRK`; equal-distance ties or malformed reports return `ILL TRK`. Rejections end pending entry and preserve any previously active pair. Dedicated `Del` in native text inputs, modals, and radio retains native forward delete. Alternate activations (bare End, `?`, F2, typed `MIN`, `*MIN`, DCB button) are not bound.
 
 ### Simulated pilot & handoffs
 
@@ -592,6 +593,7 @@ Clicking or selecting a numeric DCB adjustment button (Range, Range Rings, Leade
 | `B` then `<digits>` | Beacon Code Select | Table 30 beacon select chord (e.g. `B45` Enter for block 45; `B4501` for discrete). |
 | `/` | Slew / Drop Prefix | Buffers `/` into Preview Area (drop track `TERM CNTL`, set leader length, or toggle PDB ↔ FDB). |
 | `*` | Multi-Function Prefix | Buffers `*` into Preview Area for system lists, display commands, filters, and TPA chords. |
+| `Delete` (`Del`) | Minimum-Separation `<MIN>` | Starts/restarts pending Minimum-Separation entry. Left-click two displayed tracks to activate pairwise predicted minimum separation. Scope `Enter` clears active and pending state; `Escape` cancels pending. Native text editors, modals, and radio retain forward delete. |
 
 ---
 

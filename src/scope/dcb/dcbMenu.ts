@@ -390,6 +390,16 @@ export function armDcbSpinner(
   options?: DcbSpinnerArmOptions,
 ): void {
   const h = host as unknown as SpinnerHostCandidate;
+  if ("minSep" in h && h.minSep && typeof h.minSep === "object") {
+    const minSep = h.minSep as { pendingFirstId: string | null; lastError: string | null };
+    minSep.pendingFirstId = null;
+    minSep.lastError = null;
+    const preview = (h as { preview?: { armed?: { type: string } | null; phase: string } }).preview;
+    if (preview?.armed?.type === "minSep") {
+      preview.phase = "idle";
+      preview.armed = null;
+    }
+  }
   host.dcbSpinner.armed = true;
   host.dcbSpinner.cell = cell;
   host.dcbSpinner.buffer = "";
