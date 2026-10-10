@@ -84,6 +84,7 @@ import {
   type AtpaState,
   type TpaState,
 } from "./tpa";
+import { createMinSepState, type MinSepState } from "./minimumSeparation";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -370,6 +371,11 @@ export interface ScopeView {
   cursorHome: boolean;
   /** AUX CSR SPD spinner (1–10, default 4). */
   cursorSpeed: number;
+  /**
+   * Minimum-Separation (MIN) model and prediction session state.
+   * TI 6191.409 Section 6.4. Display/prediction only.
+   */
+  minSep: MinSepState;
 }
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
@@ -523,6 +529,7 @@ export function createScopeView(
     dwellLockedAircraftId: null,
     cursorHome: options?.cursorHome ?? false,
     cursorSpeed: options?.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
+    minSep: createMinSepState(),
   };
 }
 

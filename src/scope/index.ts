@@ -969,3 +969,21 @@ export type {
   WxLevels,
   WxMosaic,
 } from "./wx";
+export {
+  beginMinSepSelection,
+  cancelMinSepPending,
+  clearMinSepState,
+  computeMinimumSeparation,
+  createMinSepState,
+  invalidateMinSepPair,
+  isValidMinSepTrackInput,
+  minSepInputFromReport,
+  selectMinSepAircraft,
+} from "./minimumSeparation";
+export type {
+  ActiveMinSepPair,
+  MinSepPrediction,
+  MinSepSelectionResult,
+  MinSepState,
+  MinSepTrackInput,
+} from "./minimumSeparation";
