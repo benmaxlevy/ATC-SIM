@@ -16,6 +16,10 @@ export function formatPreviewDisplayReadout(state: PreviewAreaState): string | n
   if (state.rejection !== null) return readout;
 
   const mnemonic = state.mnemonic;
+  // RBL is an internal entry owner, not a manual-specified Preview prompt.
+  // After endpoint 1, echo only the operand being entered for endpoint 2.
+  if (mnemonic === "RBL") return state.buffer || null;
+
   const label = MNEMONIC_LABELS.find(([known]) => mnemonic === known)?.[1];
   if (label !== undefined && (readout === mnemonic || readout.startsWith(`${mnemonic} `))) {
     return `${label}${readout.slice(mnemonic.length)}`;

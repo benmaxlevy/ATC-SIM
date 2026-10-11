@@ -891,6 +891,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(view.rbl.pendingFirstEndpoint).not.toBeNull();
       expect(view.rbl.pendingFirstEndpoint?.kind).toBe("static");
       expect(view.rbl.lines.size).toBe(0);
+      expect(formatPreviewDisplayReadout(view.preview)).toBeNull();
 
       // Second click on empty PPI (cssX: 500, cssY: 500) commits immediately
       handlePpiLeftClick(view, world, 500, 500, 800, 800);
@@ -982,12 +983,18 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       }
       expect(view.rbl.lines.size).toBe(0);
       expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
-      expect(formatPreviewDisplayReadout(view.preview)).toBe("RBL");
-      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      expect(formatPreviewDisplayReadout(view.preview)).toBeNull();
+      const awaitingSecond = createMockCtx();
+      renderScope(awaitingSecond.ctx, world, view, 800, 600);
+      expect(awaitingSecond.fillTexts.some((item) => item.text === "RBL")).toBe(false);
       for (const key of "FIXBE") {
         handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 2000);
       }
-      expect(formatPreviewDisplayReadout(view.preview)).toBe("RBL FIXBE");
+      expect(formatPreviewDisplayReadout(view.preview)).toBe("FIXBE");
+      const typingSecond = createMockCtx();
+      renderScope(typingSecond.ctx, world, view, 800, 600);
+      expect(typingSecond.fillTexts.some((item) => item.text === "FIXBE")).toBe(true);
+      expect(typingSecond.fillTexts.some((item) => item.text === "RBL FIXBE")).toBe(false);
       handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 2000);
       expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
       expect(view.rbl.pendingFirstEndpoint).toBeNull();
