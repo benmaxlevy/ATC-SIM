@@ -6534,3 +6534,16 @@ explicitly recorded unrun limitations. Captain appends STATUS preserving
 history and returns PHASE EXIT GREEN or PHASE EXIT BLOCKED with merged IDs,
 feature commits, gate evidence and browser/audio leftovers. No later swarm or
 phase is authorized.
+
+## Eighty-sixth swarm review gate amendment — pre-merge manual checks (2026-10-11)
+
+During T02-220 execution the user required check-stars-manual after each ticket
+returns READY TO MERGE, correction of unintended divergences, and a final
+ticket report table. Captain now performs the supplied-manual review, including
+an independent Luna medium pass, on the ready ticket branch before merging.
+Any unintended FAIL stops the merge and starts only one narrowly scoped
+correction worker; re-review before merging. The existing after-merge captain
+CI and supplied-manual gate remain required before launching the next wave.
+Final handoff includes a per-ticket table of commits, tests, manual results,
+corrections and actual manual/browser/audio leftovers. All other configuration
+and the T02-228 stop boundary remain unchanged.
