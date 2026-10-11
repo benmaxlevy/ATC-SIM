@@ -6275,3 +6275,23 @@ ticket onto `feature/minimum-separation-graphics`, runs focused tests and
 ticket. No push is authorized. Existing untracked artifacts (`.worktrees/`,
 `:memory:.ses`, `speech-api/:memory:.ses`) remain untouched.
 
+## Eighty-fifth swarm resumed — range-bearing input and graphics (2026-10-11)
+
+The user explicitly requested that this invoking captain take over the unfinished
+T02-209 work, repair its failing CI, and then execute T02-210. Preserve the
+completed T02-208 and Preview-label changes on `feature/minimum-separation-graphics`.
+The merge target remains that feature branch; no master merge or push is authorized.
+
+Run one isolated `gpt-6-luna` worker at reasoning effort `medium` at a time.
+Before resuming implementation, verify prior agents are terminal and establish
+ownership of the existing T02-209 changes. Preserve and transfer verified ticket
+work without resetting or discarding unclear changes. This captain owns the
+merge lock. Workers implement one ticket, commit progressively, never merge or
+spawn, and return `READY TO MERGE` or `BLOCKED`.
+
+Resume T02-209 first; do not launch T02-210 until T02-209 is squash-merged,
+captain CI passes, and the supplied-manual independent review passes. On a gate
+failure use one narrowly scoped correction worker. Then execute T02-210 with
+the same CI/manual gates and final browser evidence or explicit visual leftovers.
+Append STATUS preserving history, and stop after T02-210. All original RBL
+product laws, trainer deltas, skips, and untracked-artifact protections remain.
