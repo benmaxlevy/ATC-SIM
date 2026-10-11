@@ -336,6 +336,10 @@ export {
   centerOnWorld,
   applyRadarSites,
   applyRadarTilesetBoundary,
+  advanceFmaSurveillanceView,
+  clearFmaSurveillanceView,
+  configureFmaSurveillanceView,
+  fmaReportsForSimulationTick,
   createScopeView,
   setSurveillanceMode,
   beginAltitudeFilterChord,
@@ -381,8 +385,35 @@ export {
   DEFAULT_HISTORY_RATE_SEC,
   DEFAULT_CURSOR_SPEED,
   resetRangeBearingSession,
+  pruneFmaSurveillanceView,
+  releaseFmaTrackView,
+  releaseFmaTracksView,
+  setFmaSensorStatusView,
+  setFmaSensorFixtureView,
 } from "./scopeView";
 export type { MapLayerId, ScopeView, VolLevel, ModeFsl, DwellMode } from "./scopeView";
+export {
+  FMA_SURVEILLANCE_DEFAULTS,
+  advanceFmaSurveillance,
+  clearFmaSurveillance,
+  configureFmaSurveillance,
+  createFmaSurveillanceState,
+  fmaPresentationReport,
+  pruneFmaSurveillance,
+  releaseFmaTrack,
+  releaseFmaTracks,
+  setFmaSensorStatus,
+  setFmaSensorFixture,
+} from "./fmaSurveillance";
+export type {
+  FmaRetainedTrack,
+  FmaSensorStatus,
+  FmaSensorFixture,
+  FmaSourceStatus,
+  FmaSurveillanceCode,
+  FmaSurveillanceState,
+  FmaSurveillanceTick,
+} from "./fmaSurveillance";
 export {
   WX_VIP_CONTOUR_HEX,
   WX_VIP_FILL_HEX,

@@ -100,6 +100,22 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { SurveillanceReport } from "./surveillance";
+import {
+  advanceFmaSurveillance,
+  clearFmaSurveillance,
+  configureFmaSurveillance,
+  createFmaSurveillanceState,
+  pruneFmaSurveillance,
+  releaseFmaTrack,
+  releaseFmaTracks,
+  setFmaSensorStatus,
+  setFmaSensorFixture,
+  type FmaSensorFixture,
+  type FmaSensorStatus,
+  type FmaSurveillanceState,
+  type FmaSurveillanceTick,
+} from "./fmaSurveillance";
 import type { DatablockRenderSnapshot } from "./datablock";
 import type { RadarSite } from "@scenario";
 import {
@@ -339,6 +355,8 @@ export interface ScopeView {
   surveillanceMode: SurveillanceMode;
   /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
   radarSites: RadarSite[];
+  /** Per-TCW FMA report retention. Separate from World alerts and SITE sampler. */
+  fmaSurveillance: FmaSurveillanceState;
   /**
    * STARS VIP 1–6 display latches. Default all false.
    * Display only. Paint is weatherLayer. Does not steer aircraft.
@@ -530,6 +548,7 @@ export function createScopeView(
     activeListEntries: [],
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
+    fmaSurveillance: createFmaSurveillanceState(),
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
@@ -579,6 +598,7 @@ export function applyRadarSites(view: ScopeView, sites: readonly RadarSite[]): v
   view.radarSites = [...sites];
   view.surveillanceMode = effectiveSurveillanceMode(view.surveillanceMode, view.radarSites);
   clearLastSurveillanceReports(view);
+  clearFmaSurveillanceView(view);
 }
 
 /** SITE / catalog change resamples immediately. Trainer delta: no 30 s coast. */
@@ -596,6 +616,92 @@ export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): vo
   }
   view.surveillanceMode = next;
   clearLastSurveillanceReports(view);
+  clearFmaSurveillanceView(view);
+}
+
+/** Internal runtime seam for the later MODE / AMZ controls; no UI command. */
+export function configureFmaSurveillanceView(
+  view: ScopeView,
+  enabled: boolean,
+  selectedAmzId: string | null,
+  monitoring?: { surveillanceLossS: number; coastOutS: number },
+): void {
+  const nextMonitoring = monitoring ?? view.fmaSurveillance.monitoring;
+  const previous = view.fmaSurveillance;
+  view.fmaSurveillance = configureFmaSurveillance(
+    view.fmaSurveillance,
+    enabled,
+    selectedAmzId,
+    nextMonitoring,
+  );
+  if (view.fmaSurveillance !== previous) {
+    for (const td of view.tracks.values()) delete td.presentationReport;
+  }
+}
+
+/** Deterministic sensor-source fixture input for synthetic tests/browser exercises. */
+export function setFmaSensorStatusView(view: ScopeView, status: FmaSensorStatus | null): void {
+  view.fmaSurveillance = setFmaSensorStatus(view.fmaSurveillance, status);
+}
+
+/** Deterministic report-feed override; [] deliberately interrupts every source. */
+export function setFmaSensorFixtureView(view: ScopeView, fixture: FmaSensorFixture | null): void {
+  view.fmaSurveillance = setFmaSensorFixture(view.fmaSurveillance, fixture);
+}
+
+/** Selects explicit fixture reports when present; an empty fixture remains a gap. */
+export function fmaReportsForSimulationTick(
+  view: ScopeView,
+  ordinaryReports: readonly SurveillanceReport[],
+): readonly SurveillanceReport[] {
+  return view.fmaSurveillance.sensorFixture?.reports ?? ordinaryReports;
+}
+
+/** Simulation-update observer. Caller must guard against unchanged sim time. */
+export function advanceFmaSurveillanceView(view: ScopeView, tick: FmaSurveillanceTick): void {
+  view.fmaSurveillance = advanceFmaSurveillance(view.fmaSurveillance, tick);
+  publishFmaPresentation(view);
+}
+
+/** Prune dead/disassociated tracks without evaluating report age. */
+export function pruneFmaSurveillanceView(
+  view: ScopeView,
+  liveTrackIds: ReadonlySet<string>,
+  associatedTrackIds?: ReadonlySet<string>,
+): void {
+  view.fmaSurveillance = pruneFmaSurveillance(
+    view.fmaSurveillance,
+    liveTrackIds,
+    associatedTrackIds,
+  );
+  publishFmaPresentation(view);
+}
+
+export function releaseFmaTrackView(view: ScopeView, aircraftId: string): void {
+  view.fmaSurveillance = releaseFmaTrack(view.fmaSurveillance, aircraftId);
+  delete view.tracks.get(aircraftId)?.presentationReport;
+}
+
+export function releaseFmaTracksView(view: ScopeView, aircraftIds: Iterable<string>): void {
+  const ids = [...aircraftIds];
+  view.fmaSurveillance = releaseFmaTracks(view.fmaSurveillance, ids);
+  for (const id of ids) delete view.tracks.get(id)?.presentationReport;
+}
+
+export function clearFmaSurveillanceView(view: ScopeView): void {
+  view.fmaSurveillance = clearFmaSurveillance(view.fmaSurveillance);
+  for (const td of view.tracks.values()) delete td.presentationReport;
+}
+
+function publishFmaPresentation(view: ScopeView): void {
+  for (const [id, td] of view.tracks) {
+    const retained = view.fmaSurveillance.tracks.get(id);
+    if (view.fmaSurveillance.enabled && retained) {
+      td.presentationReport = { ...retained.coastedReport };
+    } else {
+      delete td.presentationReport;
+    }
+  }
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {

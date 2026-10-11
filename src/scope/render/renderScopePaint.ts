@@ -374,7 +374,8 @@ export function collectDatablockProtectedGeometry(
 }
 
 export function displayAircraft(ac: Aircraft, td: TrackDisplay | undefined): Aircraft | null {
-  return td?.lastReport ? aircraftAtReport(ac, td.lastReport) : null;
+  const report = td?.presentationReport ?? td?.lastReport;
+  return report ? aircraftAtReport(ac, report) : null;
 }
 
 export function tracePolyline(
@@ -1481,7 +1482,7 @@ export function drawTracks(
   if (historyCount > 0) {
     for (const ac of world.aircraft) {
       const td = view.tracks.get(ac.id);
-      if (!td?.lastReport) {
+      if (!(td?.presentationReport ?? td?.lastReport)) {
         continue;
       }
       const dots = historyDotsToDraw(td.history, historyCount);
@@ -1504,7 +1505,8 @@ export function drawTracks(
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
-    if (!shown || !td?.lastReport) {
+    const report = td?.presentationReport ?? td?.lastReport;
+    if (!shown || !report) {
       continue;
     }
     const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
@@ -1539,8 +1541,8 @@ export function drawTracks(
       }
     }
 
-    const antenna = td.lastReport.sourceSiteId
-      ? view.radarSites.find((site) => site.id === td.lastReport!.sourceSiteId)
+    const antenna = report.sourceSiteId
+      ? view.radarSites.find((site) => site.id === report.sourceSiteId)
       : undefined;
     drawTargetSymbol(
       ctx,
@@ -1554,10 +1556,10 @@ export function drawTracks(
         squawk,
         beaconSelect: view.beaconSelectCodes,
         sectorId,
-        surveillancePaint: td.lastReport.paint,
-        groundTrackDeg: td.lastReport.headingDeg,
-        reportXNm: td.lastReport.xNm,
-        reportYNm: td.lastReport.yNm,
+        surveillancePaint: report.paint,
+        groundTrackDeg: report.headingDeg,
+        reportXNm: report.xNm,
+        reportYNm: report.yNm,
         antennaXNm: antenna?.xNm,
         antennaYNm: antenna?.yNm,
         siteRangeNm: antenna?.rangeNm,

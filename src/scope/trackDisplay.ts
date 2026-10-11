@@ -149,6 +149,8 @@ export interface TrackDisplay {
    * out of coverage (no paint, no 30 s coast).
    */
   lastReport?: SurveillanceReport;
+  /** FMA-only projection; never fed back into the SITE sampler. */
+  presentationReport?: SurveillanceReport;
 }
 
 export type TrackDisplayItem = TrackDisplay;

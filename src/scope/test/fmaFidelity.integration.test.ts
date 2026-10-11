@@ -1,6 +1,27 @@
 import { expect, test } from "vitest";
 import type { ProcedureCatalog } from "../../scenario/procedures/types";
 import { deriveFmaAmzs } from "../../core/alerts/fmaGeometry";
+import { createAircraft } from "../../core/aircraft";
+import {
+  advanceFmaSurveillance,
+  configureFmaSurveillance,
+  createFmaSurveillanceState,
+  pruneFmaSurveillance,
+  releaseFmaTrack,
+  setFmaSensorFixture,
+  setFmaSensorStatus,
+  type FmaSurveillanceState,
+} from "../fmaSurveillance";
+import type { SurveillanceReport } from "../surveillance";
+import {
+  advanceFmaSurveillanceView,
+  configureFmaSurveillanceView,
+  createScopeView,
+  fmaReportsForSimulationTick,
+  setFmaSensorFixtureView,
+} from "../scopeView";
+import { createTrackDisplay } from "../trackDisplay";
+import { displayAircraft } from "../render/renderScopePaint";
 
 function catalog(
   courses: Array<{
@@ -396,4 +417,195 @@ test("FMA unresolved FAF runway remains a barrier between valid outer thresholds
     path: "approaches.APP1.fafFixId",
     message: "unresolved FAF fix; approach excluded",
   });
+});
+
+function report(at: number, overrides: Partial<SurveillanceReport> = {}): SurveillanceReport {
+  return {
+    aircraftId: "track-a",
+    xNm: 4,
+    yNm: 8,
+    headingDeg: 90,
+    speedKt: 360,
+    altitudeFt: 4000,
+    reportedAtSimMs: at,
+    sourceSiteId: "radar-a",
+    paint: "site-rect",
+    ...overrides,
+  };
+}
+
+function fmaState(sensorStatus: FmaSurveillanceState["sensorStatus"] = null) {
+  return setFmaSensorStatus(
+    configureFmaSurveillance(createFmaSurveillanceState(), true, "AMZ-A"),
+    sensorStatus,
+  );
+}
+
+function tick(
+  state: FmaSurveillanceState,
+  nowSimMs: number,
+  reports: readonly SurveillanceReport[] = [],
+  ids: ReadonlySet<string> = new Set(["track-a"]),
+) {
+  return advanceFmaSurveillance(state, {
+    nowSimMs,
+    reports,
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+}
+
+function tickFixture(state: FmaSurveillanceState, nowSimMs: number) {
+  return tick(state, nowSimMs, state.sensorFixture?.reports ?? []);
+}
+
+test("FMA report gap uses exact simulation-time loss/coast thresholds, freezes its coast, and recovers", () => {
+  let state = tick(fmaState(), 0, [report(0)]);
+  expect(state.tracks.get("track-a")).toMatchObject({ code: "CURRENT", elapsedLossS: 0 });
+
+  // Repeated paused/render-only callback at the same simulation time is inert.
+  const paused = tick(state, 0, [report(0, { xNm: 99 })]);
+  expect(paused).toBe(state);
+  state = tick(state, 9_999);
+  expect(state.tracks.get("track-a")?.code).toBe("CURRENT");
+  state = tick(state, 10_000);
+  expect(state.tracks.get("track-a")).toMatchObject({ code: "CST", elapsedLossS: 10 });
+  expect(state.tracks.get("track-a")?.coastedReport.xNm).toBeCloseTo(5);
+  state = tick(state, 30_000);
+  const frozen = state.tracks.get("track-a")!;
+  expect(frozen).toMatchObject({ code: "FROZEN", elapsedLossS: 30, frozen: true });
+  expect(frozen.coastedReport.xNm).toBeCloseTo(7);
+  state = tick(state, 31_000);
+  expect(state.tracks.get("track-a")?.coastedReport.xNm).toBeCloseTo(7);
+  state = tick(state, 32_000, [report(32_000, { xNm: 12, yNm: -3 })]);
+  expect(state.tracks.get("track-a")).toMatchObject({
+    code: "CURRENT",
+    elapsedLossS: 0,
+    frozen: false,
+    report: { xNm: 12, yNm: -3 },
+  });
+  state = tick(state, 33_000, [report(33_000, { xNm: Number.NaN })]);
+  expect(state.tracks.get("track-a")).toMatchObject({
+    code: "CURRENT",
+    report: { reportedAtSimMs: 32_000 },
+  });
+  expect(tick(state, 42_000).tracks.get("track-a")?.code).toBe("CST");
+});
+
+test("FMA source status distinguishes NOM from all-source loss; malformed reports do not recover", () => {
+  let state = setFmaSensorFixture(fmaState(), {
+    sensorStatus: { selectedFastSourceId: "mlat", reportingSourceIds: ["radar-a"] },
+    reports: [report(0)],
+  });
+  state = tickFixture(state, 0);
+  expect(state.tracks.get("track-a")).toMatchObject({
+    code: "NOM",
+    sourceStatus: "SELECTED_FAST_SOURCE_LOST",
+  });
+  state = setFmaSensorFixture(state, {
+    sensorStatus: { selectedFastSourceId: "mlat", reportingSourceIds: ["radar-a"] },
+    reports: [report(1_000, { xNm: 4.1 })],
+  });
+  state = tickFixture(state, 1_000);
+  expect(state.tracks.get("track-a")).toMatchObject({
+    code: "NOM",
+    sourceStatus: "SELECTED_FAST_SOURCE_LOST",
+    report: { reportedAtSimMs: 1_000, xNm: 4.1 },
+  });
+  state = setFmaSensorFixture(state, {
+    sensorStatus: { selectedFastSourceId: "mlat", reportingSourceIds: [] },
+    reports: [],
+  });
+  // Even if ordinary selected-source samples continue, the explicit FMA feed
+  // owns this exercise and an empty feed represents all-source interruption.
+  state = tickFixture(state, 2_000);
+  expect(state.tracks.get("track-a")?.sourceStatus).toBe("ALL_SOURCES_LOST");
+  state = tickFixture(state, 11_000);
+  expect(state.tracks.get("track-a")?.code).toBe("CST");
+  state = setFmaSensorStatus(state, null);
+  state = tick(state, 12_000, [report(12_000, { headingDeg: Number.POSITIVE_INFINITY })]);
+  expect(state.tracks.get("track-a")).toMatchObject({
+    code: "CST",
+    report: { reportedAtSimMs: 1_000 },
+  });
+});
+
+test("FMA interruption fixture replaces continuing ordinary samples with its explicit report feed", () => {
+  const view = createScopeView();
+  const ordinary = [report(2_000)];
+  setFmaSensorFixtureView(view, {
+    sensorStatus: { selectedFastSourceId: "mlat", reportingSourceIds: [] },
+    reports: [],
+  });
+  expect(fmaReportsForSimulationTick(view, ordinary)).toEqual([]);
+  setFmaSensorFixtureView(view, null);
+  expect(fmaReportsForSimulationTick(view, ordinary)).toBe(ordinary);
+});
+
+test("FMA frozen paint uses retained reports and never falls back to live World position", () => {
+  const view = createScopeView();
+  const td = createTrackDisplay();
+  td.lastReport = report(0);
+  view.tracks.set("track-a", td);
+  configureFmaSurveillanceView(view, true, "AMZ-A");
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 0,
+    reports: [report(0)],
+    liveTrackIds: new Set(["track-a"]),
+    associatedTrackIds: new Set(["track-a"]),
+  });
+  delete td.lastReport; // ordinary sampler dropped the out-of-coverage report
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 30_000,
+    reports: [],
+    liveTrackIds: new Set(["track-a"]),
+    associatedTrackIds: new Set(["track-a"]),
+  });
+  expect(td.presentationReport?.xNm).toBeCloseTo(7);
+  const hiddenWorldPose = createAircraft({
+    id: "track-a",
+    callsign: "ABC123",
+    xNm: 99,
+    yNm: 100,
+    headingDeg: 180,
+    altitudeFt: 9000,
+    speedKt: 240,
+  });
+  expect(displayAircraft(hiddenWorldPose, td)?.xNm).toBeCloseTo(7);
+  expect(td.lastReport).toBeUndefined();
+});
+
+test("FMA adapted loss and coast-out intervals override the trainer defaults", () => {
+  let state = configureFmaSurveillance(fmaState(), true, "AMZ-A", {
+    surveillanceLossS: 5,
+    coastOutS: 60,
+  });
+  state = tick(state, 0, [report(0)]);
+  state = tick(state, 5_000);
+  expect(state.tracks.get("track-a")?.code).toBe("CST");
+  state = tick(state, 60_000);
+  expect(state.tracks.get("track-a")).toMatchObject({ code: "FROZEN", elapsedLossS: 60 });
+  expect(state.tracks.get("track-a")?.coastedReport.xNm).toBeCloseTo(10);
+});
+
+test("FMA cleanup is per display and cannot revive inhibited, disassociated, or prior-AMZ poses", () => {
+  const left = tick(fmaState(), 0, [report(0)]);
+  const right = tick(fmaState(), 0, [report(0, { aircraftId: "track-b" })], new Set(["track-b"]));
+  const coastedLeft = tick(left, 30_000);
+  expect(coastedLeft.tracks.get("track-a")?.frozen).toBe(true);
+  const inhibited = releaseFmaTrack(coastedLeft, "track-a");
+  const oldSuppressed = tick(inhibited, 31_000, [report(0)]);
+  expect(oldSuppressed.tracks.has("track-a")).toBe(false);
+  expect(tick(oldSuppressed, 32_000, [report(32_000)]).tracks.get("track-a")?.code).toBe("CURRENT");
+  const disassociated = pruneFmaSurveillance(coastedLeft, new Set(["track-a"]), new Set());
+  expect(disassociated.tracks.size).toBe(0);
+  const staleAfterUnsuppress = tick(disassociated, 31_000, [report(0)]);
+  expect(staleAfterUnsuppress.tracks.has("track-a")).toBe(false);
+  expect(tick(staleAfterUnsuppress, 32_000, [report(32_000)]).tracks.get("track-a")?.code).toBe(
+    "CURRENT",
+  );
+  const changedAmz = configureFmaSurveillance(coastedLeft, true, "AMZ-B");
+  expect(changedAmz.tracks.size).toBe(0);
+  expect(right.tracks.get("track-b")?.aircraftId).toBe("track-b");
+  expect(right.tracks.has("track-a")).toBe(false);
 });

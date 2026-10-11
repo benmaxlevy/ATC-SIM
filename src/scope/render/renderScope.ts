@@ -68,6 +68,8 @@ export function renderScope(
     return;
   }
 
+  // Ordinary surveillance sampling remains display-local; FMA loss/coast
+  // evaluation is separately dispatched from the simulation update path.
   syncTrackDisplays(
     view.tracks,
     world,

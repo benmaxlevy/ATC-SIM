@@ -993,3 +993,22 @@ reference lines appear only when range/MAG ≤16 NM and range rings/compass are
 removed when magnification exceeds 1; display gating is handled by later FMA
 surface work. FAA AIM §§5-4-13–16 distinguish straight parallel procedures
 from SOIA; geometry alone does not establish PRM eligibility.
+
+## Final Monitor Aid surveillance lifecycle (T02-221)
+
+FMA retains valid report snapshots per display and track. Its 10-second
+surveillance-loss and 30-second coast-out defaults come from the trainer
+adaptation in T02-220. Coast uses the last report's ground track and speed,
+then freezes at the pose projected at coast-out; it never follows hidden World
+position. These timers use simulation time: pause stops aging, and acceleration
+advances it. A fresh valid report recovers the display state. Track/plan
+removal, FMA exit, AMZ change, inhibition, and session teardown release retained
+poses. Synthetic source-status inputs can distinguish selected-fast-source loss
+with another source reporting (NOM-capable) from all-source loss. Missing or
+incomplete source metadata does not infer NOM from report age.
+
+This behavior applies only while the later FMA mode is active. It is a
+straight-line trainer coast, not a proprietary tracking filter or live sensor
+health service. Outside FMA, the shipped FUSED / MULTI / single-site sampler
+still removes reports immediately when the selected coverage is lost and does
+not coast.

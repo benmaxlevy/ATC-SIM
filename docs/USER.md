@@ -39,6 +39,26 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 
 ## Features
 
+### Final Monitor Aid (trainer adaptation)
+
+FMA surveillance is a per-display report lifecycle for associated tracks. When
+enabled by a later FMA mode control, valid surveillance reports are retained
+independently of World position. The adapted surveillance-loss interval defaults
+to 10 seconds and coast-out defaults to 30 seconds; these are trainer defaults,
+not published STARS tracking-filter values. Between reports, the displayed pose
+uses the last report's ground track and speed. At coast-out it freezes at that
+projected pose until a fresh valid report returns or the track is removed,
+disassociated, inhibited, or the display leaves FMA / changes AMZ. Timers use
+simulation time, so pause stops aging and simulation acceleration advances it.
+
+NOM is available only when explicit source-status input identifies a missing
+selected fast-update source while another source reports. Unknown source status
+does not infer sensor health from report age. These fixture inputs support
+deterministic trainer exercises; ATC-SIM does not connect to live radar, MLAT,
+NAS sensor networks, or operational surveillance health systems. Ordinary
+FUSED, MULTI, and single-site display modes keep their existing immediate
+no-coast coverage behavior outside FMA.
+
 ### STARS TCW display
 
 - **Radar PPI & camera**: North-up display with discrete range presets (5, 10, 15, 20, 30, 40, 50, 60 NM), camera panning/slewing, and single-click or airport recentering.

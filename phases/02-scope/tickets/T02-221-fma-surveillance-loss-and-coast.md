@@ -52,10 +52,10 @@ Keep `DisplayControlBar.tsx` and `renderScope.ts` thin, preserve their shipped s
 
 ## Acceptance criteria and tests
 
-- [ ] **AC1 — Automated: exact 10 s/30 s thresholds, pause/acceleration, empty-report ticks, coast direction/speed and report recovery use synthetic clocks and poses.**
-- [ ] **AC2 — Automated: selected-fast-source versus all-source interruption produces different status; malformed reports never synthesize fresh surveillance.**
-- [ ] **AC3 — Automated: non-FMA report/coverage behavior remains unchanged, including immediate no-coast removal.**
-- [ ] **AC4 — Automated: inhibition, association deletion, mode/AMZ/session cleanup cannot retain or revive stale frozen tracks.**
+- [x] **AC1 — Automated: exact 10 s/30 s thresholds, pause/acceleration, empty-report ticks, coast direction/speed and report recovery use synthetic clocks and poses.**
+- [x] **AC2 — Automated: selected-fast-source versus all-source interruption produces different status; malformed reports never synthesize fresh surveillance.**
+- [x] **AC3 — Automated: non-FMA report/coverage behavior remains unchanged, including immediate no-coast removal.**
+- [x] **AC4 — Automated: inhibition, association deletion, mode/AMZ/session cleanup cannot retain or revive stale frozen tracks.**
 - [ ] **AC5 — Manual: reproduce sensor interruption and recovery through deterministic fixture injection and compare retained pose with last coasted position.**
 - [ ] **Gate —** Focused checks, `npm run ci`, `git diff --check` and independent supplied-manual review pass before captain starts the next wave. If `speech-api/` changes despite this feature's exclusions, stop for scope review rather than silently expanding the contract; approved speech-api changes additionally require `SPEECH_API_MOCK=1 pytest`.
 

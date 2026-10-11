@@ -250,7 +250,7 @@ export function isMinSepTargetEligibleAndDisplayed(
     return false;
   }
   const td = view.tracks.get(aircraftId);
-  const report = td?.lastReport;
+  const report = td?.presentationReport ?? td?.lastReport;
   if (!report || !isValidMinSepTrackInput(minSepInputFromReport(report))) {
     return false;
   }
@@ -348,7 +348,7 @@ export function pickMinSepTargetAt(
   const symbolHits: { ac: Aircraft; dist: number }[] = [];
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    const report = td?.lastReport;
+    const report = td?.presentationReport ?? td?.lastReport;
     if (!report) {
       continue;
     }
@@ -497,7 +497,7 @@ export function isRblTargetEligibleAndDisplayed(
     return false;
   }
   const td = view.tracks.get(aircraftId);
-  const report = td?.lastReport;
+  const report = td?.presentationReport ?? td?.lastReport;
   if (!report) {
     return false;
   }
@@ -597,7 +597,7 @@ export function pickRblTargetAt(
   const symbolHits: { ac: Aircraft; dist: number }[] = [];
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    const report = td?.lastReport;
+    const report = td?.presentationReport ?? td?.lastReport;
     if (!report) {
       continue;
     }
@@ -694,7 +694,8 @@ export function handleRblClick(
   const firstEndpoint = view.rbl.pendingFirstEndpoint;
   // If first endpoint was a track, revalidate that it is still alive and has a report
   if (firstEndpoint.kind === "track") {
-    const report = view.tracks.get(firstEndpoint.aircraftId)?.lastReport;
+    const track = view.tracks.get(firstEndpoint.aircraftId);
+    const report = track?.presentationReport ?? track?.lastReport;
     if (
       !world.aircraft.some((aircraft) => aircraft.id === firstEndpoint.aircraftId) ||
       !report ||

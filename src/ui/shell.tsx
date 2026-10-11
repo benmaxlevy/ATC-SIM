@@ -40,6 +40,7 @@ import {
   scopeFocusFromDocument,
   focusRadioCommandLine,
   clearMinSepState,
+  clearFmaSurveillanceView,
   clearPerTrackPtl,
   resetRangeBearingSession,
   parseDigitalMap,
@@ -539,6 +540,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             ),
           );
           scopeView.tracks.clear();
+          clearFmaSurveillanceView(scopeView);
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
           resetRangeBearingSession(scopeView);
