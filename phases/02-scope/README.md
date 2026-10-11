@@ -1064,3 +1064,25 @@ existing inhibit symbols, and hides it while every NTZ is disabled. Frozen
 presentation follows the configured track, mode, AMZ, inhibition and
 NTZ-adjacency lifecycle. All interactions remain display-local. T02-225 owns
 public mode controls.
+
+### T02-224 FMA Browser Speech Queue (SpeechSynthesis exception)
+
+FMA onset alerts are spoken through the browser's native `SpeechSynthesis` API.
+This is a user-authorized, FMA-only exception that does not alter pilot STT/TTS,
+`speech-api`, or radio FX.
+
+- **Utterances**: Spoken callsign via existing telephony (`formatCallsignSpeech`)
+  followed by exact condition suffixes: `WARNING`, `COAST`, `WRONG RUNWAY`,
+  or `CAUTION`. NOM is silent and never queued.
+- **Voice selection**: Requires an installed English `localService: true` voice.
+  Missing API or local voice reports audio-unavailable status while visual
+  radar monitoring continues without disruption.
+- **Queueing & cancellation**: Application-owned queue deduplicates episodes and
+  prioritizes warnings ahead of queued cautions. Warning acknowledgment and
+  caution silence cancel active/pending speech for that episode without dropping
+  unrelated pending items.
+- **Volume**: VOICE levels 1–10 map linearly to `level / 10`. Changing volume
+  commits a "Test" utterance at the new volume; `voiceTest()` utters "Test" at
+  current volume.
+- **No filter claim**: Standard browser speech synthesis is used directly; no
+  audio formant filters or PCM modeling claims are made.

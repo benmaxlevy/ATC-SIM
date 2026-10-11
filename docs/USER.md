@@ -59,6 +59,31 @@ NAS sensor networks, or operational surveillance health systems. Ordinary
 FUSED, MULTI, and single-site display modes keep their existing immediate
 no-coast coverage behavior outside FMA.
 
+#### FMA speech alert queue (SpeechSynthesis exception)
+
+FMA audible alerts speak exclusively through the browser's native `SpeechSynthesis`
+engine. This is a user-authorized, FMA-only exception that does not alter pilot
+readbacks, self-hosted speech services (`speech-api`), or radio FX pipelines:
+
+- **Utterances**: Spoken callsign (`formatCallsignSpeech`, airline telephony or
+  phonetic letters) followed by exact condition suffixes: `WARNING`, `COAST`,
+  `WRONG RUNWAY`, or `CAUTION`. Normal/NOM conditions are silent and never queued.
+- **Voice selection**: Requires an installed English local voice (`localService: true`).
+  If no local English voice is available or speech synthesis is unsupported, audio
+  unavailable status is reported while visual radar monitoring and alert indicators
+  continue undisturbed.
+- **Application queue**: Alerts are managed in an application-owned priority queue
+  (warnings prioritize ahead of queued cautions). Acknowledging an active warning
+  or silencing a caution selectively cancels only that episode's speech without
+  discarding unrelated pending alerts.
+- **Volume**: VOICE levels 1 through 10 map linearly to utterance volume (`level / 10`).
+  Changing volume commits a "Test" utterance at the new volume; `VOICE TEST` utters
+  "Test" at current volume.
+- **No filter claim**: Standard browser speech synthesis is used directly; no audio
+  formant filters, robotic PCM modeling, or proprietary vendor speech hardware is
+  claimed.
+
+
 ### STARS TCW display
 
 - **Radar PPI & camera**: North-up display with discrete range presets (5, 10, 15, 20, 30, 40, 50, 60 NM), camera panning/slewing, and single-click or airport recentering.

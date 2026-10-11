@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { ProcedureCatalog } from "../../scenario/procedures/types";
 import { deriveFmaAmzs } from "../../core/alerts/fmaGeometry";
 import {
@@ -45,9 +45,17 @@ import {
 } from "../dcb/dcbFunctions";
 import { handleDcbEscape } from "../dcb/dcbMenu";
 import { serializeDcbPref, applyDcbPref, saveFmaAmzPreference } from "../dcb/dcbPref";
-import { rebindFmaScenarioAmzs } from "../scopeView";
+import { rebindFmaScenarioAmzs, setFmaVoiceLevel } from "../scopeView";
 import { getDatablockVisualState } from "../render/renderScopePaint";
 import { makeTestAircraft } from "../../core";
+import {
+  createFmaSpeechController,
+  formatFmaAlertUtterance,
+  syncFmaSpeech,
+  type SpeechSynthesisLike,
+  type SpeechSynthesisUtteranceLike,
+  type SpeechSynthesisVoiceLike,
+} from "../../app/fma-speech";
 
 function syntheticAmz(): FmaAmz {
   const box = (x1: number, y1: number, x2: number, y2: number) => ({
@@ -1803,4 +1811,431 @@ test("T02-225 AC4 — per-AMZ preference application, missing preference warning
   rebindFmaScenarioAmzs(view, [nextAmz]);
   expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-NEXT");
   expect(view.fmaAlertInhibit.aircraftIds?.size ?? 0).toBe(0);
+});
+
+describe("T02-224 FMA Browser Speech Queue integration", () => {
+  interface MockSpeechSession {
+    spoken: SpeechSynthesisUtteranceLike[];
+    cancelledCount: number;
+    listeners: Map<string, Set<(ev?: Event | unknown) => void>>;
+    synth: SpeechSynthesisLike;
+    voices: SpeechSynthesisVoiceLike[];
+    triggerVoicesChanged: () => void;
+    finishActiveUtterance: () => void;
+    errorActiveUtterance: () => void;
+  }
+
+  function createMockSpeechSession(
+    initialVoices: SpeechSynthesisVoiceLike[] = [],
+  ): MockSpeechSession {
+    const spoken: SpeechSynthesisUtteranceLike[] = [];
+    let cancelledCount = 0;
+    const listeners = new Map<string, Set<(ev?: Event | unknown) => void>>();
+    const voices = [...initialVoices];
+
+    const synth: SpeechSynthesisLike = {
+      speaking: false,
+      pending: false,
+      paused: false,
+      onvoiceschanged: null,
+      getVoices() {
+        return voices;
+      },
+      speak(utt: SpeechSynthesisUtteranceLike) {
+        spoken.push(utt);
+      },
+      cancel() {
+        cancelledCount++;
+      },
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type)!.add(listener as (ev?: Event | unknown) => void);
+      },
+      removeEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        listeners.get(type)?.delete(listener as (ev?: Event | unknown) => void);
+      },
+    };
+
+    return {
+      spoken,
+      get cancelledCount() {
+        return cancelledCount;
+      },
+      listeners,
+      synth,
+      voices,
+      triggerVoicesChanged() {
+        synth.onvoiceschanged?.();
+        listeners.get("voiceschanged")?.forEach((fn) => fn());
+      },
+      finishActiveUtterance() {
+        const last = spoken[spoken.length - 1];
+        last?.onend?.();
+      },
+      errorActiveUtterance() {
+        const last = spoken[spoken.length - 1];
+        last?.onerror?.();
+      },
+    };
+  }
+
+  const defaultLocalVoice: SpeechSynthesisVoiceLike = {
+    default: true,
+    lang: "en-US",
+    localService: true,
+    name: "Alex (Local)",
+    voiceURI: "alex-local",
+  };
+
+  test("AC1 — formatFmaAlertUtterance produces exact ACID and suffixes (telephony and phonetic callsigns)", () => {
+    // DAL123 -> Delta 123
+    expect(formatFmaAlertUtterance("DAL123", "NTZ_WARNING")).toBe("Delta 123 WARNING");
+    expect(formatFmaAlertUtterance("DAL123", "SURVEILLANCE_LOST")).toBe("Delta 123 COAST");
+    expect(formatFmaAlertUtterance("DAL123", "RUNWAY_ERROR")).toBe("Delta 123 WRONG RUNWAY");
+    expect(formatFmaAlertUtterance("DAL123", "NTZ_CAUTION")).toBe("Delta 123 CAUTION");
+
+    // General aviation N-number callsign: N12345 -> November 12345
+    expect(formatFmaAlertUtterance("N12345", "NTZ_WARNING")).toBe("November 12345 WARNING");
+    expect(formatFmaAlertUtterance("N12345", "SURVEILLANCE_LOST")).toBe("November 12345 COAST");
+    expect(formatFmaAlertUtterance("N12345", "RUNWAY_ERROR")).toBe("November 12345 WRONG RUNWAY");
+    expect(formatFmaAlertUtterance("N12345", "NTZ_CAUTION")).toBe("November 12345 CAUTION");
+  });
+
+  test("AC1 & AC3 — onset deduplication, warning-before-queued-caution ordering, and NOM is silent", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
+
+    // Active utterance will be the first queued item
+    controller.enqueueEpisode(
+      {
+        id: "caut-1",
+        condition: "NTZ_CAUTION",
+        onsetSimMs: 1000,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "AAL100",
+      "ac-1",
+    );
+    expect(mock.spoken.length).toBe(1);
+    expect(mock.spoken[0].text).toBe("American 100 CAUTION");
+
+    // While caut-1 is speaking, queue another caution and then a warning
+    controller.enqueueEpisode(
+      {
+        id: "caut-2",
+        condition: "NTZ_CAUTION",
+        onsetSimMs: 2000,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "UAL200",
+      "ac-2",
+    );
+    controller.enqueueEpisode(
+      {
+        id: "warn-1",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 2500,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "DAL300",
+      "ac-3",
+    );
+
+    // Deduplication check: repeated onset for warn-1 is ignored
+    controller.enqueueEpisode(
+      {
+        id: "warn-1",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 2600,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "DAL300",
+      "ac-3",
+    );
+    expect(controller.getStatus().queueLength).toBe(2);
+
+    // NOM condition is silent / never enters queue
+    controller.enqueueEpisode(
+      {
+        id: "nom-1",
+        condition: "NOM" as unknown as import("../../core").FmaPrimaryCondition,
+        onsetSimMs: 2700,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "SWA400",
+      "ac-4",
+    );
+    expect(controller.getStatus().queueLength).toBe(2);
+
+    // Finish caut-1: warn-1 MUST speak next because warnings have priority 0 ahead of caution priority 1!
+    mock.finishActiveUtterance();
+    expect(mock.spoken.length).toBe(2);
+    expect(mock.spoken[1].text).toBe("Delta 300 WARNING");
+
+    // Finish warn-1: caut-2 speaks next
+    mock.finishActiveUtterance();
+    expect(mock.spoken.length).toBe(3);
+    expect(mock.spoken[2].text).toBe("United 200 CAUTION");
+
+    // Finish caut-2: queue becomes empty
+    mock.finishActiveUtterance();
+    expect(controller.getStatus().queueLength).toBe(0);
+    expect(controller.getStatus().activeUtteranceText).toBeNull();
+  });
+
+  test("AC2 — selective cancellation retains unrelated queued alerts when active is canceled", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
+
+    // Enqueue ep-1 (speaking)
+    controller.enqueueEpisode(
+      {
+        id: "ep-1",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 1000,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "DAL100",
+      "ac-1",
+    );
+    expect(mock.spoken.length).toBe(1);
+    expect(mock.spoken[0].text).toBe("Delta 100 WARNING");
+
+    // Enqueue ep-2 (pending in queue)
+    controller.enqueueEpisode(
+      {
+        id: "ep-2",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 1200,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "AAL200",
+      "ac-2",
+    );
+    expect(controller.getStatus().queueLength).toBe(1);
+
+    // Acknowledge ep-1 (cancels active utterance)
+    controller.cancelEpisode("ep-1");
+    expect(mock.cancelledCount).toBe(1);
+
+    // Global cancel in browser must NOT discard unrelated pending ep-2 in app queue!
+    // Instead, ep-2 is immediately dispatched to speak
+    expect(mock.spoken.length).toBe(2);
+    expect(mock.spoken[1].text).toBe("American 200 WARNING");
+    expect(controller.getStatus().queueLength).toBe(0);
+
+    // Delayed callback on canceled utterance 1 must not disrupt anything
+    mock.spoken[0].onend?.();
+    expect(mock.spoken.length).toBe(2);
+
+    // Finish ep-2
+    mock.finishActiveUtterance();
+    expect(controller.getStatus().activeUtteranceText).toBeNull();
+  });
+
+  test("AC2 — delayed onend/onerror callbacks after disposal do not crash or restart speech", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth });
+
+    controller.enqueueEpisode(
+      {
+        id: "ep-1",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 1000,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "DAL100",
+      "ac-1",
+    );
+    const activeUtt = mock.spoken[0];
+    controller.dispose();
+
+    // Late callbacks
+    expect(() => activeUtt.onend?.()).not.toThrow();
+    expect(() => activeUtt.onerror?.()).not.toThrow();
+    expect(mock.spoken.length).toBe(1);
+  });
+
+  test("AC2 — voiceschanged event discovery and initially empty voice list", () => {
+    // Start with empty voice list
+    const mock = createMockSpeechSession([]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth });
+
+    expect(controller.getStatus().supported).toBe(true);
+    expect(controller.getStatus().voiceAvailable).toBe(false);
+
+    controller.enqueueEpisode(
+      {
+        id: "ep-1",
+        condition: "NTZ_WARNING",
+        onsetSimMs: 1000,
+        amzId: "AMZ-1",
+        runwayIds: [],
+        ntzIds: [],
+        evidence: [],
+      },
+      "DAL100",
+      "ac-1",
+    );
+    // Cannot speak yet because voice is unavailable
+    expect(mock.spoken.length).toBe(0);
+    expect(controller.getStatus().queueLength).toBe(1);
+
+    // Asynchronous voices update arrives
+    mock.voices.push(defaultLocalVoice);
+    mock.triggerVoicesChanged();
+
+    expect(controller.getStatus().voiceAvailable).toBe(true);
+    // Queue should now pump automatically
+    expect(mock.spoken.length).toBe(1);
+    expect(mock.spoken[0].text).toBe("Delta 100 WARNING");
+  });
+
+  test("AC2 — unavailable SpeechSynthesis API does not crash simulation or throw", () => {
+    const controller = createFmaSpeechController({ synthesis: null });
+    expect(controller.getStatus().supported).toBe(false);
+    expect(controller.getStatus().voiceAvailable).toBe(false);
+
+    expect(() => {
+      controller.enqueueEpisode(
+        {
+          id: "ep-1",
+          condition: "NTZ_WARNING",
+          onsetSimMs: 1000,
+          amzId: "AMZ-1",
+          runwayIds: [],
+          ntzIds: [],
+          evidence: [],
+        },
+        "DAL100",
+        "ac-1",
+      );
+      controller.voiceTest();
+      controller.setVoiceLevel(8);
+      controller.cancelEpisode("ep-1");
+      controller.dispose();
+    }).not.toThrow();
+  });
+
+  test("AC3 — level/10 volume mapping, setVoiceLevel, and voiceTest queue Test without mutating world or alerts", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
+
+    expect(controller.getVoiceLevel()).toBe(6);
+
+    // setVoiceLevel(8, true) queues Test at volume 0.8
+    controller.setVoiceLevel(8, true);
+    expect(controller.getVoiceLevel()).toBe(8);
+    expect(mock.spoken.length).toBe(1);
+    expect(mock.spoken[0].text).toBe("Test");
+    expect(mock.spoken[0].volume).toBeCloseTo(0.8, 5);
+
+    // Finish test utterance
+    mock.finishActiveUtterance();
+
+    // voiceTest() queues Test at current volume 0.8
+    controller.voiceTest();
+    expect(mock.spoken.length).toBe(2);
+    expect(mock.spoken[1].text).toBe("Test");
+    expect(mock.spoken[1].volume).toBeCloseTo(0.8, 5);
+
+    // Level clamping between 1 and 10
+    controller.setVoiceLevel(15, false);
+    expect(controller.getVoiceLevel()).toBe(8); // Invalid rejected, unchanged
+    controller.setVoiceLevel(-2, false);
+    expect(controller.getVoiceLevel()).toBe(8); // Invalid rejected, unchanged
+
+    controller.setVoiceLevel(1, true);
+    mock.finishActiveUtterance();
+    expect(mock.spoken.length).toBe(3);
+    expect(mock.spoken[2].volume).toBeCloseTo(0.1, 5);
+  });
+
+  test("AC1 & AC2 — end-to-end syncFmaSpeech drains events and coordinates with ScopeView & World", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
+
+    const world = createWorld();
+    const ac = createAircraft({
+      id: "ac-dal",
+      callsign: "DAL456",
+      xNm: 0,
+      yNm: 0,
+      altitudeFt: 3000,
+      headingDeg: 90,
+      speedKt: 180,
+    });
+    world.aircraft.push(ac);
+
+    const view = createScopeView();
+    expect(view.fmaVoiceLevel).toBe(6);
+
+    // Change scope view voice level
+    setFmaVoiceLevel(view, 9);
+    expect(view.fmaVoiceLevel).toBe(9);
+
+    // Push an onset event into view
+    const episode = {
+      id: "ep-99",
+      condition: "NTZ_WARNING" as const,
+      onsetSimMs: 5000,
+      amzId: "AMZ-SYN",
+      runwayIds: ["08L"],
+      ntzIds: ["NTZ-1"],
+      evidence: [],
+    };
+    view.fmaAlertResults.set(ac.id, {
+      aircraftId: ac.id,
+      assignment: { kind: "RUNWAY", runwayId: "08L" },
+      observedRunwayId: "08L",
+      primary: "NTZ_WARNING",
+      episode,
+      onset: true,
+      supplementary: { nom: false },
+    });
+    view.fmaSpeechEvents.push({ type: "onset", episodeId: "ep-99", aircraftId: ac.id });
+
+    // Sync
+    syncFmaSpeech(controller, view, world);
+
+    // Speech events are drained
+    expect(view.fmaSpeechEvents.length).toBe(0);
+    // Voice level synchronized to 9
+    expect(controller.getVoiceLevel()).toBe(9);
+    // Utterance spoken at volume 0.9 with exact text
+    expect(mock.spoken.length).toBe(1);
+    expect(mock.spoken[0].text).toBe("Delta 456 WARNING");
+    expect(mock.spoken[0].volume).toBeCloseTo(0.9, 5);
+
+    // Push cancel event
+    view.fmaSpeechEvents.push({ type: "cancel", episodeId: "ep-99", aircraftId: ac.id });
+    syncFmaSpeech(controller, view, world);
+
+    expect(view.fmaSpeechEvents.length).toBe(0);
+    expect(mock.cancelledCount).toBe(1);
+  });
 });

@@ -391,6 +391,7 @@ export {
   releaseFmaTracksView,
   setFmaSensorStatusView,
   setFmaSensorFixtureView,
+  setFmaVoiceLevel,
 } from "./scopeView";
 export type {
   DisplayCapability,

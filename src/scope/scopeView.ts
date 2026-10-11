@@ -394,6 +394,11 @@ export interface ScopeView {
    */
   vol: VolLevel;
   /**
+   * STARS TCW FMA voice volume level (1–10). TI 6191.409 §§6.16.6–7.
+   * Default 6. Modulates browser SpeechSynthesis utterance volume (level / 10).
+   */
+  fmaVoiceLevel: number;
+  /**
    * Supported service level mode (EFSL, FSL, TRNG, FMA, DSF).
    * TI 6191.409 Section 6.16.1, Figure 6-16.
    * Default supported service state is "FSL".
@@ -504,6 +509,7 @@ export function createScopeView(
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
+    fmaVoiceLevel?: number;
     serviceMode?: ServiceMode;
     displayCapability?: "2K" | "1K";
     operatorPrivilege?: "controller" | "other";
@@ -634,6 +640,7 @@ export function createScopeView(
     wxMosaic: emptyWxMosaic(),
     arp,
     vol: options?.vol ?? DEFAULT_VOL_LEVEL,
+    fmaVoiceLevel: options?.fmaVoiceLevel ?? 6,
     serviceMode: options?.serviceMode ?? DEFAULT_SERVICE_MODE,
     fmaCandidateMode: false,
     displayCapability: options?.displayCapability ?? "2K",
@@ -1082,4 +1089,13 @@ export function centerOnLastClick(view: ScopeView): void {
 export function centerOnWorld(view: ScopeView, eastNm: number, northNm: number): void {
   view.camera.centerEastNm = eastNm;
   view.camera.centerNorthNm = northNm;
+}
+
+/**
+ * STARS TCW VOICE level action (1–10). TI 6191.409 §§6.16.6–7.
+ * Only levels 1 through 10 are accepted. Clamped to integer [1, 10].
+ */
+export function setFmaVoiceLevel(view: ScopeView, level: number): void {
+  if (!Number.isFinite(level)) return;
+  view.fmaVoiceLevel = Math.max(1, Math.min(10, Math.round(level)));
 }

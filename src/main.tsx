@@ -40,6 +40,7 @@ import {
   syncDisplayControlBar,
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
+import { syncFmaSpeech } from "./app/fma-speech";
 import "./index.css";
 import "./scope/starsFonts.css";
 
@@ -93,6 +94,7 @@ window.addEventListener("pagehide", () => {
   handles.ptt.dispose();
   handles.caAlertTone.dispose();
   handles.eventSounds.dispose();
+  handles.fmaSpeech.dispose();
   stopMetarPolling();
 });
 
@@ -194,6 +196,7 @@ function onFrame(nowMs: number): void {
       [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
     ),
   );
+  syncFmaSpeech(handles.fmaSpeech, scopeView, handles.world);
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
     hud.textContent = formatSimHud(handles.world);

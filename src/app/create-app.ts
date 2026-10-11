@@ -44,6 +44,7 @@ import {
 } from "../ui/controls/settings-speech";
 import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
 import { createEventSounds, type EventSounds } from "./event-sounds";
+import { createFmaSpeechController, type FmaSpeechController } from "./fma-speech";
 
 export interface AppDeps {
   speech: SpeechPort;
@@ -71,6 +72,8 @@ export interface AppDeps {
   vfrRequestSeed?: number;
   /** Optional VFR pilot request queue instance. */
   vfrRequestQueue?: VfrRequestQueue;
+  /** Injected in tests. Browser default speaks FMA alarms via SpeechSynthesis. */
+  fmaSpeech?: FmaSpeechController;
 }
 
 export interface AppHandles {
@@ -95,6 +98,7 @@ export interface AppHandles {
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
   eventSounds: EventSounds;
+  fmaSpeech: FmaSpeechController;
   /** Replace the session world after explicit setup confirmation. */
   replaceWorld(next: World): void;
 }
@@ -341,6 +345,7 @@ export function createApp(deps: AppDeps): AppHandles {
   world.vfrRequestQueue = vfrRequestQueue;
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
+  const fmaSpeech = deps.fmaSpeech ?? createFmaSpeechController();
 
   function afterPhysicsTick(caAlertActive?: boolean, msawAlertActive?: boolean): void {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
@@ -399,6 +404,7 @@ export function createApp(deps: AppDeps): AppHandles {
     afterPhysicsTick,
     caAlertTone,
     eventSounds,
+    fmaSpeech,
     replaceWorld(next) {
       world = next;
       world.sessionLog = log;
