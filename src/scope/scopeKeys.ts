@@ -1057,12 +1057,6 @@ function applyPreviewArmedAction(
         rejectPreviewAreaWithReason(view.preview, nowMs, res2.reason);
         return;
       }
-      // Capacity check: max 9 lines
-      if (view.rbl.lines.size >= 9) {
-        cancelRblPending(view.rbl);
-        rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
-        return;
-      }
       // Revalidate first endpoint if it was a track
       if (firstEp.kind === "track") {
         const rep = view.tracks.get(firstEp.aircraftId)?.lastReport;
@@ -1077,6 +1071,12 @@ function applyPreviewArmedAction(
           rejectPreviewAreaWithReason(view.preview, nowMs, "NO FLIGHT");
           return;
         }
+      }
+      // Capacity check: max 9 lines, after confirming both endpoints remain valid.
+      if (view.rbl.lines.size >= 9) {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+        return;
       }
       const created = insertRangeBearingLine(
         view.rbl,

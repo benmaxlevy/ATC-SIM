@@ -84,6 +84,16 @@ test("Help lists live Preview command forms", () => {
   expect(
     entries.some((item) => item.command.includes("*ALL") || item.command.includes("*NONE")),
   ).toBe(false);
+  expect(entry("range-bearing-line")?.result).toContain("*TFIX");
+  expect(entry("range-bearing-line")?.result).toContain("BBB/RR.RR[/M]-ID");
+  expect(entry("range-bearing-line")?.result).toContain("*T SPACE DAL123");
+  expect(entry("range-bearing-line")?.result).toContain("ACID/BCN");
+  expect(entry("range-bearing-line")?.result).toContain("reported BCN");
+  expect(entry("range-bearing-line")?.result).toContain("CAPACITY (9 lines)");
+  expect(entry("range-bearing-line")?.result).toContain("DUP BCN");
+  expect(entry("range-bearing-line")?.result).toContain("RBL ID");
+  expect(bindingById("range-bearing-line")?.action).toContain("NO FLIGHT");
+  expect(bindingById("range-bearing-line")?.action).toContain("reported BCN");
 
   for (const command of [
     "*FP AAL123",

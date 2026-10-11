@@ -620,10 +620,10 @@ export function lookupRblTrack(
   const isBeacon = /^[0-7]{4}$/.test(norm);
 
   if (isBeacon) {
-    // Match by reported beacon code (reportedSquawk or squawk on living aircraft with finite report)
+    // RBL beacon entry is grounded only by the beacon in the current report.
     const matchingIds: string[] = [];
     for (const ac of world.aircraft) {
-      const repSquawk = ac.reportedSquawk ?? ac.squawk;
+      const repSquawk = ac.reportedSquawk;
       if (repSquawk === norm) {
         const report = tracks.get(ac.id)?.lastReport;
         if (isUsableRblReport(report)) {

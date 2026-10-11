@@ -592,7 +592,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "*TNEMAX Enter, *T SPACE DAL123 Enter, *T then click",
         input: "Preview Area or PPI click",
         result:
-          "Creates or deletes up to nine numbered Range-Bearing Lines (BBB/RR.RR[/M]-ID). First track requires leading space (*T ACID). Fix beats homonymous ACID. Click commits second endpoint immediately; Esc cancels.",
+          "Create a line labeled BBB/RR.RR[/M]-ID with *T then a fix (for example *TFIX, Enter) or click. First typed track: *T SPACE ACID/BCN (for example *T SPACE DAL123, Enter); second typed track: ACID or reported BCN. Beacon means the current reported beacon code. Fix wins over a matching ACID. Second click commits; Esc cancels. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID (bad removal ID).",
       },
     ],
   },
@@ -1019,7 +1019,8 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "range-bearing-line",
     focus: "scope",
     windowsKeys: "*T [operand] Enter / click",
-    action: "Creates or removes Range-Bearing Lines (BBB/RR.RR[/M]-ID).",
+    action:
+      "Create a line labeled BBB/RR.RR[/M]-ID with *T then a fix (e.g. *TFIX) or click. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Beacon means the current reported beacon code. Fix wins over a matching ACID. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID (bad removal ID).",
     crcAnalog: "STARS §§6.7–6.8 literal splat *T (keyboard entry, click or typed endpoints)",
   },
 ];

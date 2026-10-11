@@ -691,13 +691,6 @@ export function handleRblClick(
 
   // Second endpoint resolved via click -> commit immediately!
   const firstEndpoint = view.rbl.pendingFirstEndpoint;
-  // Check capacity: max 9 lines
-  if (view.rbl.lines.size >= 9) {
-    cancelRblPending(view.rbl);
-    rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
-    return true;
-  }
-
   // If first endpoint was a track, revalidate that it is still alive and has a report
   if (firstEndpoint.kind === "track") {
     const report = view.tracks.get(firstEndpoint.aircraftId)?.lastReport;
@@ -712,6 +705,13 @@ export function handleRblClick(
       rejectPreviewAreaWithReason(view.preview, nowMs, "NO FLIGHT");
       return true;
     }
+  }
+
+  // Check capacity after first-track revalidation.
+  if (view.rbl.lines.size >= 9) {
+    cancelRblPending(view.rbl);
+    rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+    return true;
   }
 
   // Attempt atomic insertion

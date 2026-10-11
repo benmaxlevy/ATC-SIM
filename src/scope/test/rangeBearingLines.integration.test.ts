@@ -1286,6 +1286,53 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(view.preview.rejection).toBe("DUP BCN");
     });
 
+    it("resolves only reported beacons, never assigned-only beacon metadata", () => {
+      const reported = makeTestAircraft({
+        id: "REP1",
+        callsign: "REP1",
+        reportedSquawk: "4312",
+        assignedSquawk: "7001",
+        squawk: "7001",
+      });
+      const assignedOnly = makeTestAircraft({
+        id: "ASG1",
+        callsign: "ASG1",
+        squawk: "4312",
+        assignedSquawk: "4312",
+      });
+      const world = createWorld({
+        aircraft: [reported, assignedOnly],
+        flightPlans: [
+          {
+            id: "ASG1-PLAN",
+            acid: "ASG1",
+            assignedBeacon: "4312",
+            tcp: "27",
+            fixes: [],
+            scratchpads: [],
+            status: "active",
+            flightType: "IFR",
+          },
+        ],
+      });
+      const view = createScopeView();
+      for (const ac of [reported, assignedOnly]) {
+        ensureTrackDisplay(view.tracks, ac.id).lastReport = makeSyntheticReport({
+          aircraftId: ac.id,
+          xNm: 10,
+          yNm: 10,
+        });
+      }
+
+      expect(lookupRblTrack("4312", world, view.tracks)).toEqual({
+        kind: "resolved",
+        aircraftId: "REP1",
+      });
+
+      reported.reportedSquawk = undefined;
+      expect(lookupRblTrack("4312", world, view.tracks)).toEqual({ kind: "noFlight" });
+    });
+
     it("keeps F7 T list commands separate from literal *T removal while RBLs exist", () => {
       const world = createWorld();
       const view = createScopeView();
@@ -1602,5 +1649,51 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(view.rbl.pendingFirstEndpoint).toBeNull();
       expect(view.rbl.lines.size).toBe(0);
     });
+
+    it.each(["typed", "click"] as const)(
+      "checks lost first-track report before capacity on %s second commit",
+      (commitMode) => {
+        const ac = makeTestAircraft({ id: "LOSTCAP1", callsign: "LOSTCAP1" });
+        const world = createWorld({
+          aircraft: [ac],
+          fixRegistry: buildFixRegistry({
+            navaids: [],
+            fixes: [{ id: "FIXB", xNm: 2, yNm: 2, kind: "fix" }],
+          }),
+        });
+        const view = createScopeView();
+        ensureTrackDisplay(view.tracks, ac.id).lastReport = makeSyntheticReport({
+          aircraftId: ac.id,
+          xNm: 10,
+          yNm: 10,
+        });
+        for (let i = 1; i <= 9; i++) {
+          insertRangeBearingLine(
+            view.rbl,
+            { kind: "static", xNm: i, yNm: 0 },
+            { kind: "static", xNm: i + 1, yNm: 0 },
+            view.tracks,
+          );
+        }
+
+        for (const key of ["*", "T", " ", ..."LOSTCAP1", "Enter"]) {
+          handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+        }
+        expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "track", aircraftId: ac.id });
+        delete view.tracks.get(ac.id)!.lastReport;
+
+        if (commitMode === "typed") {
+          for (const key of [..."FIXB", "Enter"]) {
+            handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+          }
+        } else {
+          handlePpiLeftClick(view, world, 400, 400, 800, 800);
+        }
+
+        expect(view.preview.rejection).toBe("NO FLIGHT");
+        expect(view.rbl.pendingFirstEndpoint).toBeNull();
+        expect(view.rbl.lines.size).toBe(9);
+      },
+    );
   });
 });
