@@ -84,6 +84,12 @@ export interface DigitalMapCoastline {
   note?: string;
 }
 
+/** Scenario may pick catalog geometry but never owns or duplicates it. */
+export interface FmaScenarioConfig {
+  initialAmzId?: string;
+  excludeDerivedGroups?: boolean;
+}
+
 /** KDEM digital / video map. Geometry is `video-maps/<ICAO>/` plus optional inline. */
 export interface ScenarioMaps {
   videoMapSet?: string;
@@ -226,6 +232,7 @@ export interface Scenario {
   arrivals: ArrivalSpawn[];
   /** Optional scenario-local ATPA wake adaptation for its active volumes. */
   atpaWakeAdaptation?: import("./procedures/types").AtpaWakeAdaptation;
+  fma?: FmaScenarioConfig;
   /** Optional departure traffic configuration. */
   departureConfig?: DepartureConfig;
   /** Optional trainer beacon adaptation; omitted means default policy `none`. */

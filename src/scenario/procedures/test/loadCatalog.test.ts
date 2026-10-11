@@ -98,3 +98,42 @@ test("loadCatalog has no facility-id branch", () => {
   const src = loaderSrc["../loadCatalog.ts"] ?? "";
   expect(src).not.toMatch(/["']KATL["']/);
 });
+
+test("catalog-owned FMA overrides validate paths, finite geometry and positive monitoring values", () => {
+  const files = kdemFiles();
+  (files.catalog as Record<string, unknown>).fmaOverrides = {
+    groups: [
+      {
+        id: "PARALLEL",
+        approachIds: ["ILS27"],
+        ntzWidthFt: 2000,
+        monitoring: { cautionHorizonS: 12 },
+      },
+    ],
+  };
+  expect(parseCatalogFiles(files).fmaOverrides?.groups?.[0]).toMatchObject({
+    id: "PARALLEL",
+    approachIds: ["ILS27"],
+    ntzWidthFt: 2000,
+    monitoring: { cautionHorizonS: 12 },
+  });
+
+  const malformed = kdemFiles();
+  (malformed.catalog as Record<string, unknown>).fmaOverrides = {
+    groups: [
+      {
+        id: "BAD",
+        geometry: { amzBoundary: [{ xNm: Number.NaN, yNm: 0 }], runways: [], ntzs: [] },
+      },
+    ],
+  };
+  expect(() => parseCatalogFiles(malformed)).toThrow(
+    /fmaOverrides\.groups\[0\]\.geometry\.amzBoundary\[0\]\.xNm/,
+  );
+
+  const invalidMonitoring = kdemFiles();
+  (invalidMonitoring.catalog as Record<string, unknown>).fmaOverrides = {
+    groups: [{ id: "BAD", monitoring: { maximumPtlS: 0 } }],
+  };
+  expect(() => parseCatalogFiles(invalidMonitoring)).toThrow(/maximumPtlS must be positive/);
+});

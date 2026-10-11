@@ -358,6 +358,12 @@ export {
 } from "./alerts/msaw";
 export type { FixRegistry, FixRegistrySource, RegisteredFix } from "./nav/fixRegistry";
 export { UnknownFixError, buildFixRegistry } from "./nav/fixRegistry";
+export {
+  deriveFmaAmzs,
+  FMA_GEOMETRY_DEFAULTS,
+  FMA_MONITORING_DEFAULTS,
+} from "./alerts/fmaGeometry";
+export type { FmaAmz, FmaDiagnostic, FmaMember, FmaNtz, FmaPolygon } from "./alerts/fmaGeometry";
 
 export type {
   LocAxis,

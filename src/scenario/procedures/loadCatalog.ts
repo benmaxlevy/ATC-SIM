@@ -14,6 +14,8 @@ import type {
   AtpaWakeAdaptation,
   AtpaWakeMatrix,
   AtpaVolume,
+  FmaAdaptation,
+  FmaGroupAdaptation,
   MissedApproach,
   Navaid,
   NavaidKind,
@@ -102,6 +104,211 @@ function optionalString(value: unknown, path: string): string | undefined {
     return undefined;
   }
   return assertString(value, path);
+}
+
+function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) throw new Error("Catalog fmaOverrides must be an object");
+  const groups =
+    raw.groups === undefined
+      ? undefined
+      : assertArray(raw.groups, "fmaOverrides.groups").map((item, i): FmaGroupAdaptation => {
+          const path = `fmaOverrides.groups[${i}]`;
+          if (!isRecord(item)) throw new Error(`Catalog ${path} must be an object`);
+          const strings = (value: unknown, field: string): string[] | undefined =>
+            value === undefined
+              ? undefined
+              : assertArray(value, `${path}.${field}`).map((v, j) =>
+                  assertString(v, `${path}.${field}[${j}]`).toUpperCase(),
+                );
+          const positive = (value: unknown, field: string): number | undefined => {
+            if (value === undefined) return undefined;
+            const n = assertNumber(value, `${path}.${field}`);
+            if (n <= 0) throw new Error(`Catalog ${path}.${field} must be positive`);
+            return n;
+          };
+          let geometry: FmaGroupAdaptation["geometry"];
+          if (item.geometry !== undefined) {
+            if (!isRecord(item.geometry))
+              throw new Error(`Catalog ${path}.geometry must be an object`);
+            const pointList = (value: unknown, field: string) =>
+              assertArray(value, `${path}.geometry.${field}`).map((p, j) => {
+                if (!isRecord(p))
+                  throw new Error(`Catalog ${path}.geometry.${field}[${j}] must be an object`);
+                return {
+                  xNm: assertNumber(p.xNm, `${path}.geometry.${field}[${j}].xNm`),
+                  yNm: assertNumber(p.yNm, `${path}.geometry.${field}[${j}].yNm`),
+                };
+              });
+            geometry = {
+              amzBoundary: pointList(item.geometry.amzBoundary, "amzBoundary"),
+              runways: assertArray(item.geometry.runways, `${path}.geometry.runways`).map(
+                (r, j) => {
+                  if (!isRecord(r))
+                    throw new Error(`Catalog ${path}.geometry.runways[${j}] must be an object`);
+                  return {
+                    runwayId: assertString(
+                      r.runwayId,
+                      `${path}.geometry.runways[${j}].runwayId`,
+                    ).toUpperCase(),
+                    noz: pointList(r.noz, `runways[${j}].noz`),
+                    ...(r.departureEnd !== undefined
+                      ? {
+                          departureEnd: pointList(
+                            [r.departureEnd],
+                            `runways[${j}].departureEnd`,
+                          )[0]!,
+                        }
+                      : {}),
+                  };
+                },
+              ),
+              ntzs: assertArray(item.geometry.ntzs, `${path}.geometry.ntzs`).map((z, j) => {
+                if (!isRecord(z))
+                  throw new Error(`Catalog ${path}.geometry.ntzs[${j}] must be an object`);
+                return {
+                  id: assertString(z.id, `${path}.geometry.ntzs[${j}].id`),
+                  leftRunwayId: assertString(
+                    z.leftRunwayId,
+                    `${path}.geometry.ntzs[${j}].leftRunwayId`,
+                  ).toUpperCase(),
+                  rightRunwayId: assertString(
+                    z.rightRunwayId,
+                    `${path}.geometry.ntzs[${j}].rightRunwayId`,
+                  ).toUpperCase(),
+                  polygon: pointList(z.polygon, `ntzs[${j}].polygon`),
+                };
+              }),
+              ...(item.geometry.courseLines !== undefined
+                ? {
+                    courseLines: assertArray(
+                      item.geometry.courseLines,
+                      `${path}.geometry.courseLines`,
+                    ).map((line, j) => {
+                      if (!isRecord(line))
+                        throw new Error(
+                          `Catalog ${path}.geometry.courseLines[${j}] must be an object`,
+                        );
+                      const approach = pointList(
+                        [
+                          ...assertArray(
+                            line.approach,
+                            `${path}.geometry.courseLines[${j}].approach`,
+                          ),
+                        ],
+                        `courseLines[${j}].approach`,
+                      );
+                      const departure = pointList(
+                        [
+                          ...assertArray(
+                            line.departure,
+                            `${path}.geometry.courseLines[${j}].departure`,
+                          ),
+                        ],
+                        `courseLines[${j}].departure`,
+                      );
+                      if (approach.length !== 2 || departure.length !== 2)
+                        throw new Error(
+                          `Catalog ${path}.geometry.courseLines[${j}] endpoints must have two points`,
+                        );
+                      return {
+                        runwayId: assertString(
+                          line.runwayId,
+                          `${path}.geometry.courseLines[${j}].runwayId`,
+                        ).toUpperCase(),
+                        approach: [approach[0]!, approach[1]!] as [
+                          (typeof approach)[number],
+                          (typeof approach)[number],
+                        ],
+                        departure: [departure[0]!, departure[1]!] as [
+                          (typeof departure)[number],
+                          (typeof departure)[number],
+                        ],
+                      };
+                    }),
+                  }
+                : {}),
+            };
+          }
+          let verticalLimits: FmaGroupAdaptation["verticalLimits"];
+          if (item.verticalLimits !== undefined) {
+            if (!isRecord(item.verticalLimits))
+              throw new Error(`Catalog ${path}.verticalLimits must be an object`);
+            const floorFt = assertNumber(
+              item.verticalLimits.floorFt,
+              `${path}.verticalLimits.floorFt`,
+            );
+            const ceilingFt = assertNumber(
+              item.verticalLimits.ceilingFt,
+              `${path}.verticalLimits.ceilingFt`,
+            );
+            if (floorFt >= ceilingFt)
+              throw new Error(`Catalog ${path}.verticalLimits must be ordered`);
+            verticalLimits = { floorFt, ceilingFt };
+          }
+          let monitoring: FmaGroupAdaptation["monitoring"];
+          if (item.monitoring !== undefined) {
+            if (!isRecord(item.monitoring))
+              throw new Error(`Catalog ${path}.monitoring must be an object`);
+            monitoring = {};
+            for (const field of [
+              "cautionHorizonS",
+              "surveillanceLossS",
+              "coastOutS",
+              "stabilizationS",
+              "courseToleranceDeg",
+              "alignmentHalfWidthNm",
+              "maximumPtlS",
+            ] as const) {
+              if (item.monitoring[field] !== undefined) {
+                const value = assertNumber(item.monitoring[field], `${path}.monitoring.${field}`);
+                if (value <= 0)
+                  throw new Error(`Catalog ${path}.monitoring.${field} must be positive`);
+                monitoring[field] = value;
+              }
+            }
+          }
+          const groupId = assertString(item.id, `${path}.id`);
+          if (!groupId.trim()) throw new Error(`Catalog ${path}.id must be non-empty`);
+          return {
+            id: groupId,
+            ...(item.label !== undefined
+              ? { label: assertString(item.label, `${path}.label`) }
+              : {}),
+            ...(strings(item.approachIds, "approachIds")
+              ? { approachIds: strings(item.approachIds, "approachIds") }
+              : {}),
+            ...(strings(item.runwayIds, "runwayIds")
+              ? { runwayIds: strings(item.runwayIds, "runwayIds") }
+              : {}),
+            ...(positive(item.captureLengthNm, "captureLengthNm") !== undefined
+              ? { captureLengthNm: positive(item.captureLengthNm, "captureLengthNm") }
+              : {}),
+            ...(positive(item.ntzWidthFt, "ntzWidthFt") !== undefined
+              ? { ntzWidthFt: positive(item.ntzWidthFt, "ntzWidthFt") }
+              : {}),
+            ...(positive(item.outerMarginNm, "outerMarginNm") !== undefined
+              ? { outerMarginNm: positive(item.outerMarginNm, "outerMarginNm") }
+              : {}),
+            ...(positive(item.departureExtensionNm, "departureExtensionNm") !== undefined
+              ? {
+                  departureExtensionNm: positive(item.departureExtensionNm, "departureExtensionNm"),
+                }
+              : {}),
+            ...(geometry ? { geometry } : {}),
+            ...(verticalLimits ? { verticalLimits } : {}),
+            ...(monitoring ? { monitoring } : {}),
+          };
+        });
+  if (raw.enabled !== undefined && typeof raw.enabled !== "boolean")
+    throw new Error("Catalog fmaOverrides.enabled must be boolean");
+  if (raw.excludeDerived !== undefined && typeof raw.excludeDerived !== "boolean")
+    throw new Error("Catalog fmaOverrides.excludeDerived must be boolean");
+  return {
+    ...(raw.enabled !== undefined ? { enabled: raw.enabled } : {}),
+    ...(raw.excludeDerived !== undefined ? { excludeDerived: raw.excludeDerived } : {}),
+    ...(groups ? { groups } : {}),
+  };
 }
 
 function assertId(value: unknown, path: string): string {
@@ -359,7 +566,7 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
   const approach: ApproachProcedure = {
     id: assertString(value.id, `${path}.id`),
     type: type as ApproachType,
-    runway: assertString(value.runway, `${path}.runway`),
+    runway: assertString(value.runway, `${path}.runway`).toUpperCase(),
     name: assertString(value.name, `${path}.name`),
     locFullScaleHalfWidthFtAtThreshold:
       optionalNumber(
@@ -836,6 +1043,7 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
   if (spokenAliases.length === 0) {
     throw new Error("Catalog spokenAliases must contain at least one alias");
   }
+  const fmaOverrides = parseFmaAdaptation(files.catalog.fmaOverrides);
   const catalog: ProcedureCatalog = {
     schemaVersion: 1,
     airportId,
@@ -851,6 +1059,7 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
     approaches,
     sids,
     atpaVolumes,
+    ...(fmaOverrides ? { fmaOverrides } : {}),
   };
   const ids = collectResolveIds(navaids, fixes);
   if (ids.has(airportId)) {

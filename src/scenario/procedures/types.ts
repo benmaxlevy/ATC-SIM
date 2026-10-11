@@ -188,6 +188,49 @@ export interface AtpaWakeAdaptation {
   matrix: AtpaWakeMatrix;
 }
 
+/** Catalog-owned FMA trainer adaptation. Coordinates are ENU NM. */
+export interface FmaAdaptation {
+  enabled?: boolean;
+  excludeDerived?: boolean;
+  groups?: FmaGroupAdaptation[];
+}
+
+export interface FmaPoint {
+  xNm: number;
+  yNm: number;
+}
+export interface FmaGroupAdaptation {
+  id: string;
+  label?: string;
+  approachIds?: string[];
+  runwayIds?: string[];
+  captureLengthNm?: number;
+  ntzWidthFt?: number;
+  outerMarginNm?: number;
+  departureExtensionNm?: number;
+  /** Complete authored boundary and zone polygons replace derived polygons. */
+  geometry?: {
+    amzBoundary: FmaPoint[];
+    runways: Array<{ runwayId: string; noz: FmaPoint[]; departureEnd?: FmaPoint }>;
+    ntzs: Array<{ id: string; leftRunwayId: string; rightRunwayId: string; polygon: FmaPoint[] }>;
+    courseLines?: Array<{
+      runwayId: string;
+      approach: [FmaPoint, FmaPoint];
+      departure: [FmaPoint, FmaPoint];
+    }>;
+  };
+  verticalLimits?: { floorFt: number; ceilingFt: number };
+  monitoring?: Partial<{
+    cautionHorizonS: number;
+    surveillanceLossS: number;
+    coastOutS: number;
+    stabilizationS: number;
+    courseToleranceDeg: number;
+    alignmentHalfWidthNm: number;
+    maximumPtlS: number;
+  }>;
+}
+
 export interface ProcedureCatalog {
   schemaVersion: 1;
   airportId: string;
@@ -204,6 +247,7 @@ export interface ProcedureCatalog {
   approaches: ApproachProcedure[];
   sids: SidProcedure[];
   atpaVolumes: AtpaVolume[];
+  fmaOverrides?: FmaAdaptation;
 }
 
 /** Parser/voice projection of a catalog airport; separate from fixes/navaids. */

@@ -857,3 +857,28 @@ These converted fonts retain Vice's bitmap-file GPL-3.0-only notice. They are
 not claimed to have original vendor provenance. See
 [conversion, notices, and regeneration](STARS-FONTS.md) and the
 [browser specimen](../public/fonts/stars/specimen.html).
+
+### Final Monitor Aid geometry
+
+FMA geometry is currently a generic, catalog-derived straight-parallel trainer
+approximation. Catalogs may define `catalog.json` `fmaOverrides.groups` with
+stable group IDs, selected `approachIds` or `runwayIds`, dimension overrides,
+optional explicit ENU polygons and course-line graphics for the AMZ/NOZ/NTZ,
+vertical limits, and monitoring parameters. Coordinates are east/north NM from the facility
+origin. Invalid values produce path-specific load or geometry diagnostics;
+unresolved references disable the affected AMZ. Scenario JSON may set `fma`
+with `initialAmzId` and/or `excludeDerivedGroups`; it selects catalog geometry
+and never carries duplicate polygons.
+
+Without an override, the geometry uses one preferred approach per runway
+(ILS, LOC, then RNAV), true courses converted from magnetic once, a wrapped
+one-degree alignment tolerance, adjacent runway spacing from 2,500 through
+9,000 feet, 18 NM capture, a 2,000-foot NTZ, 0.5 NM outer margin, and a
+reciprocal threshold departure endpoint when catalog geometry resolves it
+(otherwise a 1 NM extension). Reference spacing is 200 feet. Monitoring
+defaults are 10 seconds caution, 10 seconds surveillance loss, 30 seconds
+coast-out, 10 seconds stabilization, 3 degrees course tolerance, 0.15 NM
+alignment half-width, and 30 seconds maximum displayed PTL. These are trainer
+choices, not a published STARS adaptation algorithm or operational PRM
+qualification. Automatic SOIA geometry and visual-transition behavior are not
+included; offsets require explicit catalog adaptation.

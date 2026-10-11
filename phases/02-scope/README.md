@@ -956,3 +956,40 @@ tokens remain readable and select authored faces at the configured CSS sizes. Al
 `docs/STARS-FONTS.md` for source/license evidence and exhaustive
 conversion verification. Historical ticket records describe their shipped
 behavior and are not rewritten.
+
+## Final Monitor Aid geometry addendum (2026-10-11)
+
+This approved FMA feature supersedes the earlier FMA phase exclusion below;
+historical non-goal rows and ticket records remain as written for their
+original scope.
+
+T02-220 introduces catalog-owned `catalog.json` `fmaOverrides` and pure
+`deriveFmaAmzs` geometry. Catalog adaptations own approach/runway selection,
+dimension changes, explicit ENU AMZ/NOZ/NTZ polygons and course-line graphics,
+optional vertical limits, and monitoring overrides. Scenario JSON may select `fma.initialAmzId`
+or disable generated groups with `fma.excludeDerivedGroups`; it does not own
+geometry.
+
+Automatic geometry deduplicates approach variants by ILS, LOC, RNAV preference,
+applies magnetic variation once, groups same-direction runways within the
+wrapped one-degree trainer tolerance, and constructs only adjacent NTZs for
+2,500–9,000-foot separation. Derived dimensions are 18 NM capture, 2,000-foot
+NTZ, 0.5 NM outer margin, 200-foot reference spacing, and reciprocal threshold
+departure endpoint when catalog geometry resolves it (otherwise 1 NM).
+Monitoring defaults are 10-second caution, 10-second surveillance loss,
+30-second coast-out, 10-second stabilization, 3-degree course tolerance,
+0.15 NM alignment half-width, and 30-second displayed PTL maximum. These are
+trainer policies and straightening approximations, not published STARS
+adaptation algorithms or operational PRM qualification. Offset/SOIA geometry
+requires explicit adaptation; automatic SOIA and visual-transition behavior
+are outside this feature.
+
+Raytheon TI 6191.409 Rev30 §6.16 and Figure 6-15 (printed p. 6-126, PDF 656)
+ground the displayed AMZ boundary, approach/departure course lines, NOZ/NTZ,
+runway, fix bar, and 200-foot reference lines. The figure does not specify the
+algorithm used to derive coordinates or runway groups; all dimensions and
+selection rules above are documented trainer choices. Figure 6-15 also says
+reference lines appear only when range/MAG ≤16 NM and range rings/compass are
+removed when magnification exceeds 1; display gating is handled by later FMA
+surface work. FAA AIM §§5-4-13–16 distinguish straight parallel procedures
+from SOIA; geometry alone does not establish PRM eligibility.
