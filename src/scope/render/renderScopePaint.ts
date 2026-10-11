@@ -330,21 +330,13 @@ export function collectDatablockProtectedGeometry(
     });
     // Boxed readout rect
     const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
-    const nominalMidX = (cpaA.x + cpaB.x) / 2;
-    const nominalMidY = (cpaA.y + cpaB.y) / 2;
-    const clampedMid = clampMinSepBoxCenter(
-      nominalMidX,
-      nominalMidY,
-      boxMetrics.width,
-      boxMetrics.height,
-      size,
-    );
+    const { center: boxCenter } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, size);
     out.push({
       kind: "rect",
       aircraftId: pair.aircraftIdA,
       rect: {
-        x: clampedMid.x - boxMetrics.width / 2,
-        y: clampedMid.y - boxMetrics.height / 2,
+        x: boxCenter.x - boxMetrics.width / 2,
+        y: boxCenter.y - boxMetrics.height / 2,
         width: boxMetrics.width,
         height: boxMetrics.height,
       },
@@ -2487,6 +2479,60 @@ export function clampMinSepBoxCenter(
 }
 
 /**
+ * Calculates adaptive center position for the Minimum Separation readout box.
+ * If the pixel distance between CPA A and CPA B is below `minInlineSpanPx`,
+ * the box is offset perpendicular to the segment (pointing upwards/rightwards)
+ * so it does not collide with or obscure the CPA triangles.
+ */
+export function computeMinSepBoxCenter(
+  cpaA: { x: number; y: number },
+  cpaB: { x: number; y: number },
+  boxMetrics: MinSepBoxMetrics,
+  size: ScopeViewSize,
+): { center: { x: number; y: number }; isOffset: boolean } {
+  const nominalMidX = (cpaA.x + cpaB.x) / 2;
+  const nominalMidY = (cpaA.y + cpaB.y) / 2;
+  const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
+  const minInlineSpanPx = Math.max(boxMetrics.width + 12, 50);
+
+  if (dPx >= minInlineSpanPx) {
+    return {
+      center: clampMinSepBoxCenter(nominalMidX, nominalMidY, boxMetrics.width, boxMetrics.height, size),
+      isOffset: false,
+    };
+  }
+
+  let perpX: number;
+  let perpY: number;
+
+  if (dPx < 1e-3) {
+    perpX = 0;
+    perpY = -1;
+  } else {
+    // Normal vector perpendicular to (cpaB - cpaA)
+    const dx = (cpaB.x - cpaA.x) / dPx;
+    const dy = (cpaB.y - cpaA.y) / dPx;
+    // Perpendicular (-dy, dx)
+    perpX = -dy;
+    perpY = dx;
+    // Prefer pointing generally upward (screen y negative) or rightward if horizontal
+    if (perpY > 0 || (Math.abs(perpY) < 1e-6 && perpX < 0)) {
+      perpX = -perpX;
+      perpY = -perpY;
+    }
+  }
+
+  const offsetDistPx = boxMetrics.height / 2 + MIN_SEP_TRIANGLE_HEIGHT_PX + 6;
+  const targetX = nominalMidX + perpX * offsetDistPx;
+  const targetY = nominalMidY + perpY * offsetDistPx;
+
+  return {
+    center: clampMinSepBoxCenter(targetX, targetY, boxMetrics.width, boxMetrics.height, size),
+    isOffset: true,
+  };
+}
+
+/**
  * Draws upright CPA triangle marker centered at (x, y).
  * Upright means base is horizontal at bottom, apex points north (up).
  */
@@ -2562,20 +2608,12 @@ export function drawMinimumSeparation(
     ctx.lineTo(cpaB.x, cpaB.y);
     ctx.stroke();
 
-    // 4. Boxed distance readout and optional NO XING cue (drawn between the two triangles)
+    // 4. Boxed distance readout and optional NO XING cue (drawn between the two triangles or offset if close)
     const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
-    const nominalMidX = (cpaA.x + cpaB.x) / 2;
-    const nominalMidY = (cpaA.y + cpaB.y) / 2;
-    const clampedMid = clampMinSepBoxCenter(
-      nominalMidX,
-      nominalMidY,
-      boxMetrics.width,
-      boxMetrics.height,
-      size,
-    );
+    const { center: boxCenter } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, size);
 
-    const boxX = Math.round(clampedMid.x - boxMetrics.width / 2);
-    const boxY = Math.round(clampedMid.y - boxMetrics.height / 2);
+    const boxX = Math.round(boxCenter.x - boxMetrics.width / 2);
+    const boxY = Math.round(boxCenter.y - boxMetrics.height / 2);
 
     // Fill background so line/geometry behind box doesn't obscure text
     ctx.fillStyle = bg;
@@ -2596,10 +2634,10 @@ export function drawMinimumSeparation(
       const lineSpacing = boxMetrics.lineHeight + 2;
       const firstLineY = boxY + boxMetrics.padY + boxMetrics.lineHeight / 2;
       const secondLineY = firstLineY + lineSpacing;
-      ctx.fillText(boxMetrics.text1, clampedMid.x, firstLineY);
-      ctx.fillText(boxMetrics.text2, clampedMid.x, secondLineY);
+      ctx.fillText(boxMetrics.text1, boxCenter.x, firstLineY);
+      ctx.fillText(boxMetrics.text2, boxCenter.x, secondLineY);
     } else {
-      ctx.fillText(boxMetrics.text1, clampedMid.x, clampedMid.y);
+      ctx.fillText(boxMetrics.text1, boxCenter.x, boxCenter.y);
     }
 
     // 5. Upright CPA triangle markers (painted independently on top of distance box and segment)

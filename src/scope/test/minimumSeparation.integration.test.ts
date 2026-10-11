@@ -31,7 +31,11 @@ import { ensureTrackDisplay, terminateTrackWithPlan } from "../trackDisplay";
 import type { SurveillanceReport } from "../surveillance";
 import { createMockCtx } from "./mockCanvas";
 import { renderScope } from "../render/renderScope";
-import { collectDatablockProtectedGeometry } from "../render/renderScopePaint";
+import {
+  calculateMinSepBoxMetrics,
+  collectDatablockProtectedGeometry,
+  computeMinSepBoxCenter,
+} from "../render/renderScopePaint";
 
 const CSS_W = 800;
 const CSS_H = 800;
@@ -956,6 +960,127 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       // Right edge of box must be within CSS_W
       expect(boxRect.x + boxRect.w).toBeLessThanOrEqual(CSS_W);
       expect(boxRect.x).toBeGreaterThanOrEqual(0);
+    });
+
+    it("Keeps box inline at midpoint when CPA triangles are far apart (> 60 px)", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Trajectories crossing with wide CPA separation (10 NM apart at CPA)
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 5,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: -5,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 5, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 10, yNm: -5, headingDeg: 270, speedKt: 300 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg)!;
+      const cpaA = nmToScreen(resolved.prediction.posANm.xNm, resolved.prediction.posANm.yNm, view.camera, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      const cpaB = nmToScreen(resolved.prediction.posBNm.xNm, resolved.prediction.posBNm.yNm, view.camera, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
+      expect(dPx).toBeGreaterThan(60);
+
+      const boxMetrics = calculateMinSepBoxMetrics(view, resolved.prediction);
+      const { center, isOffset } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      expect(isOffset).toBe(false);
+      expect(center.x).toBeCloseTo((cpaA.x + cpaB.x) / 2, 1);
+      expect(center.y).toBeCloseTo((cpaA.y + cpaB.y) / 2, 1);
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const boxRect = mock.strokeRects.find((r) => r.strokeStyle.toUpperCase() === "#FFFFFF");
+      expect(boxRect).toBeDefined();
+      expect(boxRect!.x + boxRect!.w / 2).toBeCloseTo((cpaA.x + cpaB.x) / 2, 1);
+      expect(boxRect!.y + boxRect!.h / 2).toBeCloseTo((cpaA.y + cpaB.y) / 2, 1);
+    });
+
+    it("Offsets box perpendicular/upward when CPA triangles are close together (e.g. 0 NM collision or < 10 px apart) while keeping triangles at CPA positions", () => {
+      const world = createWorld();
+      const view = createScopeView(0, 0);
+
+      // Head-on collision at origin (0 NM CPA, distance = 0)
+      const acA = makeTestAircraft({
+        id: "ac-1",
+        callsign: "AAL101",
+        xNm: -10,
+        yNm: 0,
+        headingDeg: 90,
+        speedKt: 300,
+      });
+      const acB = makeTestAircraft({
+        id: "ac-2",
+        callsign: "DAL202",
+        xNm: 10,
+        yNm: 0,
+        headingDeg: 270,
+        speedKt: 300,
+      });
+      world.aircraft.push(acA, acB);
+      attachReport(view, acA.id, { xNm: -10, yNm: 0, headingDeg: 90, speedKt: 300 });
+      attachReport(view, acB.id, { xNm: 10, yNm: 0, headingDeg: 270, speedKt: 300 });
+      view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
+
+      const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg)!;
+      const cpaA = nmToScreen(resolved.prediction.posANm.xNm, resolved.prediction.posANm.yNm, view.camera, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      const cpaB = nmToScreen(resolved.prediction.posBNm.xNm, resolved.prediction.posBNm.yNm, view.camera, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
+      expect(dPx).toBeLessThan(1e-3);
+
+      const boxMetrics = calculateMinSepBoxMetrics(view, resolved.prediction);
+      const { center, isOffset } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, {
+        widthPx: CSS_W,
+        heightPx: CSS_H,
+      });
+      expect(isOffset).toBe(true);
+      // Box is offset upward from (cpaA.y)
+      expect(center.y).toBeLessThan(cpaA.y);
+
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, CSS_W, CSS_H);
+
+      const boxRect = mock.strokeRects.find((r) => r.strokeStyle.toUpperCase() === "#FFFFFF");
+      expect(boxRect).toBeDefined();
+      const renderedBoxCenterY = boxRect!.y + boxRect!.h / 2;
+      // Rendered box is offset upward from the collision point
+      expect(renderedBoxCenterY).toBeCloseTo(center.y, 1);
+      expect(renderedBoxCenterY).toBeLessThan(cpaA.y);
+
+      // Verify no leader line was drawn (only 3 white pathStrokes: projA, projB, connecting segment)
+      const whiteStrokes = mock.pathStrokes.filter((s) => s.strokeStyle.toUpperCase() === "#FFFFFF");
+      expect(whiteStrokes.length).toBe(3);
+
+      // Triangles remain painted at exact CPA positions
+      expect(mock.fills.count).toBeGreaterThanOrEqual(2);
     });
   });
 
