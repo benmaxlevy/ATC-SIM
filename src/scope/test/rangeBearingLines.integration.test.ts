@@ -59,8 +59,13 @@ import {
   type ScopeView,
 } from "../scopeView";
 import type { SurveillanceReport } from "../surveillance";
-import { handleScopeKeyDown, installAlwaysOnScopeKeys, type ScopeKeyEvent } from "../scopeKeys";
-import { handlePpiLeftClick } from "../ppi";
+import {
+  handleScopeKeyDown,
+  installAlwaysOnScopeKeys,
+  cancelRblOnFocusTakeover,
+  type ScopeKeyEvent,
+} from "../scopeKeys";
+import { handlePpiLeftClick, handlePpiCanvasPointerHover } from "../ppi";
 import { nmToScreen, screenToNm } from "../camera";
 import { renderScope } from "../render/renderScope";
 import { createMockCtx } from "./mockCanvas";
@@ -1984,6 +1989,122 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
   });
 
   describe("T02-210 graphics and lifecycle acceptance", () => {
+    it("paints a cursor-tethered pending line until the second slew commits", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      view.dwellMode = "OFF";
+      const size = { widthPx: 800, heightPx: 600 };
+      const canvas = {
+        getBoundingClientRect: () => ({ left: 100, top: 50, width: 800, height: 600 }),
+      } as HTMLCanvasElement;
+      for (const key of ["*", "T"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+      }
+      handlePpiLeftClick(view, world, 300, 300, 800, 600);
+      expect(view.cursorHoverPos).toEqual({ x: 300, y: 300 });
+      handlePpiCanvasPointerHover(canvas, world, 600, 400, view);
+      const pending = createMockCtx();
+      drawRangeBearingLines(pending.ctx, world, view, size);
+      expect(pending.pathStrokes).toHaveLength(1);
+      expect(pending.pathStrokes[0]).toMatchObject({ strokeStyle: "#FFFFFF", lineWidth: 1 });
+      expect(pending.pathStrokes[0]!.points[0]!.x).toBeCloseTo(300);
+      expect(pending.pathStrokes[0]!.points[0]!.y).toBeCloseTo(300);
+      expect(pending.pathStrokes[0]!.points[1]!.x).toBeCloseTo(500);
+      expect(pending.pathStrokes[0]!.points[1]!.y).toBeCloseTo(350);
+      expect(pending.fillTexts).toHaveLength(0);
+      expect(view.rbl.lines.size).toBe(0);
+      expect(
+        collectDatablockProtectedGeometry(world, view, size).some(
+          (item) => item.kind === "segment" && item.aircraftId === "rbl:pending",
+        ),
+      ).toBe(true);
+
+      view.brite.tls = 0;
+      const hidden = createMockCtx();
+      drawRangeBearingLines(hidden.ctx, world, view, size);
+      expect(hidden.pathStrokes).toHaveLength(0);
+      expect(
+        collectDatablockProtectedGeometry(world, view, size).some(
+          (item) => item.aircraftId === "rbl:pending",
+        ),
+      ).toBe(false);
+      view.brite.tls = 100;
+      view.camera.centerEastNm = 2;
+      view.camera.rangeNm = 30;
+      handlePpiCanvasPointerHover(canvas, world, 650, 500, view);
+      const moved = createMockCtx();
+      drawRangeBearingLines(moved.ctx, world, view, size);
+      expect(moved.pathStrokes[0]!.points[1]!.x).toBeCloseTo(550);
+      expect(moved.pathStrokes[0]!.points[1]!.y).toBeCloseTo(450);
+
+      handlePpiLeftClick(view, world, 550, 450, 800, 600);
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      expect(view.rbl.lines.size).toBe(1);
+      const end = { ...view.rbl.lines.get(1)!.endpoint2 };
+      handlePpiCanvasPointerHover(canvas, world, 800, 250, view);
+      const committed = createMockCtx();
+      drawRangeBearingLines(committed.ctx, world, view, size);
+      expect(committed.pathStrokes).toHaveLength(1);
+      expect(committed.pathStrokes[0]!.points[1]!.x).toBeCloseTo(550);
+      expect(committed.pathStrokes[0]!.points[1]!.y).toBeCloseTo(450);
+      expect(view.rbl.lines.get(1)!.endpoint2).toEqual(end);
+    });
+
+    it("anchors a pending line to the first track's current report", () => {
+      const aircraft = makeTestAircraft({ id: "AC100", callsign: "AC100", xNm: 100, yNm: 100 });
+      const world = createWorld({ aircraft: [aircraft] });
+      const view = createScopeView();
+      const track = ensureTrackDisplay(view.tracks, aircraft.id);
+      track.lastReport = makeSyntheticReport({ aircraftId: aircraft.id, xNm: 0, yNm: 0 });
+      for (const key of ["*", "T"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+      }
+      handlePpiLeftClick(view, world, 400, 300, 800, 600);
+      expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "track", aircraftId: "AC100" });
+      view.cursorHoverPos = { x: 500, y: 350 };
+      track.lastReport = makeSyntheticReport({ aircraftId: aircraft.id, xNm: 2, yNm: 0 });
+      const moved = createMockCtx();
+      drawRangeBearingLines(moved.ctx, world, view, { widthPx: 800, heightPx: 600 });
+      const expected = nmToScreen(2, 0, view.camera, { widthPx: 800, heightPx: 600 });
+      expect(moved.pathStrokes[0]!.points[0]!.x).toBeCloseTo(expected.x);
+      expect(moved.pathStrokes[0]!.points[0]!.y).toBeCloseTo(expected.y);
+      delete track.lastReport;
+      const lost = createMockCtx();
+      drawRangeBearingLines(lost.ctx, world, view, { widthPx: 800, heightPx: 600 });
+      expect(lost.pathStrokes).toHaveLength(0);
+      expect(view.rbl.lines.size).toBe(0);
+    });
+
+    it.each(["Escape", "focus", "reset"])("removes the pending cursor line on %s", (action) => {
+      const world = createWorld();
+      const view = createScopeView();
+      insertRangeBearingLine(
+        view.rbl,
+        { kind: "static", xNm: -2, yNm: 0 },
+        { kind: "static", xNm: 2, yNm: 0 },
+        view.tracks,
+      );
+      for (const key of ["*", "T"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+      }
+      handlePpiLeftClick(view, world, 300, 300, 800, 600);
+      view.cursorHoverPos = { x: 500, y: 350 };
+      if (action === "Escape") {
+        handleScopeKeyDown(makeKeyEvent({ key: "Escape" }), view, "scope", world, 1000);
+      } else if (action === "focus") {
+        cancelRblOnFocusTakeover(view, "radio");
+      } else {
+        resetRangeBearingSession(view);
+      }
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      expect(view.rbl.lines.size).toBe(action === "reset" ? 0 : 1);
+      expect(
+        collectDatablockProtectedGeometry(world, view, { widthPx: 800, heightPx: 600 }).some(
+          (item) => item.aircraftId === "rbl:pending",
+        ),
+      ).toBe(false);
+    });
+
     it("paints plain white endpoint readout and protects its measured geometry", () => {
       const world = createWorld();
       world.navigation.magVarDeg = 0;

@@ -129,7 +129,7 @@ import {
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
 import { resolveActiveMinSep } from "../minimumSeparation";
-import { calculateRblReadout } from "../rangeBearingLines";
+import { calculateRblReadout, resolveRblEndpointPose } from "../rangeBearingLines";
 
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
@@ -169,6 +169,12 @@ export function collectDatablockProtectedGeometry(
 ): ProtectedGeometry[] {
   const out: ProtectedGeometry[] = [];
   const tls = view.brite.tls ?? 100;
+  if (tls > 0) {
+    const pending = resolvePendingRblSegment(view, size);
+    if (pending) {
+      out.push({ kind: "segment", aircraftId: "rbl:pending", ...pending, strokePx: 1 });
+    }
+  }
   if (tls > 0 && ctx) {
     for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
       out.push({ kind: "rect", aircraftId: `rbl:${layout.id}`, rect: layout.textRect });
@@ -1339,6 +1345,23 @@ function clipRblSegment(
   };
 }
 
+/** A pending RBL follows the pointer without allocating a numbered line. */
+function resolvePendingRblSegment(view: ScopeView, size: ScopeViewSize) {
+  const first = view.rbl.pendingFirstEndpoint;
+  const cursor = view.cursorHoverPos;
+  if (!first || !cursor || !Number.isFinite(cursor.x) || !Number.isFinite(cursor.y)) {
+    return null;
+  }
+  const pose = resolveRblEndpointPose(first, view.tracks);
+  if (!pose) return null;
+  return clipRblSegment(
+    nmToScreen(pose.xNm, pose.yNm, view.camera, size),
+    cursor,
+    size.widthPx,
+    size.heightPx,
+  );
+}
+
 /** Shared measured layout for both RBL paint and protected datablock geometry. */
 function resolveRblScreenLayouts(
   ctx: CanvasRenderingContext2D,
@@ -1401,6 +1424,13 @@ export function drawRangeBearingLines(
     ctx.font = datablockFontCss(view.charSizes.tools);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
+    const pending = resolvePendingRblSegment(view, size);
+    if (pending) {
+      ctx.beginPath();
+      ctx.moveTo(pending.from.x, pending.from.y);
+      ctx.lineTo(pending.to.x, pending.to.y);
+      ctx.stroke();
+    }
     for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
       if (layout.visibleSegment) {
         ctx.beginPath();

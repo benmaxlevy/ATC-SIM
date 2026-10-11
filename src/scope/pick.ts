@@ -679,6 +679,7 @@ export function handleRblClick(
   if (view.rbl.pendingFirstEndpoint === null) {
     // First endpoint resolved via click
     view.rbl.pendingFirstEndpoint = endpoint;
+    view.cursorHoverPos = { x: cssX, y: cssY };
     // Clear preview buffer and transition to stage 2
     view.preview.phase = "entry";
     view.preview.buffer = "";

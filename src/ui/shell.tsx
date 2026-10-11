@@ -389,6 +389,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               return;
             }
             const rect = event.currentTarget.getBoundingClientRect();
+            scopeView.cursorHoverPos = {
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top,
+            };
             handlePpiPanDelta(
               scopeView,
               event.clientX - panRef.current.lastX,
