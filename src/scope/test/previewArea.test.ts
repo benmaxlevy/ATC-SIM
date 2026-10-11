@@ -5,10 +5,16 @@ import {
   idlePreviewArea,
   previewAreaIsLive,
   beginPreviewBufferEntry,
+  beginPreviewMultiFuncEntry,
   formatPreviewReadout,
   previewTrackingSlew,
   previewFlidMatchesSlew,
 } from "../previewArea";
+
+function beginMf(view: ReturnType<typeof createScopeView>, operand: string, nowMs: number): void {
+  beginPreviewMultiFuncEntry(view.preview, nowMs);
+  view.preview.buffer = operand;
+}
 import { createScopeView } from "../scopeView";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
@@ -771,7 +777,7 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     };
     ensureTrackDisplay(view.tracks, ac.id).ownership = "owned";
 
-    beginPreviewBufferEntry(view.preview, "*Q", 1000);
+    beginMf(view, "Q", 1000);
     expect(previewTrackingSlew(view.preview)?.type).toBe("msawCurrentAlertInhibit");
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBe(true);
@@ -781,10 +787,10 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     syncTrackDisplays(view.tracks, world);
     expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBe(false);
 
-    beginPreviewBufferEntry(view.preview, "*V", 2000);
+    beginMf(view, "V", 2000);
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     expect(view.tracks.get(ac.id)?.msawProcessingInhibited).toBe(true);
-    beginPreviewBufferEntry(view.preview, "*V", 3000);
+    beginMf(view, "V", 3000);
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     expect(view.tracks.get(ac.id)?.msawProcessingInhibited).toBe(false);
   });
@@ -795,10 +801,10 @@ describe("T02-114: Conflict Alert (CA) preview grammar & slew execution", () => 
     const ac = makeTestAircraft({ id: "ac-invalid-q", callsign: "AAL100", xNm: 0, yNm: 0 });
     world.aircraft = [ac];
     world.alerts = { ca: [], msaw: [], atpa: [] };
-    beginPreviewBufferEntry(view.preview, "*Q", 1000);
+    beginMf(view, "Q", 1000);
     handlePpiLeftClick(view, world, 500, 400, 1000, 800);
     expect(view.tracks.get(ac.id)?.msawCurrentAlertInhibited).toBeUndefined();
-    expect(view.preview.rejection).toBe("*Q INV");
+    expect(view.preview.rejection).toBe("F7 Q INV");
   });
 
   it("clicking an alerted track when preview buffer is NOT empty does not acknowledge alert", () => {

@@ -42,6 +42,7 @@ import {
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
+import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
 import { DEFAULT_GEOGRAPHIC_MAPS, buildVideoMapsListLines } from "../coordinationList";
@@ -573,6 +574,9 @@ export function armPlaceCenter(view: ScopeView): void {
   const next = !view.placeCenterArmed;
   view.placeRangeRingArmed = false;
   view.placeCenterArmed = next;
+  if (next) {
+    cancelPendingMinSepIfArmed(view);
+  }
 }
 
 /** PLACE RR: next PPI click sets **range ring** origin in world NM. */
@@ -580,6 +584,9 @@ export function armPlaceRangeRing(view: ScopeView): void {
   const next = !view.placeRangeRingArmed;
   view.placeCenterArmed = false;
   view.placeRangeRingArmed = next;
+  if (next) {
+    cancelPendingMinSepIfArmed(view);
+  }
 }
 
 /** RR CNTR: snap ring origin to the view **center**. */

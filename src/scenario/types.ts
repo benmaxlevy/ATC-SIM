@@ -263,6 +263,12 @@ export interface Scenario {
    * “no surveillance”). This ticket does not sample or paint.
    */
   radarSites: RadarSite[];
+  /**
+   * Optional generic radar tileset boundary polygon in local ENU NM (T02-208).
+   * Validated at scenario load time (at least 3 finite vertices).
+   * When omitted, the trainer uses an unbounded plane default.
+   */
+  radarTilesetBoundaryNm?: NmEastNorth[];
   /** Optional validated regional facility containing satellite airports and controlled airspace. */
   regional?: RegionalFacility;
   /** Optional regional pack identifier (e.g. "katl") declared in scenario JSON. */

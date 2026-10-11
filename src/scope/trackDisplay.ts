@@ -29,6 +29,13 @@ import {
 import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
+import { pruneMinSepTrack, type MinSepState } from "./minimumSeparation";
+import {
+  onRblSurveillanceReport,
+  pruneRblsWithoutUsableReports,
+  removeRblsForTrack,
+  type RangeBearingLineState,
+} from "./rangeBearingLines";
 
 /** Display IDENT window (~2 s sim) for datablock "ID" text. Symbol does not flash. */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
@@ -154,14 +161,22 @@ export interface TrackDisplayState {
   acknowledgedAlertPairs: Set<string>;
   /** CA C setting applies to current and later pairs with two locally owned tracks. */
   caControllerOwnedPairsInhibited?: boolean;
+  /** Minimum-Separation session state. Cleaned up when track drops or despawns. */
+  minSep?: MinSepState;
+  /** Session RBLs attached to displayed track reports. */
+  rbl?: RangeBearingLineState;
 }
 
-export function createTrackDisplayState(tracks?: Map<string, TrackDisplay>): TrackDisplayState {
+export function createTrackDisplayState(
+  tracks?: Map<string, TrackDisplay>,
+  minSep?: MinSepState,
+): TrackDisplayState {
   return {
     tracks: tracks ?? new Map(),
     caInhibitedPairs: new Set(),
     acknowledgedAlertPairs: new Set(),
     caControllerOwnedPairsInhibited: false,
+    minSep,
   };
 }
 
@@ -245,6 +260,10 @@ export function pruneCaPairInhibitsForTrack(
       state.acknowledgedAlertPairs.delete(key);
     }
   }
+  if (state.minSep) {
+    pruneMinSepTrack(state.minSep, trackIdOrCallsign);
+  }
+  if (state.rbl) removeRblsForTrack(state.rbl, trackIdOrCallsign);
 }
 
 export type AlertVisualStatus = "none" | "alert" | "acknowledged" | "inhibited";
@@ -1022,6 +1041,7 @@ export function syncTrackDisplays(
   for (const id of [...tracks.keys()]) {
     if (!living.has(id)) {
       tracks.delete(id);
+      if (caState?.rbl) removeRblsForTrack(caState.rbl, id);
       if (caState) {
         pruneCaPairInhibitsForTrack(caState, id);
       }
@@ -1115,7 +1135,12 @@ export function syncTrackDisplays(
       }
     } else {
       delete td.lastReport;
+      if (caState?.rbl) removeRblsForTrack(caState.rbl, ac.id);
+      if (caState?.minSep) {
+        pruneMinSepTrack(caState.minSep, ac.id);
+      }
     }
+
     noteIdentAccepted(td, ac, world.simTimeMs);
     const ho = handoffFor(world, ac.id);
     if (
@@ -1126,5 +1151,18 @@ export function syncTrackDisplays(
       td.outboundFlashUntilSimMs =
         (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
     }
+  }
+  // RBL range cadence consumes issued report events only. Assign every new
+  // report first so two-track lines never mix one new pose with one stale pose.
+  if (caState?.rbl) {
+    for (const id of issued) {
+      onRblSurveillanceReport(
+        caState.rbl,
+        id,
+        tracks,
+        tracks.get(id)?.lastReport?.reportedAtSimMs ?? world.simTimeMs,
+      );
+    }
+    pruneRblsWithoutUsableReports(caState.rbl, tracks);
   }
 }

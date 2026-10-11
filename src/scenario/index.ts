@@ -84,7 +84,14 @@ export {
   RADAR_SITE_DEFAULT_PERIOD_MS,
   RADAR_SITE_DEFAULT_RANGE_NM,
 } from "./types";
-export { assertScenario, loadKdem, loadKdem09, loadKdemIls09, loadKdemIls27 } from "./load";
+export {
+  assertScenario,
+  loadKdem,
+  loadKdem09,
+  loadKdemIls09,
+  loadKdemIls27,
+  parseRadarTilesetBoundaryNm,
+} from "./load";
 export { isImplicitFusedSurveillance, parseRadarSites } from "./radarSites";
 export type {
   PlayableAirport,

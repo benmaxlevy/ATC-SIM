@@ -12,9 +12,8 @@
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
  * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
  * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
- * 1.0 min; AUX spinner 0.5/1/2/4). F10 toggles PTL ALL. F7 is MULTI FUNC and
- * inserts `*` into Preview. PTL OWN is F3-owned
- * tracks; ALL wins if both are on. Per-track PTL is `*R` plus click
+ * 1.0 min; AUX spinner 0.5/1/2/4). F10 toggles PTL ALL. F7 is MULTI FUNC and starts a separate operand buffer. PTL OWN is F3-owned
+ * tracks; ALL wins if both are on. Per-track PTL is F7 `R` plus click
  * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
  * selected track (or owned tracks if none selected), plus per-track `*J` /
  * `*P` session graphics (1–30 NM, not PREF). ATPA master plus four DCB latches
@@ -26,7 +25,7 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
-import type { LatLon } from "@core";
+import type { LatLon, NmEastNorth } from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -34,7 +33,7 @@ import {
   type AltitudeFilter,
   type FilterEntry,
 } from "./altitudeFilter";
-import { idlePreviewArea, type PreviewAreaState } from "./previewArea";
+import { cancelPreviewArea, idlePreviewArea, type PreviewAreaState } from "./previewArea";
 import { idleStarsChordEntry, type StarsChordAction, type StarsChordEntry } from "./starsChord";
 import {
   AIRPORT_REF_EAST_NM,
@@ -84,6 +83,13 @@ import {
   type AtpaState,
   type TpaState,
 } from "./tpa";
+import { createMinSepState, type MinSepState } from "./minimumSeparation";
+import {
+  clearRangeBearingLines,
+  createRangeBearingLineState,
+  setRblRadarTilesetBoundary,
+  type RangeBearingLineState,
+} from "./rangeBearingLines";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -196,7 +202,7 @@ export interface ScopeView {
   /** Last rendered datablock presentation/layout; invalidated on each render. */
   datablockRenderSnapshot?: DatablockRenderSnapshot;
   /**
-   * PTL ALL (global). CRC analog; default off. F7 always-on toggles this.
+   * PTL ALL (global). CRC analog; default off. F10 always-on toggles this.
    * Display only — never a Command, readback, or intent.
    */
   ptlOn: boolean;
@@ -205,7 +211,7 @@ export interface ScopeView {
   /** PTL length in minutes. Default 1.0 (T02-07). AUX spinner 0.5/1/2/4; keyboard 0–15. */
   ptlMinutes: PtlMinutes;
   /**
-   * Per-track PTL override (`*R` plus click). Session map, not PREF.
+   * Per-track PTL override (F7 `R` plus click). Session map, not PREF.
    * `true` forces the line; `false` hides it under PTL ALL.
    */
   ptlByAircraftId: Map<string, boolean>;
@@ -370,6 +376,16 @@ export interface ScopeView {
   cursorHome: boolean;
   /** AUX CSR SPD spinner (1–10, default 4). */
   cursorSpeed: number;
+  /**
+   * Minimum-Separation (MIN) model and prediction session state.
+   * TI 6191.409 Section 6.4. Display/prediction only.
+   */
+  minSep: MinSepState;
+  /**
+   * Range-Bearing Line (RBL) session state and up to 9 active lines.
+   * TI 6191.409 Section 6.7. Display/prediction only.
+   */
+  rbl: RangeBearingLineState;
 }
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
@@ -406,6 +422,7 @@ export function createScopeView(
     dwellMode?: DwellMode;
     cursorHome?: boolean;
     cursorSpeed?: number;
+    radarTilesetBoundaryNm?: readonly NmEastNorth[];
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -523,7 +540,30 @@ export function createScopeView(
     dwellLockedAircraftId: null,
     cursorHome: options?.cursorHome ?? false,
     cursorSpeed: options?.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
+    minSep: createMinSepState(),
+    rbl: createRangeBearingLineState({
+      radarTilesetBoundaryNm: options?.radarTilesetBoundaryNm
+        ? [...options.radarTilesetBoundaryNm]
+        : undefined,
+    }),
   };
+}
+
+/**
+ * Bind authored scenario `radarTilesetBoundaryNm` onto the live view (T02-208).
+ * Sets or clears the boundary polygon on the RBL session state.
+ */
+export function applyRadarTilesetBoundary(
+  view: ScopeView,
+  boundary?: readonly NmEastNorth[],
+): void {
+  setRblRadarTilesetBoundary(view.rbl, boundary);
+}
+
+/** Session replacement clears RBL graphics and stale Preview errors/actions, including empty sessions. */
+export function resetRangeBearingSession(view: ScopeView): void {
+  clearRangeBearingLines(view.rbl);
+  cancelPreviewArea(view.preview);
 }
 
 /**

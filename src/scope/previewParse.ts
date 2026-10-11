@@ -36,6 +36,7 @@ import type { VipLevel } from "./wx";
  * Do not put F3-specific field names on ScopeView.
  */
 export type PreviewArmedAction =
+  | { readonly type: "minSep" }
   | {
       readonly type: "createFlightPlan";
       pendingDiscrete: boolean;
@@ -182,7 +183,15 @@ export type PreviewArmedAction =
       readonly index?: number;
       readonly targetSlew?: boolean;
     }
-  | { readonly type: "saveAsPref"; readonly name?: string };
+  | { readonly type: "saveAsPref"; readonly name?: string }
+  /** STARS §6.8: *T [ID] Enter removes line ID or all lines when ID omitted. */
+  | { readonly type: "rblDelete"; readonly id?: number }
+  /** STARS §6.7: *T first endpoint entry (raw typed operand). */
+  | { readonly type: "rblEndpoint1"; readonly operand: string }
+  /** Trainer single-submit form: *T FIRST SECOND Enter. */
+  | { readonly type: "rblCreate"; readonly firstOperand: string; readonly secondOperand: string }
+  /** STARS §6.7: second endpoint entry (raw typed operand). */
+  | { readonly type: "rblEndpoint2"; readonly operand: string };
 
 export type PreviewCommandResult =
   | { kind: "incomplete" }
@@ -570,6 +579,84 @@ function parseMsawMultiFuncCommand(buffer: string): PreviewCommandResult | null 
   if (compact === "*Q") return { kind: "action", action: { type: "msawCurrentAlertInhibit" } };
   if (compact === "*V") return { kind: "action", action: { type: "toggleMsawProcessing" } };
   return null;
+}
+/**
+ * TI 6191.409 §§6.7–6.8 Range-Bearing Line literal splat parser.
+ * Literal-splat family only: *T [operand]
+ * - Initial bare `*T` / `* T` (with no operand):
+ *   When committed on Enter, removes all active RBLs (`rblDelete`).
+ *   When typed or awaiting click, acts as stage 1 initiator.
+ * - `*T<ID>` (unspaced numeric token, e.g. `*T3`):
+ *   Deletes RBL ID 3. If ID not in 1..9, yields invalid `RBL ID`.
+ *   (Longer tokens >= 3 chars are first checked against catalog fixes).
+ * - `*T <ACID/BCN>` (leading space after T):
+ *   First typed track.
+ * - `*T<FIX>` (3-7 characters, no leading space required):
+ *   First typed fix.
+ */
+export function parseRblLiteralCommand(buffer: string): PreviewCommandResult | null {
+  if (!buffer.startsWith("*")) {
+    return null;
+  }
+  // Match `*` followed by optional spaces, then `T` (case-insensitive)
+  const match = /^\*\s*T(.*)$/i.exec(buffer);
+  if (!match) {
+    return null;
+  }
+  const rest = match[1]!;
+
+  // Bare `*T` with no operand
+  if (rest.length === 0) {
+    return { kind: "action", action: { type: "rblDelete" } };
+  }
+
+  // Check if operand has a leading space (indicating first typed track)
+  if (rest.startsWith(" ")) {
+    // Leading space after T: first typed track (ACID or BCN) or homonymous fix
+    const operand = rest.trim();
+    if (operand.length === 0) {
+      // Just spaces after `*T ` -> incomplete
+      return { kind: "incomplete" };
+    }
+    const fields = operand.split(/\s+/);
+    if (fields.length === 2) {
+      return {
+        kind: "action",
+        action: {
+          type: "rblCreate",
+          firstOperand: ` ${fields[0]!}`,
+          secondOperand: fields[1]!,
+        },
+      };
+    }
+    if (fields.length > 2) return invalid("FORMAT");
+    return { kind: "action", action: { type: "rblEndpoint1", operand: rest } };
+  }
+
+  if (/\s/.test(rest)) return invalid("FORMAT");
+
+  // Unspaced operand after T: could be numeric deletion ID, or fix (3-7 chars), or malformed
+  // If it's a 1-digit number 1-9: deletion of that ID
+  if (/^[1-9]$/.test(rest)) {
+    return { kind: "action", action: { type: "rblDelete", id: Number(rest) } };
+  }
+  // If it's a 0 or number > 9 or non-1-9 digit string that is NOT a valid fix length 3-7:
+  // e.g. "0" -> RBL ID
+  if (/^0$/.test(rest)) {
+    return invalid("RBL ID");
+  }
+  // 2 digits numbers (e.g. "10", "99") are not 3-7 chars and not 1-9 -> invalid RBL ID
+  if (/^\d{2}$/.test(rest)) {
+    return invalid("RBL ID");
+  }
+
+  // One/two-letter operands are too short to be fixes or track identities.
+  if (rest.length < 3) {
+    return invalid("NO FLIGHT");
+  }
+
+  // Other unspaced tokens (3-7 chars fix or other):
+  return { kind: "action", action: { type: "rblEndpoint1", operand: rest } };
 }
 
 /**
@@ -1663,6 +1750,96 @@ export function parsePreviewCommand(
     return { kind: "incomplete" };
   }
   return invalid("unknown preview command");
+}
+
+const MULTI_FUNC_ACTIONS = new Set<PreviewArmedAction["type"]>([
+  "releaseAssignedBeacon",
+  "modifyFlightPlan",
+  "toggleList",
+  "resizeList",
+  "armRelocateList",
+  "resetListPosition",
+  "armPerTrackPtl",
+  "displayFilters",
+  "setAltitudeFilterLimits",
+  "msawCurrentAlertInhibit",
+  "toggleMsawProcessing",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "setLeaderLength",
+  "setLeaderDirAndLength",
+  "setDefaultLeaderLength",
+  "beaconatorSlew",
+  "beaconBlock",
+  "beaconDiscrete",
+]);
+
+const SPLAT_FORBIDDEN_ACTIONS = new Set<PreviewArmedAction["type"]>([
+  "releaseAssignedBeacon",
+  "modifyFlightPlan",
+  "toggleList",
+  "resizeList",
+  "armRelocateList",
+  "resetListPosition",
+  "armPerTrackPtl",
+  "displayFilters",
+  "setAltitudeFilterLimits",
+  "msawCurrentAlertInhibit",
+  "toggleMsawProcessing",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "setLeaderLength",
+  "setLeaderDirAndLength",
+]);
+
+/** Parse Preview text only within the input family that created it. */
+export function parsePreviewCommandForOrigin(
+  buffer: string,
+  origin: "multiFunc" | "literalSplat" | null,
+  maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
+): PreviewCommandResult {
+  const family = origin ?? (buffer.startsWith("*") ? "literalSplat" : null);
+  if (!family) return parsePreviewCommand(buffer, maps, layout);
+  const upper = buffer.toUpperCase().replace(/\s+/g, " ").trim();
+  if (family === "multiFunc") {
+    // F7's operands are deliberately closed to the shipped MULTI FUNC rows.
+    // Shared legacy parsers may also recognize literal-star trainer extensions.
+    const compact = upper.replace(/\s/g, "");
+    const singleToken =
+      /^(?:T(?:V|M|C|S|X|N)?(?:\d{1,3}|D)?|P[123]?(?:\d{1,3}|D)?|SD?|FC?\d{0,12}|Q|V|R|L[1-9].*)$/.test(
+        compact,
+      );
+    const planAction = /^(?:B|M)\s+.+$/.test(upper);
+    if (!singleToken && !planAction) {
+      return invalid("not a MULTI FUNC command");
+    }
+  } else {
+    if (!buffer.startsWith("*")) return invalid("not a literal splat command");
+    // These literal forms belong to the TPA/ATPA parser in starsChord.ts;
+    // keep the legacy Preview parser from stealing list/filter collisions.
+    if (/^\*(?:\*?J|\*?P(?:$|\s|\d)|D\+|(?:AE|AI|BE|BI|DE|DI)(?:$|\s))/.test(upper)) {
+      return { kind: "incomplete" };
+    }
+    const rbl = parseRblLiteralCommand(buffer);
+    if (rbl) return rbl;
+    if (REMOVED_LIST_ALIASES.test(buffer)) return invalid("unknown preview command");
+  }
+  const text = family === "multiFunc" ? `*${buffer}` : buffer;
+  const parsed = parsePreviewCommand(text, maps, layout);
+  if (parsed.kind !== "action") return parsed;
+  const literalTrainerExtension =
+    family === "literalSplat" &&
+    ((/^\*(?:[1-8]|0)$/.test(upper) &&
+      (parsed.action.type === "setLeaderDir" || parsed.action.type === "resetLeaderDir")) ||
+      (upper === "*" && parsed.action.type === "ackPointout") ||
+      (upper.startsWith("*LDR") && parsed.action.type === "setDefaultLeaderLength") ||
+      (upper.startsWith("*LA") && parsed.action.type === "setAltitudeFilterLimits"));
+  const allowed =
+    family === "multiFunc"
+      ? MULTI_FUNC_ACTIONS.has(parsed.action.type)
+      : literalTrainerExtension || !SPLAT_FORBIDDEN_ACTIONS.has(parsed.action.type);
+  return allowed ? parsed : invalid("wrong Preview input family");
 }
 
 /**

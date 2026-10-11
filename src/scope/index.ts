@@ -335,6 +335,7 @@ export {
   centerOnLastClick,
   centerOnWorld,
   applyRadarSites,
+  applyRadarTilesetBoundary,
   createScopeView,
   setSurveillanceMode,
   beginAltitudeFilterChord,
@@ -379,6 +380,7 @@ export {
   DEFAULT_DWELL_MODE,
   DEFAULT_HISTORY_RATE_SEC,
   DEFAULT_CURSOR_SPEED,
+  resetRangeBearingSession,
 } from "./scopeView";
 export type { MapLayerId, ScopeView, VolLevel, ModeFsl, DwellMode } from "./scopeView";
 export {
@@ -969,3 +971,74 @@ export type {
   WxLevels,
   WxMosaic,
 } from "./wx";
+export {
+  beginMinSepSelection,
+  cancelMinSepPending,
+  cancelPendingMinSepIfArmed,
+  clearMinSepState,
+  computeMinimumSeparation,
+  createMinSepState,
+  invalidateMinSepPair,
+  isMinSepPending,
+  isValidMinSepTrackInput,
+  minSepInputFromReport,
+  resolveActiveMinSep,
+  selectMinSepAircraft,
+} from "./minimumSeparation";
+export type {
+  ActiveMinSepPair,
+  ActiveMinSepResolved,
+  MinSepPrediction,
+  MinSepSelectionResult,
+  MinSepState,
+  MinSepTrackInput,
+} from "./minimumSeparation";
+export { handleMinSepClick, isMinSepTargetEligibleAndDisplayed, pickMinSepTargetAt } from "./pick";
+export type { MinSepPickResult } from "./pick";
+export { isMinSepDeleteKey } from "./scopeKeys";
+export {
+  drawMinimumSeparation,
+  drawUprightCpaTriangle,
+  calculateMinSepBoxMetrics,
+  computeMinSepBoxCenter,
+  formatMinSepDistance,
+} from "./render";
+export {
+  MAX_RBL_COUNT,
+  RBL_MAX_RAW_RANGE_NM,
+  RBL_MAX_RAW_TIME_MIN,
+  RBL_OUTSIDE_TILESET_BEARING,
+  RBL_RANGE_CADENCE_DELAY_MS,
+  RBL_RANGE_INCREASE_THRESHOLD_NM,
+  allocateLowestFreeRblId,
+  calculateRblReadout,
+  cancelRblPending,
+  clearRangeBearingLines,
+  createRangeBearingLineState,
+  formatDupIdError,
+  formatRblBearing,
+  formatRblRange,
+  formatRblTraversalMinutes,
+  insertRangeBearingLine,
+  isPointInsideOrOnPolygon,
+  isRblPending,
+  lookupCatalogFix,
+  lookupRblTrack,
+  onRblSurveillanceReport,
+  removeRangeBearingLine,
+  resolveRblEndpointPose,
+  resolveRblFirstEndpoint,
+  resolveRblSecondEndpoint,
+  setRblRadarTilesetBoundary,
+  updateRblCadenceRange,
+} from "./rangeBearingLines";
+export type {
+  RangeBearingLine,
+  RangeBearingLineState,
+  RblEndpoint,
+  RblReadoutCalculation,
+  ResolveRblEndpointResult,
+  ResolvedRblEndpointPose,
+} from "./rangeBearingLines";
+export { handleRblClick, isRblTargetEligibleAndDisplayed, pickRblTargetAt } from "./pick";
+export type { RblPickResult } from "./pick";

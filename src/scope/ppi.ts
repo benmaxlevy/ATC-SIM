@@ -35,12 +35,16 @@ import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
 import {
   HIT_RADIUS_CSS_PX,
+  handleMinSepClick,
+  handleRblClick,
   middleClickAircraftAt,
   pickAircraftAt,
   pickAircraftHitAt,
   selectOrAcceptAircraftAt,
   type AircraftPickHit,
 } from "./pick";
+import { isMinSepPending } from "./minimumSeparation";
+import { cancelRblPending, isRblPending } from "./rangeBearingLines";
 import { shouldDrawPtlForTrack } from "./ptl";
 import { renderScope } from "./render";
 import {
@@ -414,6 +418,27 @@ export function handlePpiLeftClick(
   commandText?: string,
   onOpenFlightPlanModal?: (request: FlightPlanModalRequest) => void,
 ): void {
+  if (isMinSepPending(view)) {
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    if (handleMinSepClick(view, world, cssX, cssY, cssWidth, cssHeight)) {
+      return;
+    }
+  }
+  const isRblEntryAwaitingClick =
+    isRblPending(view.rbl) ||
+    (view.preview.entryOrigin === "literalSplat" &&
+      view.preview.phase === "entry" &&
+      view.preview.buffer.trim().toUpperCase() === "*T");
+  if (isRblEntryAwaitingClick) {
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    if (handleRblClick(view, world, cssX, cssY, cssWidth, cssHeight)) {
+      return;
+    }
+  }
   if (view.dcbSpinner.armed) {
     if (view.dcbSpinner.cell === "RANGE") {
       commitDcbSpinner(view);
@@ -448,16 +473,7 @@ export function handlePpiLeftClick(
       return;
     }
   }
-  let relocateId = previewRelocateListId(view.preview);
-  // The same P commands address lists on empty scope and TPA cones on aircraft.
-  if (
-    relocateId &&
-    view.preview.phase === "entry" &&
-    /^\*\s*P[123]?$/i.test(view.preview.buffer) &&
-    pickAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view)
-  ) {
-    relocateId = null;
-  }
+  const relocateId = previewRelocateListId(view.preview);
   // Check if click was on a system list entry while F1 drop mode is active
   if (view.f1DropArmed || view.beaconatorActive) {
     const hitEntry = hitTestSystemListEntry(view, cssX, cssY);
@@ -839,6 +855,9 @@ export function paintPpi(
   expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
   expireStarsChordEntry(view.starsChordEntry, Date.now());
   expirePreviewArea(view.preview, Date.now());
+  if (view.rbl.pendingFirstEndpoint !== null && view.preview.phase !== "entry") {
+    cancelRblPending(view.rbl);
+  }
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }
 

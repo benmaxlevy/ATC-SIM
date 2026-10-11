@@ -127,43 +127,43 @@ test("AC1 — *T *TV * P1 *P1 *P3 toggle lists; *T 15 resizes; live *T/*S click 
   expect(view.systemLists.VFR.visible).toBe(false);
   expect(view.systemLists.TOWER_1.visible).toBe(false);
 
-  typeKeys(view, world, ["*", "T", "Enter"]);
+  typeKeys(view, world, ["F7", "T", "Enter"]);
   expect(view.systemLists.TAB.visible).toBe(true);
   expect(view.preview.phase).toBe("idle");
 
-  typeKeys(view, world, ["*", "T", "V", "Enter"], "scope", 200);
+  typeKeys(view, world, ["F7", "T", "V", "Enter"], "scope", 200);
   expect(view.systemLists.VFR.visible).toBe(true);
   expect(view.systemLists.TAB.visible).toBe(true);
 
   // Spaced form: * P1 Enter toggles Tower List 1
   const tpaBefore = view.starsChordArmed;
-  typeKeys(view, world, ["*", " ", "P", "1", "Enter"], "scope", 400);
+  typeKeys(view, world, ["F7", "P", "1", "Enter"], "scope", 400);
   expect(view.systemLists.TOWER_1.visible).toBe(true);
   expect(view.systemLists.TAB.visible).toBe(true);
   expect(view.starsChordArmed).toBe(tpaBefore);
 
   // Toggle it off with compact *P1 Enter (no space) — new behavior for Item 1
-  typeKeys(view, world, ["*", "P", "1", "Enter"], "scope", 450);
+  typeKeys(view, world, ["F7", "P", "1", "Enter"], "scope", 450);
   expect(view.systemLists.TOWER_1.visible).toBe(false);
   expect(view.starsChordArmed).toBe(tpaBefore);
 
   // Compact *P3 + Enter (no aircraft slewed) = toggle Tower List 3 — new behavior for Item 1
-  typeKeys(view, world, ["*", "P", "3", "Enter"], "scope", 500);
+  typeKeys(view, world, ["F7", "P", "3", "Enter"], "scope", 500);
   expect(view.systemLists.TOWER_3.visible).toBe(true);
   expect(view.starsChordArmed).toBeNull();
 
-  typeKeys(view, world, ["*", "T", " ", "1", "5", "Enter"], "scope", 600);
+  typeKeys(view, world, ["F7", "T", " ", "1", "5", "Enter"], "scope", 600);
   expect(view.systemLists.TAB.maxLines).toBe(15);
   expect(view.systemLists.TAB.visible).toBe(true);
 
-  typeKeys(view, world, ["*", "T"], "scope", 800);
+  typeKeys(view, world, ["F7", "T"], "scope", 800);
   expect(view.preview.phase).toBe("entry");
   handlePpiLeftClick(view, world, 400, 200, CSS, CSS);
   expect(view.systemLists.TAB.x).toBe(0.5);
   expect(view.systemLists.TAB.y).toBe(0.25);
   expect(view.preview.phase).toBe("idle");
 
-  typeKeys(view, world, ["*", "S"], "scope", 1000);
+  typeKeys(view, world, ["F7", "S"], "scope", 1000);
   handlePpiLeftClick(view, world, 0, 800, CSS, CSS);
   expect(view.systemLists.SSA.x).toBe(0);
   expect(view.systemLists.SSA.y).toBe(1);
@@ -265,7 +265,7 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   const world = createWorld();
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
 
-  typeKeys(view, world, ["*", "F", "Enter"]);
+  typeKeys(view, world, ["F7", "F", "Enter"]);
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
   expect(view.filterEntry.phase).toBe("idle");
   expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180 U 000-180 A");
@@ -292,8 +292,8 @@ test("AC1 — *F flashes FILTER; *LA writes hundreds; *BCN add/DEL; incomplete I
   );
   expect(view.beaconSelectCodes).toEqual([]);
 
-  typeKeys(view, world, ["*", "B", "Enter"], "scope", 800);
-  expect(view.preview.rejection).toBe("*B INV");
+  typeKeys(view, world, ["F7", "B", "Enter"], "scope", 800);
+  expect(view.preview.rejection).toBe("B INV");
   expect(view.beaconSelectCodes).toEqual([]);
   expect(view.altitudeFilter).toEqual({ minHundreds: 0, maxHundreds: 150 });
 
@@ -422,7 +422,7 @@ test("AC1 — F1 / * chords mutate tracks; direct slew or F3 accepts inbound HO;
   const beaconWorld = createWorld({ aircraft: [uncorr], simTimeMs: 1000 });
   const beaconView = createScopeView();
   syncTrackDisplays(beaconView.tracks, beaconWorld);
-  typeKeys(beaconView, beaconWorld, ["*", "B"], "scope", 0);
+  typeKeys(beaconView, beaconWorld, ["F7", "B"], "scope", 0);
   clickAt(beaconView, beaconWorld, uncorr.xNm, uncorr.yNm);
   const td = beaconView.tracks.get(uncorr.id)!;
   expect(isTrackBeaconator(td, beaconWorld.simTimeMs)).toBe(true);
@@ -447,7 +447,7 @@ test("AC1 — radio leftover *T does not toggle lists; scope *T Enter is not rad
   expect(radio.preview.buffer).toBe("");
 
   const scope = createScopeView();
-  const scopeLeftover = leftoverKeys(["*", "T", "Enter"], scope, world, "scope");
+  const scopeLeftover = leftoverKeys(["F7", "T", "Enter"], scope, world, "scope");
   expect(scopeLeftover).toBe("");
   expect(scope.systemLists.TAB.visible).toBe(true);
   expect(scope.preview.phase).toBe("idle");
@@ -491,8 +491,8 @@ test("AC2 — invalid *XYZ *T 999 *D 99 flash buffer INV and do not mutate", () 
   expect(formatPreviewReadout(lists.preview)).toBe("*XYZ INV");
   expect(lists.systemLists.TAB).toEqual(tabBefore);
 
-  typeKeys(lists, world, ["*", "T", " ", "9", "9", "9", "Enter"], "scope", 200);
-  expect(lists.preview.rejection).toBe("*T 999 INV");
+  typeKeys(lists, world, ["F7", "T", " ", "9", "9", "9", "Enter"], "scope", 200);
+  expect(lists.preview.rejection).toBe("T 999 INV");
   expect(lists.systemLists.TAB.maxLines).toBe(tabBefore.maxLines);
   expect(lists.systemLists.TAB.visible).toBe(tabBefore.visible);
 
@@ -548,26 +548,32 @@ test("CRC STARS Table 24/25 — leader length and direction per target (slew, FL
   expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(12);
 
   // 7. *L(1-9) slew sets leader direction
-  typeKeys(view, world, ["*", "L", "9"], "scope", 1200);
+  typeKeys(view, world, ["F7", "L", "9"], "scope", 1200);
   clickAt(view, world, dal.xNm, dal.yNm);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(9);
 
   // 8. *L(1-9) <FLID> Enter sets leader direction
-  typeKeys(view, world, ["*", "L", "1", " ", "D", "A", "L", "1", "2", "3", "Enter"], "scope", 1400);
+  typeKeys(
+    view,
+    world,
+    ["F7", "L", "1", " ", "D", "A", "L", "1", "2", "3", "Enter"],
+    "scope",
+    1400,
+  );
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(1);
 
   // 9. *L(1-9) Enter sets leader direction for all owned tracks
-  typeKeys(view, world, ["*", "L", "7", "Enter"], "scope", 1600);
+  typeKeys(view, world, ["F7", "L", "7", "Enter"], "scope", 1600);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(7);
   expect(view.tracks.get(ual.id)!.leaderDir).toBe(4); // unowned untouched
 
   // 10. *L(1-9)* Enter sets leader direction for all unowned tracks
-  typeKeys(view, world, ["*", "L", "3", "*", "Enter"], "scope", 1800);
+  typeKeys(view, world, ["F7", "L", "3", "*", "Enter"], "scope", 1800);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(7); // owned untouched
   expect(view.tracks.get(ual.id)!.leaderDir).toBe(3); // unowned updated
 
   // 11. *L(1-9)/<0-7> slew sets direction and length
-  typeKeys(view, world, ["*", "L", "8", "/", "0"], "scope", 2000);
+  typeKeys(view, world, ["F7", "L", "8", "/", "0"], "scope", 2000);
   clickAt(view, world, dal.xNm, dal.yNm);
   expect(view.tracks.get(dal.id)!.leaderDir).toBe(8);
   expect(view.tracks.get(dal.id)!.leaderLengthPx).toBe(0);
@@ -581,7 +587,7 @@ test("T02-67 — *F is the manual altitude-filter command, not forced FDB", () =
   const world = createWorld();
   const view = kdemView();
 
-  typeKeys(view, world, ["*", "F", "0", "5", "0", "1", "2", "0", "Enter"], "scope", 100);
+  typeKeys(view, world, ["F7", "F", "0", "5", "0", "1", "2", "0", "Enter"], "scope", 100);
   expect(view.altitudeFilter).toEqual({ minHundreds: 50, maxHundreds: 120 });
   expect([...view.tracks.values()].every((td) => !td.forcedFdb)).toBe(true);
 });
@@ -592,31 +598,31 @@ test("STARS system list commands: only authorized commands work; aliases rejecte
 
   // Test toggling AL via *TM
   expect(view.systemLists.AL.visible).toBe(true);
-  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 100);
+  typeKeys(view, world, ["F7", "T", "M", "Enter"], "scope", 100);
   expect(view.systemLists.AL.visible).toBe(false);
-  typeKeys(view, world, ["*", "T", "M", "Enter"], "scope", 200);
+  typeKeys(view, world, ["F7", "T", "M", "Enter"], "scope", 200);
   expect(view.systemLists.AL.visible).toBe(true);
 
   // Test toggling COAST via *TC and resizing via *TC 15
   expect(view.systemLists.COAST.visible).toBe(false);
-  typeKeys(view, world, ["*", "T", "C", "Enter"], "scope", 300);
+  typeKeys(view, world, ["F7", "T", "C", "Enter"], "scope", 300);
   expect(view.systemLists.COAST.visible).toBe(true);
-  typeKeys(view, world, ["*", "T", "C", " ", "1", "5", "Enter"], "scope", 400);
+  typeKeys(view, world, ["F7", "T", "C", " ", "1", "5", "Enter"], "scope", 400);
   expect(view.systemLists.COAST.maxLines).toBe(15);
 
   // Test toggling SIGN_ON via *TS
   expect(view.systemLists.SIGN_ON.visible).toBe(false);
-  typeKeys(view, world, ["*", "T", "S", "Enter"], "scope", 500);
+  typeKeys(view, world, ["F7", "T", "S", "Enter"], "scope", 500);
   expect(view.systemLists.SIGN_ON.visible).toBe(true);
 
   // Test toggling VIDEO MAPS via *TX
   expect(view.systemLists.ML.visible).toBe(false);
-  typeKeys(view, world, ["*", "T", "X", "Enter"], "scope", 600);
+  typeKeys(view, world, ["F7", "T", "X", "Enter"], "scope", 600);
   expect(view.systemLists.ML.visible).toBe(true);
 
   // Test toggling CRDA via *TN
   expect(view.systemLists.CRDA.visible).toBe(false);
-  typeKeys(view, world, ["*", "T", "N", "Enter"], "scope", 700);
+  typeKeys(view, world, ["F7", "T", "N", "Enter"], "scope", 700);
   expect(view.systemLists.CRDA.visible).toBe(true);
 
   // Test that old aliases are rejected and do not toggle lists
@@ -633,7 +639,7 @@ test("STARS system list commands: only authorized commands work; aliases rejecte
   };
 
   const rejectedAliases = [
-    ["*", "F", "L", "Enter"],
+    ["F7", "F", "L", "Enter"],
     ["*", "T", "A", "B", "Enter"],
     ["*", "V", "L", "Enter"],
     ["*", "T", "L", "Enter"],

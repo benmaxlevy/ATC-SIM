@@ -8,8 +8,8 @@
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
  * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
- * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
- * toggle — even with the command line focused. F1 is INIT CNTL and F3 is
+ * buffer and undoes that Mode C tap. F10 always-on predicted track line (PTL)
+ * toggle — even with the command line focused. F7 starts MULTI FUNC Preview entry. F1 is INIT CNTL and F3 is
  * reserved for Track Suspend (not implemented yet); help uses `?` or the Help button;
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
  * (slew/drop prefix, not radio focus). Leader direction stays on the DCB or
@@ -67,6 +67,8 @@ import {
   applyPreviewBeaconAction,
   applyPreviewWxAction,
   armPreviewCntl,
+  armPreviewMinSep,
+  beginPreviewMultiFuncEntry,
   armPreviewRelocateList,
   armPreviewSlewAction,
   beginPreviewBeaconEntry,
@@ -81,6 +83,7 @@ import {
   previewAreaIsLive,
   previewBufferCharFromKey,
   rejectPreviewArea,
+  rejectPreviewAreaWithReason,
   executeCaSingleTrackInhibit,
   executeCaPairToggle,
   executeCaControllerPairs,
@@ -88,6 +91,21 @@ import {
   type PreviewArmedAction,
   type PreviewKeyOutcome,
 } from "./previewArea";
+import {
+  beginMinSepSelection,
+  cancelMinSepPending,
+  cancelPendingMinSepIfArmed,
+  clearMinSepState,
+  isMinSepPending,
+} from "./minimumSeparation";
+import {
+  cancelRblPending,
+  clearRangeBearingLines,
+  insertRangeBearingLine,
+  removeRangeBearingLine,
+  resolveRblFirstEndpoint,
+  resolveRblSecondEndpoint,
+} from "./rangeBearingLines";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
 import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
 import {
@@ -202,6 +220,7 @@ export interface ScopeKeyEvent {
   shiftKey?: boolean;
   ctrlKey?: boolean;
   altKey?: boolean;
+  metaKey?: boolean;
   target?: EventTarget | null;
   preventDefault(): void;
   stopPropagation(): void;
@@ -229,17 +248,34 @@ export interface ScopeKeyUi {
 }
 
 function eventOwnedByNativeModal(target: EventTarget | null | undefined): boolean {
-  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
-    return false;
+  if (typeof HTMLElement !== "undefined" && target instanceof HTMLElement) {
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.isContentEditable
+    ) {
+      return true;
+    }
+    return target.closest('[role="dialog"][aria-modal="true"]') !== null;
   }
-  if (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target.isContentEditable
-  ) {
-    return true;
+  if (target && typeof target === "object") {
+    const candidate = target as {
+      tagName?: string;
+      isContentEditable?: boolean;
+      closest?: (selector: string) => unknown;
+    };
+    if (
+      candidate.tagName === "INPUT" ||
+      candidate.tagName === "TEXTAREA" ||
+      candidate.isContentEditable === true
+    ) {
+      return true;
+    }
+    if (typeof candidate.closest === "function") {
+      return candidate.closest('[role="dialog"][aria-modal="true"]') !== null;
+    }
   }
-  return target.closest('[role="dialog"][aria-modal="true"]') !== null;
+  return false;
 }
 
 export function isAlwaysOnScopeKey(key: string): boolean {
@@ -320,9 +356,55 @@ function isReservedScopeLetterShortcut(key: string): boolean {
   );
 }
 
+/**
+ * Dedicated unmodified Delete key, scope focus only.
+ * Requires event.key === "Delete", dedicated keyboard code "Delete" when code supplied,
+ * no Shift/Ctrl/Alt/Meta. Rejects NumpadDecimal.
+ */
+export function isMinSepDeleteKey(event: ScopeKeyEvent): boolean {
+  if (event.key !== "Delete") {
+    return false;
+  }
+  if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) {
+    return false;
+  }
+  if (event.code && event.code !== "Delete") {
+    return false;
+  }
+  return true;
+}
+
+function isCompetingTargetingKey(event: ScopeKeyEvent): boolean {
+  if (event.ctrlKey) {
+    return /^F[1-9]|F10|F11$/.test(event.key);
+  }
+  return (
+    event.key === "F1" ||
+    event.key === "F3" ||
+    event.key === "F4" ||
+    event.key === "F5" ||
+    event.key === "F6" ||
+    event.key === "F7" ||
+    event.key === "F8" ||
+    event.key === "F9" ||
+    event.key === "F10" ||
+    event.key === "F11" ||
+    event.key === "Insert" ||
+    event.key === "Ins" ||
+    event.key === "FPL" ||
+    event.code === "FPL" ||
+    event.key === "VFR" ||
+    event.code === "VFR"
+  );
+}
+
 /** Keep T02-49 `*` chords on starsChordEntry so slew-click and *J tests stay green. */
 function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
-  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+  if (
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    view.preview.buffer.startsWith("*")
+  ) {
     view.starsChordEntry.phase = "entry";
     view.starsChordEntry.buffer = view.preview.buffer;
     view.starsChordEntry.lastKeyAtMs = nowMs;
@@ -333,6 +415,8 @@ function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
 function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  cancelRblPending(view.rbl);
   view.pendingChord = null;
   beginPreviewBufferEntry(view.preview, ch, nowMs);
   if (ch === "*") {
@@ -343,9 +427,25 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   }
 }
 
+function startMultiFuncEntry(view: ScopeView, nowMs: number): void {
+  if (view.dcbSpinner.armed) {
+    cancelDcbSpinner(view);
+  }
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  cancelRblPending(view.rbl);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewMultiFuncEntry(view.preview, nowMs);
+}
+
 function startFltDataEntry(view: ScopeView, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  cancelRblPending(view.rbl);
   view.pendingChord = null;
   view.starsChordArmed = null;
   cancelStarsChordEntry(view.starsChordEntry);
@@ -355,6 +455,8 @@ function startFltDataEntry(view: ScopeView, nowMs: number): void {
 function startVfrEntry(view: ScopeView, nowMs: number): void {
   cancelFilterEntry(view.filterEntry, view.altitudeFilter);
   cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  cancelRblPending(view.rbl);
   view.pendingChord = null;
   view.starsChordArmed = null;
   cancelStarsChordEntry(view.starsChordEntry);
@@ -903,6 +1005,106 @@ function applyPreviewArmedAction(
         commitDcbPrefSaveAs(view, action.name, browserDcbPrefStorage() ?? undefined);
       }
       return;
+    case "rblDelete": {
+      if (action.id !== undefined) {
+        const removed = removeRangeBearingLine(view.rbl, action.id);
+        if (!removed) {
+          rejectPreviewAreaWithReason(view.preview, nowMs, "RBL ID");
+          return;
+        }
+      } else {
+        clearRangeBearingLines(view.rbl);
+      }
+      cancelRblPending(view.rbl);
+      cancelPreviewArea(view.preview);
+      return;
+    }
+    case "rblEndpoint1": {
+      if (!world) return;
+      const res1 = resolveRblFirstEndpoint(action.operand, world, view.tracks);
+      if (res1.kind === "error") {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, res1.reason);
+        return;
+      }
+      // Staged first endpoint
+      view.rbl.pendingFirstEndpoint = res1.endpoint;
+      view.preview.phase = "entry";
+      view.preview.buffer = "";
+      view.preview.entryOrigin = "literalSplat";
+      view.preview.mnemonic = "RBL";
+      view.preview.flid = null;
+      view.preview.rejection = null;
+      return;
+    }
+    case "rblCreate":
+    case "rblEndpoint2": {
+      if (!world) return;
+      const secondOperand = action.type === "rblCreate" ? action.secondOperand : action.operand;
+      // Second endpoint entered: check if buffer was empty
+      if (secondOperand.trim().length === 0) {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
+        return;
+      }
+      let firstEp = view.rbl.pendingFirstEndpoint;
+      if (action.type === "rblCreate") {
+        const first = resolveRblFirstEndpoint(action.firstOperand, world, view.tracks);
+        if (first.kind === "error") {
+          cancelRblPending(view.rbl);
+          rejectPreviewAreaWithReason(view.preview, nowMs, first.reason);
+          return;
+        }
+        firstEp = first.endpoint;
+      }
+      if (!firstEp) {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
+        return;
+      }
+      const res2 = resolveRblSecondEndpoint(secondOperand, world, view.tracks);
+      if (res2.kind === "error") {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, res2.reason);
+        return;
+      }
+      // Revalidate first endpoint if it was a track
+      if (firstEp.kind === "track") {
+        const rep = view.tracks.get(firstEp.aircraftId)?.lastReport;
+        if (
+          !world.aircraft.some((aircraft) => aircraft.id === firstEp.aircraftId) ||
+          !rep ||
+          !Number.isFinite(rep.xNm) ||
+          !Number.isFinite(rep.yNm) ||
+          !Number.isFinite(rep.reportedAtSimMs)
+        ) {
+          cancelRblPending(view.rbl);
+          rejectPreviewAreaWithReason(view.preview, nowMs, "NO FLIGHT");
+          return;
+        }
+      }
+      // Capacity check: max 9 lines, after confirming both endpoints remain valid.
+      if (view.rbl.lines.size >= 9) {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+        return;
+      }
+      const created = insertRangeBearingLine(
+        view.rbl,
+        firstEp,
+        res2.endpoint,
+        view.tracks,
+        world.simTimeMs,
+      );
+      if (!created) {
+        cancelRblPending(view.rbl);
+        rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+        return;
+      }
+      view.rbl.pendingFirstEndpoint = null;
+      cancelPreviewArea(view.preview);
+      return;
+    }
     default:
       return;
   }
@@ -939,13 +1141,41 @@ function applyPreviewBufferOutcome(
     rejectStarsChordEntry(view.starsChordEntry, nowMs);
     return;
   }
-  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+  if (
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    /^\*\s*T$/i.test(view.preview.buffer)
+  ) {
+    beginRblInput(view);
+  }
+  if (
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    view.preview.buffer.startsWith("*") &&
+    !/^\*\s*T/i.test(view.preview.buffer)
+  ) {
     syncStarsChordMirror(view, nowMs);
     return;
   }
   if (view.preview.phase === "idle" && view.starsChordEntry.phase === "entry") {
     cancelStarsChordEntry(view.starsChordEntry);
   }
+}
+
+/** Roll back competing pending input when literal `*T` becomes the active family. */
+function beginRblInput(view: ScopeView): void {
+  if (view.dcbSpinner.armed) cancelDcbSpinner(view);
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  view.pendingChord = null;
+  view.placeCenterArmed = false;
+  view.placeRangeRingArmed = false;
+  view.f1DropArmed = false;
+  view.stagedListAnchor = null;
+  view.listDrag = cancelListDrag(view.listDrag);
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
 }
 
 function isVideoMapPreviewContinueKey(key: string, code?: string): boolean {
@@ -965,7 +1195,7 @@ function applyPreviewCntl(
     applyInitiateTrackToId(view.tracks, world, apply.aircraftId);
   } else {
     if (apply.aircraftId) {
-      terminateTrackWithPlan(view.tracks, world, apply.aircraftId);
+      terminateTrackWithPlan(view.tracks, world, apply.aircraftId, view);
     } else if (apply.planId) {
       // Plan-only TERM remains a plan deletion; there is no radar target to
       // mark unassociated.
@@ -989,18 +1219,189 @@ export function handleScopeKeyDown(
     event.target instanceof HTMLElement &&
     event.target.id === "command-line-input" &&
     event.target.closest('[role="dialog"][aria-modal="true"]') === null;
-  if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput) {
+  const candidate =
+    event.target && typeof event.target === "object"
+      ? (event.target as { id?: string; closest?: (selector: string) => unknown })
+      : null;
+  const commandLineInput =
+    candidate?.id === RADIO_COMMAND_LINE_ID &&
+    typeof candidate.closest === "function" &&
+    candidate.closest('[role="dialog"][aria-modal="true"]') === null;
+  const hasNoControlModifiers = !event.ctrlKey && !event.altKey && !event.metaKey;
+  const radioPreviewKey =
+    commandLineInput &&
+    ((event.key === "F7" && !event.shiftKey && !event.altKey && !event.metaKey) ||
+      (view.preview.phase === "entry" &&
+        view.preview.entryOrigin === "multiFunc" &&
+        hasNoControlModifiers &&
+        (previewBufferCharFromKey(event.key, event.code) !== null ||
+          event.key === "Backspace" ||
+          event.key === "Enter" ||
+          event.key === "Escape")));
+  if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput && !radioPreviewKey) {
+    cancelRblOnFocusTakeover(view, "radio");
+    return false;
+  }
+  if (
+    event.key === "F7" &&
+    view.helpOpen &&
+    (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target))
+  ) {
     return false;
   }
   if (isHelpToggleKey(event)) {
+    cancelRblOnFocusTakeover(view, "radio");
     consume(event);
     toggleHelpOverlay(view);
     ui?.onHandled?.();
     return true;
   }
   if (event.key === "Escape" && view.helpOpen) {
+    cancelRblOnFocusTakeover(view, "radio");
     consume(event);
     view.helpOpen = false;
+    ui?.onHandled?.();
+    return true;
+  }
+
+  // Endpoint 1 can arrive through the global Preview route without canvas
+  // focus. Keep endpoint 2 on that same route after Enter clears the prefix.
+  // Native text/modal ownership is handled above; actual focus takeover cancels
+  // pending entry through the installed focus listener.
+  if (view.rbl.pendingFirstEndpoint !== null) {
+    if (event.key === "Escape") {
+      cancelRblPending(view.rbl);
+      cancelPreviewArea(view.preview);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      applyPreviewArmedAction(
+        view,
+        { type: "rblEndpoint2", operand: view.preview.buffer },
+        nowMs,
+        world,
+        ui,
+      );
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace") {
+      consume(event);
+      view.preview.buffer = view.preview.buffer.slice(0, -1);
+      view.preview.lastKeyAtMs = nowMs;
+      ui?.onHandled?.();
+      return true;
+    }
+    const ch = previewBufferCharFromKey(event.key, event.code);
+    if (ch === "*" && hasNoControlModifiers) {
+      cancelRblPending(view.rbl);
+      startPreviewBuffer(view, "*", nowMs);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (ch !== null && hasNoControlModifiers) {
+      consume(event);
+      view.preview.phase = "entry";
+      view.preview.entryOrigin = "literalSplat";
+      view.preview.mnemonic = "RBL";
+      view.preview.buffer += ch;
+      view.preview.lastKeyAtMs = nowMs;
+      ui?.onHandled?.();
+      return true;
+    }
+  }
+
+  if (focus === "scope" && isMinSepPending(view)) {
+    if (isMinSepDeleteKey(event)) {
+      consume(event);
+      beginMinSepSelection(view.minSep);
+      armPreviewMinSep(view.preview, nowMs);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      consume(event);
+      clearMinSepState(view.minSep);
+      cancelPreviewArea(view.preview);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Escape") {
+      consume(event);
+      cancelMinSepPending(view.minSep);
+      cancelPreviewArea(view.preview);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace") {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "PageUp" || event.key === "PageDown") {
+      // Allow camera range preset step below without cancelling pending MIN
+    } else if (
+      event.key === "Home" ||
+      (event.key === "End" && !event.shiftKey && !event.ctrlKey && !event.altKey)
+    ) {
+      // Allow centering below without cancelling pending MIN
+    } else if (isCycleFocusKey(event.key)) {
+      cancelPendingMinSepIfArmed(view);
+    } else if (isHelpToggleKey(event)) {
+      // Help
+    } else if (event.key === "*" && hasNoControlModifiers) {
+      // Let a fresh literal-splat operation below roll back pending MIN.
+    } else if (isCompetingTargetingKey(event)) {
+      cancelPendingMinSepIfArmed(view);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      consume(event);
+      cancelMinSepPending(view.minSep);
+      rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
+      ui?.onHandled?.();
+      return true;
+    }
+  }
+
+  // A fresh literal star replaces an in-progress RBL entry. Keep star text
+  // inside F7 MULTI FUNC and other Preview families owned by their origin.
+  if (
+    focus === "scope" &&
+    event.key === "*" &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.metaKey &&
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    (/^\*\s*T/i.test(view.preview.buffer) || view.rbl.pendingFirstEndpoint !== null)
+  ) {
+    consume(event);
+    startPreviewBuffer(view, "*", nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
+  if (focus === "scope" && isMinSepDeleteKey(event)) {
+    consume(event);
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+    cancelDcbPrefSaveAs(view);
+    view.pendingChord = null;
+    cancelStarsChordEntry(view.starsChordEntry);
+    view.starsChordArmed = null;
+    view.placeCenterArmed = false;
+    view.placeRangeRingArmed = false;
+    view.f1DropArmed = false;
+    view.stagedListAnchor = null;
+    cancelPreviewArea(view.preview);
+    cancelRblPending(view.rbl);
+    beginMinSepSelection(view.minSep);
+    armPreviewMinSep(view.preview, nowMs);
     ui?.onHandled?.();
     return true;
   }
@@ -1112,6 +1513,11 @@ export function handleScopeKeyDown(
     }
   }
 
+  // Modified F7 combinations retain native modifier ownership; plain F7 starts MULTI FUNC.
+  if (event.key === "F7" && (event.shiftKey || event.altKey || event.metaKey)) {
+    return false;
+  }
+
   // STARS Table 18: Ins / Insert -> <PREF SET>
   if (event.key === "Insert" || event.key === "Ins") {
     consume(event);
@@ -1161,15 +1567,9 @@ export function handleScopeKeyDown(
   }
 
   // STARS Table 18: F7 -> <MULTI FUNC>
-  if (event.key === "F7" && !event.ctrlKey) {
+  if (event.key === "F7" && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
     consume(event);
-    if (view.preview.phase === "entry") {
-      view.preview.buffer += "*";
-      view.preview.lastKeyAtMs = nowMs;
-      syncStarsChordMirror(view, nowMs);
-    } else {
-      startPreviewBuffer(view, "*", nowMs);
-    }
+    startMultiFuncEntry(view, nowMs);
     ui?.onHandled?.();
     return true;
   }
@@ -1210,6 +1610,8 @@ export function handleScopeKeyDown(
     if (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target)) {
       return false;
     }
+    cancelPendingMinSepIfArmed(view);
+    cancelRblOnFocusTakeover(view, "radio");
     consume(event);
     if (ui?.cycleFocus) {
       ui.cycleFocus();
@@ -1223,7 +1625,9 @@ export function handleScopeKeyDown(
   if (event.key === "Escape") {
     view.f1DropArmed = false;
     view.stagedListAnchor = null;
-    const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
+    cancelRblPending(view.rbl);
+    const previewStar =
+      view.preview.entryOrigin === "literalSplat" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
       cancelDcbPrefSaveAs(view);
       if (previewStar) {
@@ -1259,9 +1663,9 @@ export function handleScopeKeyDown(
   // of the radio parser. Native modal controls return above and own their keys.
   if (
     focus !== "scope" &&
-    ui?.onOpenFlightPlanModal &&
     view.preview.phase === "entry" &&
-    view.preview.buffer.startsWith("*")
+    (view.preview.entryOrigin === "multiFunc" ||
+      (ui?.onOpenFlightPlanModal && view.preview.buffer.startsWith("*")))
   ) {
     const preview = handlePreviewBufferKey(
       view.preview,
@@ -1410,6 +1814,8 @@ export function handleScopeKeyDown(
     if (view.starsChordEntry.phase !== "idle") {
       cancelStarsChordEntry(view.starsChordEntry);
     }
+    cancelPendingMinSepIfArmed(view);
+    cancelRblPending(view.rbl);
   }
 
   if (isHandoffKey(event)) {
@@ -1472,7 +1878,7 @@ export function handleScopeKeyDown(
   if (event.key === "F4") {
     if (world && selectedTrackId(world)) {
       const aircraftId = selectedTrackId(world)!;
-      terminateTrackWithPlan(view.tracks, world, aircraftId);
+      terminateTrackWithPlan(view.tracks, world, aircraftId, view);
       cancelPreviewArea(view.preview);
     } else {
       armPreviewCntl(view.preview, "termCntl", nowMs);
@@ -1573,6 +1979,19 @@ export function handleScopeKeyUp(event: ScopeKeyEvent, view: ScopeView, ui?: Sco
   return false;
 }
 
+/** Cancel a staged RBL as soon as focus leaves the PPI, including focus changes without a key. */
+export function cancelRblOnFocusTakeover(view: ScopeView, focus: ScopeFocus): void {
+  if (focus === "scope") return;
+  const hasPendingRbl = view.rbl.pendingFirstEndpoint !== null;
+  const hasRblEntry =
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    /^\*\s*T/i.test(view.preview.buffer);
+  if (!hasPendingRbl && !hasRblEntry) return;
+  cancelRblPending(view.rbl);
+  cancelPreviewArea(view.preview);
+}
+
 export function installAlwaysOnScopeKeys(
   view: ScopeView,
   world: World,
@@ -1588,10 +2007,21 @@ export function installAlwaysOnScopeKeys(
   function onKeyUp(event: KeyboardEvent): void {
     handleScopeKeyUp(event, view, ui);
   }
+  function onFocusIn(): void {
+    const focus = typeof document !== "undefined" ? scopeFocusFromDocument(document) : "radio";
+    cancelRblOnFocusTakeover(view, focus);
+  }
+  function onWindowBlur(): void {
+    cancelRblOnFocusTakeover(view, "radio");
+  }
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp, true);
+  document.addEventListener("focusin", onFocusIn, true);
+  window.addEventListener("blur", onWindowBlur, true);
   return () => {
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("keyup", onKeyUp, true);
+    document.removeEventListener("focusin", onFocusIn, true);
+    window.removeEventListener("blur", onWindowBlur, true);
   };
 }

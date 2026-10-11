@@ -1,6 +1,24 @@
 # Swarm status
 
-## EIGHTY-SECOND SWARM — F6 AND F9 ORIGIN, DESTINATION, AND ROUTE DERIVATION (T02-203, 2026-09-22)
+## EIGHTY-THIRD SWARM — MINIMUM SEPARATION GRAPHICS (T02-204–T02-206, 2026-10-10)
+
+Implemented and squash-merged on `feature/minimum-separation-graphics`:
+
+- T02-204 `149cad6` — Pure kinematic report-backed minimum separation prediction model, straight-line projection, magVar conversion, distance calculations, and session state.
+- T02-205 `ec4b6d5` — Dedicated unmodified `Delete` key with scope focus for `<MIN>`, Preview Area entry/armed lifecycle, report-backed track targeting, disambiguation, exact `DUP TRK`, `ILL TRK`, and `FORMAT` errors, and Enter clear.
+- T02-206 `ddb2fcf` — Canvas paint stage for Figure 6-1 graphics (upright CPA triangles, connecting line segment, boxed two-decimal distance, exact `NO XING` beneath when increasing, `0.00 NM` zero separation regardless of altitude, TLS brightness / TOOLS char size modulation), datablock protected geometry, track drop / despawn / report loss lifecycle cleanup, session reset, and full acceptance.
+
+Final browser `npm run ci`: **254 files, 2,885 passed, 4 skipped**.
+`git diff --check`: **0 errors**.
+
+Raytheon STARS TI 6191.409 §6.4, Figure 6-1, §4.9.1, §4.10, §2.14, Table B-1, Tables D-2/D-3 verified:
+- Independent subagent STARS manual review: **PASS**.
+- Figure 6-1 raster confirmed: exact `NO XING` without OCR `?`, upright CPA triangles, boxed distance.
+- Dedicated `Del` scope-only mapping, linear predictor without route prediction, and atomic recovery documented as explicit trainer choices.
+- Manual leftover: live interactive browser visual check unrun in headless environment; automated mockCanvas recordings cover geometry and typography.
+
+**PHASE EXIT GREEN**
+
 
 Implemented and squash-merged on `feature/sattelite-traffic`:
 
@@ -2387,5 +2405,110 @@ Manual leftover: live browser/type/PTT/audio review and live GGUF evaluation
 were not run. Automated coverage is committed trainer-fixture evidence only.
 No unrelated worktree or session artifacts were staged. Push was authorized by
 the user and is the next captain action.
+
+**PHASE EXIT GREEN**
+
+## EIGHTY-FOURTH SWARM — MULTI FUNC/SPLAT SEPARATION (T02-207, 2026-10-10)
+
+Implemented and squash-merged on `feature/minimum-separation-graphics`:
+
+- T02-207 `b305cda` — Separate F7 MULTI FUNC from literal splat across Preview
+  entry, Enter parsing, live slew, and current Help/user documentation. Existing
+  MULTI FUNC lists, filters, MSAW, per-track PTL, positioning, and plan operations
+  require F7; literal TPA/ATPA and explicit trainer extensions retain `*`.
+- Preserve origin through entry and cancellation; F7 cancels pending MIN while
+  preserving the active pair and rolls back competing DCB spinner entry.
+- Known radio input routes plain F7/owned Preview operands and Ctrl+F7 DCB SHIFT;
+  native inputs, modal/Help controls, Ctrl/Alt/Meta editing shortcuts, and modified
+  F7 retain their documented owners. Literal *T is reserved; RBL is not implemented.
+
+Final captain `npm run ci`: **255 files, 2,897 passed, 4 skipped**.
+Focused separation acceptance: **10 passed**. `git diff --check`: **0 errors**.
+
+Manual gate: independent read-only subagent review **PASS** against the supplied
+Raytheon TI 6191.409 Rev30 Table 2-5, Appendix D Tables D-1–3, and the ticket's
+procedure citations. Initial review found a wrong-origin *FP live-slew bypass;
+captain review also found hidden pending MIN and radio-input/spinner ownership
+issues. Narrow corrections addressed those findings. Recheck identified the
+radio Ctrl+F7 owner and superseded doc wording; final correction and independent
+recheck passed. Existing trainer action semantics are preserved, not newly
+claimed as complete STARS functionality.
+
+Manual leftover: live interactive browser verification was not performed; the
+session browser/app inventory was empty. Synthetic keyboard/PPI/mockCanvas and
+current Help tests provide automated evidence, not a browser visual pass.
+Unrelated worktrees and memory artifacts remain preserved. No push or master merge.
+
+**PHASE EXIT GREEN**
+
+## EIGHTY-FIFTH SWARM COMPLETE — range-bearing lines (T02-208–T02-210, 2026-10-11)
+
+Completed on `feature/minimum-separation-graphics` with one sequential
+`gpt-6-luna` worker at reasoning effort `medium`, isolated worktrees, and captain
+squash merges. The resumed configuration is recorded in `phases/SWARM.md`
+(`0f227c3`). Stop boundary T02-210 is reached; no later phase was started.
+
+| Ticket / correction | Captain commit | Result |
+| --- | --- | --- |
+| T02-208 model, readouts, and optional generic tileset | `845eec3` | Bounded session model, magnetic bearing, range cadence, traversal, and masks |
+| T02-208 manual correction | `5fea60e` | Traversal uses current geometric distance, independently of held range |
+| T02-209 input and removal | `e4976e2` | Literal `*T`, typed/click/mixed endpoints, exact errors, deletion, and focus isolation |
+| T02-209 manual corrections | `ebe5a5c` | Reported-only beacon lookup, first-track revalidation before capacity, complete Help |
+| T02-210 graphics and acceptance | `866b1c6` | Thin white lines, plain edge-retained readouts, TOOLS/TLS, protected geometry, report/drop/session cleanup |
+
+T02-209's unfinished changes were preserved and transferred to an isolated
+resumption worktree. CI failures were repaired before merge. Pending RBL
+creation and cancellation preserve independently valid active lines and MIN;
+F7 T remains list management. Current reported beacon codes are required;
+assigned-only metadata cannot resolve a track. Known duplicate-ACID TCP
+supplemental rows are visible in Preview.
+
+T02-210 assigns complete surveillance report batches before applying RBL
+cadence. Render-only/camera changes do not advance its timers. Missing or invalid
+reports, explicit drops, and despawns remove affected lines; offscreen alone
+does not. Session replacement clears active/pending RBL state and stale Preview
+errors, including empty sessions. Active/pending lines are excluded from PREF.
+Acceptance covers MIN/TPA/PTL/F7 coexistence, nine lines, edge/corner retention,
+white plain paint, TOOLS size, TLS off, visible clipped protected geometry,
+tileset `777`, overflow, and traversal fields. Obsolete graphics-pending and
+priority-backlog claims are removed; Help and user/phase documentation are updated.
+
+Captain CI after each resumed merge passed:
+
+- T02-208 correction: **256 files, 2,921 passed, 4 skipped**.
+- T02-209: **256 files, 2,951 passed, 4 skipped**.
+- T02-209 correction: **256 files, 2,954 passed, 4 skipped**.
+- Final T02-210 / final application state: **256 files, 2,969 passed,
+  4 skipped, 0 failures** (`npm run ci`: typecheck, lint, formatting, tests).
+
+Final focused RBL acceptance: **71 passed**. `git diff --check` passed.
+Speech API and Command IR were untouched; their additional gate is not applicable.
+Only documentation/status changes follow the final application CI.
+
+Manual gate: captain primary and independent read-only delegated reviews
+**PASS**, including rechecks after named corrections. Authority is the supplied
+Raytheon TI 6191.409 Rev30 manual: §§6.7–6.8 pp. 6-55–58 (**PDF 585–588**),
+actual Figure 6-6 raster (**PDF 587**), §4.9.1 TOOLS (**PDF 257**), Table 4-1
+TLS (**PDF 284**), and Table B-1 default white (**PDF 932**). F7/list origin is
+grounded in §4.9.11 (**PDF 268**) and Appendix D Tables D-1–3
+(**PDF 942–944**). No unresolved manual findings remain. The captain obtained
+the required independent pass; recursive reviewer delegation was unnecessary.
+
+Approved trainer policies remain explicit: lowest-free stable IDs 1–9,
+nearest whole-degree/minute rounding, zero-speed masks, atomic entry and
+cancellation, known-only TCP metadata, optional authored tileset with unbounded
+default, pixel offsets, and missing-endpoint cleanup. No proprietary smoothing,
+new DSF/DSA modes, CPA/vertical advice, or full STARS compatibility is claimed.
+
+Manual leftover: **live browser visual checks UNRUN**. Browser/app inventory was
+empty and opening the in-app browser returned `Browser is not available: iab`.
+Synthetic keyboard/PPI/mockCanvas acceptance is automated evidence, not a live
+visual pass. Click/typed/mixed endpoints, moving edge labels, errors, nine-line
+capacity, removal, and MIN/list/TPA coexistence still warrant the operator test
+table supplied with the final handoff.
+
+All workers are terminal. The original unfinished T02-209 worktree, unrelated
+`.worktrees/`, `:memory:.ses`, and `speech-api/:memory:.ses` remain preserved.
+No push, master merge, reset, cleanup, or further swarm is authorized/performed.
 
 **PHASE EXIT GREEN**

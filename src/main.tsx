@@ -96,6 +96,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   digitalMap: parseDigitalMap(scenario.maps),
   giTextLines: scenario.giTextLines,
   radarSites: scenario.radarSites,
+  radarTilesetBoundaryNm: scenario.radarTilesetBoundaryNm,
   arp: scenario.arp,
   ssaWeatherAirports: scenario.ssaWeatherAirports,
   towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,

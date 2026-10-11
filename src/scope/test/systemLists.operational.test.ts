@@ -34,12 +34,21 @@ import { handleScopeKeyDown } from "../scopeKeys";
 import { parsePreviewCommand } from "../previewParse";
 import {
   beginPreviewBufferEntry,
+  beginPreviewMultiFuncEntry,
   commitPreviewCommand,
   previewTrackingSlew,
   previewRelocateListId,
 } from "../previewArea";
 import { renderScope } from "../render/renderScope";
 
+function beginMultiFunc(
+  view: ReturnType<typeof createScopeView>,
+  operand: string,
+  nowMs: number,
+): void {
+  beginPreviewMultiFuncEntry(view.preview, nowMs);
+  view.preview.buffer = operand;
+}
 function makeTestAircraft(
   partial: Omit<Partial<Aircraft>, "intent"> & {
     id: string;
@@ -387,8 +396,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       const world = createWorld();
 
       // 1. Type *P1 into preview
-      beginPreviewBufferEntry(view.preview, "*P1", Date.now());
-      expect(view.preview.buffer).toBe("*P1");
+      beginMultiFunc(view, "P1", Date.now());
+      expect(view.preview.buffer).toBe("P1");
 
       // 2. Click scope canvas at (600, 400) on 1000x1000 canvas -> stages candidate (0.6, 0.4)
       handlePpiLeftClick(view, world, 600, 400, 1000, 1000);
@@ -548,8 +557,8 @@ describe("T02-105: Tower List (TL) & VFR List (VL) Sequences and Drop Interactio
       const world = createWorld();
 
       // 1. Type *TV into preview
-      beginPreviewBufferEntry(view.preview, "*TV", Date.now());
-      expect(view.preview.buffer).toBe("*TV");
+      beginMultiFunc(view, "TV", Date.now());
+      expect(view.preview.buffer).toBe("TV");
 
       // 2. Click scope canvas at (200, 500) on 1000x1000 canvas -> stages (0.2, 0.5)
       handlePpiLeftClick(view, world, 200, 500, 1000, 1000);
@@ -1464,8 +1473,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const world = createWorld();
 
       // Start typing *TX into preview buffer
-      beginPreviewBufferEntry(view.preview, "*TX", Date.now());
-      expect(view.preview.buffer).toBe("*TX");
+      beginMultiFunc(view, "TX", Date.now());
+      expect(view.preview.buffer).toBe("TX");
 
       // Click scope canvas at (300, 400) on 1000x1000 canvas -> stages candidate (0.3, 0.4)
       handlePpiLeftClick(view, world, 300, 400, 1000, 1000);
@@ -1656,11 +1665,11 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         action: { type: "toggleList", listId: "AL" },
       });
 
-      beginPreviewBufferEntry(view.preview, "*TM", 1000);
+      beginMultiFunc(view, "TM", 1000);
       handleScopeKeyDown(keyEvent("Enter"), view, "scope");
       expect(view.systemLists.AL.visible).toBe(false);
 
-      beginPreviewBufferEntry(view.preview, "*TM", 2000);
+      beginMultiFunc(view, "TM", 2000);
       handleScopeKeyDown(keyEvent("Enter"), view, "scope");
       expect(view.systemLists.AL.visible).toBe(true);
     });
@@ -1704,8 +1713,8 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const view = createScopeView();
       const world = createWorld();
 
-      beginPreviewBufferEntry(view.preview, "*TM", 1000);
-      expect(view.preview.buffer).toBe("*TM");
+      beginMultiFunc(view, "TM", 1000);
+      expect(view.preview.buffer).toBe("TM");
 
       // Click on canvas at (300, 400) on 1000x800 display -> normalized (0.3, 0.5)
       handlePpiLeftClick(view, world, 300, 400, 1000, 800, "");
@@ -1812,7 +1821,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       expect(view.systemLists.SSA.y).toBe(DEFAULT_ADAPTATION_ANCHORS.SSA.y);
 
       // Type *S into preview buffer
-      beginPreviewBufferEntry(view.preview, "*S", 1000);
+      beginMultiFunc(view, "S", 1000);
       expect(previewRelocateListId(view.preview)).toBe("SSA");
 
       // Left-click scope at (300, 200) on a 1000x1000 viewport
@@ -1826,7 +1835,7 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       const world = createWorld();
       const view = createScopeView();
 
-      beginPreviewBufferEntry(view.preview, "*S", 1000);
+      beginMultiFunc(view, "S", 1000);
       handleScopeKeyDown(
         { key: "Enter", preventDefault() {}, stopPropagation() {} },
         view,
@@ -1980,9 +1989,17 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         );
 
         const committed = commitPreviewCommand(cmd);
-        expect(committed.kind, `Command ${cmd} should be invalid in commitPreviewCommand`).toBe(
-          "invalid",
-        );
+        if (committed.kind === "action") {
+          // Literal *T now owns possible 3–7 character catalog fixes; legacy
+          // T-prefixed alias-shaped tokens may stage an RBL endpoint, never a list.
+          expect(committed.action.type, `Command ${cmd} must not invoke a list`).toBe(
+            "rblEndpoint1",
+          );
+        } else {
+          expect(committed.kind, `Command ${cmd} should be invalid in commitPreviewCommand`).toBe(
+            "invalid",
+          );
+        }
       }
     });
 
@@ -2176,19 +2193,19 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
       // Relocation list IDs
       const view = createScopeView();
       for (const [cmd, expectedId] of [
-        ["*T", "FL"],
-        ["*TV", "VL"],
-        ["*TM", "AL"],
-        ["*TC", "COAST"],
-        ["*TS", "SIGN_ON"],
-        ["*TX", "ML"],
-        ["*TN", "CRDA"],
-        ["*P1", "TOWER_1"],
-        ["*P2", "TOWER_2"],
-        ["*P3", "TOWER_3"],
-        ["*S", "SSA"],
+        ["T", "FL"],
+        ["TV", "VL"],
+        ["TM", "AL"],
+        ["TC", "COAST"],
+        ["TS", "SIGN_ON"],
+        ["TX", "ML"],
+        ["TN", "CRDA"],
+        ["P1", "TOWER_1"],
+        ["P2", "TOWER_2"],
+        ["P3", "TOWER_3"],
+        ["S", "SSA"],
       ]) {
-        beginPreviewBufferEntry(view.preview, cmd, Date.now());
+        beginMultiFunc(view, cmd, Date.now());
         expect(previewRelocateListId(view.preview), `Relocate listId for ${cmd}`).toBe(expectedId);
       }
     });

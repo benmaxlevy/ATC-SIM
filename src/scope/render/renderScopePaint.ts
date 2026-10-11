@@ -4,6 +4,7 @@
 import {
   caPairKey,
   caSeverityForCallsign,
+  distanceNm,
   DEFAULT_TOWER_SECTOR_ID,
   handoffFor,
   msawSeverityForCallsign,
@@ -11,7 +12,7 @@ import {
   type World,
 } from "@core";
 import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../altitudeFilter";
-import { nmToScreen, type ScopeViewSize } from "../camera";
+import { nmToScreen, screenToNm, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
   buildDatablockRuntimeState,
@@ -30,6 +31,7 @@ import {
   measureDatablockCellWidth,
   scopeFontSizePx,
   positionFontLevel,
+  scopeFontAsset,
 } from "../fonts";
 import {
   pointInLayoutBounds,
@@ -49,7 +51,7 @@ import { type MapCache } from "../mapLayers";
 import { historyDotsToDraw } from "../history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack, PTL_STROKE_PX } from "../ptl";
 import { isViewOffAirport, type ScopeView } from "../scopeView";
-import { formatPreviewReadout } from "../previewArea";
+import { formatPreviewDisplayReadout as formatPreviewReadout } from "../previewDisplayLabels";
 import { formatStarsChordReadout } from "../starsChord";
 import {
   atpaConeMileagePlacement,
@@ -89,7 +91,13 @@ import {
   surveillanceModeWord,
 } from "../surveillance";
 import type { TrackOwnership } from "../ownership";
-import { BLINK_HALF_PERIOD_MS, PALETTE, applyBrite, isAlertBlinkOn } from "../palette";
+import {
+  BLINK_HALF_PERIOD_MS,
+  PALETTE,
+  applyBrite,
+  isAlertBlinkOn,
+  getBackgroundColor,
+} from "../palette";
 import {
   TARGET_PUCK_BG,
   drawHistoryDot,
@@ -121,6 +129,13 @@ import {
   type ListRect,
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
+import { resolveActiveMinSep } from "../minimumSeparation";
+import {
+  allocateLowestFreeRblId,
+  calculateRblReadout,
+  resolveRblEndpointPose,
+  type RangeBearingLine,
+} from "../rangeBearingLines";
 
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
@@ -156,8 +171,29 @@ export function collectDatablockProtectedGeometry(
   world: World,
   view: ScopeView,
   size: ScopeViewSize,
+  ctx?: CanvasRenderingContext2D,
 ): ProtectedGeometry[] {
   const out: ProtectedGeometry[] = [];
+  const tls = view.brite.tls ?? 100;
+  if (tls > 0 && !ctx) {
+    const pending = resolvePendingRblSegment(view, size);
+    if (pending) {
+      out.push({ kind: "segment", aircraftId: "rbl:pending", ...pending, strokePx: 1 });
+    }
+  }
+  if (tls > 0 && ctx) {
+    for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
+      out.push({ kind: "rect", aircraftId: `rbl:${layout.id}`, rect: layout.textRect });
+      if (layout.visibleSegment) {
+        out.push({
+          kind: "segment",
+          aircraftId: `rbl:${layout.id}`,
+          ...layout.visibleSegment,
+          strokePx: 1,
+        });
+      }
+    }
+  }
   const point = (ac: Aircraft) => {
     const shown = displayAircraft(ac, view.tracks.get(ac.id));
     return shown ? nmToScreen(shown.xNm, shown.yNm, view.camera, size) : null;
@@ -275,6 +311,63 @@ export function collectDatablockProtectedGeometry(
       aircraftIds: [trailing.id, leading.id],
       points: pts,
       strokePx: TPA_STROKE_PX,
+    });
+  }
+  const minResolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
+  if (minResolved) {
+    const { trackA, trackB, prediction, pair } = minResolved;
+    const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
+    const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
+    const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
+    const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+    // Projection lines
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdA,
+      from: ptA,
+      to: cpaA,
+      strokePx: PTL_STROKE_PX,
+    });
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdB,
+      from: ptB,
+      to: cpaB,
+      strokePx: PTL_STROKE_PX,
+    });
+    // Separation segment
+    out.push({
+      kind: "segment",
+      aircraftId: pair.aircraftIdA,
+      from: cpaA,
+      to: cpaB,
+      strokePx: PTL_STROKE_PX,
+    });
+    // CPA triangles
+    out.push({
+      kind: "circle",
+      aircraftId: pair.aircraftIdA,
+      center: cpaA,
+      radius: 6,
+    });
+    out.push({
+      kind: "circle",
+      aircraftId: pair.aircraftIdB,
+      center: cpaB,
+      radius: 6,
+    });
+    // Boxed readout rect
+    const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
+    const { center: boxCenter } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, size);
+    out.push({
+      kind: "rect",
+      aircraftId: pair.aircraftIdA,
+      rect: {
+        x: boxCenter.x - boxMetrics.width / 2,
+        y: boxCenter.y - boxMetrics.height / 2,
+        width: boxMetrics.width,
+        height: boxMetrics.height,
+      },
     });
   }
   return out;
@@ -1219,6 +1312,162 @@ const datablockLayoutCache = new WeakMap<
   { key: string; layouts: ResolvedDatablockLayout[] }
 >();
 
+interface RblScreenLayout {
+  id: number | "pending";
+  text: string;
+  textRect: { x: number; y: number; width: number; height: number };
+  visibleSegment: { from: { x: number; y: number }; to: { x: number; y: number } } | null;
+}
+
+/** Clip to the PPI so only visible line geometry becomes a datablock obstacle. */
+function clipRblSegment(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  width: number,
+  height: number,
+) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let low = 0;
+  let high = 1;
+  for (const [p, q] of [
+    [-dx, from.x],
+    [dx, width - from.x],
+    [-dy, from.y],
+    [dy, height - from.y],
+  ]) {
+    if (p === 0) {
+      if (q < 0) return null;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) low = Math.max(low, t);
+    else high = Math.min(high, t);
+    if (low > high) return null;
+  }
+  return {
+    from: { x: from.x + low * dx, y: from.y + low * dy },
+    to: { x: from.x + high * dx, y: from.y + high * dy },
+  };
+}
+
+/** A pending RBL follows the pointer without allocating a numbered line. */
+function resolvePendingRblSegment(view: ScopeView, size: ScopeViewSize) {
+  const first = view.rbl.pendingFirstEndpoint;
+  const cursor = view.cursorHoverPos;
+  if (!first || !cursor || !Number.isFinite(cursor.x) || !Number.isFinite(cursor.y)) {
+    return null;
+  }
+  const pose = resolveRblEndpointPose(first, view.tracks);
+  if (!pose) return null;
+  return clipRblSegment(
+    nmToScreen(pose.xNm, pose.yNm, view.camera, size),
+    cursor,
+    size.widthPx,
+    size.heightPx,
+  );
+}
+
+/** Shared measured layout for both RBL paint and protected datablock geometry. */
+function resolveRblScreenLayouts(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): RblScreenLayout[] {
+  ctx.save();
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  const lineHeight = datablockLineHeightPx(view.charSizes.tools);
+  const layouts: RblScreenLayout[] = [];
+  try {
+    const entries: { id: number | "pending"; line: RangeBearingLine }[] = Array.from(
+      view.rbl.lines.values(),
+      (line) => ({ id: line.id, line }),
+    );
+    const first = view.rbl.pendingFirstEndpoint;
+    const cursor = view.cursorHoverPos;
+    const pose = first ? resolveRblEndpointPose(first, view.tracks) : null;
+    if (first && pose && cursor && Number.isFinite(cursor.x) && Number.isFinite(cursor.y)) {
+      const end = screenToNm(cursor.x, cursor.y, view.camera, size);
+      const endpoint2 = { kind: "static" as const, xNm: end.eastNm, yNm: end.northNm };
+      entries.push({
+        id: "pending",
+        line: {
+          // Peek at the prospective ID; never reserve or insert a preview line.
+          // Zero only marks a full collection and is omitted from the readout.
+          id: allocateLowestFreeRblId(view.rbl) ?? 0,
+          endpoint1: first,
+          endpoint2,
+          displayedRangeNm: distanceNm(pose, endpoint2),
+          lastRangeUpdateSimMs: world.simTimeMs,
+        },
+      });
+    }
+    for (const { id, line } of entries) {
+      const calc = calculateRblReadout(
+        line,
+        view.tracks,
+        world.navigation.magVarDeg,
+        view.rbl.radarTilesetBoundaryNm,
+      );
+      if (!calc) continue;
+      const from = nmToScreen(calc.endpoint1Pose.xNm, calc.endpoint1Pose.yNm, view.camera, size);
+      const to = nmToScreen(calc.endpoint2Pose.xNm, calc.endpoint2Pose.yNm, view.camera, size);
+      const text = line.id === 0 ? calc.readoutText.replace(/-0$/, "") : calc.readoutText;
+      const width = ctx.measureText(text).width;
+      const height = lineHeight;
+      layouts.push({
+        id,
+        text,
+        textRect: {
+          x: Math.max(0, Math.min(size.widthPx - width, to.x + 6)),
+          y: Math.max(0, Math.min(size.heightPx - height, to.y + 4)),
+          width,
+          height,
+        },
+        visibleSegment: clipRblSegment(from, to, size.widthPx, size.heightPx),
+      });
+    }
+  } finally {
+    ctx.restore();
+  }
+  return layouts;
+}
+
+/** RBL lines are plain measured display geometry, separate from track hit targets. */
+export function drawRangeBearingLines(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const tlsBrite = view.brite.tls ?? 100;
+  if (tlsBrite <= 0) return;
+  const ink = applyBrite(PALETTE.ptl, tlsBrite);
+  ctx.save();
+  try {
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = ink;
+    ctx.lineWidth = 1;
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
+      if (layout.visibleSegment) {
+        ctx.beginPath();
+        ctx.moveTo(layout.visibleSegment.from.x, layout.visibleSegment.from.y);
+        ctx.lineTo(layout.visibleSegment.to.x, layout.visibleSegment.to.y);
+        ctx.stroke();
+      }
+      ctx.fillText(layout.text, layout.textRect.x, layout.textRect.y);
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
 export function drawTracks(
   ctx: CanvasRenderingContext2D,
   world: World,
@@ -1369,7 +1618,7 @@ export function drawTracks(
   });
   const layoutOptions = {
     bounds: { x: 0, y: 0, width: size.widthPx, height: size.heightPx },
-    protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
+    protectedGeometry: collectDatablockProtectedGeometry(world, view, size, ctx),
   };
   const layoutKey = JSON.stringify([layoutItems, layoutOptions]);
   const cachedLayout = datablockLayoutCache.get(view);
@@ -2032,7 +2281,11 @@ export function drawChordHint(
   }
   if (preview) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(preview, x, y);
+    const lines = preview.split("\n");
+    const lineH = datablockLineHeightPx(view.charSizes.lists);
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i]!, x, y + i * lineH);
+    }
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;
@@ -2089,8 +2342,14 @@ export function drawSystemLists(
   if (previewReadout && previewPlacement.visible) {
     const x = Math.round(previewPlacement.x * cssWidth);
     const y = Math.round(previewPlacement.y * cssHeight);
-    const width = Math.max(ctx.measureText(previewReadout).width + 8, 80);
-    const height = lineH + 4;
+    const lines = previewReadout.split("\n");
+    let maxW = 0;
+    for (const line of lines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxW) maxW = w;
+    }
+    const width = Math.max(maxW + 8, 80);
+    const height = lines.length * lineH + 4;
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id: "PREVIEW", bounds, handleBounds: bounds });
     if (view.listDrag?.showAllFrames) {
@@ -2346,5 +2605,226 @@ export function drawSystemLists(
     const movingX = view.listDrag.movingCurrentPos.x - view.listDrag.movingOffset.x;
     const movingY = view.listDrag.movingCurrentPos.y - view.listDrag.movingOffset.y;
     ctx.strokeRect(movingX - 2, movingY - 2, anchor.width + 4, anchor.height + 4);
+  }
+}
+
+/** Triangle marker dimensions in pixels. Upright triangle pointing north. */
+export const MIN_SEP_TRIANGLE_HALF_BASE_PX = 5;
+export const MIN_SEP_TRIANGLE_HEIGHT_PX = 9;
+
+export interface MinSepBoxMetrics {
+  text1: string;
+  text2: string | null;
+  width: number;
+  height: number;
+  lineHeight: number;
+  padX: number;
+  padY: number;
+}
+
+export function formatMinSepDistance(distanceNm: number): string {
+  // If predicted separation is 0 (or rounds to 0.00), show exact 0.00 NM
+  const rounded = Math.abs(distanceNm) < 0.005 ? "0.00" : distanceNm.toFixed(2);
+  return `${rounded} NM`;
+}
+
+export function calculateMinSepBoxMetrics(
+  view: ScopeView,
+  prediction: { distanceNm: number; isIncreasingDistance: boolean },
+): MinSepBoxMetrics {
+  const text1 = formatMinSepDistance(prediction.distanceNm);
+  const text2 = prediction.isIncreasingDistance ? "NO XING" : null;
+  const fontLevel = view.charSizes.tools - 8;
+  const lineHeight = scopeFontSizePx(fontLevel);
+  // Monospace font character advance estimation
+  const charWidth =
+    scopeFontAsset(fontLevel).advances[48]! * (lineHeight / scopeFontAsset(fontLevel).height);
+  const maxChars = Math.max(text1.length, text2?.length ?? 0);
+  const padX = 4;
+  const padY = 3;
+  const textWidth = Math.ceil(maxChars * charWidth);
+  const textHeight = text2 !== null ? lineHeight * 2 + 2 : lineHeight;
+  const width = textWidth + padX * 2;
+  const height = textHeight + padY * 2;
+  return {
+    text1,
+    text2,
+    width,
+    height,
+    lineHeight,
+    padX,
+    padY,
+  };
+}
+
+/**
+ * Calculates adaptive center position for the Minimum Separation readout box.
+ * If the pixel distance between CPA A and CPA B is below `minInlineSpanPx`,
+ * the box is offset perpendicular to the segment (pointing upwards/rightwards)
+ * with clearance margin so it does not collide with or obscure the CPA triangles.
+ * Coordinates are un-clamped to viewport edges so the box moves naturally with pan.
+ */
+export function computeMinSepBoxCenter(
+  cpaA: { x: number; y: number },
+  cpaB: { x: number; y: number },
+  boxMetrics: MinSepBoxMetrics,
+  _size?: ScopeViewSize,
+): { center: { x: number; y: number }; isOffset: boolean } {
+  const nominalMidX = (cpaA.x + cpaB.x) / 2;
+  const nominalMidY = (cpaA.y + cpaB.y) / 2;
+  const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
+  const minInlineSpanPx = Math.max(boxMetrics.width + 12, 50);
+
+  if (dPx >= minInlineSpanPx) {
+    return {
+      center: { x: nominalMidX, y: nominalMidY },
+      isOffset: false,
+    };
+  }
+
+  let perpX: number;
+  let perpY: number;
+
+  if (dPx < 1e-3) {
+    perpX = 0;
+    perpY = -1;
+  } else {
+    // Normal vector perpendicular to (cpaB - cpaA)
+    const dx = (cpaB.x - cpaA.x) / dPx;
+    const dy = (cpaB.y - cpaA.y) / dPx;
+    // Perpendicular (-dy, dx)
+    perpX = -dy;
+    perpY = dx;
+    // Prefer pointing generally upward (screen y negative) or rightward if horizontal
+    if (perpY > 0 || (Math.abs(perpY) < 1e-6 && perpX < 0)) {
+      perpX = -perpX;
+      perpY = -perpY;
+    }
+  }
+
+  const offsetDistPx = boxMetrics.height / 2 + MIN_SEP_TRIANGLE_HEIGHT_PX + 14;
+  const targetX = nominalMidX + perpX * offsetDistPx;
+  const targetY = nominalMidY + perpY * offsetDistPx;
+
+  return {
+    center: { x: targetX, y: targetY },
+    isOffset: true,
+  };
+}
+
+/**
+ * Draws upright CPA triangle marker centered at (x, y).
+ * Upright means base is horizontal at bottom, apex points north (up).
+ */
+export function drawUprightCpaTriangle(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  const halfBase = MIN_SEP_TRIANGLE_HALF_BASE_PX;
+  const h = MIN_SEP_TRIANGLE_HEIGHT_PX;
+  // Center triangle vertically around y: apex at y - h/2, base at y + h/2
+  ctx.beginPath();
+  ctx.moveTo(x, y - h / 2);
+  ctx.lineTo(x + halfBase, y + h / 2);
+  ctx.lineTo(x - halfBase, y + h / 2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * Paint stage for Minimum-Separation Graphics (Raytheon STARS §6.4, Figure 6-1).
+ *
+ * - Draws projection lines from each track report pose to its CPA position.
+ * - Draws two filled upright triangle markers at CPA positions.
+ * - Draws connecting line segment between CPA positions.
+ * - Draws rectangular mileage box at segment midpoint, clamped to viewport.
+ * - Shows boxed two-decimal NM value, plus 'NO XING' underneath when separation is increasing.
+ * - Ink uses white PALETTE.ptl modulated by view.brite.tls. Zero TLS hides ink.
+ * - Text uses view.charSizes.tools.
+ */
+export function drawMinimumSeparation(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
+  if (!resolved) {
+    return;
+  }
+  const tlsBrite = view.brite.tls ?? 100;
+  if (tlsBrite <= 0) {
+    // Zero brightness hides all MIN ink while retaining active pair
+    return;
+  }
+
+  const { trackA, trackB, prediction } = resolved;
+  const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
+  const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
+  const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
+  const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+
+  const white = applyBrite(PALETTE.ptl, tlsBrite);
+  const bg = getBackgroundColor(view.brite?.bkc ?? 100);
+
+  ctx.save();
+  try {
+    ctx.strokeStyle = white;
+    ctx.fillStyle = white;
+    ctx.lineWidth = PTL_STROKE_PX;
+
+    // 1. Projection line from report A to CPA A
+    ctx.beginPath();
+    ctx.moveTo(ptA.x, ptA.y);
+    ctx.lineTo(cpaA.x, cpaA.y);
+    ctx.stroke();
+
+    // 2. Projection line from report B to CPA B
+    ctx.beginPath();
+    ctx.moveTo(ptB.x, ptB.y);
+    ctx.lineTo(cpaB.x, cpaB.y);
+    ctx.stroke();
+
+    // 3. Separation line segment joining CPA A and CPA B
+    ctx.beginPath();
+    ctx.moveTo(cpaA.x, cpaA.y);
+    ctx.lineTo(cpaB.x, cpaB.y);
+    ctx.stroke();
+
+    // 4. Boxed distance readout and optional NO XING cue (drawn between the two triangles or offset if close)
+    const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
+    const { center: boxCenter } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics, size);
+
+    const boxX = Math.round(boxCenter.x - boxMetrics.width / 2);
+    const boxY = Math.round(boxCenter.y - boxMetrics.height / 2);
+
+    // Fill background so line/geometry behind box doesn't obscure text
+    ctx.fillStyle = bg;
+    ctx.fillRect(boxX, boxY, boxMetrics.width, boxMetrics.height);
+
+    // Stroke rectangular mileage box border
+    ctx.strokeStyle = white;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX, boxY, boxMetrics.width, boxMetrics.height);
+
+    // Draw text inside box using TOOLS font
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = white;
+
+    if (boxMetrics.text2 !== null) {
+      const lineSpacing = boxMetrics.lineHeight + 2;
+      const firstLineY = boxY + boxMetrics.padY + boxMetrics.lineHeight / 2;
+      const secondLineY = firstLineY + lineSpacing;
+      ctx.fillText(boxMetrics.text1, boxCenter.x, firstLineY);
+      ctx.fillText(boxMetrics.text2, boxCenter.x, secondLineY);
+    } else {
+      ctx.fillText(boxMetrics.text1, boxCenter.x, boxCenter.y);
+    }
+
+    // 5. Upright CPA triangle markers (painted independently on top of distance box and segment)
+    ctx.fillStyle = white;
+    drawUprightCpaTriangle(ctx, cpaA.x, cpaA.y);
+    drawUprightCpaTriangle(ctx, cpaB.x, cpaB.y);
+  } finally {
+    ctx.restore();
   }
 }

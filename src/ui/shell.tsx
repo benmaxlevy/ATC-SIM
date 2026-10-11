@@ -39,13 +39,17 @@ import {
   resetSystemListToDefault,
   scopeFocusFromDocument,
   focusRadioCommandLine,
+  clearMinSepState,
   clearPerTrackPtl,
+  resetRangeBearingSession,
   parseDigitalMap,
   applyRadarSites,
+  applyRadarTilesetBoundary,
   getVisibleFlightPlanEntries,
   type ScopeView,
   type FlightPlanModalRequest,
 } from "@scope";
+
 import { flightPlanForAircraft, handoffFor, isFlightPlanOperational, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
 import { CommandLine, submitCommand } from "./command/command-line";
@@ -385,6 +389,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
               return;
             }
             const rect = event.currentTarget.getBoundingClientRect();
+            scopeView.cursorHoverPos = {
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top,
+            };
             handlePpiPanDelta(
               scopeView,
               event.clientX - panRef.current.lastX,
@@ -532,6 +540,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           );
           scopeView.tracks.clear();
           clearPerTrackPtl(scopeView);
+          clearMinSepState(scopeView.minSep);
+          resetRangeBearingSession(scopeView);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           // Session apply uses the same generic site bind as boot (T02-77).
@@ -539,6 +549,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           // wording. Unknown stored SITE id → FUSED. Trainer fixtures; not live
           // sensors. No airport-id branch.
           applyRadarSites(scopeView, nextScenario.radarSites);
+          applyRadarTilesetBoundary(scopeView, nextScenario.radarTilesetBoundaryNm);
           if (typeof document !== "undefined") {
             document.title = `ATC-SIM — ${nextScenario.name}`;
           }

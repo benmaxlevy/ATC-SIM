@@ -100,7 +100,7 @@ One physical keyboard, two foci.
 | Initiate/associate track | `F1` / `INIT CNTL` | Associates a matching local plan, owns the target, and displays the local FDB. Not a NAS handoff. |
 | Track suspend | `F3` / `TRK SUSP` | Reserved/no-op; the suspend lifecycle is not simulated yet. |
 | Terminate track | `F4` / `TERM CNTL` | Shared trainer implementation: deletes the associated local plan, removes association, clears ownership, and leaves a moving unassociated `*` LDB. |
-| Multi Function | `F7` / `MULTI FUNC` | Preview Area `*` prefix. |
+| Multi Function | `F7` / `MULTI FUNC` | Starts a distinct Preview Area operand buffer; type `T`, `P1`, `F`, `Q`, etc. without a prefix. |
 | History toggle | `F8` | Global history dots. |
 | Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
 
@@ -702,7 +702,7 @@ Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMP
 
 ### Preview Area addendum (T02-51–54)
 
-Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F1 is local plan/track association, not NAS handoff; F3 Track Suspend is reserved/no-op; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm):
+Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F1 is local plan/track association, not NAS handoff; F3 Track Suspend is reserved/no-op; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm). T02-207 supersedes the historical F7/`*` alias: F7 now owns MULTI FUNC operands, while literal `*` owns splat commands.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -736,13 +736,13 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 ### Phase 2 radar-sites checklist (T02-73–77)
 
 - [x] PREF SAVE AS collects a short alphanumeric name through the preview-area / status-line buffer; Enter writes the first empty slot (T02-73).
-- [x] Per-track PTL via `*R` click; session map, not PREF (T02-74).
+- [x] Per-track PTL via F7 `R` click; session map, not PREF (T02-74).
 - [x] Authored `radarSites` load through generic catalog/scenario integration; no `if (icao === "KATL")` live path (T04-45 / T02-77).
 - [x] FUSED / MULTI / `{ siteId }` sample, cover, and paint per T02-75; SITE DCB + SSA word stay in sync; `OK/OK/NA` stays the network stub (T02-75 / T02-76 / T02-77).
 - [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
 - [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
 
-**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. F7 is MULTI FUNC and aliases `*`; F10 is PTL ALL. `*F` is altitude filtering, not forced FDB. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. F7 starts MULTI FUNC operands; literal `*` (Shift+8 or keypad Multiply) starts splat chords. Their buffers keep separate origins through Enter and slew. MULTI FUNC lists/filters/MSAW/PTL/leader/plan commands require F7; literal-star TPA/ATPA and trainer extensions keep `*`. F7 `P` relocates Preview, F7 `P1` places Tower List 1, and literal `*P` remains TPA; literal `*P1` is a one NM TPA cone. Literal `*T` owns Range-Bearing Lines, while F7 `T/TV/TM/TC/TS/TX/TN` retains the MULTI FUNC list commands. Literal `*F`, `*Q`, `*V`, `*R`, and `*L8` cannot invoke MULTI FUNC actions. A live literal `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. Ctrl+F7 remains DCB SHIFT; F10 is PTL ALL. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
 
@@ -866,7 +866,62 @@ match the five-column geometry; arrival Box 9 contains altitude/remarks, arrival
 Box 9A contains destination/minimum-fuel data, departure Box 9 contains route,
 destination, and remarks, and Boxes 9A–9C plus 10–18 remain present.
 
+### Phase 2 addendum (T02-204–206 Minimum-Separation Graphics)
+
+Pure constant-motion prediction model from latest displayed surveillance reports,
+dedicated `Del` scope-focused keybinding, report-backed two-track selection,
+clear/cancel lifecycle, and Figure 6-1 minimum-separation graphics: white projection
+lines to CPA, upright CPA triangle markers, connecting distance segment, boxed
+two-decimal NM readout (horizontal zero exact `0.00 NM`), and `NO XING` cue beneath
+the distance when horizontal separation is increasing. Modulated by TLS brightness
+and sized with TOOLS character size.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- |
+| [T02-204](tickets/T02-204-minimum-separation-model-and-prediction.md) | Minimum-separation model and prediction | P1 | M | none | Shipped |
+| [T02-205](tickets/T02-205-minimum-separation-input-and-selection.md) | Minimum-separation input and selection | P1 | M | T02-204 | Shipped |
+| [T02-206](tickets/T02-206-minimum-separation-graphics-and-acceptance.md) | Minimum-separation graphics and acceptance | P1 | M | T02-204, T02-205 | Shipped |
+
+### Phase 2 addendum (T02-207–210 Dynamic Range-Bearing Lines)
+
+Bounded session collection of up to nine numbered Range-Bearing Lines (`1`–`9`),
+readout formatting (`BBB/RR.RR[/M]-ID`), magnetic variation conversion, report-driven
+range smoothing cadence, literal splat `*T` input/removal, exact resolution precedence
+(fix over ACID), capacity/duplicate handling, and thin white lines with unboxed readouts.
+TOOLS sets readout size; TLS sets line/text brightness and off hides paint/obstacles.
+An optional generic authored tileset polygon produces bearing `777` outside its boundary;
+omission means an unbounded trainer plane. Track endpoints use displayed reports, remain
+attached while offscreen, and are removed on explicit drop, despawn, or missing/invalid
+reports. Lines are session-only and protected from datablock placement only while visible.
+Trainer choices: IDs reuse the lowest free slot 1–9; bearing/minutes round to nearest;
+zero-speed traversal uses `**` except coincident endpoints (`0`); no proprietary smoothing
+algorithm is claimed.
+
+Typed creation uses `*T SPACE FIRST SPACE SECOND Enter`, with fix or ACID/beacon
+operands. Space only separates fields; Preview echoes the whole command and
+final Enter resolves both endpoints and inserts one line atomically. This is an
+approved trainer convenience; the manual two-Enter form remains accepted.
+Click/mixed endpoint selection and immediate second-click commit remain available.
+After the first slew, a trainer preview line follows the cursor until the second
+slew pins its free end. Its plain live readout updates immediately with pointer
+geometry, uses TOOLS/TLS and edge retention, and protects both line and text.
+It shows the next free ID without reserving it (omitted at capacity), inserts
+no active line before commit, and disappears on pending-entry cancellation.
+`*T Enter` clears all; `*T3 Enter` removes line 3. Fix wins over a homonymous
+ACID. Errors are `FORMAT`, `CAPACITY`, `RBL ID`, `DUP ID <ACID>` with known TCP
+rows, `DUP BCN`, and `NO FLIGHT`. Esc, focus takeover, session change, or a
+competing targeting command cancels pending creation and keeps active lines.
+F7 `T/TV/TM/TC/TS/TX/TN` remains MULTI FUNC list input.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| [T02-207](tickets/T02-207-multi-func-and-splat-separation.md) | MULTI FUNC and splat separation | P1 | M | none | Shipped |
+| [T02-208](tickets/T02-208-range-bearing-model-and-readouts.md) | Range-bearing model and readouts | P1 | M | T02-207 | Shipped |
+| [T02-209](tickets/T02-209-range-bearing-input-and-removal.md) | Range-bearing input and removal | P1 | L | T02-208 | Shipped |
+| [T02-210](tickets/T02-210-range-bearing-graphics-and-acceptance.md) | Range-bearing graphics and acceptance | P1 | M | T02-209 | Shipped |
+
 ## Launching an agent
+
 
 1. Confirm phase 1 README exit is green.
 2. Paste **[AGENT.md](AGENT.md)** as the whole-phase prompt, **or** paste one ticket and say: implement only this ticket, stop when ACs are checked.
