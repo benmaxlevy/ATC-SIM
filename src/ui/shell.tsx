@@ -41,8 +41,10 @@ import {
   focusRadioCommandLine,
   clearMinSepState,
   clearPerTrackPtl,
+  clearRangeBearingLines,
   parseDigitalMap,
   applyRadarSites,
+  applyRadarTilesetBoundary,
   getVisibleFlightPlanEntries,
   type ScopeView,
   type FlightPlanModalRequest,
@@ -535,6 +537,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           scopeView.tracks.clear();
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
+          clearRangeBearingLines(scopeView.rbl);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           // Session apply uses the same generic site bind as boot (T02-77).
@@ -542,6 +545,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           // wording. Unknown stored SITE id → FUSED. Trainer fixtures; not live
           // sensors. No airport-id branch.
           applyRadarSites(scopeView, nextScenario.radarSites);
+          applyRadarTilesetBoundary(scopeView, nextScenario.radarTilesetBoundaryNm);
           if (typeof document !== "undefined") {
             document.title = `ATC-SIM — ${nextScenario.name}`;
           }

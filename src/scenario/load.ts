@@ -59,6 +59,17 @@ function assertNmEastNorth(value: unknown, path: string): NmEastNorth {
   };
 }
 
+export function parseRadarTilesetBoundaryNm(value: unknown): NmEastNorth[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const verticesRaw = assertArray(value, "radarTilesetBoundaryNm");
+  if (verticesRaw.length < 3) {
+    throw new Error("Scenario radarTilesetBoundaryNm must have at least 3 vertices");
+  }
+  return verticesRaw.map((vertex, i) => assertNmEastNorth(vertex, `radarTilesetBoundaryNm[${i}]`));
+}
+
 function assertRunway(value: unknown, index: number): Runway {
   if (!isRecord(value)) {
     throw new Error(`Scenario runways[${index}] must be an object`);
@@ -631,6 +642,10 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     catalog: scenarioCatalog,
     mva: loadMva(icao),
     radarSites: parseRadarSites(s.radarSites, arp),
+    ...(() => {
+      const radarTilesetBoundaryNm = parseRadarTilesetBoundaryNm(s.radarTilesetBoundaryNm);
+      return radarTilesetBoundaryNm !== undefined ? { radarTilesetBoundaryNm } : {};
+    })(),
     ...(regionalPack !== undefined ? { regionalPack } : {}),
     ...(regional !== undefined ? { regional } : {}),
     ...(() => {

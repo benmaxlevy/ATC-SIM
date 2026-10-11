@@ -25,7 +25,7 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
-import type { LatLon } from "@core";
+import type { LatLon, NmEastNorth } from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -84,6 +84,11 @@ import {
   type TpaState,
 } from "./tpa";
 import { createMinSepState, type MinSepState } from "./minimumSeparation";
+import {
+  createRangeBearingLineState,
+  setRblRadarTilesetBoundary,
+  type RangeBearingLineState,
+} from "./rangeBearingLines";
 import type { ScopeChord } from "./keymap";
 import {
   DEFAULT_LEADER_DIR,
@@ -375,6 +380,11 @@ export interface ScopeView {
    * TI 6191.409 Section 6.4. Display/prediction only.
    */
   minSep: MinSepState;
+  /**
+   * Range-Bearing Line (RBL) session state and up to 9 active lines.
+   * TI 6191.409 Section 6.7. Display/prediction only.
+   */
+  rbl: RangeBearingLineState;
 }
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
@@ -411,6 +421,7 @@ export function createScopeView(
     dwellMode?: DwellMode;
     cursorHome?: boolean;
     cursorSpeed?: number;
+    radarTilesetBoundaryNm?: readonly NmEastNorth[];
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -529,7 +540,23 @@ export function createScopeView(
     cursorHome: options?.cursorHome ?? false,
     cursorSpeed: options?.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
     minSep: createMinSepState(),
+    rbl: createRangeBearingLineState({
+      radarTilesetBoundaryNm: options?.radarTilesetBoundaryNm
+        ? [...options.radarTilesetBoundaryNm]
+        : undefined,
+    }),
   };
+}
+
+/**
+ * Bind authored scenario `radarTilesetBoundaryNm` onto the live view (T02-208).
+ * Sets or clears the boundary polygon on the RBL session state.
+ */
+export function applyRadarTilesetBoundary(
+  view: ScopeView,
+  boundary?: readonly NmEastNorth[],
+): void {
+  setRblRadarTilesetBoundary(view.rbl, boundary);
 }
 
 /**
