@@ -1253,9 +1253,11 @@ export function handleScopeKeyDown(
     return true;
   }
 
-  // Reserve ordinary scope typing for the RBL's second endpoint before
-  // shortcuts such as B CODE BLOCK can claim the same keys.
-  if (focus === "scope" && view.rbl.pendingFirstEndpoint !== null) {
+  // Endpoint 1 can arrive through the global Preview route without canvas
+  // focus. Keep endpoint 2 on that same route after Enter clears the prefix.
+  // Native text/modal ownership is handled above; actual focus takeover cancels
+  // pending entry through the installed focus listener.
+  if (view.rbl.pendingFirstEndpoint !== null) {
     if (event.key === "Escape") {
       cancelRblPending(view.rbl);
       cancelPreviewArea(view.preview);

@@ -1003,6 +1003,58 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(painted.fillTexts.some((item) => item.text === "090/5.00-1")).toBe(true);
     });
 
+    it("keeps typed endpoint 2 owned through the installed global Preview route", () => {
+      const world = createWorld({
+        fixRegistry: buildFixRegistry({
+          navaids: [],
+          fixes: [
+            { id: "FIXAL", xNm: 0, yNm: 0, kind: "fix" },
+            { id: "FIXBE", xNm: 5, yNm: 0, kind: "fix" },
+          ],
+        }),
+      });
+      const view = createScopeView();
+      const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+      const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+      const fakeWindow = new EventTarget();
+      const fakeDocument = new EventTarget() as EventTarget & { activeElement: Element | null };
+      // Body/global keyboard focus is not canvas focus or a native text editor.
+      fakeDocument.activeElement = null;
+      Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
+      Object.defineProperty(globalThis, "document", { configurable: true, value: fakeDocument });
+      const uninstall = installAlwaysOnScopeKeys(view, world, {
+        helpOverlayHasFocus: false,
+        onOpenFlightPlanModal() {
+          throw new Error("RBL operands must not open a flight-plan dialog");
+        },
+      });
+      const type = (keys: readonly string[]) => {
+        for (const key of keys) {
+          const event = new Event("keydown", { cancelable: true });
+          Object.assign(event, { key, code: makeKeyEvent({ key }).code });
+          fakeWindow.dispatchEvent(event);
+          expect(event.defaultPrevented, `Preview must own ${key}`).toBe(true);
+        }
+      };
+      try {
+        type(["*", "T", " ", ..."FIXAL", "Enter"]);
+        expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
+        renderScope(createMockCtx().ctx, world, view, 800, 600);
+        type([..."FIXBE"]);
+        expect(formatPreviewDisplayReadout(view.preview)).toBe("FIXBE");
+        type(["Enter"]);
+        expect(view.preview.rejection).toBeNull();
+        expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
+        expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      } finally {
+        uninstall();
+        if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+        if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
+        else Reflect.deleteProperty(globalThis, "document");
+      }
+    });
+
     it.each(["ABD", "LAMES", "NEMAX"])(
       "resolves generic fix IDs beginning with legacy list prefixes: %s",
       (fixId) => {
