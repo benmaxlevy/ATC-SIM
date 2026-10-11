@@ -4,6 +4,7 @@
 import {
   caPairKey,
   caSeverityForCallsign,
+  distanceNm,
   DEFAULT_TOWER_SECTOR_ID,
   handoffFor,
   msawSeverityForCallsign,
@@ -11,7 +12,7 @@ import {
   type World,
 } from "@core";
 import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../altitudeFilter";
-import { nmToScreen, type ScopeViewSize } from "../camera";
+import { nmToScreen, screenToNm, type ScopeViewSize } from "../camera";
 import {
   DATABLOCK_FIELD_GAP,
   buildDatablockRuntimeState,
@@ -129,7 +130,12 @@ import {
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
 import { resolveActiveMinSep } from "../minimumSeparation";
-import { calculateRblReadout, resolveRblEndpointPose } from "../rangeBearingLines";
+import {
+  allocateLowestFreeRblId,
+  calculateRblReadout,
+  resolveRblEndpointPose,
+  type RangeBearingLine,
+} from "../rangeBearingLines";
 
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
@@ -169,7 +175,7 @@ export function collectDatablockProtectedGeometry(
 ): ProtectedGeometry[] {
   const out: ProtectedGeometry[] = [];
   const tls = view.brite.tls ?? 100;
-  if (tls > 0) {
+  if (tls > 0 && !ctx) {
     const pending = resolvePendingRblSegment(view, size);
     if (pending) {
       out.push({ kind: "segment", aircraftId: "rbl:pending", ...pending, strokePx: 1 });
@@ -1307,7 +1313,7 @@ const datablockLayoutCache = new WeakMap<
 >();
 
 interface RblScreenLayout {
-  id: number;
+  id: number | "pending";
   text: string;
   textRect: { x: number; y: number; width: number; height: number };
   visibleSegment: { from: { x: number; y: number }; to: { x: number; y: number } } | null;
@@ -1376,7 +1382,30 @@ function resolveRblScreenLayouts(
   const lineHeight = datablockLineHeightPx(view.charSizes.tools);
   const layouts: RblScreenLayout[] = [];
   try {
-    for (const line of view.rbl.lines.values()) {
+    const entries: { id: number | "pending"; line: RangeBearingLine }[] = Array.from(
+      view.rbl.lines.values(),
+      (line) => ({ id: line.id, line }),
+    );
+    const first = view.rbl.pendingFirstEndpoint;
+    const cursor = view.cursorHoverPos;
+    const pose = first ? resolveRblEndpointPose(first, view.tracks) : null;
+    if (first && pose && cursor && Number.isFinite(cursor.x) && Number.isFinite(cursor.y)) {
+      const end = screenToNm(cursor.x, cursor.y, view.camera, size);
+      const endpoint2 = { kind: "static" as const, xNm: end.eastNm, yNm: end.northNm };
+      entries.push({
+        id: "pending",
+        line: {
+          // Peek at the prospective ID; never reserve or insert a preview line.
+          // Zero only marks a full collection and is omitted from the readout.
+          id: allocateLowestFreeRblId(view.rbl) ?? 0,
+          endpoint1: first,
+          endpoint2,
+          displayedRangeNm: distanceNm(pose, endpoint2),
+          lastRangeUpdateSimMs: world.simTimeMs,
+        },
+      });
+    }
+    for (const { id, line } of entries) {
       const calc = calculateRblReadout(
         line,
         view.tracks,
@@ -1386,11 +1415,12 @@ function resolveRblScreenLayouts(
       if (!calc) continue;
       const from = nmToScreen(calc.endpoint1Pose.xNm, calc.endpoint1Pose.yNm, view.camera, size);
       const to = nmToScreen(calc.endpoint2Pose.xNm, calc.endpoint2Pose.yNm, view.camera, size);
-      const width = ctx.measureText(calc.readoutText).width;
+      const text = line.id === 0 ? calc.readoutText.replace(/-0$/, "") : calc.readoutText;
+      const width = ctx.measureText(text).width;
       const height = lineHeight;
       layouts.push({
-        id: line.id,
-        text: calc.readoutText,
+        id,
+        text,
         textRect: {
           x: Math.max(0, Math.min(size.widthPx - width, to.x + 6)),
           y: Math.max(0, Math.min(size.heightPx - height, to.y + 4)),
@@ -1424,13 +1454,6 @@ export function drawRangeBearingLines(
     ctx.font = datablockFontCss(view.charSizes.tools);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    const pending = resolvePendingRblSegment(view, size);
-    if (pending) {
-      ctx.beginPath();
-      ctx.moveTo(pending.from.x, pending.from.y);
-      ctx.lineTo(pending.to.x, pending.to.y);
-      ctx.stroke();
-    }
     for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
       if (layout.visibleSegment) {
         ctx.beginPath();

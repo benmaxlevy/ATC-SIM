@@ -2011,18 +2011,28 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(pending.pathStrokes[0]!.points[0]!.y).toBeCloseTo(300);
       expect(pending.pathStrokes[0]!.points[1]!.x).toBeCloseTo(500);
       expect(pending.pathStrokes[0]!.points[1]!.y).toBeCloseTo(350);
-      expect(pending.fillTexts).toHaveLength(0);
+      expect(pending.fillTexts.map((item) => item.text)).toEqual(["104/13.74-1"]);
       expect(view.rbl.lines.size).toBe(0);
       expect(
         collectDatablockProtectedGeometry(world, view, size).some(
           (item) => item.kind === "segment" && item.aircraftId === "rbl:pending",
         ),
       ).toBe(true);
+      expect(
+        collectDatablockProtectedGeometry(world, view, size, pending.ctx).some(
+          (item) => item.kind === "rect" && item.aircraftId === "rbl:pending",
+        ),
+      ).toBe(true);
+      handlePpiCanvasPointerHover(canvas, world, 600, 250, view);
+      const changed = createMockCtx();
+      drawRangeBearingLines(changed.ctx, world, view, size);
+      expect(changed.fillTexts.map((item) => item.text)).toEqual(["063/14.91-1"]);
 
       view.brite.tls = 0;
       const hidden = createMockCtx();
       drawRangeBearingLines(hidden.ctx, world, view, size);
       expect(hidden.pathStrokes).toHaveLength(0);
+      expect(hidden.fillTexts).toHaveLength(0);
       expect(
         collectDatablockProtectedGeometry(world, view, size).some(
           (item) => item.aircraftId === "rbl:pending",
@@ -2036,6 +2046,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       drawRangeBearingLines(moved.ctx, world, view, size);
       expect(moved.pathStrokes[0]!.points[1]!.x).toBeCloseTo(550);
       expect(moved.pathStrokes[0]!.points[1]!.y).toBeCloseTo(450);
+      expect(moved.fillTexts[0]!.text).not.toBe(changed.fillTexts[0]!.text);
 
       handlePpiLeftClick(view, world, 550, 450, 800, 600);
       expect(view.rbl.pendingFirstEndpoint).toBeNull();
@@ -2048,6 +2059,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(committed.pathStrokes[0]!.points[1]!.x).toBeCloseTo(550);
       expect(committed.pathStrokes[0]!.points[1]!.y).toBeCloseTo(450);
       expect(view.rbl.lines.get(1)!.endpoint2).toEqual(end);
+      expect(committed.fillTexts[0]!.text).toBe(moved.fillTexts[0]!.text);
     });
 
     it("anchors a pending line to the first track's current report", () => {
@@ -2068,12 +2080,47 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       const expected = nmToScreen(2, 0, view.camera, { widthPx: 800, heightPx: 600 });
       expect(moved.pathStrokes[0]!.points[0]!.x).toBeCloseTo(expected.x);
       expect(moved.pathStrokes[0]!.points[0]!.y).toBeCloseTo(expected.y);
+      expect(moved.fillTexts.map((item) => item.text)).toEqual(["126/5.73/1-1"]);
       delete track.lastReport;
       const lost = createMockCtx();
       drawRangeBearingLines(lost.ctx, world, view, { widthPx: 800, heightPx: 600 });
       expect(lost.pathStrokes).toHaveLength(0);
+      expect(lost.fillTexts).toHaveLength(0);
       expect(view.rbl.lines.size).toBe(0);
     });
+
+    it.each([0, 9])(
+      "keeps the pending label visible at capacity %i without reserving an ID",
+      (count) => {
+        const world = createWorld();
+        const view = createScopeView();
+        for (let i = 0; i < count; i++) {
+          insertRangeBearingLine(
+            view.rbl,
+            { kind: "static", xNm: 0, yNm: 0 },
+            { kind: "static", xNm: 1, yNm: 0 },
+            view.tracks,
+          );
+        }
+        view.rbl.pendingFirstEndpoint = { kind: "static", xNm: 0, yNm: 0 };
+        view.cursorHoverPos = { x: 800, y: 600 };
+        applyRadarTilesetBoundary(view, [
+          { xNm: -2, yNm: -2 },
+          { xNm: 2, yNm: -2 },
+          { xNm: 2, yNm: 2 },
+          { xNm: -2, yNm: 2 },
+        ]);
+        const before = JSON.stringify([...view.rbl.lines.values()]);
+        const painted = createMockCtx();
+        drawRangeBearingLines(painted.ctx, world, view, { widthPx: 800, heightPx: 600 });
+        const label = painted.fillTexts.at(-1)!;
+        expect(label.text).toBe(count === 0 ? "777/33.33-1" : "777/33.33");
+        expect(label.x! + label.text.length * 7.2).toBeLessThanOrEqual(800);
+        expect(label.y).toBeLessThan(600);
+        expect(view.rbl.lines.size).toBe(count);
+        expect(JSON.stringify([...view.rbl.lines.values()])).toBe(before);
+      },
+    );
 
     it.each(["Escape", "focus", "reset"])("removes the pending cursor line on %s", (action) => {
       const world = createWorld();

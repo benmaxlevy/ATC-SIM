@@ -903,8 +903,10 @@ final Enter resolves both endpoints and inserts one line atomically. This is an
 approved trainer convenience; the manual two-Enter form remains accepted.
 Click/mixed endpoint selection and immediate second-click commit remain available.
 After the first slew, a trainer preview line follows the cursor until the second
-slew pins its free end. It shares TLS brightness/protected geometry, allocates
-no ID/readout before commit, and disappears on pending-entry cancellation.
+slew pins its free end. Its plain live readout updates immediately with pointer
+geometry, uses TOOLS/TLS and edge retention, and protects both line and text.
+It shows the next free ID without reserving it (omitted at capacity), inserts
+no active line before commit, and disappears on pending-entry cancellation.
 `*T Enter` clears all; `*T3 Enter` removes line 3. Fix wins over a homonymous
 ACID. Errors are `FORMAT`, `CAPACITY`, `RBL ID`, `DUP ID <ACID>` with known TCP
 rows, `DUP BCN`, and `NO FLIGHT`. Esc, focus takeover, session change, or a
