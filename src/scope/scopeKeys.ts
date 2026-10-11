@@ -1037,21 +1037,32 @@ function applyPreviewArmedAction(
       view.preview.rejection = null;
       return;
     }
+    case "rblCreate":
     case "rblEndpoint2": {
       if (!world) return;
+      const secondOperand = action.type === "rblCreate" ? action.secondOperand : action.operand;
       // Second endpoint entered: check if buffer was empty
-      if (action.operand.trim().length === 0) {
+      if (secondOperand.trim().length === 0) {
         cancelRblPending(view.rbl);
         rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
         return;
       }
-      const firstEp = view.rbl.pendingFirstEndpoint;
+      let firstEp = view.rbl.pendingFirstEndpoint;
+      if (action.type === "rblCreate") {
+        const first = resolveRblFirstEndpoint(action.firstOperand, world, view.tracks);
+        if (first.kind === "error") {
+          cancelRblPending(view.rbl);
+          rejectPreviewAreaWithReason(view.preview, nowMs, first.reason);
+          return;
+        }
+        firstEp = first.endpoint;
+      }
       if (!firstEp) {
         cancelRblPending(view.rbl);
         rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
         return;
       }
-      const res2 = resolveRblSecondEndpoint(action.operand, world, view.tracks);
+      const res2 = resolveRblSecondEndpoint(secondOperand, world, view.tracks);
       if (res2.kind === "error") {
         cancelRblPending(view.rbl);
         rejectPreviewAreaWithReason(view.preview, nowMs, res2.reason);

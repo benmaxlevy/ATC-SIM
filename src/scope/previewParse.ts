@@ -188,6 +188,8 @@ export type PreviewArmedAction =
   | { readonly type: "rblDelete"; readonly id?: number }
   /** STARS §6.7: *T first endpoint entry (raw typed operand). */
   | { readonly type: "rblEndpoint1"; readonly operand: string }
+  /** Trainer single-submit form: *T FIRST SECOND Enter. */
+  | { readonly type: "rblCreate"; readonly firstOperand: string; readonly secondOperand: string }
   /** STARS §6.7: second endpoint entry (raw typed operand). */
   | { readonly type: "rblEndpoint2"; readonly operand: string };
 
@@ -616,7 +618,18 @@ export function parseRblLiteralCommand(buffer: string): PreviewCommandResult | n
       // Just spaces after `*T ` -> incomplete
       return { kind: "incomplete" };
     }
-    if (/\s/.test(operand)) return invalid("FORMAT");
+    const fields = operand.split(/\s+/);
+    if (fields.length === 2) {
+      return {
+        kind: "action",
+        action: {
+          type: "rblCreate",
+          firstOperand: ` ${fields[0]!}`,
+          secondOperand: fields[1]!,
+        },
+      };
+    }
+    if (fields.length > 2) return invalid("FORMAT");
     return { kind: "action", action: { type: "rblEndpoint1", operand: rest } };
   }
 

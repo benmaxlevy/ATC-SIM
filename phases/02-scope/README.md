@@ -897,9 +897,11 @@ Trainer choices: IDs reuse the lowest free slot 1–9; bearing/minutes round to 
 zero-speed traversal uses `**` except coincident endpoints (`0`); no proprietary smoothing
 algorithm is claimed.
 
-T02-209 creation starts with `*T`, then selects endpoint 1 by click, a 3–7
-character catalog fix (`*T SPACE FIX1 Enter`), or a track (`*T SPACE ACID/BCN Enter`).
-Select endpoint 2 by click (immediate commit) or typed FIX/ACID/BCN plus Enter.
+Typed creation uses `*T SPACE FIRST SPACE SECOND Enter`, with fix or ACID/beacon
+operands. Space only separates fields; Preview echoes the whole command and
+final Enter resolves both endpoints and inserts one line atomically. This is an
+approved trainer convenience; the manual two-Enter form remains accepted.
+Click/mixed endpoint selection and immediate second-click commit remain available.
 `*T Enter` clears all; `*T3 Enter` removes line 3. Fix wins over a homonymous
 ACID. Errors are `FORMAT`, `CAPACITY`, `RBL ID`, `DUP ID <ACID>` with known TCP
 rows, `DUP BCN`, and `NO FLIGHT`. Esc, focus takeover, session change, or a

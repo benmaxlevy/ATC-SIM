@@ -84,7 +84,7 @@ test("Help lists live Preview command forms", () => {
   expect(
     entries.some((item) => item.command.includes("*ALL") || item.command.includes("*NONE")),
   ).toBe(false);
-  expect(entry("range-bearing-line")?.result).toContain("*T SPACE FIX1 Enter, then FIX2 Enter");
+  expect(entry("range-bearing-line")?.result).toContain("*T SPACE FIX1 SPACE FIX2 Enter");
   expect(entry("range-bearing-line")?.result).toContain("BBB/RR.RR[/M]-ID");
   expect(entry("range-bearing-line")?.result).toContain("*T SPACE DAL123");
   expect(entry("range-bearing-line")?.result).toContain("ACID/BCN");

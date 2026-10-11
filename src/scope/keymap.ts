@@ -588,11 +588,11 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "range-bearing-line",
-        command: "*T [operand], click/identity endpoint 2 (*T Enter / *T<ID> Enter removes)",
-        example: "*T SPACE NEMAX Enter, SEMAX Enter; *T then click",
+        command: "*T FIRST SECOND Enter / click (*T Enter / *T<ID> Enter removes)",
+        example: "*T SPACE NEMAX SPACE SEMAX Enter; *T then click",
         input: "Preview Area or PPI click",
         result:
-          "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T SPACE FIX1 Enter, then FIX2 Enter creates a fix pair. The first Enter accepts endpoint 1; Preview then echoes only the second operand as you type it. The second Enter creates the line. Do not repeat *T for endpoint 2. Click endpoints are also supported. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Fix wins over matching ACID. Second click commits; Esc cancels. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
+          "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T SPACE FIX1 SPACE FIX2 Enter creates a fix pair. Spaces separate operands and remain in Preview without resolving endpoints. Final Enter resolves both endpoints and creates the line atomically. This single-submit form is a trainer convenience; the manual two-Enter form remains accepted. Do not repeat *T for endpoint 2. Click endpoints are also supported. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Fix wins over matching ACID. Second click commits; Esc cancels. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
       },
     ],
   },
@@ -1020,7 +1020,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     focus: "scope",
     windowsKeys: "*T [operand] Enter / click",
     action:
-      "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T SPACE FIX1 Enter, then FIX2 Enter creates a fix pair. The first Enter accepts endpoint 1; Preview then echoes only the second operand as you type it. The second Enter creates the line. Do not repeat *T for endpoint 2. Click endpoints are also supported. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Beacon means current reported code. Fix wins over matching ACID. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
+      "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T SPACE FIX1 SPACE FIX2 Enter creates a fix pair. Spaces separate operands and remain in Preview without resolving endpoints. Final Enter resolves both endpoints and creates the line atomically. This single-submit form is a trainer convenience; the manual two-Enter form remains accepted. Do not repeat *T for endpoint 2. Click endpoints are also supported. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Beacon means current reported code. Fix wins over matching ACID. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
     crcAnalog: "STARS §§6.7–6.8 literal splat *T (keyboard entry, click or typed endpoints)",
   },
 ];

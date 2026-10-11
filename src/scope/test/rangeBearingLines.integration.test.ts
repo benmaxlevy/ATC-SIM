@@ -967,7 +967,89 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(line?.endpoint2).toMatchObject({ kind: "fix", fixId: "BAMMI" });
     });
 
-    it("accepts spaced typed fixes across the two Enter stages and intervening paint", () => {
+    it.each(["Enter"])(
+      "accepts typed fixes with first separator %j and intervening paint",
+      (separator) => {
+        const world = createWorld({
+          fixRegistry: buildFixRegistry({
+            navaids: [],
+            fixes: [
+              { id: "FIXAL", xNm: 0, yNm: 0, kind: "fix" },
+              { id: "FIXBE", xNm: 5, yNm: 0, kind: "fix" },
+            ],
+          }),
+        });
+        const view = createScopeView();
+        for (const key of ["*", "T", " ", ..."FIXAL", separator]) {
+          handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+        }
+        expect(view.rbl.lines.size).toBe(0);
+        expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
+        expect(formatPreviewDisplayReadout(view.preview)).toBeNull();
+        const awaitingSecond = createMockCtx();
+        renderScope(awaitingSecond.ctx, world, view, 800, 600);
+        expect(awaitingSecond.fillTexts.some((item) => item.text === "RBL")).toBe(false);
+        for (const key of "FIXBE") {
+          handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 2000);
+        }
+        expect(formatPreviewDisplayReadout(view.preview)).toBe("FIXBE");
+        const typingSecond = createMockCtx();
+        renderScope(typingSecond.ctx, world, view, 800, 600);
+        expect(typingSecond.fillTexts.some((item) => item.text === "FIXBE")).toBe(true);
+        expect(typingSecond.fillTexts.some((item) => item.text === "RBL FIXBE")).toBe(false);
+        handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 2000);
+        expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
+        expect(view.rbl.pendingFirstEndpoint).toBeNull();
+        const painted = createMockCtx();
+        renderScope(painted.ctx, world, view, 800, 600);
+        expect(painted.fillTexts.some((item) => item.text === "090/5.00-1")).toBe(true);
+      },
+    );
+
+    it.each([
+      ["FIXAL", "FIXBE", "fix", "fix"],
+      ["FIXAL", "AC200", "fix", "track"],
+      ["AC100", "FIXBE", "track", "fix"],
+      ["AC100", "AC200", "track", "track"],
+    ])("submits %s / %s with one Enter", (first, second, firstKind, secondKind) => {
+      const aircraft = [
+        makeTestAircraft({ id: "AC100", callsign: "AC100" }),
+        makeTestAircraft({ id: "AC200", callsign: "AC200" }),
+      ];
+      const world = createWorld({
+        aircraft,
+        fixRegistry: buildFixRegistry({
+          navaids: [],
+          fixes: [
+            { id: "FIXAL", xNm: 0, yNm: 0, kind: "fix" },
+            { id: "FIXBE", xNm: 5, yNm: 0, kind: "fix" },
+          ],
+        }),
+      });
+      const view = createScopeView();
+      for (const ac of aircraft) {
+        ensureTrackDisplay(view.tracks, ac.id).lastReport = makeSyntheticReport({
+          aircraftId: ac.id,
+        });
+      }
+      for (const key of ["*", "T", " ", ...first, " ", ...second]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+      }
+      expect(view.rbl.lines.size).toBe(0);
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      expect(view.preview.buffer).toBe(`*T ${first} ${second}`);
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 1000);
+      expect(view.preview.rejection).toBeNull();
+      expect(view.rbl.lines.get(1)?.endpoint1.kind).toBe(firstKind);
+      expect(view.rbl.lines.get(1)?.endpoint2.kind).toBe(secondKind);
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+    });
+
+    it.each([
+      ["*T UNKNOWN FIXBE", "NO FLIGHT"],
+      ["*T FIXAL UNKNOWN", "NO FLIGHT"],
+      ["*T FIXAL FIXBE EXTRA", "FORMAT"],
+    ])("rejects %s only on Enter without partial insertion", (input, reason) => {
       const world = createWorld({
         fixRegistry: buildFixRegistry({
           navaids: [],
@@ -978,32 +1060,25 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
         }),
       });
       const view = createScopeView();
-      for (const key of ["*", "T", " ", ..."FIXAL", "Enter"]) {
+      const existing = insertRangeBearingLine(
+        view.rbl,
+        { kind: "static", xNm: 1, yNm: 1 },
+        { kind: "static", xNm: 2, yNm: 2 },
+        view.tracks,
+      );
+      for (const key of input) {
         handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
       }
-      expect(view.rbl.lines.size).toBe(0);
-      expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
-      expect(formatPreviewDisplayReadout(view.preview)).toBeNull();
-      const awaitingSecond = createMockCtx();
-      renderScope(awaitingSecond.ctx, world, view, 800, 600);
-      expect(awaitingSecond.fillTexts.some((item) => item.text === "RBL")).toBe(false);
-      for (const key of "FIXBE") {
-        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 2000);
-      }
-      expect(formatPreviewDisplayReadout(view.preview)).toBe("FIXBE");
-      const typingSecond = createMockCtx();
-      renderScope(typingSecond.ctx, world, view, 800, 600);
-      expect(typingSecond.fillTexts.some((item) => item.text === "FIXBE")).toBe(true);
-      expect(typingSecond.fillTexts.some((item) => item.text === "RBL FIXBE")).toBe(false);
-      handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 2000);
-      expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
+      expect(view.preview.rejection).toBeNull();
       expect(view.rbl.pendingFirstEndpoint).toBeNull();
-      const painted = createMockCtx();
-      renderScope(painted.ctx, world, view, 800, 600);
-      expect(painted.fillTexts.some((item) => item.text === "090/5.00-1")).toBe(true);
+      expect([...view.rbl.lines.values()]).toEqual([existing]);
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 1000);
+      expect(view.preview.rejection).toBe(reason);
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      expect([...view.rbl.lines.values()]).toEqual([existing]);
     });
 
-    it("keeps typed endpoint 2 owned through the installed global Preview route", () => {
+    it("keeps the complete typed command owned through the installed global Preview route", () => {
       const world = createWorld({
         fixRegistry: buildFixRegistry({
           navaids: [],
@@ -1037,11 +1112,12 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
         }
       };
       try {
-        type(["*", "T", " ", ..."FIXAL", "Enter"]);
-        expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
+        type(["*", "T", " ", ..."FIXAL", " "]);
+        expect(view.rbl.pendingFirstEndpoint).toBeNull();
+        expect(view.preview.buffer).toBe("*T FIXAL ");
         renderScope(createMockCtx().ctx, world, view, 800, 600);
         type([..."FIXBE"]);
-        expect(formatPreviewDisplayReadout(view.preview)).toBe("FIXBE");
+        expect(formatPreviewDisplayReadout(view.preview)).toBe("*T FIXAL FIXBE");
         type(["Enter"]);
         expect(view.preview.rejection).toBeNull();
         expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
@@ -1121,7 +1197,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(view.rbl.pendingFirstEndpoint).toBeNull();
     });
 
-    it("resolves first typed track with required leading space (*T DAL123 Enter)", () => {
+    it.each(["Enter"])("resolves first typed track with first separator %j", (separator) => {
       const ac = makeTestAircraft({ id: "DAL123", callsign: "DAL123" });
       const world = createWorld({
         aircraft: [ac],
@@ -1140,7 +1216,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
         yNm: 1000,
       });
 
-      // Type *T DAL123 Enter (with space)
+      // Type *T SPACE DAL123, then the first-endpoint separator.
       handleScopeKeyDown(makeKeyEvent({ key: "*" }), view, "scope", world, nowMs);
       handleScopeKeyDown(makeKeyEvent({ key: "T" }), view, "scope", world, nowMs);
       handleScopeKeyDown(makeKeyEvent({ key: " " }), view, "scope", world, nowMs);
@@ -1149,7 +1225,7 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
         .forEach((ch) =>
           handleScopeKeyDown(makeKeyEvent({ key: ch }), view, "scope", world, nowMs),
         );
-      handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, nowMs);
+      handleScopeKeyDown(makeKeyEvent({ key: separator }), view, "scope", world, nowMs);
 
       expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "track", aircraftId: "DAL123" });
 
