@@ -6295,3 +6295,242 @@ failure use one narrowly scoped correction worker. Then execute T02-210 with
 the same CI/manual gates and final browser evidence or explicit visual leftovers.
 Append STATUS preserving history, and stop after T02-210. All original RBL
 product laws, trainer deltas, skips, and untracked-artifact protections remain.
+
+## Eighty-sixth swarm planned — Final Monitor Aid (FMA) (2026-10-11)
+
+The user approved the revised FMA plan, then explicitly requested
+`$atc-sim-plan-tickets` on the new branch `feature/fma`. The branch was
+created from local `master` at `e733d27`. This section authorizes planning
+files only: no implementation, worker launch, worktree, execution-start section,
+planning commit, STATUS update, merge or push is performed by this request.
+The user explicitly authorized branch creation despite the planning skill's
+default prohibition on creating branches.
+
+| Key | Value |
+| --- | --- |
+| Goal | Generic straight-parallel trainer FMA, report-based monitoring, browser SpeechSynthesis, corrected MODE submenu, FMA controls/preferences, shared projection/picking and acceptance. |
+| Phase | `phases/02-scope/` |
+| Include | T02-220 → T02-221 → T02-222 → T02-223 → T02-224 → T02-225 → T02-226 → T02-227 → T02-228 |
+| Base / merge target | Base `master` at `e733d27`; all future ticket merges target `feature/fma` only. |
+| Worker limit/model | 1 isolated sequential implementation worker; `gpt-6-luna`, reasoning effort `medium`; independent read-only reviewer after worker exit. |
+| Merge lock | Captain only; workers never merge or spawn. |
+| Gates | Focused checks, `npm run ci`, `git diff --check` and independent supplied-manual review after every merge. |
+| Stop | T02-228 plus final CI/manual audit and recorded actual browser/audio evidence or explicit unrun limitations. |
+| Push / master merge | Neither authorized. |
+
+**Authority:** supplied `/home/ben/Documents/stars refs/full_manual.pdf`,
+Raytheon TI 6191.409 Rev30. Sections 2.6 pp. 2-21–23 (PDF 77–79),
+Figure 2-20 p. 2-66 (PDF 122), 2.16.4/Table 2-27 pp. 2-107–108
+(PDF 163–164), 4.1 pp. 4-4–6 (PDF 214–216), Table 4-1 p. 4-74
+(PDF 284), 6.16.1–9 pp. 6-125–139 (PDF 655–669), Figures 6-15–18,
+7.3 p. 7-7 (PDF 793), Appendix B Table B-1 (PDF 932).
+Inspect raster glyphs/layouts, not only OCR. FAA AIM §§5-4-13–16
+(https://www.faa.gov/air_traffic/publications/atpubs/aim_html/chap5_section_4.html)
+grounds the distinction between operational approach qualification, straight
+parallel geometry and SOIA. Web Speech API specification
+(https://webaudio.github.io/web-speech-api/) grounds browser queue/local-voice
+limitations.
+
+**Approved product law:**
+
+- Automatic geometry is a documented straight-parallel trainer approximation,
+  not PRM eligibility. Offset/SOIA needs explicit custom adaptation; automatic
+  SOIA geometry and visual-transition flight behavior are not included.
+- Catalog-owned adaptation is the sole geometry source. Deduplicate runway
+  approach variants, use magnetic variation once, a wrapped 1-degree candidate
+  tolerance, common true-course basis and correct ENU cross-track expression
+  `abs(dx*cos(theta)-dy*sin(theta))`. Group adjacent runways/NTZs, not arbitrary
+  all-pairs zones. Support up to four members/three NTZs with explicit diagnostics.
+- Derived defaults: spacing policy 2,500–9,000 ft; capture 18 NM; NTZ 2,000 ft;
+  outer margin 0.5 NM; reciprocal threshold or 1 NM departure approximation;
+  reference spacing always 200 ft. Monitoring defaults: caution 10 s, loss 10 s,
+  coast-out 30 s, stabilized alignment 10 s within 3 degrees and ±0.15 NM;
+  displayed PTL maximum 30 s. Label these as trainer choices.
+- Assignment derives only from scratchpad #1/#2 and exact catalog IDs/adapted
+  aliases. Observed runway derives independently from stable report geometry.
+  Conflicting assignments produce a diagnostic, not guessed RWY; missing
+  assignment can produce RWY after unambiguous stabilization. Never use radio
+  clearance, nearest runway, selected approach or intent as assignment.
+- Associated report-backed tracks qualify within selected AMZ; NTZ warning
+  needs prior assigned-NOZ detection. Primary precedence is warning > loss >
+  runway error > caution. NOM is no-speech supplemental source status.
+  FMA runtime is per display, not global World alert state.
+- FMA alone gains report aging/coast/freeze; ordinary no-coast display behavior
+  stays unchanged. Timer progression uses simulation time even with no reports.
+  Recovery/inhibition/mode/session cleanup cannot leave stale frozen tracks.
+- User resolves caution manual conflict as silence-only: yellow visuals remain
+  unchanged, no visual acknowledgment. Warnings acknowledge to steady red;
+  NTZ outline stays red while any qualifying warning remains. Speech occurs
+  once per episode. Inhibit glyph is solid `▼`, never literal `V`.
+- Bare F8 in FMA scope focus arms associated-arrival slew inhibition; outside
+  FMA and in radio/native contexts preserve inherited routing. Ctrl+F8 DCB,
+  Ctrl+F7 SHIFT, F7 MULTI FUNC and literal splat remain separate. No ACK alias.
+- User explicitly overrides the repository's self-hosted speech default for
+  FMA only: browser `SpeechSynthesis` is the sole FMA backend. Use local English
+  voice availability; no alternate backend, formant-filter claim or silent
+  fallback. Preserve pilot STT/TTS restrictions. Queue ownership must prevent
+  global cancel from discarding unrelated alert items.
+- MODE becomes EFSL/FSL/TRNG/FMA/DSF/DONE submenu. FSL is Full Service Level;
+  EFSL is Emergency Full Service Level. Remove invented F/S/L state,
+  functions, renderer behavior and persistence; no replacement trainer control.
+  Preserve actual explicit datablock commands. Unsupported service modes are
+  disabled. FMA is independent and confirmed with ACCEPT.
+- FMA availability uses explicit 2K/Controller/site/service capability, not
+  browser viewport size. Mode enable/AMZ commit applies local preferences;
+  missing preference warns `NO PREF SET FOUND` while action succeeds.
+- FMA AUX/BRITE follows actual Figures 6-17–18 and adjustment/commit semantics,
+  not cycling shortcuts. PTL seconds and caution horizon are independent.
+  NTZ adjacency inhibition controls CST/RWY and frozen cleanup; mixed NTZ ALL
+  enables all. NTZ BRITE range 50–100 has no off.
+- MAG 1–8 uses a shared forward/inverse projection about camera center.
+  Project world anchors and picking consistently; keep text/glyphs pixel-sized.
+  Geographic measurements remain ENU NM. Suppress rings/compass at MAG>1
+  without changing preferences; references iff range/MAG <=16 NM.
+- No FMA action changes World intent, kinematics, plan/association/ownership,
+  radio/Command IR/Path C or runway assignment. DCB calls @scope only. Preserve
+  thin modules and do not split scopeKeys or spoken pattern matcher.
+
+**Prerequisites:** verify feature ancestry from `e733d27`, shipped catalog and
+T02-75–77 surveillance, existing Preview/F7/splat separation, MIN/RBL/TPA and
+DCB/PREF ownership. Preserve unrelated `.worktrees/`, `:memory:.ses`,
+`speech-api/:memory:.ses` and unclear existing work. No reset, clean or force.
+The planned feature target overrides generic master squash-merge instructions.
+
+**Waves and ownership:**
+
+- Wave A — T02-220: FMA Adaptation and AMZ Geometry; shipped catalog/navigation prerequisites.
+- Wave B — T02-221: FMA Surveillance Loss and Coast Lifecycle; after T02-220 captain gates.
+- Wave C — T02-222: FMA Alert Qualification and Precedence; after T02-221 captain gates.
+- Wave D — T02-223: FMA Track Interactions and Datablock Indicators; after T02-222 captain gates.
+- Wave E — T02-224: FMA Browser Speech Queue; after T02-223 captain gates.
+- Wave F — T02-225: FMA MODE Submenu and AMZ Preferences; after T02-224 captain gates.
+- Wave G — T02-226: FMA AUX, BRITE and Control Entry; after T02-225 captain gates.
+- Wave H — T02-227: FMA Projection, Picking and Graphics; after T02-226 captain gates.
+- Wave I — T02-228: FMA Integrated Acceptance and Documentation; after T02-227 captain gates.
+
+Every wave waits for a terminal worker and captain CI/manual gates before the
+next worker starts. Ticket-specific dependencies are listed in each file;
+sequential waves are deliberately stricter. Each worker starts from current
+`feature/fma` in its isolated ticket branch/worktree, commits progressively
+after gates, and returns READY TO MERGE or BLOCKED. Captain owns the merge lock
+and squash-merges each ticket onto `feature/fma`. On conflicts return BLOCKED;
+do not force, skip hooks or merge stale work. A failed gate stops new waves and
+permits one narrowly scoped correction worker. Independent manual review uses
+available session models, with no recursive worker spawn.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-220-fma-adaptation-and-amz-geometry` → `phases/02-scope/tickets/T02-220-fma-adaptation-and-amz-geometry.md`
+- `ticket/T02-221-fma-surveillance-loss-and-coast` → `phases/02-scope/tickets/T02-221-fma-surveillance-loss-and-coast.md`
+- `ticket/T02-222-fma-alert-qualification-and-precedence` → `phases/02-scope/tickets/T02-222-fma-alert-qualification-and-precedence.md`
+- `ticket/T02-223-fma-track-interactions-and-datablocks` → `phases/02-scope/tickets/T02-223-fma-track-interactions-and-datablocks.md`
+- `ticket/T02-224-fma-browser-speech-queue` → `phases/02-scope/tickets/T02-224-fma-browser-speech-queue.md`
+- `ticket/T02-225-fma-mode-submenu-and-amz-preferences` → `phases/02-scope/tickets/T02-225-fma-mode-submenu-and-amz-preferences.md`
+- `ticket/T02-226-fma-aux-brite-and-control-entry` → `phases/02-scope/tickets/T02-226-fma-aux-brite-and-control-entry.md`
+- `ticket/T02-227-fma-projection-picking-and-graphics` → `phases/02-scope/tickets/T02-227-fma-projection-picking-and-graphics.md`
+- `ticket/T02-228-fma-integrated-acceptance-and-docs` → `phases/02-scope/tickets/T02-228-fma-integrated-acceptance-and-docs.md`
+
+**Tests and user surfaces:** one synthetic
+`src/scope/test/fmaFidelity.integration.test.ts` spans all tickets; reuse
+`src/scope/test/mockCanvas.ts`, keep pure units minimal, and separate any
+necessary committed-airport data contract from generic units. Update
+`src/ui/overlays/ScopeHelpOverlay.tsx`, `docs/USER.md`, current phase
+README/AGENT and narrow shared non-goal/speech exceptions while preserving
+historical ticket text. Exposed incomplete behavior is recorded in the existing
+backlog in the same change and resolved as implementation completes.
+No speculative future backlog entries. Do not claim real browser/audio evidence
+from injected synthesis or mockCanvas.
+
+**Skip:** all other tickets/phases, automatic SOIA derivation/flight behavior,
+operational PRM certification, proprietary monitoring filters, 1K FMA,
+new EFSL/TRNG/DSF/DSA simulation, live sensor/NAS protocols, cloud/metered
+speech, alternate FMA TTS backend, radio/Command IR/Path C changes,
+facility-specific runtime branches, invented F/S/L replacement, master merge
+and push.
+
+**Captain return:** after T02-228, run final CI on `feature/fma`, independent
+manual audit and browser/audio acceptance or explicitly record each unrun check.
+Append `phases/SWARM-STATUS.md` preserving history only during authorized
+execution. Return exactly PHASE EXIT GREEN or PHASE EXIT BLOCKED, followed by
+merged IDs, feature target, commits, automated/manual evidence and actual
+browser/audio leftovers. Stop here; this planning section does not start the
+swarm or authorize a later phase.
+
+## Eighty-sixth swarm planning amendment — F8 Preview mapping (2026-10-11)
+
+After checking the supplied manual, the user explicitly requested: update the
+tickets and remove F8 history. This amendment supersedes only the earlier F8
+product-law paragraph in the eighty-sixth plan. It does not authorize execution
+or rewrite historical swarm/ticket records.
+
+| Key | Value |
+| --- | --- |
+| Affected tickets | T02-223 input/Preview/docs and T02-228 final acceptance |
+| Merge target | `feature/fma` |
+| Waves / dependencies | Existing A–I, T02-220–T02-228, unchanged |
+| Worker limit/model | 1 sequential isolated `gpt-6-luna` worker, reasoning effort `medium`, unchanged |
+| Merge lock / stop | Captain only; stop after T02-228 and existing gates |
+| Authorization | Planning amendment only; no implementation, commit, worker, worktree, merge, STATUS update or push |
+
+**Authority:** Appendix D Table D-1 p. D-2 (PDF 942) names F8's exact
+on-screen label `FMA/TSAS`. Section 2.14 pp. 2-85–86 (PDF 141–142)
+defines Preview input/prompts and errors; section 6.16.8 p. 6-137 (PDF 667)
+defines F8 then associated-arrival slew-click and `FORMAT` for FMA application
+outside FMA mode. Inspect the actual Table D-1 raster.
+
+**Corrected product law:** bare F8 enters the existing Preview function-key
+route with immediate visible `FMA/TSAS` cue whether FMA is enabled or not.
+The cue is pending command entry, not a permanent mode label or literal `F8`.
+FMA track application outside FMA returns Preview `FORMAT` without ordinary
+click fallthrough. In FMA, valid associated-arrival click toggles inhibition
+and completes/clears entry. CLEAR/Esc cancels; incomplete entry and invalid
+target follow T02-223's explicit state contract. No typed-ACID alias or new
+TSAS behavior is authorized by the shared label.
+
+Remove every F8 history fallback in every mode/focus, including the application
+radio command line. Use the existing Preview function-key native-input/Help
+guards and distinct Ctrl/Shift/Alt/Meta routing. Ctrl+F8 remains DCB visibility;
+H and existing DCB controls retain history ownership, with no new shortcut.
+T02-223 owns `previewArea.ts` entry/lifecycle and `previewDisplayLabels.ts`
+mapping plus removal of stale code comments, help/key tables and F8-history
+regression expectations; T02-228 proves actual Preview rendering, positive
+FMA apply, non-FMA rejection, cancellation and history independence.
+
+All other product laws, ticket paths/branches, gates, manual/browser evidence,
+preservation rules, exclusions and captain return format remain as configured
+above. Planning files remain uncommitted; the swarm is not started.
+
+## Eighty-sixth swarm started — Final Monitor Aid (FMA) (2026-10-11)
+
+The user explicitly invoked `$run-swarm` with Luna medium subagents. The
+invoking agent is captain; no separate captain is delegated. Execution now
+includes T02-220 through T02-228 on `feature/fma`, in sequential waves A–I,
+with one isolated `gpt-6-luna` worker at reasoning effort `medium` at a time.
+The captain owns the merge lock and squash-merges one commit per ticket onto
+`feature/fma`; workers implement one ticket, commit progressively, never
+merge/spawn, and return READY TO MERGE or BLOCKED.
+
+The eighty-sixth plan and its F8 amendment are binding. In particular, F8
+echoes `FMA/TSAS` through Preview even outside FMA; no F8 history fallback
+remains. FMA application outside FMA returns FORMAT. MODE becomes the actual
+service submenu and invented F/S/L behavior is removed. Browser
+SpeechSynthesis is the sole FMA voice backend under the user's explicit override.
+
+Before any worker launch or worktree creation, commit this start/configuration
+and all approved T02-220–228 ticket files. Documentation-only planning may skip
+runtime CI. Then verify feature/master ancestry and shipped prerequisites,
+read STATUS/phase/role/tickets and confirm no other active swarm or unclear
+application ownership. Preserve unrelated worktrees and memory artifacts.
+
+After each merge, captain runs npm run ci and invokes check-stars-manual with
+the exact ticket and `/home/ben/Documents/stars refs/full_manual.pdf`, including
+an independent read-only Luna medium pass after the implementation worker exits.
+A failed gate stops new waves and permits one narrowly scoped correction
+worker. On conflicts or unavailable configured model, report BLOCKED; no force,
+reset, skipped hooks or speculative alternate model. No master merge or push.
+
+Stop after T02-228, final CI/manual audit and actual browser/audio evidence or
+explicitly recorded unrun limitations. Captain appends STATUS preserving
+history and returns PHASE EXIT GREEN or PHASE EXIT BLOCKED with merged IDs,
+feature commits, gate evidence and browser/audio leftovers. No later swarm or
+phase is authorized.
