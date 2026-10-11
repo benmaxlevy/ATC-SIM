@@ -6176,3 +6176,102 @@ thin modules and existing radio/native-input/modifier protections.
 
 **Captain return:** PHASE EXIT GREEN or PHASE EXIT BLOCKED, followed by ticket,
 merge target, commit, CI/manual evidence, and actual browser leftovers. Stop here.
+
+## Eighty-fifth swarm planned — range-bearing lines (2026-10-10)
+
+The user requested `$atc-sim-plan-tickets` for RBL after F7/splat separation,
+using literal `*`. T02-207 is complete on this feature branch (`b305cda`), with
+captain CI and independent manual review PASS. This section is planning only:
+execution is not started or authorized by this ticket-writing request.
+
+| Key | Value |
+| --- | --- |
+| Goal | Up to nine session-only RBLs between points/fixes/tracks, current magnetic bearing/range/traversal, manual input/removal, readout cadence and graphics. |
+| Phase | `phases/02-scope/` |
+| Include | T02-208 → T02-209 → T02-210 |
+| Merge target/base | `feature/minimum-separation-graphics`; explicit user feature target |
+| Worker limit/model | 1 sequential worker; `gpt-6-luna`, reasoning effort `medium` |
+| Merge lock | Captain only; workers never merge or spawn |
+| Stop | T02-210 plus focused tests, npm run ci, diff check, independent supplied-manual review and recorded browser evidence/leftovers |
+| Push | No push |
+
+**Authority:** `/home/ben/Documents/stars refs/full_manual.pdf`, TI 6191.409
+Rev30, sections 6.7–6.8 pp. 6-55–58 (PDF 585–588), Figure 6-6, section 4.9.1
+(PDF 257), section 4.10 Table 4-1 (PDF 284), Appendix B Table B-1 (PDF 932),
+and Appendix D Tables D-1–3 (PDF 942–944). Inspect the raster figure; no MIN
+box/triangles or explanatory figure arrows are part of RBL graphics.
+
+**Product law:** Literal `*T` belongs to RBL; F7 T remains list management.
+No `*RBL` alias or interchangeable F7/star prefix. First typed track requires
+SPACE; second typed endpoint does not. Fix names are 3–7 characters and beat
+matching ACIDs. Two endpoint commits insert one line atomically. Empty initial
+`*T` Enter removes all; unspaced `*T<ID>` Enter removes one. Pending empty second
+Enter is FORMAT, never all-clear. Support point/fix/track and typed/click mixes.
+Use exact FORMAT, CAPACITY, DUP ID, DUP BCN, NO FLIGHT and RBL ID errors with
+available DUP ID TCP metadata actually visible in Preview.
+
+RBL measures current report-backed distance, not CPA or future separation.
+Bearing uses authored magVar once; time is shown only for exactly one track.
+Follow the manual's range-decrease/0.1 NM/4.5 second update cadence on report
+events in simulation time. Plain white readout stays near the end point and
+at screen edges when necessary; TOOLS and TLS retain their existing owners.
+No changes to World intent/selection/ownership/plans/alerts/audio/PTLs/camera.
+Pending-entry cancellation preserves active RBL/MIN/TPA graphics. Track-loss
+and session cleanup cannot leave stale references or silently persist to PREF.
+
+**Explicit trainer choices:** lowest free stable ID 1–9; nearest whole-degree/
+minute rounding and north 000; coincident endpoints allowed; zero-speed time
+mask; atomic insertion/cancellation/error recovery and ambiguous-hit rejection;
+optional generic tileset polygon with unbounded-plane default; report-backed
+sampling and range cadence without an invented proprietary smoothing filter;
+known-only TCP supplemental metadata; pixel offsets and missing-endpoint/drop
+cleanup. No new DSF/DSA modes; the FSL latch is not a surrogate for those modes.
+
+**Prerequisites:** shipped T02-207 and T02-75–77; preserve existing MIN and all
+separated F7/splat commands. Verify current feature ancestry and preserve
+unrelated `.worktrees/`, `:memory:.ses`, `speech-api/:memory:.ses` and unclear
+existing work. No master merge, reset, force, or push.
+
+**Waves and ownership:**
+
+- Wave A — T02-208: pure bounded model, readout/cadence and generic optional
+  tileset adaptation; begin the single synthetic feature acceptance file.
+- Wave B — T02-209, after A: literal-splat grammar, endpoint resolution/picking,
+  exact visible errors, deletion, focus/cancellation/side-effect isolation, and
+  Help/docs with the existing backlog subsection marking graphics pending.
+- Wave C — T02-210, after A/B: RBL paint/edge retention/protected geometry,
+  full cleanup, integrated acceptance, final docs/backlog and manual evidence.
+
+**Ticket paths/branches:**
+
+- `ticket/T02-208-range-bearing-model-and-readouts` → `phases/02-scope/tickets/T02-208-range-bearing-model-and-readouts.md`
+- `ticket/T02-209-range-bearing-input-and-removal` → `phases/02-scope/tickets/T02-209-range-bearing-input-and-removal.md`
+- `ticket/T02-210-range-bearing-graphics-and-acceptance` → `phases/02-scope/tickets/T02-210-range-bearing-graphics-and-acceptance.md`
+
+**Skip:** every other ticket; significant-point `*F`, emergency airports,
+restrictions, new surveillance/DSF/DSA modes, wind, proprietary algorithms,
+CPA/vertical qualification, speech/Command IR/Path C, facility-specific data,
+persisted RBLs, a new DCB initiator, master merge and push. Preserve thin render
+and DCB splits and Preview grammar/lifecycle ownership; do not split scopeKeys.
+
+Captain runs focused tests/npm run ci and independent supplied-manual review
+after each merge. A failed gate stops new waves and permits only a narrowly
+scoped correction worker; recheck before proceeding. Final browser checks must
+be performed or explicitly recorded as unrun, never inferred from mockCanvas.
+Workers return READY TO MERGE or BLOCKED. Captain appends STATUS without deleting
+history and returns PHASE EXIT GREEN or PHASE EXIT BLOCKED with merged IDs,
+feature target, commits, tests/manual result and browser leftovers. Stop at
+T02-210; no later phase or swarm is authorized by this configuration.
+
+## Eighty-fifth swarm started — range-bearing lines (2026-10-10)
+
+Execution authorized on `feature/minimum-separation-graphics` by user request.
+The invoking agent acts as captain and runs T02-208 through T02-210 sequentially
+with one isolated worker at a time. Each worker receives exactly one ticket,
+runs in its own dedicated branch/worktree, commits progressively, and returns
+`READY TO MERGE` or `BLOCKED`. Captain owns the merge lock, squash-merges each
+ticket onto `feature/minimum-separation-graphics`, runs focused tests and
+`npm run ci`, and runs independent supplied-manual review before starting the next
+ticket. No push is authorized. Existing untracked artifacts (`.worktrees/`,
+`:memory:.ses`, `speech-api/:memory:.ses`) remain untouched.
+
