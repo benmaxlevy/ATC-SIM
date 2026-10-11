@@ -27,7 +27,6 @@ value. Items already shipped or limited to manual validation are excluded.
 
 ### P1 — controller operations
 
-7. Dynamic range-bearing lines.
 8. Controller-created restriction areas and annotations.
 9. Emergency-airport/heliport lookup and bearing/range readout.
 10. Departure exit-gate/fix resolution.
@@ -70,7 +69,7 @@ CIFP parsing/closure/packing, KATL catalog/map integration, core TPA/PTL,
 WX mosaic, catalog map management, core DCB controls, typed strip annotations,
 handoff ownership, IFR clearance execution, VFR Class B, generic tower/center
 transfer, complete GA make/model-plus-tail typed/spoken input and pilot telephony,
-and pairwise minimum-separation graphics.
+pairwise minimum-separation graphics, and dynamic range-bearing lines.
 
 
 ## Scope and display

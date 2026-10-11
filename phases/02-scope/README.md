@@ -910,7 +910,7 @@ F7 `T/TV/TM/TC/TS/TX/TN` remains MULTI FUNC list input.
 | --- | --- | --- | --- | --- | --- | --- |
 | [T02-207](tickets/T02-207-multi-func-and-splat-separation.md) | MULTI FUNC and splat separation | P1 | M | none | Shipped |
 | [T02-208](tickets/T02-208-range-bearing-model-and-readouts.md) | Range-bearing model and readouts | P1 | M | T02-207 | Shipped |
-| [T02-209](tickets/T02-209-range-bearing-input-and-removal.md) | Range-bearing input and removal | P1 | L | T02-208 | Implemented |
+| [T02-209](tickets/T02-209-range-bearing-input-and-removal.md) | Range-bearing input and removal | P1 | L | T02-208 | Shipped |
 | [T02-210](tickets/T02-210-range-bearing-graphics-and-acceptance.md) | Range-bearing graphics and acceptance | P1 | M | T02-209 | Shipped |
 
 ## Launching an agent
