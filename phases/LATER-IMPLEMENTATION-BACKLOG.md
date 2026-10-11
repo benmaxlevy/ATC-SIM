@@ -337,20 +337,15 @@ measurement aid, not a replacement for CA or a claim of safe vertical separation
 
 ### Dynamic range-bearing lines
 
-Visible now: range rings, scope range, and PTLs work. No live range-bearing
-line model, endpoint-selection workflow, or renderer exists.
+Visible now: range rings, scope range, and PTLs work. RBL model (T02-208) and literal `*T`
+input/removal workflow with exact resolution precedence and errors (T02-209) work.
 
-Missing: manual §§6.7–6.8, pp. 6-55–58, describe up to nine numbered lines
-between fixes, scope locations, or tracks. Moving endpoints update bearing
-and range; exactly one track endpoint also supplies traversal time from
-ground speed. Lines have explicit single/all removal and off-screen label
-handling. Bearing must use authored magnetic variation, not raw ENU angles.
+Missing: line graphics and visual rendering on canvas (T02-210).
 
 Constraints later work must keep: scope-only measurement, no route/intent
 changes; generic fix lookup and stable track identity; explicit cleanup of
-missing endpoints. MULTI FUNC system-list operands now belong to F7; literal `*T` stays reserved
-and unsupported. Future RBL work must preserve that separation and add no RBL
-semantics until a separate ticket defines the manual-backed contract.
+missing endpoints. MULTI FUNC system-list operands now belong to F7; literal `*T` belongs
+to range-bearing lines. Future graphics work must preserve model and input contracts.
 
 ### Controller-created restriction areas and annotations
 

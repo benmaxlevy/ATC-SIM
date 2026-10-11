@@ -1989,9 +1989,17 @@ describe("T02-104: Flight Plan List (FL) Buffering, Correlation & Pagination", (
         );
 
         const committed = commitPreviewCommand(cmd);
-        expect(committed.kind, `Command ${cmd} should be invalid in commitPreviewCommand`).toBe(
-          "invalid",
-        );
+        if (committed.kind === "action") {
+          // Literal *T now owns possible 3–7 character catalog fixes; legacy
+          // T-prefixed alias-shaped tokens may stage an RBL endpoint, never a list.
+          expect(committed.action.type, `Command ${cmd} must not invoke a list`).toBe(
+            "rblEndpoint1",
+          );
+        } else {
+          expect(committed.kind, `Command ${cmd} should be invalid in commitPreviewCommand`).toBe(
+            "invalid",
+          );
+        }
       }
     });
 

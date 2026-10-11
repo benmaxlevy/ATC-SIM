@@ -36,6 +36,7 @@ import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
 import {
   HIT_RADIUS_CSS_PX,
   handleMinSepClick,
+  handleRblClick,
   middleClickAircraftAt,
   pickAircraftAt,
   pickAircraftHitAt,
@@ -43,6 +44,7 @@ import {
   type AircraftPickHit,
 } from "./pick";
 import { isMinSepPending } from "./minimumSeparation";
+import { cancelRblPending, isRblPending } from "./rangeBearingLines";
 import { shouldDrawPtlForTrack } from "./ptl";
 import { renderScope } from "./render";
 import {
@@ -421,6 +423,19 @@ export function handlePpiLeftClick(
       cancelDcbSpinner(view);
     }
     if (handleMinSepClick(view, world, cssX, cssY, cssWidth, cssHeight)) {
+      return;
+    }
+  }
+  const isRblEntryAwaitingClick =
+    isRblPending(view.rbl) ||
+    (view.preview.entryOrigin === "literalSplat" &&
+      view.preview.phase === "entry" &&
+      view.preview.buffer.trim().toUpperCase() === "*T");
+  if (isRblEntryAwaitingClick) {
+    if (view.dcbSpinner.armed) {
+      cancelDcbSpinner(view);
+    }
+    if (handleRblClick(view, world, cssX, cssY, cssWidth, cssHeight)) {
       return;
     }
   }
@@ -840,6 +855,9 @@ export function paintPpi(
   expireFilterEntry(view.filterEntry, view.altitudeFilter, Date.now());
   expireStarsChordEntry(view.starsChordEntry, Date.now());
   expirePreviewArea(view.preview, Date.now());
+  if (view.rbl.pendingFirstEndpoint !== null && view.preview.phase !== "entry") {
+    cancelRblPending(view.rbl);
+  }
   renderScope(ctx, world, view, cssWidth, cssHeight);
 }
 

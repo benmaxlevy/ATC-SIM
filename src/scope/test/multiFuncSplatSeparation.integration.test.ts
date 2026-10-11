@@ -61,7 +61,8 @@ describe("T02-207 MULTI FUNC/splat boundary", () => {
     press(view, "T", "scope");
     press(view, "Enter", "scope");
     expect(view.systemLists.FL.visible).toBe(true);
-    expect(view.preview.rejection).toContain("INV");
+    expect(view.preview.phase).toBe("idle");
+    expect(view.preview.rejection).toBeNull();
   });
 
   it("keeps F7 beacon and aircraft-like operands inside Preview without auto-commit or plan creation", () => {
@@ -239,7 +240,6 @@ describe("T02-207 MULTI FUNC/splat boundary", () => {
       action: { type: "setAltitudeFilterLimits", associatedOnly: true },
     });
     for (const token of [
-      "*T",
       "*F030180",
       "*Q",
       "*V",

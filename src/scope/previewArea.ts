@@ -1080,7 +1080,10 @@ export type PreviewKeyOutcome = {
 /** Live `B…` CODE BLOCK / discrete entry (not INIT/TERM). */
 export function isBeaconPreviewEntry(state: PreviewAreaState): boolean {
   return (
-    state.phase === "entry" && state.entryOrigin !== "multiFunc" && /^B\d*$/.test(state.buffer)
+    state.phase === "entry" &&
+    state.mnemonic !== "RBL" &&
+    state.entryOrigin !== "multiFunc" &&
+    /^B\d*$/.test(state.buffer)
   );
 }
 
@@ -1214,7 +1217,11 @@ export function handlePreviewBufferKey(
       return { consumed: true, action: null };
     }
     if (parsed.kind === "invalid") {
-      rejectPreviewArea(state, nowMs);
+      if (state.entryOrigin === "literalSplat" && /^\*\s*T/i.test(state.buffer)) {
+        rejectPreviewAreaWithReason(state, nowMs, parsed.reason);
+      } else {
+        rejectPreviewArea(state, nowMs);
+      }
       return { consumed: true, action: null };
     }
     if (state.entryOrigin === "literalSplat" || state.buffer.startsWith("*")) {

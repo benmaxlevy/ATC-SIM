@@ -586,6 +586,14 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         input: "Scope only",
         result: "Displays predicted minimum separation between two tracks.",
       },
+      {
+        id: "range-bearing-line",
+        command: "*T [operand], click/identity endpoint 2 (*T Enter / *T<ID> Enter removes)",
+        example: "*TNEMAX Enter, *T SPACE DAL123 Enter, *T then click",
+        input: "Preview Area or PPI click",
+        result:
+          "Creates or deletes up to nine numbered Range-Bearing Lines (BBB/RR.RR[/M]-ID). First track requires leading space (*T ACID). Fix beats homonymous ACID. Click commits second endpoint immediately; Esc cancels.",
+      },
     ],
   },
   {
@@ -669,6 +677,7 @@ export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
         bindingIds: [
           "range-in",
           "range-out",
+          "range-bearing-line",
           "center-airport",
           "center-click",
           "mouse-range",
@@ -1005,6 +1014,13 @@ export const KEY_BINDINGS: KeyBinding[] = [
     windowsKeys: "Delete (Del)",
     action: "Starts minimum separation selection for two displayed tracks.",
     crcAnalog: "STARS §6.4 <MIN> (trainer maps dedicated Del, scope focus only)",
+  },
+  {
+    id: "range-bearing-line",
+    focus: "scope",
+    windowsKeys: "*T [operand] Enter / click",
+    action: "Creates or removes Range-Bearing Lines (BBB/RR.RR[/M]-ID).",
+    crcAnalog: "STARS §§6.7–6.8 literal splat *T (keyboard entry, click or typed endpoints)",
   },
 ];
 

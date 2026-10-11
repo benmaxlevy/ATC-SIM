@@ -1011,16 +1011,23 @@ export {
   RBL_RANGE_INCREASE_THRESHOLD_NM,
   allocateLowestFreeRblId,
   calculateRblReadout,
+  cancelRblPending,
   clearRangeBearingLines,
   createRangeBearingLineState,
+  formatDupIdError,
   formatRblBearing,
   formatRblRange,
   formatRblTraversalMinutes,
   insertRangeBearingLine,
   isPointInsideOrOnPolygon,
+  isRblPending,
+  lookupCatalogFix,
+  lookupRblTrack,
   onRblSurveillanceReport,
   removeRangeBearingLine,
   resolveRblEndpointPose,
+  resolveRblFirstEndpoint,
+  resolveRblSecondEndpoint,
   setRblRadarTilesetBoundary,
   updateRblCadenceRange,
 } from "./rangeBearingLines";
@@ -1029,5 +1036,8 @@ export type {
   RangeBearingLineState,
   RblEndpoint,
   RblReadoutCalculation,
+  ResolveRblEndpointResult,
   ResolvedRblEndpointPose,
 } from "./rangeBearingLines";
+export { handleRblClick, isRblTargetEligibleAndDisplayed, pickRblTargetAt } from "./pick";
+export type { RblPickResult } from "./pick";

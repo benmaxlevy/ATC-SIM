@@ -742,7 +742,7 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 - [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
 - [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
 
-**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. F7 starts MULTI FUNC operands; literal `*` (Shift+8 or keypad Multiply) starts splat chords. Their buffers keep separate origins through Enter and slew. MULTI FUNC lists/filters/MSAW/PTL/leader/plan commands require F7; literal-star TPA/ATPA and trainer extensions keep `*`. F7 `P` relocates Preview, F7 `P1` places Tower List 1, and literal `*P` remains TPA; literal `*P1` is a one NM TPA cone. Literal `*T`, `*F`, `*Q`, `*V`, `*R`, and `*L8` cannot invoke MULTI FUNC actions. A live literal `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. Ctrl+F7 remains DCB SHIFT; F10 is PTL ALL. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. F7 starts MULTI FUNC operands; literal `*` (Shift+8 or keypad Multiply) starts splat chords. Their buffers keep separate origins through Enter and slew. MULTI FUNC lists/filters/MSAW/PTL/leader/plan commands require F7; literal-star TPA/ATPA and trainer extensions keep `*`. F7 `P` relocates Preview, F7 `P1` places Tower List 1, and literal `*P` remains TPA; literal `*P1` is a one NM TPA cone. Literal `*T` owns Range-Bearing Lines, while F7 `T/TV/TM/TC/TS/TX/TN` retains the MULTI FUNC list commands. Literal `*F`, `*Q`, `*V`, `*R`, and `*L8` cannot invoke MULTI FUNC actions. A live literal `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. Ctrl+F7 remains DCB SHIFT; F10 is PTL ALL. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
 
@@ -881,6 +881,29 @@ and sized with TOOLS character size.
 | [T02-204](tickets/T02-204-minimum-separation-model-and-prediction.md) | Minimum-separation model and prediction | P1 | M | none | Shipped |
 | [T02-205](tickets/T02-205-minimum-separation-input-and-selection.md) | Minimum-separation input and selection | P1 | M | T02-204 | Shipped |
 | [T02-206](tickets/T02-206-minimum-separation-graphics-and-acceptance.md) | Minimum-separation graphics and acceptance | P1 | M | T02-204, T02-205 | Shipped |
+
+### Phase 2 addendum (T02-207–210 Dynamic Range-Bearing Lines)
+
+Bounded session collection of up to nine numbered Range-Bearing Lines (`1`–`9`),
+readout formatting (`BBB/RR.RR[/M]-ID`), magnetic variation conversion, report-driven
+range smoothing cadence, literal splat `*T` input and removal workflows, exact resolution
+precedence (fix over ACID), capacity and duplicate error handling, and line graphics (T02-210).
+
+T02-209 creation starts with `*T`, then selects endpoint 1 by click, a 3–7
+character catalog fix (`*TFIX Enter`), or a track (`*T SPACE ACID/BCN Enter`).
+Select endpoint 2 by click (immediate commit) or typed FIX/ACID/BCN plus Enter.
+`*T Enter` clears all; `*T3 Enter` removes line 3. Fix wins over a homonymous
+ACID. Errors are `FORMAT`, `CAPACITY`, `RBL ID`, `DUP ID <ACID>` with known TCP
+rows, `DUP BCN`, and `NO FLIGHT`. Esc, focus takeover, session change, or a
+competing targeting command cancels pending creation and keeps active lines.
+F7 `T/TV/TM/TC/TS/TX/TN` remains MULTI FUNC list input.
+
+| ID | Title | Pri | Size | Depends on | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| [T02-207](tickets/T02-207-multi-func-and-splat-separation.md) | MULTI FUNC and splat separation | P1 | M | none | Shipped |
+| [T02-208](tickets/T02-208-range-bearing-model-and-readouts.md) | Range-bearing model and readouts | P1 | M | T02-207 | Shipped |
+| [T02-209](tickets/T02-209-range-bearing-input-and-removal.md) | Range-bearing input and removal | P1 | L | T02-208 | Implemented |
+| [T02-210](tickets/T02-210-range-bearing-graphics-and-acceptance.md) | Range-bearing graphics and acceptance | P1 | M | T02-209 | Pending |
 
 ## Launching an agent
 

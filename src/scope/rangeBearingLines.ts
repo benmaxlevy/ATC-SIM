@@ -29,7 +29,14 @@
  *   - Omitted polygon means unbounded trainer plane default (normal bearing).
  */
 
-import { courseDeg, distanceNm, trueToMagneticDeg, type NmEastNorth } from "@core";
+import {
+  courseDeg,
+  distanceNm,
+  flightPlanForAircraft,
+  trueToMagneticDeg,
+  type NmEastNorth,
+  type World,
+} from "@core";
 import type { SurveillanceReport } from "./surveillance";
 
 /** Maximum number of active RBLs permitted per STARS Section 6.7. */
@@ -49,6 +56,16 @@ export const RBL_MAX_RAW_TIME_MIN = 99;
 
 /** Special bearing formatted when either endpoint is outside the radar tileset boundary. */
 export const RBL_OUTSIDE_TILESET_BEARING = "777";
+
+/** RBL inputs must reference an actual, time-stamped displayed report. */
+function isUsableRblReport(report: SurveillanceReport | undefined): report is SurveillanceReport {
+  return Boolean(
+    report &&
+    Number.isFinite(report.xNm) &&
+    Number.isFinite(report.yNm) &&
+    Number.isFinite(report.reportedAtSimMs),
+  );
+}
 
 /**
  * RBL endpoint variants:
@@ -89,6 +106,8 @@ export interface RangeBearingLine {
 export interface RangeBearingLineState {
   lines: Map<number, RangeBearingLine>;
   radarTilesetBoundaryNm?: NmEastNorth[];
+  /** Staged first endpoint awaiting second endpoint during RBL creation. */
+  pendingFirstEndpoint: RblEndpoint | null;
 }
 
 /**
@@ -102,6 +121,7 @@ export function createRangeBearingLineState(options?: {
     radarTilesetBoundaryNm: options?.radarTilesetBoundaryNm
       ? [...options.radarTilesetBoundaryNm]
       : undefined,
+    pendingFirstEndpoint: null,
   };
 }
 
@@ -110,6 +130,22 @@ export function createRangeBearingLineState(options?: {
  */
 export function clearRangeBearingLines(state: RangeBearingLineState): void {
   state.lines.clear();
+  state.pendingFirstEndpoint = null;
+}
+
+/**
+ * Cancel pending RBL creation on view, clearing pendingFirstEndpoint and disarming preview if armed.
+ * Preserves active RBL collection.
+ */
+export function cancelRblPending(state: RangeBearingLineState): void {
+  state.pendingFirstEndpoint = null;
+}
+
+/**
+ * Check whether RBL creation is pending (first endpoint staged or preview armed for RBL).
+ */
+export function isRblPending(state: RangeBearingLineState): boolean {
+  return state.pendingFirstEndpoint !== null;
 }
 
 /**
@@ -202,10 +238,7 @@ export function resolveRblEndpointPose(
 
   if (endpoint.kind === "track") {
     const report = tracks.get(endpoint.aircraftId)?.lastReport;
-    if (!report) {
-      return null;
-    }
-    if (!Number.isFinite(report.xNm) || !Number.isFinite(report.yNm)) {
+    if (!isUsableRblReport(report)) {
       return null;
     }
     return {
@@ -499,4 +532,281 @@ export function onRblSurveillanceReport(
     line.displayedRangeNm = updated.displayedRangeNm;
     line.lastRangeUpdateSimMs = updated.lastRangeUpdateSimMs;
   }
+}
+
+/**
+ * Result of resolving a typed RBL endpoint string against World navigation fixes and tracks.
+ */
+export type ResolveRblEndpointResult =
+  { kind: "resolved"; endpoint: RblEndpoint } | { kind: "error"; reason: string };
+
+/**
+ * Check if a token resolves to a catalog fix in world.catalog / world.fixRegistry.
+ * Fix must have length 3–7 characters per STARS Rev30 Section 6.7.
+ */
+export function lookupCatalogFix(
+  token: string,
+  world: World,
+): { fixId: string; xNm: number; yNm: number } | null {
+  const norm = token.trim().toUpperCase();
+  if (norm.length < 3 || norm.length > 7) {
+    return null;
+  }
+
+  // 1. world.fixRegistry check
+  if (world.fixRegistry) {
+    const reg = world.fixRegistry.get(norm);
+    if (
+      reg &&
+      typeof reg.xNm === "number" &&
+      Number.isFinite(reg.xNm) &&
+      typeof reg.yNm === "number" &&
+      Number.isFinite(reg.yNm)
+    ) {
+      return { fixId: reg.id, xNm: reg.xNm, yNm: reg.yNm };
+    }
+  }
+
+  // 2. world.catalog fixes & navaids fallback
+  if (world.catalog) {
+    const fix = world.catalog.fixes.find((f) => f.id.toUpperCase() === norm);
+    if (
+      fix &&
+      typeof fix.xNm === "number" &&
+      Number.isFinite(fix.xNm) &&
+      typeof fix.yNm === "number" &&
+      Number.isFinite(fix.yNm)
+    ) {
+      return { fixId: fix.id, xNm: fix.xNm, yNm: fix.yNm };
+    }
+    const navaid = world.catalog.navaids.find((n) => n.id.toUpperCase() === norm);
+    if (
+      navaid &&
+      typeof navaid.xNm === "number" &&
+      Number.isFinite(navaid.xNm) &&
+      typeof navaid.yNm === "number" &&
+      Number.isFinite(navaid.yNm)
+    ) {
+      return { fixId: navaid.id, xNm: navaid.xNm, yNm: navaid.yNm };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a typed track identifier (full ACID or 4-digit beacon code) against living tracks.
+ * Track must be present in world.aircraft, have a living state and a finite surveillance report.
+ * Returns:
+ * - { kind: "resolved", aircraftId }
+ * - { kind: "dupId", acid, activeTcps, inactiveTcps }
+ * - { kind: "dupBcn" }
+ * - { kind: "noFlight" }
+ */
+export function lookupRblTrack(
+  token: string,
+  world: World,
+  tracks: Map<string, { lastReport?: SurveillanceReport }>,
+):
+  | { kind: "resolved"; aircraftId: string }
+  | { kind: "dupId"; acid: string; activeTcps: string[]; inactiveTcps: string[] }
+  | { kind: "dupBcn" }
+  | { kind: "noFlight" } {
+  const norm = token.trim().toUpperCase();
+  if (norm.length === 0) {
+    return { kind: "noFlight" };
+  }
+
+  const isBeacon = /^[0-7]{4}$/.test(norm);
+
+  if (isBeacon) {
+    // Match by reported beacon code (reportedSquawk or squawk on living aircraft with finite report)
+    const matchingIds: string[] = [];
+    for (const ac of world.aircraft) {
+      const repSquawk = ac.reportedSquawk ?? ac.squawk;
+      if (repSquawk === norm) {
+        const report = tracks.get(ac.id)?.lastReport;
+        if (isUsableRblReport(report)) {
+          matchingIds.push(ac.id);
+        }
+      }
+    }
+
+    if (matchingIds.length === 0) {
+      return { kind: "noFlight" };
+    }
+    if (matchingIds.length > 1) {
+      return { kind: "dupBcn" };
+    }
+    return { kind: "resolved", aircraftId: matchingIds[0]! };
+  }
+
+  // Match by ACID
+  // Living aircraft with its displayed operational ACID (or raw callsign when
+  // no operational plan is correlated), having a finite report.
+  const matchingAcIds = new Set<string>();
+  for (const ac of world.aircraft) {
+    const report = tracks.get(ac.id)?.lastReport;
+    if (!isUsableRblReport(report)) {
+      continue;
+    }
+    const plan = flightPlanForAircraft(world, ac.id);
+    const acid = plan?.acid ?? ac.callsign;
+    if (acid.toUpperCase() === norm) {
+      matchingAcIds.add(ac.id);
+    }
+  }
+
+  if (matchingAcIds.size > 0) {
+    const matchingPlans = world.flightPlans.filter((p) => p.acid.toUpperCase() === norm);
+    const trackIds = [...matchingAcIds];
+    const plansNotRepresentedByTracks = matchingPlans.filter(
+      (plan) =>
+        !trackIds.some((aircraftId) => flightPlanForAircraft(world, aircraftId)?.id === plan.id),
+    );
+    if (matchingAcIds.size > 1 || plansNotRepresentedByTracks.length > 0) {
+      const activeTcps: string[] = [];
+      const inactiveTcps: string[] = [];
+      for (const plan of matchingPlans) {
+        if (plan.tcp) {
+          const isActive = plan.status === "active";
+          if (isActive) {
+            if (!activeTcps.includes(plan.tcp)) activeTcps.push(plan.tcp);
+          } else {
+            if (!inactiveTcps.includes(plan.tcp)) inactiveTcps.push(plan.tcp);
+          }
+        }
+      }
+      return { kind: "dupId", acid: norm, activeTcps, inactiveTcps };
+    }
+    return { kind: "resolved", aircraftId: trackIds[0]! };
+  }
+
+  return { kind: "noFlight" };
+}
+
+/**
+ * Format the multiline DUP ID error with supplemental TCP rows if available:
+ * DUP ID <ACID>
+ * FLIGHT ACTIVE AT <TCP>
+ * FLIGHT INACTIVE AT <TCP(s)>
+ */
+export function formatDupIdError(
+  acid: string,
+  activeTcps: readonly string[],
+  inactiveTcps: readonly string[],
+): string {
+  const lines: string[] = [`DUP ID ${acid}`];
+  if (activeTcps.length > 0) {
+    lines.push(`FLIGHT ACTIVE AT ${activeTcps.join(", ")}`);
+  }
+  if (inactiveTcps.length > 0) {
+    lines.push(`FLIGHT INACTIVE AT ${inactiveTcps.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Resolve a typed first-stage RBL operand.
+ * Input format: either typed fix (without leading space after T) or typed track with REQUIRED leading space.
+ * Fix lookup (length 3-7) beats ACID even in the space form.
+ */
+export function resolveRblFirstEndpoint(
+  rawOperand: string,
+  world: World,
+  tracks: Map<string, { lastReport?: SurveillanceReport }>,
+): ResolveRblEndpointResult {
+  const hasLeadingSpace = rawOperand.startsWith(" ");
+  const trimmed = rawOperand.trim();
+
+  if (trimmed.length === 0) {
+    return { kind: "error", reason: "FORMAT" };
+  }
+  if (/\s/.test(trimmed)) {
+    return { kind: "error", reason: "FORMAT" };
+  }
+
+  // 1. Fix lookup: 3-7 characters. Fix wins over matching ACID even in space form.
+  const fix = lookupCatalogFix(trimmed, world);
+  if (fix) {
+    return {
+      kind: "resolved",
+      endpoint: { kind: "fix", fixId: fix.fixId, xNm: fix.xNm, yNm: fix.yNm },
+    };
+  }
+
+  // If no fix was found and no leading space was provided, an ACID cannot become a track:
+  // "A first typed ACID without the required SPACE cannot become a track; unknown fix yields NO FLIGHT."
+  if (!hasLeadingSpace) {
+    if (/^\d+$/.test(trimmed)) {
+      return { kind: "error", reason: "RBL ID" };
+    }
+    return { kind: "error", reason: "NO FLIGHT" };
+  }
+
+  // Leading space provided: resolve as track (ACID or beacon)
+  const trackResult = lookupRblTrack(trimmed, world, tracks);
+  if (trackResult.kind === "resolved") {
+    return {
+      kind: "resolved",
+      endpoint: { kind: "track", aircraftId: trackResult.aircraftId },
+    };
+  }
+  if (trackResult.kind === "dupId") {
+    return {
+      kind: "error",
+      reason: formatDupIdError(trackResult.acid, trackResult.activeTcps, trackResult.inactiveTcps),
+    };
+  }
+  if (trackResult.kind === "dupBcn") {
+    return { kind: "error", reason: "DUP BCN" };
+  }
+  return { kind: "error", reason: "NO FLIGHT" };
+}
+
+/**
+ * Resolve a typed second-stage RBL operand.
+ * No leading space is required in stage 2.
+ * Fix lookup (length 3-7) beats ACID.
+ */
+export function resolveRblSecondEndpoint(
+  rawOperand: string,
+  world: World,
+  tracks: Map<string, { lastReport?: SurveillanceReport }>,
+): ResolveRblEndpointResult {
+  const trimmed = rawOperand.trim();
+  if (trimmed.length === 0) {
+    return { kind: "error", reason: "FORMAT" };
+  }
+  if (/\s/.test(trimmed)) {
+    return { kind: "error", reason: "FORMAT" };
+  }
+
+  // 1. Fix lookup: 3-7 characters.
+  const fix = lookupCatalogFix(trimmed, world);
+  if (fix) {
+    return {
+      kind: "resolved",
+      endpoint: { kind: "fix", fixId: fix.fixId, xNm: fix.xNm, yNm: fix.yNm },
+    };
+  }
+
+  // 2. Track lookup (ACID or beacon)
+  const trackResult = lookupRblTrack(trimmed, world, tracks);
+  if (trackResult.kind === "resolved") {
+    return {
+      kind: "resolved",
+      endpoint: { kind: "track", aircraftId: trackResult.aircraftId },
+    };
+  }
+  if (trackResult.kind === "dupId") {
+    return {
+      kind: "error",
+      reason: formatDupIdError(trackResult.acid, trackResult.activeTcps, trackResult.inactiveTcps),
+    };
+  }
+  if (trackResult.kind === "dupBcn") {
+    return { kind: "error", reason: "DUP BCN" };
+  }
+  return { kind: "error", reason: "NO FLIGHT" };
 }

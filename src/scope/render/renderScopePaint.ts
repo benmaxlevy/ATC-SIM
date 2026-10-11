@@ -2097,7 +2097,11 @@ export function drawChordHint(
   }
   if (preview) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
-    ctx.fillText(preview, x, y);
+    const lines = preview.split("\n");
+    const lineH = datablockLineHeightPx(view.charSizes.lists);
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i]!, x, y + i * lineH);
+    }
     return;
   }
   ctx.fillStyle = PALETTE.uiChrome;
@@ -2154,8 +2158,14 @@ export function drawSystemLists(
   if (previewReadout && previewPlacement.visible) {
     const x = Math.round(previewPlacement.x * cssWidth);
     const y = Math.round(previewPlacement.y * cssHeight);
-    const width = Math.max(ctx.measureText(previewReadout).width + 8, 80);
-    const height = lineH + 4;
+    const lines = previewReadout.split("\n");
+    let maxW = 0;
+    for (const line of lines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxW) maxW = w;
+    }
+    const width = Math.max(maxW + 8, 80);
+    const height = lines.length * lineH + 4;
     const bounds: ListRect = { x, y, width, height };
     activeRects.push({ id: "PREVIEW", bounds, handleBounds: bounds });
     if (view.listDrag?.showAllFrames) {

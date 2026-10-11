@@ -13,7 +13,7 @@
  */
 
 import { setSelectedAircraft, type Aircraft, type World } from "@core";
-import { nmToScreen, type ScopeCamera } from "./camera";
+import { nmToScreen, screenToNm, type ScopeCamera } from "./camera";
 import { pointInDatablock } from "./datablock";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
 import { datablockRenderSnapshotKey } from "./render/renderScopePaint";
@@ -24,6 +24,7 @@ import {
   isValidMinSepTrackInput,
   minSepInputFromReport,
 } from "./minimumSeparation";
+import { cancelRblPending, insertRangeBearingLine, type RblEndpoint } from "./rangeBearingLines";
 import { cancelPreviewArea, rejectPreviewAreaWithReason } from "./previewArea";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
@@ -351,7 +352,11 @@ export function pickMinSepTargetAt(
     if (!report) {
       continue;
     }
-    if (!Number.isFinite(report.xNm) || !Number.isFinite(report.yNm)) {
+    if (
+      !Number.isFinite(report.xNm) ||
+      !Number.isFinite(report.yNm) ||
+      !Number.isFinite(report.reportedAtSimMs)
+    ) {
       continue;
     }
     const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
@@ -472,5 +477,259 @@ export function handleMinSepClick(
   view.minSep.lastError = null;
   cancelPreviewArea(view.preview);
 
+  return true;
+}
+
+/**
+ * Check whether an aircraft is living in world, has a valid finite surveillance report,
+ * and its displayed symbol lies inside the current rectangular PPI.
+ * Unlike MIN, altitude filtering does not disqualify an aircraft symbol.
+ */
+export function isRblTargetEligibleAndDisplayed(
+  world: World,
+  view: ScopeView,
+  aircraftId: string,
+  cssWidth: number,
+  cssHeight: number,
+): boolean {
+  const ac = world.aircraft.find((a) => a.id === aircraftId);
+  if (!ac) {
+    return false;
+  }
+  const td = view.tracks.get(aircraftId);
+  const report = td?.lastReport;
+  if (!report) {
+    return false;
+  }
+  if (
+    !Number.isFinite(report.xNm) ||
+    !Number.isFinite(report.yNm) ||
+    !Number.isFinite(report.reportedAtSimMs)
+  ) {
+    return false;
+  }
+  const size = { widthPx: cssWidth, heightPx: cssHeight };
+  const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+  if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
+    return false;
+  }
+  if (symPt.x < 0 || symPt.x > cssWidth || symPt.y < 0 || symPt.y > cssHeight) {
+    return false;
+  }
+  return true;
+}
+
+export type RblPickResult =
+  | { kind: "track"; aircraftId: string }
+  | { kind: "static"; xNm: number; yNm: number }
+  | { kind: "error"; error: "NO FLIGHT" };
+
+/**
+ * Pick target for Range-Bearing Line creation:
+ * - Datablock-first precedence.
+ * - Symbol hit testing for displayed tracks inside PPI.
+ * - Equal-distance ties yield NO FLIGHT error.
+ * - Empty PPI area click becomes static ENU coordinate.
+ */
+export function pickRblTargetAt(
+  world: World,
+  view: ScopeView,
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+): RblPickResult {
+  const size = { widthPx: cssWidth, heightPx: cssHeight };
+  const snapshot = view.datablockRenderSnapshot;
+  const snapshotValid = Boolean(
+    snapshot &&
+    snapshot.world === world &&
+    snapshot.simTimeMs === world.simTimeMs &&
+    snapshot.widthPx === cssWidth &&
+    snapshot.heightPx === cssHeight &&
+    snapshot.camera.rangeNm === view.camera.rangeNm &&
+    snapshot.camera.centerEastNm === view.camera.centerEastNm &&
+    snapshot.camera.centerNorthNm === view.camera.centerNorthNm,
+  );
+
+  // 1. Datablock-first precedence
+  if (snapshotValid && snapshot) {
+    const datablockHits: { ac: Aircraft; dist: number }[] = [];
+    for (const ac of world.aircraft) {
+      const presentation = snapshot.presentations.get(ac.id);
+      const layout = snapshot.layouts.get(ac.id);
+      if (
+        presentation &&
+        layout?.rect &&
+        pointInDatablock(cssX, cssY, {
+          x: layout.rect.x,
+          y: layout.rect.y,
+          w: layout.rect.width,
+          h: layout.rect.height,
+        })
+      ) {
+        if (!isRblTargetEligibleAndDisplayed(world, view, ac.id, cssWidth, cssHeight)) {
+          return { kind: "error", error: "NO FLIGHT" };
+        }
+        const dist = Math.hypot(
+          layout.rect.x + layout.rect.width / 2 - cssX,
+          layout.rect.y + layout.rect.height / 2 - cssY,
+        );
+        datablockHits.push({ ac, dist });
+      }
+    }
+
+    if (datablockHits.length > 0) {
+      let minDist = Infinity;
+      for (const h of datablockHits) {
+        if (h.dist < minDist) minDist = h.dist;
+      }
+      const closest = datablockHits.filter((h) => Math.abs(h.dist - minDist) < 1e-4);
+      const distinctIds = new Set(closest.map((h) => h.ac.id));
+      if (distinctIds.size > 1) {
+        return { kind: "error", error: "NO FLIGHT" };
+      }
+      return { kind: "track", aircraftId: closest[0]!.ac.id };
+    }
+  }
+
+  // 2. Symbol hit testing
+  const symbolHits: { ac: Aircraft; dist: number }[] = [];
+  for (const ac of world.aircraft) {
+    const td = view.tracks.get(ac.id);
+    const report = td?.lastReport;
+    if (!report) {
+      continue;
+    }
+    if (
+      !Number.isFinite(report.xNm) ||
+      !Number.isFinite(report.yNm) ||
+      !Number.isFinite(report.reportedAtSimMs)
+    ) {
+      continue;
+    }
+    const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+    if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
+      continue;
+    }
+    const dist = Math.hypot(symPt.x - cssX, symPt.y - cssY);
+    if (dist <= HIT_RADIUS_CSS_PX) {
+      if (!isRblTargetEligibleAndDisplayed(world, view, ac.id, cssWidth, cssHeight)) {
+        return { kind: "error", error: "NO FLIGHT" };
+      }
+      symbolHits.push({ ac, dist });
+    }
+  }
+
+  if (symbolHits.length > 0) {
+    let minDist = Infinity;
+    for (const h of symbolHits) {
+      if (h.dist < minDist) minDist = h.dist;
+    }
+    const closest = symbolHits.filter((h) => Math.abs(h.dist - minDist) < 1e-4);
+    const distinctIds = new Set(closest.map((h) => h.ac.id));
+    if (distinctIds.size > 1) {
+      return { kind: "error", error: "NO FLIGHT" };
+    }
+    return { kind: "track", aircraftId: closest[0]!.ac.id };
+  }
+
+  // 3. Empty on-PPI click becomes static ENU coordinate
+  const nm = screenToNm(cssX, cssY, view.camera, size);
+  return { kind: "static", xNm: nm.eastNm, yNm: nm.northNm };
+}
+
+/**
+ * Handle PPI left click for Range-Bearing Line creation:
+ * - If view is in RBL entry (either bare *T entered, or first endpoint staged),
+ *   processes the click as endpoint 1 or endpoint 2.
+ * - Returns true when consumed.
+ */
+export function handleRblClick(
+  view: ScopeView,
+  world: World,
+  cssX: number,
+  cssY: number,
+  cssWidth: number,
+  cssHeight: number,
+  nowMs: number = Date.now(),
+): boolean {
+  const isAwaitingFirstClick =
+    view.preview.entryOrigin === "literalSplat" &&
+    view.preview.phase === "entry" &&
+    view.preview.buffer.trim().toUpperCase() === "*T";
+  const isAwaitingSecondEndpoint = view.rbl.pendingFirstEndpoint !== null;
+
+  if (!isAwaitingFirstClick && !isAwaitingSecondEndpoint) {
+    return false;
+  }
+
+  const pickResult = pickRblTargetAt(world, view, cssX, cssY, cssWidth, cssHeight);
+  if (pickResult.kind === "error") {
+    cancelRblPending(view.rbl);
+    rejectPreviewAreaWithReason(view.preview, nowMs, pickResult.error);
+    return true;
+  }
+
+  const endpoint: RblEndpoint =
+    pickResult.kind === "track"
+      ? { kind: "track", aircraftId: pickResult.aircraftId }
+      : { kind: "static", xNm: pickResult.xNm, yNm: pickResult.yNm };
+
+  if (view.rbl.pendingFirstEndpoint === null) {
+    // First endpoint resolved via click
+    view.rbl.pendingFirstEndpoint = endpoint;
+    // Clear preview buffer and transition to stage 2
+    view.preview.phase = "entry";
+    view.preview.buffer = "";
+    view.preview.entryOrigin = "literalSplat";
+    view.preview.mnemonic = "RBL";
+    view.preview.flid = null;
+    view.preview.rejection = null;
+    return true;
+  }
+
+  // Second endpoint resolved via click -> commit immediately!
+  const firstEndpoint = view.rbl.pendingFirstEndpoint;
+  // Check capacity: max 9 lines
+  if (view.rbl.lines.size >= 9) {
+    cancelRblPending(view.rbl);
+    rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+    return true;
+  }
+
+  // If first endpoint was a track, revalidate that it is still alive and has a report
+  if (firstEndpoint.kind === "track") {
+    const report = view.tracks.get(firstEndpoint.aircraftId)?.lastReport;
+    if (
+      !world.aircraft.some((aircraft) => aircraft.id === firstEndpoint.aircraftId) ||
+      !report ||
+      !Number.isFinite(report.xNm) ||
+      !Number.isFinite(report.yNm) ||
+      !Number.isFinite(report.reportedAtSimMs)
+    ) {
+      cancelRblPending(view.rbl);
+      rejectPreviewAreaWithReason(view.preview, nowMs, "NO FLIGHT");
+      return true;
+    }
+  }
+
+  // Attempt atomic insertion
+  const inserted = insertRangeBearingLine(
+    view.rbl,
+    firstEndpoint,
+    endpoint,
+    view.tracks,
+    world.simTimeMs,
+  );
+  if (!inserted) {
+    cancelRblPending(view.rbl);
+    rejectPreviewAreaWithReason(view.preview, nowMs, "CAPACITY");
+    return true;
+  }
+
+  // Successful creation! Clear pending first endpoint and cancel preview
+  view.rbl.pendingFirstEndpoint = null;
+  cancelPreviewArea(view.preview);
   return true;
 }

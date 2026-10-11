@@ -51,6 +51,7 @@ const REQUIRED_BINDING_IDS = [
   "radio-focus",
   "stars-tpa-atpa",
   "minimum-separation",
+  "range-bearing-line",
 ] as const;
 
 test("chord is live until 1.5 s, then expired", () => {
