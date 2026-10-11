@@ -267,16 +267,17 @@ test("Table 18: F5 <HND OFF> triggers handoff on selection (and Shift+H backward
   expect(handleScopeKeyDown(keyEvent("H", { shiftKey: true }), view, "radio", world)).toBe(true);
 });
 
-test("Table 18: F7 <MULTI FUNC> initiates STARS multi-func preview buffer (*)", () => {
+test("Table 18: F7 <MULTI FUNC> starts a separate operand buffer", () => {
   const view = createScopeView();
   expect(view.preview.phase).toBe("idle");
   handleScopeKeyDown(keyEvent("F7"), view);
   expect(view.preview.phase).toBe("entry");
-  expect(view.preview.buffer).toBe("*");
+  expect(view.preview.buffer).toBe("");
+  expect(view.preview.entryOrigin).toBe("multiFunc");
 
-  // Appends * when already in entry phase
+  // Restarting the function key clears the current operand.
   handleScopeKeyDown(keyEvent("F7"), view);
-  expect(view.preview.buffer).toBe("**");
+  expect(view.preview.buffer).toBe("");
 });
 
 test("Table 18: F10 <PTL> toggles PTL ALL", () => {

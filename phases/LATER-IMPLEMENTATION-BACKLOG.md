@@ -348,9 +348,9 @@ handling. Bearing must use authored magnetic variation, not raw ENU angles.
 
 Constraints later work must keep: scope-only measurement, no route/intent
 changes; generic fix lookup and stable track identity; explicit cleanup of
-missing endpoints. The manual's `*T` entry collides with the trainer's existing
-list grammar, so planning must resolve command-state routing without regressing
-list management or guessing aliases.
+missing endpoints. MULTI FUNC system-list operands now belong to F7; literal `*T` stays reserved
+and unsupported. Future RBL work must preserve that separation and add no RBL
+semantics until a separate ticket defines the manual-backed contract.
 
 ### Controller-created restriction areas and annotations
 
@@ -443,7 +443,7 @@ The following specialized or multi-subsystem command sets remain deliberately de
 **Shipped vs deferred collisions (do not regress):**
 - Idle F is the altitude-filter chord (`beginFilterEntry`). `*F` Enter is T02-65 FILTER readout and does **not** open the deferred `*F [Callsign]` flight-plan modal.
 - `*BCN` / `*BCN DEL` are T02-65 beacon filters. Bare `*B` Enter is TPA (`*B INV`). Live `*B` click is T02-66 beaconator.
-- Compact `*P1`/`*P2`/`*P3` (and `*P5`/`*P10`) are TPA cone miles. Tower lists require a space: `* P1`–`* P3`. `*PTL` is PTL minutes.
+- Compact `*P1`/`*P2`/`*P3` (and `*P5`/`*P10`) are TPA cone miles. Tower lists use F7 `P1`–`P3`; literal `*P1`–`*P3` stay TPA cone sizes. `*PTL` is PTL minutes.
 
 Constraints later work must keep: never Command IR; radio line isolated; reject unknown rather than no-op; data-first catalog; self-hosted speech.
 

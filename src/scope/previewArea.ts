@@ -35,7 +35,7 @@ import {
   parseCaCommand,
   parseFlightPlanCreation,
   parseFlightPlanModalCommand,
-  parsePreviewCommand,
+  parsePreviewCommandForOrigin,
   parseVfrFlightPlanCommand,
   parseTrackingSlewBuffer,
   previewBufferCharFromKey,
@@ -53,6 +53,7 @@ export {
   parseFlightPlanCreation,
   parseFlightPlanModalCommand,
   parsePreviewCommand,
+  parsePreviewCommandForOrigin,
   parseScopeDisplayCommand,
   parseTrackingCommand,
   parseTrackingSlewBuffer,
@@ -168,6 +169,8 @@ export type PreviewAreaState = {
   phase: PreviewPhase;
   /** Live typed buffer. Empty when idle. */
   buffer: string;
+  /** Input family is explicit because MULTI FUNC and literal splat share grammar tokens. */
+  entryOrigin: "multiFunc" | "literalSplat" | null;
   /** CRC mnemonic painted in the Preview Area, e.g. `INIT CNTL`. Never `"F3"`. */
   mnemonic: string;
   /** Optional FLID / ACID typed after a function key. */
@@ -187,6 +190,7 @@ export function idlePreviewArea(): PreviewAreaState {
   return {
     phase: "idle",
     buffer: "",
+    entryOrigin: null,
     mnemonic: "",
     flid: null,
     lastKeyAtMs: 0,
@@ -204,6 +208,7 @@ export function cancelPreviewArea(state: PreviewAreaState): void {
   const idle = idlePreviewArea();
   state.phase = idle.phase;
   state.buffer = idle.buffer;
+  state.entryOrigin = idle.entryOrigin;
   state.mnemonic = idle.mnemonic;
   state.flid = idle.flid;
   state.lastKeyAtMs = idle.lastKeyAtMs;
@@ -230,6 +235,7 @@ export function rejectPreviewArea(state: PreviewAreaState, nowMs: number): void 
   state.rejection = `${state.buffer} INV`;
   state.phase = "idle";
   state.buffer = "";
+  state.entryOrigin = null;
   state.mnemonic = "";
   state.flid = null;
   state.armed = null;
@@ -278,9 +284,9 @@ export function formatPreviewReadout(state: PreviewAreaState): string | null {
   return null;
 }
 /**
- * Live list commands (`*T`, `*TV`, `*TM`, `*TC`, `*TS`, `*TX`, `*TN`, `*P1`–`*P3`, `*S`, `*P`)
+ * Live MULTI FUNC list operands (`T`, `TV`, `TM`, `TC`, `TS`, `TX`, `TN`, `P1`–`P3`, `S`, `P`)
  * or armed `armRelocateList` → list id to slew.
- * Resize buffers (`*T10`, `*P1 10`, etc.) do not relocate.
+ * Resize buffers (`T10`, `P1 10`, etc.) do not relocate.
  */
 export function previewRelocateListId(state: PreviewAreaState): string | null {
   if (state.armed?.type === "armRelocateList") {
@@ -289,11 +295,13 @@ export function previewRelocateListId(state: PreviewAreaState): string | null {
   if (state.phase !== "entry") {
     return null;
   }
-  // Bare *P relocates Preview on empty scope; Enter and aircraft clicks retain TPA semantics.
-  if (/^\*\s*P$/i.test(state.buffer)) {
+  if (state.entryOrigin === "multiFunc" && /^P$/i.test(state.buffer)) {
     return "PREVIEW";
   }
-  const parsed = parsePreviewCommand(state.buffer);
+  if (state.entryOrigin === "literalSplat" && /^\*\s*P$/i.test(state.buffer)) {
+    return null;
+  }
+  const parsed = parsePreviewCommandForOrigin(state.buffer, state.entryOrigin);
   if (parsed.kind !== "action") {
     return null;
   }
@@ -321,38 +329,52 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
   if (state.phase !== "entry") {
     return null;
   }
-  // `*FP <SLEW>` is command-then-slew: while the exact token is live in the
-  // Preview Area, a target click applies it without an intermediate Enter.
-  const flightPlanModal = parseFlightPlanModalCommand(state.buffer);
-  if (
-    flightPlanModal?.kind === "action" &&
-    flightPlanModal.action.type === "openFlightPlanModal" &&
-    flightPlanModal.action.targetSlew
-  ) {
-    return flightPlanModal.action;
-  }
-  // STARS CA commands may slew directly from the live Preview Area; Enter is
-  // only required when every target is supplied as a typed ACID.
-  const ca = parseCaCommand(state.buffer);
-  if (ca?.kind === "action" && isTrackingSlewAction(ca.action)) {
-    const action = ca.action;
+  const family = state.entryOrigin ?? (state.buffer.startsWith("*") ? "literalSplat" : null);
+  if (family === "literalSplat") {
+    // `*FP <SLEW>` is command-then-slew only for literal splat input.
+    const flightPlanModal = parseFlightPlanModalCommand(state.buffer);
     if (
-      action.type === "caPairSlew" ||
-      (action.type === "caSingleTrackInhibit" && action.trk === undefined) ||
-      (action.type === "caPairToggle" && action.trk2 === undefined)
+      flightPlanModal?.kind === "action" &&
+      flightPlanModal.action.type === "openFlightPlanModal" &&
+      flightPlanModal.action.targetSlew
     ) {
-      return action;
+      return flightPlanModal.action;
     }
   }
-  // TI 6191.409 §§7.14–7.15: MULTI FUNC Q/V arm directly for the slew;
-  // Enter is optional in the Preview buffer and never invokes radio parsing.
-  const multiFunc = parsePreviewCommand(state.buffer);
-  if (
-    multiFunc.kind === "action" &&
-    (multiFunc.action.type === "msawCurrentAlertInhibit" ||
-      multiFunc.action.type === "toggleMsawProcessing")
-  ) {
-    return multiFunc.action;
+  if (family === null) {
+    // Ordinary entry owns unprefixed CA commands; F7 operands cannot shadow them.
+    const ca = parseCaCommand(state.buffer);
+    if (ca?.kind === "action" && isTrackingSlewAction(ca.action)) {
+      const action = ca.action;
+      if (
+        action.type === "caPairSlew" ||
+        (action.type === "caSingleTrackInhibit" && action.trk === undefined) ||
+        (action.type === "caPairToggle" && action.trk2 === undefined)
+      ) {
+        return action;
+      }
+    }
+  }
+  const parsed = parsePreviewCommandForOrigin(state.buffer, state.entryOrigin);
+  if (state.entryOrigin === "multiFunc") {
+    if (state.buffer.trim().toUpperCase() === "B") return { type: "beaconatorSlew" };
+    if (parsed.kind !== "action") return null;
+    return [
+      "msawCurrentAlertInhibit",
+      "toggleMsawProcessing",
+      "setLeaderDir",
+      "setLeaderDirAndLength",
+      "setLeaderLength",
+      "resetLeaderDir",
+      "armPerTrackPtl",
+    ].includes(parsed.action.type)
+      ? parsed.action
+      : null;
+  }
+  if (state.entryOrigin === "literalSplat") {
+    return /^\*[0-8]$/.test(state.buffer) || state.buffer === "*"
+      ? parseTrackingSlewBuffer(state.buffer)
+      : null;
   }
   return parseTrackingSlewBuffer(state.buffer);
 }
@@ -367,12 +389,12 @@ function trackingMnemonic(action: PreviewArmedAction): string {
       return "*";
     case "setLeaderDir":
       if (action.flid) {
-        return `*L${action.dir ?? action.starsDir ?? 8} ${action.flid}`;
+        return `${action.starsDir ? "*" : "F7 L"}${action.dir ?? action.starsDir ?? 8} ${action.flid}`;
       }
       if (action.starsDir) {
         return `*${action.starsDir}`;
       }
-      return `*L${action.dir ?? 8}`;
+      return `F7 L${action.dir ?? 8}`;
     case "resetLeaderDir":
       return "*0";
     case "setLeaderLength":
@@ -384,9 +406,9 @@ function trackingMnemonic(action: PreviewArmedAction): string {
     case "setDefaultLeaderLength":
       return `*LDR ${action.lengthStep}`;
     case "beaconatorSlew":
-      return "*B";
+      return "F7 B";
     case "armPerTrackPtl":
-      return "*R";
+      return "F7 R";
     case "caPairSlew":
       return action.trk1 ? `CA ${action.trk1}` : "CA";
     case "caSingleTrackInhibit":
@@ -394,9 +416,9 @@ function trackingMnemonic(action: PreviewArmedAction): string {
     case "caPairToggle":
       return action.trk1 ? `CA P ${action.trk1}` : "CA P";
     case "msawCurrentAlertInhibit":
-      return "*Q";
+      return "F7 Q";
     case "toggleMsawProcessing":
-      return "*V";
+      return "F7 V";
     case "caControllerPairs":
       return action.mode === "toggle" ? "CA C" : `CA C ${action.mode === "enable" ? "E" : "I"}`;
     case "saveAsPref":
@@ -417,6 +439,7 @@ export function isPrefNameEntry(state: PreviewAreaState): boolean {
 export function beginPrefNameEntry(state: PreviewAreaState, nowMs: number): void {
   state.phase = "entry";
   state.buffer = "";
+  state.entryOrigin = null;
   state.mnemonic = "PREF";
   state.flid = null;
   state.rejection = null;
@@ -484,6 +507,7 @@ export function armPreviewSlewAction(
   }
   state.phase = "armed";
   state.buffer = "";
+  state.entryOrigin = null;
   state.mnemonic = trackingMnemonic(action);
   state.flid = null;
   state.rejection = null;
@@ -510,6 +534,7 @@ export function armPreviewRelocateList(
 ): void {
   state.phase = "armed";
   state.buffer = buffer;
+  state.entryOrigin = null;
   state.mnemonic = "";
   state.flid = null;
   state.rejection = null;
@@ -529,6 +554,7 @@ export function armPreviewCntl(
   state.phase = "armed";
   state.mnemonic = kind === "initCntl" ? "INIT CNTL" : "TERM CNTL";
   state.buffer = "";
+  state.entryOrigin = null;
   state.flid = flid && flid.length > 0 ? flid : null;
   state.rejection = null;
   state.armed = action ?? { type: kind };
@@ -694,8 +720,9 @@ export function commitPreviewCommand(
   buffer: string,
   maps?: readonly LoadedVideoMap[],
   layout?: VideoMapTokenLayout,
+  origin: "multiFunc" | "literalSplat" | null = null,
 ): PreviewCommandResult {
-  const parsed = parsePreviewCommand(buffer, maps, layout);
+  const parsed = parsePreviewCommandForOrigin(buffer, origin, maps, layout);
   if (parsed.kind === "incomplete") {
     return { kind: "invalid", reason: "incomplete preview command" };
   }
@@ -1052,7 +1079,9 @@ export type PreviewKeyOutcome = {
 
 /** Live `B…` CODE BLOCK / discrete entry (not INIT/TERM). */
 export function isBeaconPreviewEntry(state: PreviewAreaState): boolean {
-  return state.phase === "entry" && /^B\d*$/.test(state.buffer);
+  return (
+    state.phase === "entry" && state.entryOrigin !== "multiFunc" && /^B\d*$/.test(state.buffer)
+  );
 }
 
 export function beginPreviewBeaconEntry(state: PreviewAreaState, nowMs: number): void {
@@ -1062,12 +1091,20 @@ export function beginPreviewBeaconEntry(state: PreviewAreaState, nowMs: number):
 export function beginPreviewBufferEntry(state: PreviewAreaState, ch: string, nowMs: number): void {
   state.phase = "entry";
   state.buffer = ch;
+  state.entryOrigin = ch.startsWith("*") ? "literalSplat" : null;
   state.mnemonic = "";
   state.flid = null;
   state.rejection = null;
   state.armed = null;
   delete state.creationMode;
   state.lastKeyAtMs = nowMs;
+}
+
+/** F7 starts a distinct, pending MULTI FUNC operand buffer. */
+export function beginPreviewMultiFuncEntry(state: PreviewAreaState, nowMs: number): void {
+  beginPreviewBufferEntry(state, "", nowMs);
+  state.entryOrigin = "multiFunc";
+  state.mnemonic = "MULTI FUNC";
 }
 
 /** Manual Appendix D Table D-1 F6 / FLT DATA; local trainer record only. */
@@ -1110,6 +1147,11 @@ export function handlePreviewBufferKey(
     return { consumed: false, action: null };
   }
   if (key === "Backspace") {
+    if (state.entryOrigin === "multiFunc") {
+      state.buffer = state.buffer.slice(0, -1);
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
+    }
     if (state.buffer.length <= 1) {
       cancelPreviewArea(state);
       return { consumed: true, action: null };
@@ -1145,12 +1187,15 @@ export function handlePreviewBufferKey(
       );
       return { consumed: true, action: null };
     }
-    const parsed = parsePreviewCommand(state.buffer, maps, layout);
+    const parsed = parsePreviewCommandForOrigin(state.buffer, state.entryOrigin, maps, layout);
     if (parsed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: parsed.action };
     }
-    const creation = parseFlightPlanCreation(state.buffer, state.armed?.type === "initCntl");
+    const creation =
+      state.entryOrigin === "multiFunc"
+        ? { kind: "incomplete" as const }
+        : parseFlightPlanCreation(state.buffer, state.armed?.type === "initCntl");
     if (creation.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: creation.action };
@@ -1172,7 +1217,7 @@ export function handlePreviewBufferKey(
       rejectPreviewArea(state, nowMs);
       return { consumed: true, action: null };
     }
-    if (state.buffer.startsWith("*")) {
+    if (state.entryOrigin === "literalSplat" || state.buffer.startsWith("*")) {
       return { consumed: true, action: null, starsBuffer: state.buffer };
     }
     rejectPreviewArea(state, nowMs);
@@ -1195,6 +1240,7 @@ export function rejectPreviewAreaWithReason(
   state.rejection = reason;
   state.phase = "idle";
   state.buffer = "";
+  state.entryOrigin = null;
   state.mnemonic = "";
   state.flid = null;
   state.armed = null;
@@ -1210,6 +1256,7 @@ export function armPreviewMinSep(state: PreviewAreaState, nowMs: number): void {
   state.mnemonic = "MIN";
   state.flid = null;
   state.buffer = "";
+  state.entryOrigin = null;
   state.armed = { type: "minSep" };
   state.slewAction = null;
   state.rejection = null;
@@ -1243,7 +1290,7 @@ export function handlePreviewBeaconKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
-    const committed = commitPreviewCommand(state.buffer);
+    const committed = commitPreviewCommand(state.buffer, undefined, undefined, state.entryOrigin);
     if (committed.kind === "action") {
       cancelPreviewArea(state);
       return { consumed: true, action: committed.action };
@@ -1255,7 +1302,7 @@ export function handlePreviewBeaconKey(
   if (digit !== null) {
     state.buffer += String(digit);
     state.lastKeyAtMs = nowMs;
-    const parsed = parsePreviewCommand(state.buffer);
+    const parsed = parsePreviewCommandForOrigin(state.buffer, state.entryOrigin);
     if (parsed.kind === "invalid") {
       rejectPreviewArea(state, nowMs);
       return { consumed: true, action: null };

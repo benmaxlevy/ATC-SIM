@@ -458,16 +458,7 @@ export function handlePpiLeftClick(
       return;
     }
   }
-  let relocateId = previewRelocateListId(view.preview);
-  // The same P commands address lists on empty scope and TPA cones on aircraft.
-  if (
-    relocateId &&
-    view.preview.phase === "entry" &&
-    /^\*\s*P[123]?$/i.test(view.preview.buffer) &&
-    pickAircraftAt(world, cssX, cssY, view.camera, cssWidth, cssHeight, HIT_RADIUS_CSS_PX, view)
-  ) {
-    relocateId = null;
-  }
+  const relocateId = previewRelocateListId(view.preview);
   // Check if click was on a system list entry while F1 drop mode is active
   if (view.f1DropArmed || view.beaconatorActive) {
     const hitEntry = hitTestSystemListEntry(view, cssX, cssY);

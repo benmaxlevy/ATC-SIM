@@ -4,10 +4,10 @@
  * L1–L9 = leader direction; DCB RANGE spinner; PTL OWN/ALL; `/` = leader
  * length. vice (R08) is typed-radio feel, not this map.
  * Trainer delta: exported Windows subset only — Help is `?` / the Help button,
- * F3 Track Suspend is reserved/no-op for now, PageUp/Down range presets 5–512 (no CRC 6/8/12/16/24), `/` when
+ * F3 Track Suspend is reserved/no-op for now, F7 is MULTI FUNC, PageUp/Down range presets 5–512 (no CRC 6/8/12/16/24), `/` when
  * scope-focused buffers into the Preview Area (not leader length; Tab cycles
  * radio ↔ PPI). 1.5 s L/F
- * chord window (`*` persists until Esc, commit, or a new `*`); leftover digits never go to the parser; no keyboard leader-length menu
+ * chord window (literal `*` persists until Esc, commit, or a new star entry); leftover digits never go to the parser; no keyboard leader-length menu
  * (`/` is Preview Area slew/drop prefix). DCB LDR length is a discrete px spinner. `F` is scope-focus only.
  * `*` with PPI focused is TPA/ATPA slew chords (R07 Table 36), never Command IR.
  * Inject `nowMs` in tests. Not NAS STARS.
@@ -261,15 +261,15 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "multi",
-        command: "F7 / *",
-        example: "*T",
+        command: "F7 <MULTI FUNC>",
+        example: "F7, T",
         input: "PPI or Preview Area",
-        result: "Starts a Preview command.",
+        result: "Starts a distinct MULTI FUNC entry; type its operand without a star.",
       },
       {
         id: "tracking",
-        command: "*L1–*L9",
-        example: "*L8, then click",
+        command: "F7 L1–L9 / *1–*8 / *0",
+        example: "F7 L8, then click; *8",
         input: "Preview Area",
         result: "Sets the selected track's leader direction.",
       },
@@ -312,8 +312,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "plan-modify",
-        command: "*M <identity> <data>",
-        example: "*M 14 5252",
+        command: "F7 M <identity> <data>",
+        example: "F7 M 14 5252",
         input: "Preview Area",
         result: "Modifies a flight plan.",
       },
@@ -326,8 +326,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "plan-beacon",
-        command: "*B <identity>",
-        example: "*B UAL1234",
+        command: "F7 B <identity>",
+        example: "F7 B UAL1234",
         input: "Preview Area",
         result: "Releases the assigned beacon.",
       },
@@ -408,7 +408,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "ptl",
-        command: "*PTL <minutes> / *R",
+        command: "*PTL <minutes> / F7 R",
         example: "*PTL5",
         input: "Preview Area",
         result: "Sets PTL or arms per-track PTL.",
@@ -436,8 +436,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "altitude",
-        command: "*F / *FC / *LA <floor><ceiling>",
-        example: "*F030180 or *LA030180",
+        command: "F7 F / F7 FC / *LA <floor><ceiling>",
+        example: "F7 F030180 or *LA030180",
         input: "Preview Area",
         result: "Displays or sets altitude filters.",
       },
@@ -456,71 +456,71 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
     entries: [
       {
         id: "lists",
-        command: "*S, *T, *TV, *TM, *TC, *TS, *TX, *TN, *P1–*P3",
-        example: "*T15",
+        command: "F7 S/T/TV/TM/TC/TS/TX/TN/P1–P3",
+        example: "F7 T15",
         input: "Preview Area",
         result: "Opens or manages system lists.",
       },
       {
         id: "tab-list",
-        command: "*T [lines]",
-        example: "*T15",
+        command: "F7 T [lines]",
+        example: "F7 T15",
         input: "Preview Area",
         result: "Toggles or resizes the TAB list.",
       },
       {
         id: "tower-list",
-        command: "*P1–*P3 [lines]",
-        example: "*P1",
+        command: "F7 P1–P3 [lines]",
+        example: "F7 P1",
         input: "Preview Area",
         result: "Toggles or resizes a tower list.",
       },
       {
         id: "vfr-list",
-        command: "*TV [lines]",
-        example: "*TV",
+        command: "F7 TV [lines]",
+        example: "F7 TV",
         input: "Preview Area",
         result: "Toggles or resizes the VFR list.",
       },
       {
         id: "maps-list",
-        command: "*TX",
-        example: "*TX",
+        command: "F7 TX",
+        example: "F7 TX",
         input: "Preview Area",
         result: "Toggles or relocates the video-map list.",
       },
       {
         id: "alert-list",
-        command: "*TM",
-        example: "*TM",
+        command: "F7 TM",
+        example: "F7 TM",
         input: "Preview Area",
         result: "Toggles or relocates the alert list.",
       },
       {
         id: "coast-list",
-        command: "*TC [lines]",
-        example: "*TC",
+        command: "F7 TC [lines]",
+        example: "F7 TC",
         input: "Preview Area",
         result: "Toggles or resizes the coast list.",
       },
       {
         id: "sign-on-list",
-        command: "*TS",
-        example: "*TS",
+        command: "F7 TS",
+        example: "F7 TS",
         input: "Preview Area",
         result: "Toggles or relocates the sign-on list.",
       },
       {
         id: "ssa-list",
-        command: "*S",
-        example: "*S, then click",
+        command: "F7 S",
+        example: "F7 S, then click",
         input: "Preview Area",
         result: "Relocates the system status list.",
       },
       {
         id: "crda-list",
-        command: "*TN",
-        example: "*TN",
+        command: "F7 TN",
+        example: "F7 TN",
         input: "Preview Area",
         result: "Toggles or relocates the CRDA list.",
       },
@@ -532,15 +532,15 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
     entries: [
       {
         id: "force-fdb",
-        command: "*F / **F",
-        example: "*F, then click; **F",
+        command: "**F",
+        example: "**F",
         input: "Preview Area",
-        result: "Forces or clears full datablocks.",
+        result: "Clears forced full datablocks.",
       },
       {
         id: "leader",
-        command: "+ / /<FLID> / *L1–*L9 / *0 / *1–*8",
-        example: "+, then click; *L8, then click",
+        command: "+ / /<FLID> / F7 L1–L9 / *0 / *1–*8",
+        example: "+, then click; F7 L8, then click",
         input: "Preview Area",
         result: "Initiates, terminates, or sets leader direction.",
       },
@@ -560,8 +560,8 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "msaw",
-        command: "*Q / *V",
-        example: "*Q, then click",
+        command: "F7 Q / F7 V",
+        example: "F7 Q, then click",
         input: "Preview Area",
         result: "Inhibits the current alert or toggles MSAW.",
       },
@@ -799,7 +799,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     id: "multi-func",
     focus: "always",
     windowsKeys: "F7",
-    action: "Starts a Preview command.",
+    action: "Starts a distinct MULTI FUNC Preview entry; type operands without a star.",
     crcAnalog: "F7 <MULTI FUNC>",
   },
   {
@@ -995,7 +995,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   {
     id: "stars-tpa-atpa",
     focus: "scope",
-    windowsKeys: "* then J/P/D+/AE/BE/DE, Enter commits",
+    windowsKeys: "Shift+8 or keypad Multiply, then J/P/D+/AE/BE/DE",
     action: "Runs a TPA or ATPA command.",
     crcAnalog: "CRC STARS TPA/ATPA Table 36 (*J *P **J **P *D+ *AE *BE *DE)",
   },

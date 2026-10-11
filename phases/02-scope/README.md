@@ -100,7 +100,7 @@ One physical keyboard, two foci.
 | Initiate/associate track | `F1` / `INIT CNTL` | Associates a matching local plan, owns the target, and displays the local FDB. Not a NAS handoff. |
 | Track suspend | `F3` / `TRK SUSP` | Reserved/no-op; the suspend lifecycle is not simulated yet. |
 | Terminate track | `F4` / `TERM CNTL` | Shared trainer implementation: deletes the associated local plan, removes association, clears ownership, and leaves a moving unassociated `*` LDB. |
-| Multi Function | `F7` / `MULTI FUNC` | Preview Area `*` prefix. |
+| Multi Function | `F7` / `MULTI FUNC` | Starts a distinct Preview Area operand buffer; type `T`, `P1`, `F`, `Q`, etc. without a prefix. |
 | History toggle | `F8` | Global history dots. |
 | Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
 
@@ -702,7 +702,7 @@ Runtime gaps remain documented in [LATER-IMPLEMENTATION-BACKLOG.md](../LATER-IMP
 
 ### Preview Area addendum (T02-51–54)
 
-Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F1 is local plan/track association, not NAS handoff; F3 Track Suspend is reserved/no-op; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm):
+Completed Preview Area addendum matching [CRC STARS](https://docs.virtualnas.net/crc/stars/) Preview Area / Tracking Aircraft / Table 30, with trainer deltas stated in every ticket (F1 is local plan/track association, not NAS handoff; F3 Track Suspend is reserved/no-op; F4/TERM CNTL share local termination, not multi-controller NAS semantics; F7 is MULTI FUNC/`*`; F10 is PTL ALL; no pointouts this swarm). T02-207 supersedes the historical F7/`*` alias: F7 now owns MULTI FUNC operands, while literal `*` owns splat commands.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -736,13 +736,13 @@ Completed SITE integration addendum matching [CRC STARS](https://docs.virtualnas
 ### Phase 2 radar-sites checklist (T02-73–77)
 
 - [x] PREF SAVE AS collects a short alphanumeric name through the preview-area / status-line buffer; Enter writes the first empty slot (T02-73).
-- [x] Per-track PTL via `*R` click; session map, not PREF (T02-74).
+- [x] Per-track PTL via F7 `R` click; session map, not PREF (T02-74).
 - [x] Authored `radarSites` load through generic catalog/scenario integration; no `if (icao === "KATL")` live path (T04-45 / T02-77).
 - [x] FUSED / MULTI / `{ siteId }` sample, cover, and paint per T02-75; SITE DCB + SSA word stay in sync; `OK/OK/NA` stays the network stub (T02-75 / T02-76 / T02-77).
 - [x] Generic synthetic-site tests in `src/scope/radarSites.integration.test.ts`; no KATL production map counts or geometry.
 - [ ] Manual Chrome SITE walk. skip-with-reason: no visual operator in this swarm; Chrome SITE walk not watched. Automated tests prove boot / SITE / SSA / paint; do not invent a visual pass.
 
-**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. `*J` / `*P` (and other T02-49 `*` chords) still arm/slew. A live `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. F7 is MULTI FUNC and aliases `*`; F10 is PTL ALL. `*F` is altitude filtering, not forced FDB. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
+**Preview Area is not the radio command line.** Scope commands never emit Command IR / readback / intent. `DAL123 H270` still turns. F7 starts MULTI FUNC operands; literal `*` (Shift+8 or keypad Multiply) starts splat chords. Their buffers keep separate origins through Enter and slew. MULTI FUNC lists/filters/MSAW/PTL/leader/plan commands require F7; literal-star TPA/ATPA and trainer extensions keep `*`. F7 `P` relocates Preview, F7 `P1` places Tower List 1, and literal `*P` remains TPA; literal `*P1` is a one NM TPA cone. Literal `*T`, `*F`, `*Q`, `*V`, `*R`, and `*L8` cannot invoke MULTI FUNC actions. A live literal `*` hint still wins over idle preview. Invalid/unknown commit flashes `INV`. Reject unknown; never parse-and-no-op. No `window.prompt`, no extra HTML `<input>`. F1 INIT CNTL associates/owns a matching local plan/track but is not a NAS handoff. F3 is reserved Track Suspend and is currently a no-op. F4 is the TERM CNTL alias: it terminates the target, deletes its associated local plan, and leaves an unassociated `*` LDB. Ctrl+F7 remains DCB SHIFT; F10 is PTL ALL. Flight-plan route edits are record-only; they do not issue clearances or drive pilot intent.
 
 #### Shipped Preview Area commands (do not invent later CRC tables)
 

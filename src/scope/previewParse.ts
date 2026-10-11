@@ -1666,6 +1666,93 @@ export function parsePreviewCommand(
   return invalid("unknown preview command");
 }
 
+const MULTI_FUNC_ACTIONS = new Set<PreviewArmedAction["type"]>([
+  "releaseAssignedBeacon",
+  "modifyFlightPlan",
+  "toggleList",
+  "resizeList",
+  "armRelocateList",
+  "resetListPosition",
+  "armPerTrackPtl",
+  "displayFilters",
+  "setAltitudeFilterLimits",
+  "msawCurrentAlertInhibit",
+  "toggleMsawProcessing",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "setLeaderLength",
+  "setLeaderDirAndLength",
+  "setDefaultLeaderLength",
+  "beaconatorSlew",
+  "beaconBlock",
+  "beaconDiscrete",
+]);
+
+const SPLAT_FORBIDDEN_ACTIONS = new Set<PreviewArmedAction["type"]>([
+  "releaseAssignedBeacon",
+  "modifyFlightPlan",
+  "toggleList",
+  "resizeList",
+  "armRelocateList",
+  "resetListPosition",
+  "armPerTrackPtl",
+  "displayFilters",
+  "setAltitudeFilterLimits",
+  "msawCurrentAlertInhibit",
+  "toggleMsawProcessing",
+  "setLeaderDir",
+  "resetLeaderDir",
+  "setLeaderLength",
+  "setLeaderDirAndLength",
+]);
+
+/** Parse Preview text only within the input family that created it. */
+export function parsePreviewCommandForOrigin(
+  buffer: string,
+  origin: "multiFunc" | "literalSplat" | null,
+  maps?: readonly LoadedVideoMap[],
+  layout?: VideoMapTokenLayout,
+): PreviewCommandResult {
+  const family = origin ?? (buffer.startsWith("*") ? "literalSplat" : null);
+  if (!family) return parsePreviewCommand(buffer, maps, layout);
+  const upper = buffer.toUpperCase().replace(/\s+/g, " ").trim();
+  if (family === "multiFunc") {
+    // F7's operands are deliberately closed to the shipped MULTI FUNC rows.
+    // Shared legacy parsers may also recognize literal-star trainer extensions.
+    const compact = upper.replace(/\s/g, "");
+    const singleToken =
+      /^(?:T(?:V|M|C|S|X|N)?(?:\d{1,3}|D)?|P[123]?(?:\d{1,3}|D)?|SD?|FC?\d{0,12}|Q|V|R|L[1-9].*)$/.test(
+        compact,
+      );
+    const planAction = /^(?:B|M)\s+.+$/.test(upper);
+    if (!singleToken && !planAction) {
+      return invalid("not a MULTI FUNC command");
+    }
+  } else {
+    if (!buffer.startsWith("*")) return invalid("not a literal splat command");
+    // These literal forms belong to the TPA/ATPA parser in starsChord.ts;
+    // keep the legacy Preview parser from stealing list/filter collisions.
+    if (/^\*(?:\*?J|\*?P(?:$|\s|\d)|D\+|(?:AE|AI|BE|BI|DE|DI)(?:$|\s))/.test(upper)) {
+      return { kind: "incomplete" };
+    }
+  }
+  const text = family === "multiFunc" ? `*${buffer}` : buffer;
+  const parsed = parsePreviewCommand(text, maps, layout);
+  if (parsed.kind !== "action") return parsed;
+  const literalTrainerExtension =
+    family === "literalSplat" &&
+    ((/^\*(?:[1-8]|0)$/.test(upper) &&
+      (parsed.action.type === "setLeaderDir" || parsed.action.type === "resetLeaderDir")) ||
+      (upper === "*" && parsed.action.type === "ackPointout") ||
+      (upper.startsWith("*LDR") && parsed.action.type === "setDefaultLeaderLength") ||
+      (upper.startsWith("*LA") && parsed.action.type === "setAltitudeFilterLimits"));
+  const allowed =
+    family === "multiFunc"
+      ? MULTI_FUNC_ACTIONS.has(parsed.action.type)
+      : literalTrainerExtension || !SPLAT_FORBIDDEN_ACTIONS.has(parsed.action.type);
+  return allowed ? parsed : invalid("wrong Preview input family");
+}
+
 /**
  * STARS preview alphabet: Multifunction `*`, Track `+`, Slew/Drop `/`,
  * alphanumerics, space, and TPA tenths `.`. Numpad `Multiply` / `Add` / digits

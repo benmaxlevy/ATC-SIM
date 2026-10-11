@@ -7,7 +7,7 @@ import {
   bindingById,
   isScopeChordLive,
 } from "../keymap";
-import { parsePreviewCommand } from "../previewParse";
+import { parsePreviewCommand, parsePreviewCommandForOrigin } from "../previewParse";
 import { parseStarsChord } from "../starsChord";
 
 const REQUIRED_BINDING_IDS = [
@@ -74,21 +74,21 @@ test("Help lists live Preview command forms", () => {
   const entries = HELP_COMMAND_GROUPS.flatMap((group) => group.entries);
   const entry = (id: string) => entries.find((item) => item.id === id);
 
-  expect(entry("force-fdb")?.command).toBe("*F / **F");
+  expect(entry("force-fdb")?.command).toBe("**F");
   expect(entry("slash")?.result).toBe("Starts a Preview Area slew or drop command.");
   expect(entry("leader-length")?.result).toBe("Sets the default leader length.");
-  expect(entry("maps-list")?.command).toBe("*TX");
-  expect(entry("alert-list")?.command).toBe("*TM");
-  expect(entry("ssa-list")?.command).toBe("*S");
+  expect(entry("maps-list")?.command).toBe("F7 TX");
+  expect(entry("alert-list")?.command).toBe("F7 TM");
+  expect(entry("ssa-list")?.command).toBe("F7 S");
   expect(
     entries.some((item) => item.command.includes("*ALL") || item.command.includes("*NONE")),
   ).toBe(false);
 
   for (const command of [
     "*FP AAL123",
-    "*M 14 5252",
+    "F7 M 14 5252",
     "*DEL14",
-    "*B UAL123",
+    "F7 B UAL123",
     "*C",
     "*OFF",
     "*RR10",
@@ -98,28 +98,31 @@ test("Help lists live Preview command forms", () => {
     "*HIST5",
     "*WX3",
     "*D DEM1_27",
-    "*F030180",
-    "*FC030180",
+    "F7 F030180",
+    "F7 FC030180",
     "*LA030180",
     "*BCN45",
-    "*T15",
-    "*P1",
-    "*TV",
-    "*TM",
-    "*TC",
-    "*TS",
-    "*TX",
-    "*TN",
-    "*S",
-    "*L8",
+    "F7 T15",
+    "F7 P1",
+    "F7 TV",
+    "F7 TM",
+    "F7 TC",
+    "F7 TS",
+    "F7 TX",
+    "F7 TN",
+    "F7 S",
+    "F7 L8",
     "*LDR4",
     "CA K 14",
-    "*Q",
-    "*V",
+    "F7 Q",
+    "F7 V",
     "*MCI",
     "B45",
   ]) {
-    expect(parsePreviewCommand(command), command).toMatchObject({ kind: "action" });
+    const parsed = command.startsWith("F7 ")
+      ? parsePreviewCommandForOrigin(command.slice(3), "multiFunc")
+      : parsePreviewCommand(command);
+    expect(parsed, command).toMatchObject({ kind: "action" });
   }
 
   expect(parseStarsChord("*F")).toMatchObject({

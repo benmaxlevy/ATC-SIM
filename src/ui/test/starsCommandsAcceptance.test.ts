@@ -98,7 +98,7 @@ test("AC3 — scope-focus * / alnum never leftover for the radio line", () => {
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  expect(leftoverKeys(["*", "T", "Enter"], view, world, "scope")).toBe("");
+  expect(leftoverKeys(["F7", "T", "Enter"], view, world, "scope")).toBe("");
   expect(view.systemLists.TAB.visible).toBe(true);
 
   const slash = createScopeView();

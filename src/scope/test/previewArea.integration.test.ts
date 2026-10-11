@@ -528,10 +528,10 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   const previewDefault = { x: view.systemLists.PREVIEW.x, y: view.systemLists.PREVIEW.y };
   const ssaDefault = { x: view.systemLists.SSA.x, y: view.systemLists.SSA.y };
 
-  typeKeys(view, world, ["*", "P"], "scope");
+  typeKeys(view, world, ["F7", "P"], "scope");
   expect(view.preview.phase).toBe("entry");
-  expect(formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed)).toBe("*P");
-  expect(paint(world, view).fillTexts.some((text) => text.text === "*P")).toBe(true);
+  expect(formatPreviewReadout(view.preview)).toBe("MULTI FUNC P");
+  expect(paint(world, view).fillTexts.some((text) => text.text === "MULTI FUNC P")).toBe(true);
 
   handlePpiLeftClick(view, world, 700, 600, CSS, CSS);
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.875);
@@ -542,10 +542,12 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   expect(view.preview.phase).toBe("idle");
 
   // A fresh command paints at the moved anchor and registers its hit frame there.
-  typeKeys(view, world, ["*", "P"], "scope", 100);
+  typeKeys(view, world, ["F7", "P"], "scope", 100);
   const movedPaint = paint(world, view);
   expect(
-    movedPaint.fillTexts.some((text) => text.text === "*P" && text.x === 700 && text.y === 600),
+    movedPaint.fillTexts.some(
+      (text) => text.text === "MULTI FUNC P" && text.x === 700 && text.y === 600,
+    ),
   ).toBe(true);
   expect(view.activeListRects?.find((rect) => rect.id === "PREVIEW")?.bounds).toMatchObject({
     x: 700,
@@ -556,14 +558,14 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.875);
   expect(view.systemLists.PREVIEW.y).toBeCloseTo(0.75);
 
-  typeKeys(view, world, ["*", "S"], "scope", 200);
+  typeKeys(view, world, ["F7", "S"], "scope", 200);
   handlePpiLeftClick(view, world, 100, 200, CSS, CSS);
   expect(view.systemLists.SSA.x).toBeCloseTo(0.125);
   expect(view.systemLists.SSA.y).toBeCloseTo(0.25);
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.875);
   expect(view.systemLists.PREVIEW.y).toBeCloseTo(0.75);
 
-  typeKeys(view, world, ["*", "P"], "scope", 400);
+  typeKeys(view, world, ["F7", "P"], "scope", 400);
   handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 500);
   expect(view.preview.phase).toBe("idle");
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.875);
@@ -577,7 +579,7 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   expect(view.systemLists.PREVIEW.y).toBeCloseTo(0.4375);
 
   // The legacy spaced keystroke remains accepted for relocation.
-  typeKeys(view, world, ["*", " ", "P"], "scope", 800);
+  typeKeys(view, world, ["F7", "P"], "scope", 800);
   handlePpiLeftClick(view, world, 300, 400, CSS, CSS);
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.375);
   expect(view.systemLists.PREVIEW.y).toBeCloseTo(0.5);
@@ -601,7 +603,7 @@ test("T02-54 — compact *P clears a target cone; *P3 slews a 3 NM cone while En
   expect(view.tracks.get(ac.id)!.tpaConeNm).toBe(3);
   expect(view.preview.phase).toBe("idle");
 
-  typeKeys(view, world, ["*", "P", "3", "Enter"], "scope", 400);
+  typeKeys(view, world, ["F7", "P", "3", "Enter"], "scope", 400);
   expect(view.systemLists.TOWER_3.visible).toBe(true);
   expect(view.starsChordArmed).toBeNull();
 });
@@ -809,7 +811,7 @@ test("T02-65 — *F readout, *LA bounds, *BCN □ paint; *B / idle F / B45 uncha
   const view = createScopeView();
   syncTrackDisplays(view.tracks, world);
 
-  typeKeys(view, world, ["*", "F", "Enter"], "scope");
+  typeKeys(view, world, ["F7", "F", "Enter"], "scope");
   expect(view.altitudeFilter).toEqual(DEFAULT_ALTITUDE_FILTER);
   expect(formatPreviewReadout(view.preview)).toBe("FILTER 000-180 U 000-180 A");
 
@@ -872,7 +874,7 @@ test("T02-148 — manual *F command commits both filter bands", () => {
   typeKeys(
     view,
     world,
-    ["*", "F", "0", "5", "0", "1", "2", "0", "0", "5", "0", "0", "9", "0", "Enter"],
+    ["F7", "F", "0", "5", "0", "1", "2", "0", "0", "5", "0", "0", "9", "0", "Enter"],
     "scope",
   );
 
@@ -901,9 +903,9 @@ test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and 
   const world = createWorld({ aircraft: [dal, aal] });
   const view = createScopeView();
 
-  typeKeys(view, world, ["*", "R", "Enter"], "scope");
+  typeKeys(view, world, ["F7", "R", "Enter"], "scope");
   expect(view.preview.armed).toEqual({ type: "armPerTrackPtl" });
-  expect(formatPreviewReadout(view.preview)).toBe("*R");
+  expect(formatPreviewReadout(view.preview)).toBe("F7 R");
 
   const miss = nmToScreen(0, 8, view.camera, VIEW);
   handlePpiLeftClick(view, world, miss.x, miss.y, CSS, CSS);
@@ -928,7 +930,7 @@ test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and 
   expect(view.ptlOn).toBe(true);
   expect(view.ptlByAircraftId.get(dal.id)).toBe(true);
 
-  typeKeys(view, world, ["*", "R", "Enter"], "scope", 500);
+  typeKeys(view, world, ["F7", "R", "Enter"], "scope", 500);
   handlePpiLeftClick(view, world, dalTick.x, dalTick.y, CSS, CSS);
   expect(view.ptlByAircraftId.get(dal.id)).toBe(false);
   expect(view.ptlOn).toBe(true);

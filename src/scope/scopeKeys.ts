@@ -8,8 +8,8 @@
  * history toggle; H only when the PPI is focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
  * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
- * buffer and undoes that Mode C tap. F7 always-on predicted track line (PTL)
- * toggle — even with the command line focused. F1 is INIT CNTL and F3 is
+ * buffer and undoes that Mode C tap. F10 always-on predicted track line (PTL)
+ * toggle — even with the command line focused. F7 starts MULTI FUNC Preview entry. F1 is INIT CNTL and F3 is
  * reserved for Track Suspend (not implemented yet); help uses `?` or the Help button;
  * Tab cycles radio ↔ PPI; `/` when scope-focused buffers into the Preview Area
  * (slew/drop prefix, not radio focus). Leader direction stays on the DCB or
@@ -68,6 +68,7 @@ import {
   applyPreviewWxAction,
   armPreviewCntl,
   armPreviewMinSep,
+  beginPreviewMultiFuncEntry,
   armPreviewRelocateList,
   armPreviewSlewAction,
   beginPreviewBeaconEntry,
@@ -391,7 +392,11 @@ function isCompetingTargetingKey(event: ScopeKeyEvent): boolean {
 
 /** Keep T02-49 `*` chords on starsChordEntry so slew-click and *J tests stay green. */
 function syncStarsChordMirror(view: ScopeView, nowMs: number): void {
-  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+  if (
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    view.preview.buffer.startsWith("*")
+  ) {
     view.starsChordEntry.phase = "entry";
     view.starsChordEntry.buffer = view.preview.buffer;
     view.starsChordEntry.lastKeyAtMs = nowMs;
@@ -411,6 +416,19 @@ function startPreviewBuffer(view: ScopeView, ch: string, nowMs: number): void {
   } else if (view.starsChordEntry.phase === "entry") {
     cancelStarsChordEntry(view.starsChordEntry);
   }
+}
+
+function startMultiFuncEntry(view: ScopeView, nowMs: number): void {
+  if (view.dcbSpinner.armed) {
+    cancelDcbSpinner(view);
+  }
+  cancelFilterEntry(view.filterEntry, view.altitudeFilter);
+  cancelDcbPrefSaveAs(view);
+  cancelPendingMinSepIfArmed(view);
+  view.pendingChord = null;
+  view.starsChordArmed = null;
+  cancelStarsChordEntry(view.starsChordEntry);
+  beginPreviewMultiFuncEntry(view.preview, nowMs);
 }
 
 function startFltDataEntry(view: ScopeView, nowMs: number): void {
@@ -1011,7 +1029,11 @@ function applyPreviewBufferOutcome(
     rejectStarsChordEntry(view.starsChordEntry, nowMs);
     return;
   }
-  if (view.preview.phase === "entry" && view.preview.buffer.startsWith("*")) {
+  if (
+    view.preview.phase === "entry" &&
+    view.preview.entryOrigin === "literalSplat" &&
+    view.preview.buffer.startsWith("*")
+  ) {
     syncStarsChordMirror(view, nowMs);
     return;
   }
@@ -1061,7 +1083,33 @@ export function handleScopeKeyDown(
     event.target instanceof HTMLElement &&
     event.target.id === "command-line-input" &&
     event.target.closest('[role="dialog"][aria-modal="true"]') === null;
-  if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput) {
+  const candidate =
+    event.target && typeof event.target === "object"
+      ? (event.target as { id?: string; closest?: (selector: string) => unknown })
+      : null;
+  const commandLineInput =
+    candidate?.id === RADIO_COMMAND_LINE_ID &&
+    typeof candidate.closest === "function" &&
+    candidate.closest('[role="dialog"][aria-modal="true"]') === null;
+  const hasNoControlModifiers = !event.ctrlKey && !event.altKey && !event.metaKey;
+  const radioPreviewKey =
+    commandLineInput &&
+    ((event.key === "F7" && !event.shiftKey && !event.altKey && !event.metaKey) ||
+      (view.preview.phase === "entry" &&
+        view.preview.entryOrigin === "multiFunc" &&
+        hasNoControlModifiers &&
+        (previewBufferCharFromKey(event.key, event.code) !== null ||
+          event.key === "Backspace" ||
+          event.key === "Enter" ||
+          event.key === "Escape")));
+  if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput && !radioPreviewKey) {
+    return false;
+  }
+  if (
+    event.key === "F7" &&
+    view.helpOpen &&
+    (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target))
+  ) {
     return false;
   }
   if (isHelpToggleKey(event)) {
@@ -1254,6 +1302,11 @@ export function handleScopeKeyDown(
     }
   }
 
+  // Modified F7 combinations retain native modifier ownership; plain F7 starts MULTI FUNC.
+  if (event.key === "F7" && (event.shiftKey || event.altKey || event.metaKey)) {
+    return false;
+  }
+
   // STARS Table 18: Ins / Insert -> <PREF SET>
   if (event.key === "Insert" || event.key === "Ins") {
     consume(event);
@@ -1303,15 +1356,9 @@ export function handleScopeKeyDown(
   }
 
   // STARS Table 18: F7 -> <MULTI FUNC>
-  if (event.key === "F7" && !event.ctrlKey) {
+  if (event.key === "F7" && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
     consume(event);
-    if (view.preview.phase === "entry") {
-      view.preview.buffer += "*";
-      view.preview.lastKeyAtMs = nowMs;
-      syncStarsChordMirror(view, nowMs);
-    } else {
-      startPreviewBuffer(view, "*", nowMs);
-    }
+    startMultiFuncEntry(view, nowMs);
     ui?.onHandled?.();
     return true;
   }
@@ -1366,7 +1413,8 @@ export function handleScopeKeyDown(
   if (event.key === "Escape") {
     view.f1DropArmed = false;
     view.stagedListAnchor = null;
-    const previewStar = view.preview.phase !== "idle" && view.preview.buffer.startsWith("*");
+    const previewStar =
+      view.preview.entryOrigin === "literalSplat" && view.preview.buffer.startsWith("*");
     if (handlePreviewEscape(view.preview)) {
       cancelDcbPrefSaveAs(view);
       if (previewStar) {
@@ -1402,9 +1450,9 @@ export function handleScopeKeyDown(
   // of the radio parser. Native modal controls return above and own their keys.
   if (
     focus !== "scope" &&
-    ui?.onOpenFlightPlanModal &&
     view.preview.phase === "entry" &&
-    view.preview.buffer.startsWith("*")
+    (view.preview.entryOrigin === "multiFunc" ||
+      (ui?.onOpenFlightPlanModal && view.preview.buffer.startsWith("*")))
   ) {
     const preview = handlePreviewBufferKey(
       view.preview,
