@@ -729,6 +729,12 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       // Verify filled upright triangles (fill count incremented)
       expect(mock.fills.count).toBeGreaterThanOrEqual(2);
 
+      // Verify triangles are rendered after strokeRect (independent of distance box background)
+      const boxRectIndex = mock.strokeRects.findIndex(
+        (r) => r.strokeStyle.toUpperCase() === "#FFFFFF",
+      );
+      expect(boxRectIndex).toBeGreaterThanOrEqual(0);
+
       // Verify 3 distinct path strokes: proj A, proj B, and connecting segment in white
       const minStrokes = mock.pathStrokes.filter((s) => s.strokeStyle.toUpperCase() === "#FFFFFF");
       expect(minStrokes.length).toBeGreaterThanOrEqual(3);

@@ -2562,11 +2562,7 @@ export function drawMinimumSeparation(
     ctx.lineTo(cpaB.x, cpaB.y);
     ctx.stroke();
 
-    // 4. Upright CPA triangle markers
-    drawUprightCpaTriangle(ctx, cpaA.x, cpaA.y);
-    drawUprightCpaTriangle(ctx, cpaB.x, cpaB.y);
-
-    // 5. Boxed distance readout and optional NO XING cue
+    // 4. Boxed distance readout and optional NO XING cue (drawn between the two triangles)
     const boxMetrics = calculateMinSepBoxMetrics(view, prediction);
     const nominalMidX = (cpaA.x + cpaB.x) / 2;
     const nominalMidY = (cpaA.y + cpaB.y) / 2;
@@ -2605,6 +2601,11 @@ export function drawMinimumSeparation(
     } else {
       ctx.fillText(boxMetrics.text1, clampedMid.x, clampedMid.y);
     }
+
+    // 5. Upright CPA triangle markers (painted independently on top of distance box and segment)
+    ctx.fillStyle = white;
+    drawUprightCpaTriangle(ctx, cpaA.x, cpaA.y);
+    drawUprightCpaTriangle(ctx, cpaB.x, cpaB.y);
   } finally {
     ctx.restore();
   }
