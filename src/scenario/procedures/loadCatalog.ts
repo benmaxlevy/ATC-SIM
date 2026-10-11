@@ -268,6 +268,20 @@ function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
               }
             }
           }
+          let runwayAliases: FmaGroupAdaptation["runwayAliases"];
+          if (item.runwayAliases !== undefined) {
+            if (!isRecord(item.runwayAliases))
+              throw new Error(`Catalog ${path}.runwayAliases must be an object`);
+            runwayAliases = {};
+            for (const [runwayId, values] of Object.entries(item.runwayAliases)) {
+              runwayAliases[runwayId.toUpperCase()] = assertArray(
+                values,
+                `${path}.runwayAliases.${runwayId}`,
+              ).map((value, j) =>
+                assertString(value, `${path}.runwayAliases.${runwayId}[${j}]`).trim().toUpperCase(),
+              );
+            }
+          }
           const groupId = assertString(item.id, `${path}.id`);
           if (!groupId.trim()) throw new Error(`Catalog ${path}.id must be non-empty`);
           return {
@@ -281,6 +295,7 @@ function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
             ...(strings(item.runwayIds, "runwayIds")
               ? { runwayIds: strings(item.runwayIds, "runwayIds") }
               : {}),
+            ...(runwayAliases ? { runwayAliases } : {}),
             ...(positive(item.captureLengthNm, "captureLengthNm") !== undefined
               ? { captureLengthNm: positive(item.captureLengthNm, "captureLengthNm") }
               : {}),

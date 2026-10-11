@@ -364,6 +364,23 @@ export {
   FMA_MONITORING_DEFAULTS,
 } from "./alerts/fmaGeometry";
 export type { FmaAmz, FmaDiagnostic, FmaMember, FmaNtz, FmaPolygon } from "./alerts/fmaGeometry";
+export {
+  createFmaAlertState,
+  evaluateFmaAlerts,
+  fmaPolygonContains,
+  fmaSegmentIntersectsPolygon,
+  resolveFmaRunwayAssignment,
+} from "./alerts/fma";
+export type {
+  FmaAlertEpisode,
+  FmaAlertEvaluation,
+  FmaAlertInhibit,
+  FmaAlertState,
+  FmaAlertTrackInput,
+  FmaAlertTrackResult,
+  FmaAssignment,
+  FmaPrimaryCondition,
+} from "./alerts/fma";
 
 export type {
   LocAxis,

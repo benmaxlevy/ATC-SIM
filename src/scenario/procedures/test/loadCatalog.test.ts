@@ -106,6 +106,7 @@ test("catalog-owned FMA overrides validate paths, finite geometry and positive m
       {
         id: "PARALLEL",
         approachIds: ["ILS27"],
+        runwayAliases: { "27": ["R27"] },
         ntzWidthFt: 2000,
         monitoring: { cautionHorizonS: 12 },
       },
@@ -114,6 +115,7 @@ test("catalog-owned FMA overrides validate paths, finite geometry and positive m
   expect(parseCatalogFiles(files).fmaOverrides?.groups?.[0]).toMatchObject({
     id: "PARALLEL",
     approachIds: ["ILS27"],
+    runwayAliases: { "27": ["R27"] },
     ntzWidthFt: 2000,
     monitoring: { cautionHorizonS: 12 },
   });

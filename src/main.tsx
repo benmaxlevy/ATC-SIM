@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { advanceWorld, createAccumulator, flightPlanForAircraft } from "@core";
+import { advanceWorld, createAccumulator, flightPlanForAircraft, deriveFmaAmzs } from "@core";
 import {
   createWorldForSession,
   loadPlayableScenario,
@@ -27,6 +27,7 @@ import {
   parseDigitalMap,
   pruneFmaSurveillanceView,
   startMetarPolling,
+  observeFmaAlertRuntime,
 } from "@scope";
 import {
   FPS_DEBUG_ID,
@@ -48,6 +49,9 @@ const sessionFallback = defaultSessionSetup(requestedScenario || undefined);
 const sessionDraft = loadSessionSetup(window.localStorage, sessionFallback);
 const sessionResolution = resolveSessionSetup(search, sessionFallback, sessionDraft);
 const scenario = loadPlayableScenario(sessionResolution.setup.scenarioId);
+const fmaGeometry = deriveFmaAmzs(scenario.catalog, {
+  excludeDerived: scenario.fma?.excludeDerivedGroups,
+});
 const spawnSeed = parseSpawnSeed(search);
 const departureQuery = parseDepartureOptions(search);
 const departureOptions = {
@@ -105,6 +109,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   arp: scenario.arp,
   ssaWeatherAirports: scenario.ssaWeatherAirports,
   towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,
+  fmaAmzs: fmaGeometry.amzs,
 });
 const stopMetarPolling = startMetarPolling(scopeView, {
   primaryIcao: scenario.icao,
@@ -166,17 +171,29 @@ function onFrame(nowMs: number): void {
   );
   pruneFmaSurveillanceView(scopeView, liveTrackIds, associatedTrackIds);
   if (lastFmaSimMs === null || handles.world.simTimeMs > lastFmaSimMs) {
+    const fmaReports = fmaReportsForSimulationTick(
+      scopeView,
+      [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
+    );
     advanceFmaSurveillanceView(scopeView, {
       nowSimMs: handles.world.simTimeMs,
-      reports: fmaReportsForSimulationTick(
-        scopeView,
-        [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
-      ),
+      reports: fmaReports,
       liveTrackIds,
       associatedTrackIds,
     });
     lastFmaSimMs = handles.world.simTimeMs;
   }
+  // Alert lifecycle pruning is clock-independent: pause must not preserve a
+  // deleted/disassociated track's episodes for a later re-association.
+  observeFmaAlertRuntime(
+    scopeView,
+    handles.world,
+    handles.world.simTimeMs,
+    fmaReportsForSimulationTick(
+      scopeView,
+      [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
+    ),
+  );
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
     hud.textContent = formatSimHud(handles.world);

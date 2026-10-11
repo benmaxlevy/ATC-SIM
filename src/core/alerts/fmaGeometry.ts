@@ -26,6 +26,7 @@ export interface FmaAmz {
   id: string;
   label: string;
   airportId: string;
+  runwayAliases: Record<string, string[]>;
   approachIds: string[];
   courseTrueDeg: number;
   members: FmaMember[];
@@ -326,6 +327,14 @@ function makeAmz(
     id,
     label: adaptation?.label ?? id,
     airportId: catalog.airportId,
+    runwayAliases: Object.fromEntries(
+      Object.entries(adaptation?.runwayAliases ?? {})
+        .filter(([runwayId]) => rows.some((r) => r.runwayId === runwayId.toUpperCase()))
+        .map(([runwayId, values]) => [
+          runwayId.toUpperCase(),
+          values.map((value) => value.toUpperCase()),
+        ]),
+    ),
     approachIds: rows.map((r) => r.approachId),
     courseTrueDeg: course,
     members,

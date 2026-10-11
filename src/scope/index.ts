@@ -405,6 +405,8 @@ export {
   setFmaSensorStatus,
   setFmaSensorFixture,
 } from "./fmaSurveillance";
+export { observeFmaAlertRuntime } from "./fmaAlerts";
+export { formatFmaAlertDiagnostic } from "./fmaAlerts";
 export type {
   FmaRetainedTrack,
   FmaSensorStatus,

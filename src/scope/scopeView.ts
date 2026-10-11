@@ -25,7 +25,15 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
-import type { LatLon, NmEastNorth } from "@core";
+import {
+  createFmaAlertState,
+  type FmaAlertInhibit,
+  type FmaAlertState,
+  type FmaAlertTrackResult,
+  type FmaAmz,
+  type LatLon,
+  type NmEastNorth,
+} from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -357,6 +365,13 @@ export interface ScopeView {
   radarSites: RadarSite[];
   /** Per-TCW FMA report retention. Separate from World alerts and SITE sampler. */
   fmaSurveillance: FmaSurveillanceState;
+  /** Per-TCW qualified alert episodes and read-only results; never World.alerts. */
+  fmaAlertState: FmaAlertState;
+  fmaAlertResults: Map<string, FmaAlertTrackResult>;
+  fmaAlertOutlines: Map<string, "RED" | "YELLOW">;
+  fmaAlertDiagnostics: string[];
+  fmaAmzs: FmaAmz[];
+  fmaAlertInhibit: FmaAlertInhibit;
   /**
    * STARS VIP 1–6 display latches. Default all false.
    * Display only. Paint is weatherLayer. Does not steer aircraft.
@@ -441,6 +456,7 @@ export function createScopeView(
     cursorHome?: boolean;
     cursorSpeed?: number;
     radarTilesetBoundaryNm?: readonly NmEastNorth[];
+    fmaAmzs?: readonly FmaAmz[];
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -549,6 +565,12 @@ export function createScopeView(
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
     fmaSurveillance: createFmaSurveillanceState(),
+    fmaAlertState: createFmaAlertState(),
+    fmaAlertResults: new Map(),
+    fmaAlertOutlines: new Map(),
+    fmaAlertDiagnostics: [],
+    fmaAmzs: options?.fmaAmzs ? [...options.fmaAmzs] : [],
+    fmaAlertInhibit: {},
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
@@ -635,6 +657,10 @@ export function configureFmaSurveillanceView(
     nextMonitoring,
   );
   if (view.fmaSurveillance !== previous) {
+    view.fmaAlertState = createFmaAlertState(selectedAmzId);
+    view.fmaAlertResults = new Map();
+    view.fmaAlertOutlines = new Map();
+    view.fmaAlertDiagnostics = [];
     for (const td of view.tracks.values()) delete td.presentationReport;
   }
 }
@@ -690,6 +716,10 @@ export function releaseFmaTracksView(view: ScopeView, aircraftIds: Iterable<stri
 
 export function clearFmaSurveillanceView(view: ScopeView): void {
   view.fmaSurveillance = clearFmaSurveillance(view.fmaSurveillance);
+  view.fmaAlertState = createFmaAlertState();
+  view.fmaAlertResults = new Map();
+  view.fmaAlertOutlines = new Map();
+  view.fmaAlertDiagnostics = [];
   for (const td of view.tracks.values()) delete td.presentationReport;
 }
 

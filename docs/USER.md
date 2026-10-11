@@ -902,3 +902,41 @@ alignment half-width, and 30 seconds maximum displayed PTL. These are trainer
 choices, not a published STARS adaptation algorithm or operational PRM
 qualification. Automatic SOIA geometry and visual-transition behavior are not
 included; offsets require explicit catalog adaptation.
+
+### Final Monitor Aid alert qualification
+
+Assignment and alignment are separate. A runway assignment is recognized only
+when scratchpad #1 or #2 contains an exact runway ID or a catalog-adapted
+`runwayAliases` value (case-insensitive). The datablock's automatic approach,
+altitude, and speed shorthand does not assign a runway. Two different
+recognized scratchpad values are reported as ambiguous; the trainer does not
+choose one or edit either scratchpad. No assignment can still qualify for a
+runway-error alert after an unambiguous observed runway stabilizes. Conflicting
+assignments appear in the existing Preview status readout as
+`FMA: CONFLICTING RUNWAY ASSIGNMENT`, below any active command readout.
+
+Observed runway uses report position and ground track. The default threshold is
+continuous valid reports for 10 seconds, within 3 degrees of course and 0.15
+NM cross-track. Report cadence tolerance is a trainer policy of max(2 seconds,
+1.5× the authored surveillance interval), so a healthy 4.8-second SITE feed
+can stabilize. Reports must show positive inbound ground speed; a stationary
+report cannot establish inbound alignment, and a zero-speed report resets the
+interval. This adds no minimum speed threshold. Missing, invalid, or misaligned
+reports also reset the interval.
+These values and the straight-line 10-second NTZ caution projection are local
+trainer policies; the manual does not publish the prediction or stabilization
+algorithm.
+
+The supplied TI 6191.409 Rev30 §2.16.4 (pp. 2-107–108) gives the primary order:
+NTZ warning, surveillance lost, runway error, NTZ caution. Warning requires a
+report in the assigned runway's NOZ before entering an enabled adjacent NTZ.
+CST requires a runway assignment with at least one enabled adjacent NTZ. NOM
+is supplementary, does not occupy a primary precedence tier, and has no aural
+indication. NTZ inhibition suppresses primary conditions qualified through the
+disabled zones; when every NTZ is disabled, primary conditions are suppressed
+but NOM remains as supplementary source status. Track inhibition suppresses
+NOM and all local FMA conditions. CST adjacency follows the assigned runway;
+RWY adjacency follows the stabilized observed runway. Reassignment changes
+the affected runway evidence and starts a new alert episode. Track and NTZ
+inhibit state is local to that TCW and does not change aircraft, flight plans,
+association, intent, or global alerts.

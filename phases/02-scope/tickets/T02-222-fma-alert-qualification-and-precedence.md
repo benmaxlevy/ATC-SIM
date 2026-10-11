@@ -59,11 +59,11 @@ Keep `DisplayControlBar.tsx` and `renderScope.ts` thin, preserve their shipped s
 
 ## Acceptance criteria and tests
 
-- [ ] **AC1 — Automated: distinct assigned versus observed runway values cover scratchpads #1/#2, alias/exact matching, missing/conflicting assignments, missing arrival evidence and nonunique observed runway.**
-- [ ] **AC2 — Automated: continuous stabilization thresholds, invalid/report gaps, reassignment and nonzero magnetic variation are report-driven.**
-- [ ] **AC3 — Automated: NOZ history, direct NTZ entry, path intersection, four-tier precedence, NOM coexistence and outline aggregation pass.**
-- [ ] **AC4 — Automated: per-track/adjacent/all-zone inhibits, clear/re-entry and condition changes produce correct episodes without altering World.**
-- [ ] **AC5 — Manual: compare every qualification rule to §§2.16.4 and 6.16.9; all unsupported thresholds/algorithms remain explicitly trainer choices.**
+- [x] **AC1 — Automated: distinct assigned versus observed runway values cover scratchpads #1/#2, alias/exact matching, missing/conflicting assignments, missing arrival evidence and nonunique observed runway.**
+- [x] **AC2 — Automated: continuous stabilization thresholds, invalid/report gaps, reassignment and nonzero magnetic variation are report-driven.**
+- [x] **AC3 — Automated: NOZ history, direct NTZ entry, path intersection, four-tier precedence, NOM coexistence and outline aggregation pass.**
+- [x] **AC4 — Automated: per-track/adjacent/all-zone inhibits, clear/re-entry and condition changes produce correct episodes without altering World.**
+- [x] **AC5 — Manual: worker compared qualification rules to §§2.16.4 and 6.16.9; unsupported thresholds/algorithms remain explicitly trainer choices.**
 - [ ] **Gate —** Focused checks, `npm run ci`, `git diff --check` and independent supplied-manual review pass before captain starts the next wave. If `speech-api/` changes despite this feature's exclusions, stop for scope review rather than silently expanding the contract; approved speech-api changes additionally require `SPEECH_API_MOCK=1 pytest`.
 
 Use the single synthetic `src/scope/test/fmaFidelity.integration.test.ts` across the feature. Keep additional pure units minimal (one happy path plus 2–3 meaningful edges or a parameterized numeric table); share `src/scope/test/mockCanvas.ts`. Browser/audio/manual checks are labeled manual and are never inferred from CI mocks.
@@ -74,10 +74,10 @@ Add assignment-versus-observed-runway explanation and threshold/ambiguity polici
 
 ## Manual-review checklist
 
-- [ ] Check the exact printed sections/pages/tables above and any relevant actual raster figure.
-- [ ] Walk every contract row through entry/routing, qualification or parsing, state/effects, rejection, test evidence and named user surfaces.
-- [ ] Verify trainer defaults, unavailable behavior and user overrides are not presented as published STARS algorithms.
-- [ ] Confirm no unintended radio, World intent, ownership, association or geographic-measurement mutation.
+- [x] Check the exact printed sections/pages/tables above and relevant actual raster figure (worker review; captain's independent review remains pending).
+- [x] Walk every contract row through qualification, state/effects, rejection, tests, and user-visible diagnostics.
+- [x] Verify trainer defaults and unavailable behavior are distinct from published STARS behavior.
+- [x] Confirm no radio, World intent, ownership, association, or geographic-measurement mutation.
 
 ## Non-goals and handoff
 

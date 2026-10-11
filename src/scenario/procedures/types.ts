@@ -204,6 +204,8 @@ export interface FmaGroupAdaptation {
   label?: string;
   approachIds?: string[];
   runwayIds?: string[];
+  /** Exact scratchpad runway aliases by canonical runway id; values are case-insensitive. */
+  runwayAliases?: Record<string, string[]>;
   captureLengthNm?: number;
   ntzWidthFt?: number;
   outerMarginNm?: number;

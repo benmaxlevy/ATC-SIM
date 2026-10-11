@@ -52,6 +52,7 @@ import { historyDotsToDraw } from "../history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack, PTL_STROKE_PX } from "../ptl";
 import { isViewOffAirport, type ScopeView } from "../scopeView";
 import { formatPreviewDisplayReadout as formatPreviewReadout } from "../previewDisplayLabels";
+import { formatFmaAlertDiagnostic } from "../fmaAlerts";
 import { formatStarsChordReadout } from "../starsChord";
 import {
   atpaConeMileagePlacement,
@@ -2264,7 +2265,8 @@ export function drawChordHint(
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const preview = formatPreviewReadout(view.preview);
   const hint = view.pendingChord?.hint;
-  if (!stars && !preview && !hint) {
+  const fmaDiagnostic = formatFmaAlertDiagnostic(view.fmaAlertDiagnostics);
+  if (!stars && !preview && !hint && !fmaDiagnostic) {
     return;
   }
   const placement = view.systemLists?.PREVIEW ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.PREVIEW;
@@ -2279,19 +2281,22 @@ export function drawChordHint(
   if (stars) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(stars, x, y);
-    return;
-  }
-  if (preview) {
+  } else if (preview) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     const lines = preview.split("\n");
     const lineH = datablockLineHeightPx(view.charSizes.lists);
     for (let i = 0; i < lines.length; i++) {
       ctx.fillText(lines[i]!, x, y + i * lineH);
     }
-    return;
+  } else if (hint) {
+    ctx.fillStyle = PALETTE.uiChrome;
+    ctx.fillText(hint, x, y);
   }
-  ctx.fillStyle = PALETTE.uiChrome;
-  ctx.fillText(hint ?? "", x, y);
+  if (fmaDiagnostic) {
+    const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(fmaDiagnostic, x, y + occupiedLines * datablockLineHeightPx(view.charSizes.lists));
+  }
 }
 
 /**

@@ -1012,3 +1012,46 @@ straight-line trainer coast, not a proprietary tracking filter or live sensor
 health service. Outside FMA, the shipped FUSED / MULTI / single-site sampler
 still removes reports immediately when the selected coverage is lost and does
 not coast.
+
+## Final Monitor Aid qualification and precedence (T02-222)
+
+Raytheon TI 6191.409 Rev30 §2.16.4 (pp. 2-107–108, PDF 163–164) states that
+only tracked associated targets in the AMZ are processed. Its primary order is
+NTZ Warning, Surveillance Lost, Runway Error, then NTZ Caution. A warning needs
+prior detection in the NOZ for the assigned runway before an NTZ entry. Runway
+assignment is shown in scratchpad #1 or #2; NOM is supplementary and has no
+aural indication. §6.16.5 (pp. 6-133–134, PDF 663–664) identifies those
+scratchpad locations, and §6.16.9 (pp. 6-138–139, PDF 668–669) describes
+per-zone adjacency inhibition.
+
+Trainer assignment uses only exact case-normalized runway IDs and explicitly
+adapted `fmaOverrides.groups[].runwayAliases`; automatic approach/altitude/
+speed scratchpad derivation is excluded. Conflicting recognized scratchpads
+remain ambiguous and do not guess; they appear in the existing Preview status
+readout as `FMA: CONFLICTING RUNWAY ASSIGNMENT`, below any active command.
+Observed runway alignment is separately
+computed from report ground track and position. The default trainer threshold
+is 10 seconds within 3 degrees and 0.15 NM, with continuous valid reports.
+Reports must have positive inbound ground speed; a stationary report cannot
+establish inbound alignment and resets continuous stabilization. This is a
+qualification input, not an invented minimum speed.
+Continuity allows a report interval up to max(2 seconds, 1.5 times the
+currently authored surveillance cadence); this cadence tolerance is a trainer
+choice so a 4.8-second SITE feed can qualify. A malformed report, alignment
+change, or longer gap resets stabilization. No hidden World pose advances
+qualification. Caution uses a 10-second report-based straight-line path and
+segment/NTZ intersection; this is not a published STARS predictor.
+
+No runway assignment or ambiguous assignment cannot produce an invented
+runway mismatch. A stabilized arrival with no recognized assignment may
+produce RWY. CST requires a recognized assignment and an enabled adjacent
+NTZ; CST adjacency follows the assigned runway, while RWY adjacency follows
+the stabilized observed runway. Disabling all NTZs suppresses primary
+conditions, but NOM remains supplementary because it is a sensor-status
+indicator rather than a zone condition. Track inhibition removes local FMA
+conditions, NOM, and NOZ history. Condition episodes identify their
+qualifying assigned/observed runway so reassignment starts a new episode.
+These conditions, local episodes, diagnostics, and outline severity live on a
+TCW `ScopeView`, never in global World alerts or aircraft/plan/association/
+intent state. Mode controls and datablock rendering are owned by later FMA
+tickets.
