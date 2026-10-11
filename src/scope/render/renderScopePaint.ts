@@ -50,7 +50,7 @@ import { type MapCache } from "../mapLayers";
 import { historyDotsToDraw } from "../history";
 import { drawPredictedTrackLine, ptlEndpoint, shouldDrawPtlForTrack, PTL_STROKE_PX } from "../ptl";
 import { isViewOffAirport, type ScopeView } from "../scopeView";
-import { formatPreviewReadout } from "../previewArea";
+import { formatPreviewDisplayReadout as formatPreviewReadout } from "../previewDisplayLabels";
 import { formatStarsChordReadout } from "../starsChord";
 import {
   atpaConeMileagePlacement,

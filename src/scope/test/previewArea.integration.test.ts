@@ -259,7 +259,7 @@ test("AC1 — F1 without an identity rejects an unqualified click", () => {
   expect(formatPreviewReadout(view.preview)).toBe("INIT CNTL");
   expect(formatPreviewReadout(view.preview)).not.toBe("F3");
   const armedPaint = paint(world, view);
-  expect(armedPaint.fillTexts.some((t) => t.text === "INIT CNTL")).toBe(true);
+  expect(armedPaint.fillTexts.some((t) => t.text === "IC")).toBe(true);
   expect(armedPaint.fillTexts.some((t) => t.text === "F3")).toBe(false);
 
   handlePpiLeftClick(view, world, 10, 10, CSS, CSS);
@@ -374,7 +374,7 @@ test("AC2 — F4 slew drops; implied select-then-F4 still drops", () => {
   expect(formatPreviewReadout(view.preview)).toBe("TERM CNTL");
   expect(formatPreviewReadout(view.preview)).not.toBe("F4");
   const termPaint = paint(world, view);
-  expect(termPaint.fillTexts.some((t) => t.text === "TERM CNTL")).toBe(true);
+  expect(termPaint.fillTexts.some((t) => t.text === "TC")).toBe(true);
   expect(termPaint.fillTexts.some((t) => t.text === "F4")).toBe(false);
 
   handlePpiLeftClick(view, world, 10, 10, CSS, CSS);
@@ -531,7 +531,7 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   typeKeys(view, world, ["F7", "P"], "scope");
   expect(view.preview.phase).toBe("entry");
   expect(formatPreviewReadout(view.preview)).toBe("MULTI FUNC P");
-  expect(paint(world, view).fillTexts.some((text) => text.text === "MULTI FUNC P")).toBe(true);
+  expect(paint(world, view).fillTexts.some((text) => text.text === "F P")).toBe(true);
 
   handlePpiLeftClick(view, world, 700, 600, CSS, CSS);
   expect(view.systemLists.PREVIEW.x).toBeCloseTo(0.875);
@@ -545,9 +545,7 @@ test("T02-54 — compact *P relocates Preview on empty scope click and leaves SS
   typeKeys(view, world, ["F7", "P"], "scope", 100);
   const movedPaint = paint(world, view);
   expect(
-    movedPaint.fillTexts.some(
-      (text) => text.text === "MULTI FUNC P" && text.x === 700 && text.y === 600,
-    ),
+    movedPaint.fillTexts.some((text) => text.text === "F P" && text.x === 700 && text.y === 600),
   ).toBe(true);
   expect(view.activeListRects?.find((rect) => rect.id === "PREVIEW")?.bounds).toMatchObject({
     x: 700,
@@ -635,7 +633,7 @@ test("T02-168 — F6 FLT DATA paints command mode and creates only a local recor
 
   typeKeys(view, world, ["F6"], "radio");
   expect(formatPreviewReadout(view.preview)).toBe("FLT DATA");
-  expect(paint(world, view).fillTexts.some((item) => item.text === "FLT DATA")).toBe(true);
+  expect(paint(world, view).fillTexts.some((item) => item.text === "DA")).toBe(true);
   typeKeys(
     view,
     world,
@@ -695,6 +693,39 @@ test("T02-168 — F6 FLT DATA paints command mode and creates only a local recor
   expect({ xNm: aircraft.xNm, yNm: aircraft.yNm }).toEqual(positionBefore);
   expect(log.byType("command.accepted")).toHaveLength(0);
   expect(formatPreviewReadout(view.preview)).toBeNull();
+});
+
+test("Table D-1 display labels abbreviate known state mnemonics and preserve typed text", () => {
+  const world = createWorld();
+  const view = createScopeView();
+
+  typeKeys(view, world, ["F9"], "scope");
+  expect(view.preview.mnemonic).toBe("VFR DATA");
+  expect(paint(world, view).fillTexts.some((item) => item.text === "VP")).toBe(true);
+
+  handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 100);
+  for (const [mnemonic, display] of [
+    ["F7 L8", "F L8"],
+    ["F7 L8 DAL123", "F L8 DAL123"],
+  ]) {
+    Object.assign(view.preview, {
+      phase: "armed",
+      mnemonic,
+      buffer: "",
+      entryOrigin: null,
+      flid: null,
+      rejection: null,
+      armed: { type: "setLeaderDir", dir: 8 },
+    });
+    expect(view.preview.mnemonic).toBe(mnemonic);
+    expect(formatPreviewReadout(view.preview)).toBe(mnemonic);
+    expect(paint(world, view).fillTexts.some((item) => item.text === display)).toBe(true);
+  }
+
+  handleScopeKeyDown(keyEvent("Escape"), view, "scope", world, 600);
+  typeKeys(view, world, ["I", "N", "I", "T", " ", "C", "N", "T", "L"], "scope", 700);
+  expect(view.preview.mnemonic).toBe("");
+  expect(paint(world, view).fillTexts.some((item) => item.text === "INIT CNTL")).toBe(true);
 });
 
 test("T02-64 — *C Enter then PPI click recenters; *OFF resets to KDEM ARP", () => {
@@ -906,6 +937,7 @@ test("T02-74 — *R Enter plus click toggles one track; miss keeps arm; *RR and 
   typeKeys(view, world, ["F7", "R", "Enter"], "scope");
   expect(view.preview.armed).toEqual({ type: "armPerTrackPtl" });
   expect(formatPreviewReadout(view.preview)).toBe("F7 R");
+  expect(paint(world, view).fillTexts.some((text) => text.text === "F R")).toBe(true);
 
   const miss = nmToScreen(0, 8, view.camera, VIEW);
   handlePpiLeftClick(view, world, miss.x, miss.y, CSS, CSS);
