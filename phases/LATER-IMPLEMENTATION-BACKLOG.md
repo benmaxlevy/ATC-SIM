@@ -335,18 +335,6 @@ helpers and the appropriate surveillance display state. This is a horizontal
 measurement aid, not a replacement for CA or a claim of safe vertical separation.
 
 
-### Dynamic range-bearing lines
-
-Visible now: range rings, scope range, and PTLs work. RBL model (T02-208) and literal `*T`
-input/removal workflow with exact resolution precedence and errors (T02-209) work.
-
-Missing: line graphics and visual rendering on canvas (T02-210).
-
-Constraints later work must keep: scope-only measurement, no route/intent
-changes; generic fix lookup and stable track identity; explicit cleanup of
-missing endpoints. MULTI FUNC system-list operands now belong to F7; literal `*T` belongs
-to range-bearing lines. Future graphics work must preserve model and input contracts.
-
 ### Controller-created restriction areas and annotations
 
 Visible now: catalog video maps and their authored labels render. Procedure

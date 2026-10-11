@@ -88,26 +88,36 @@ claim. Do not create future backlog entries for excluded modes or undisclosed
 proprietary algorithms. State optional tileset/unbounded-plane, ID/rounding,
 zero-speed, error metadata, and lifecycle trainer choices plainly.
 
-- [ ] Automated: extend the sole `rangeBearingLines.integration.test.ts` through
+- [x] Automated: extend the sole `rangeBearingLines.integration.test.ts` through
       key entry -> endpoint selection -> report changes -> Canvas paint ->
       individual/all deletion. Reuse `src/scope/test/mockCanvas.ts`.
-- [ ] Automated: 1–9 lines, all endpoint combinations, orientation/readout,
+- [x] Automated: 1–9 lines, all endpoint combinations, orientation/readout,
       magVar applied once, traversal omission, overflow/zero speed and prescribed
       range cadence appear correctly in painted output.
-- [ ] Automated: labels at every edge/corner, camera range/pan, offscreen tracks,
+- [x] Automated: labels at every edge/corner, camera range/pan, offscreen tracks,
       authored tileset 777, TOOLS/TLS off, and datablock protected geometry.
-- [ ] Automated: explicit drop/despawn/report loss, failed replacement, session
+- [x] Automated: explicit drop/despawn/report loss, failed replacement, session
       reset, PREF exclusion, and coexistence with MIN/F7 lists/TPA preserve the
       named state boundaries. No World/plan/intent/selection side effects.
-- [ ] Manual-source review: compare every contract row and actual Figure 6-6
+- [x] Manual-source review: compare every contract row and actual Figure 6-6
       raster, color/settings references, and all user-facing help examples.
-- [ ] Manual-browser check: demonstrate click/click, typed/mixed endpoints,
+- [ ] Manual-browser check (UNRUN): demonstrate click/click, typed/mixed endpoints,
       nine lines, moving/offscreen endpoint edge labels, single/all deletion,
       errors and MIN/list/TPA coexistence. Save evidence outside tracked files;
       record unrun checks honestly if no browser is available.
-- [ ] Gate: focused acceptance, npm run ci, git diff --check, and independent
-      supplied-manual review pass. Captain records actual browser leftovers and
-      returns PHASE EXIT GREEN or PHASE EXIT BLOCKED, then stops.
+- [x] Gate: focused acceptance, `npm run ci`, and `git diff --check` pass.
+      Captain's independent supplied-manual review remains a post-merge gate;
+      browser work remains unrun because the browser was unavailable.
+
+Worker manual-source review: PDF 585–586 §§6.7–6.8 confirms the endpoint forms,
+readout, range cadence, edge retention, tileset `777`, and deletion behavior;
+the opened PDF 587 raster shows the plain thin line and unboxed `078/5.14/3-1`
+readout. PDF 257 names TOOLS for RBL size, PDF 284 names TLS for RBL brightness,
+and PDF 932 sets default RBL color white. No annotation arrows, figure frame,
+endpoint markers, or MIN graphics were used as RBL scope graphics.
+
+Manual browser check remains unrun: no browser surface was available in the
+worker environment. No live visual result is claimed.
 
 ## Non-goals and handoff
 

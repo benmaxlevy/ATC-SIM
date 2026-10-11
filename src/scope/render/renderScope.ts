@@ -47,6 +47,7 @@ import {
   drawMapLayers,
   drawMapLists,
   drawMinimumSeparation,
+  drawRangeBearingLines,
   drawSsa,
   drawSystemLists,
   drawTracks,
@@ -82,6 +83,7 @@ export function renderScope(
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
   drawMapLayers(ctx, view.mapCache, view);
   drawMinimumSeparation(ctx, world, view, size);
+  drawRangeBearingLines(ctx, world, view, size);
   drawTracks(ctx, world, view, size);
 
   const ssaInfo = drawSsa(ctx, world, view, cssWidth, cssHeight);

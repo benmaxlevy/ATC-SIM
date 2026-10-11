@@ -380,6 +380,7 @@ export {
   DEFAULT_DWELL_MODE,
   DEFAULT_HISTORY_RATE_SEC,
   DEFAULT_CURSOR_SPEED,
+  resetRangeBearingSession,
 } from "./scopeView";
 export type { MapLayerId, ScopeView, VolLevel, ModeFsl, DwellMode } from "./scopeView";
 export {

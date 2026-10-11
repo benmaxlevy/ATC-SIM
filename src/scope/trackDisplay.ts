@@ -30,6 +30,12 @@ import type { RadarSite } from "@scenario";
 import { DEFAULT_LEADER_DIR, type LeaderDir } from "./leader";
 import { applyDropTrack, applyInitiateTrack, NO_SEL_HINT, type TrackOwnership } from "./ownership";
 import { pruneMinSepTrack, type MinSepState } from "./minimumSeparation";
+import {
+  onRblSurveillanceReport,
+  pruneRblsWithoutUsableReports,
+  removeRblsForTrack,
+  type RangeBearingLineState,
+} from "./rangeBearingLines";
 
 /** Display IDENT window (~2 s sim) for datablock "ID" text. Symbol does not flash. */
 export const IDENT_DISPLAY_FLASH_MS = 2000;
@@ -157,6 +163,8 @@ export interface TrackDisplayState {
   caControllerOwnedPairsInhibited?: boolean;
   /** Minimum-Separation session state. Cleaned up when track drops or despawns. */
   minSep?: MinSepState;
+  /** Session RBLs attached to displayed track reports. */
+  rbl?: RangeBearingLineState;
 }
 
 export function createTrackDisplayState(
@@ -255,6 +263,7 @@ export function pruneCaPairInhibitsForTrack(
   if (state.minSep) {
     pruneMinSepTrack(state.minSep, trackIdOrCallsign);
   }
+  if (state.rbl) removeRblsForTrack(state.rbl, trackIdOrCallsign);
 }
 
 export type AlertVisualStatus = "none" | "alert" | "acknowledged" | "inhibited";
@@ -1032,6 +1041,7 @@ export function syncTrackDisplays(
   for (const id of [...tracks.keys()]) {
     if (!living.has(id)) {
       tracks.delete(id);
+      if (caState?.rbl) removeRblsForTrack(caState.rbl, id);
       if (caState) {
         pruneCaPairInhibitsForTrack(caState, id);
       }
@@ -1125,6 +1135,7 @@ export function syncTrackDisplays(
       }
     } else {
       delete td.lastReport;
+      if (caState?.rbl) removeRblsForTrack(caState.rbl, ac.id);
       if (caState?.minSep) {
         pruneMinSepTrack(caState.minSep, ac.id);
       }
@@ -1140,5 +1151,18 @@ export function syncTrackDisplays(
       td.outboundFlashUntilSimMs =
         (ho.acceptedAtSimMs ?? world.simTimeMs) + OUTBOUND_ACCEPTED_FLASH_MS;
     }
+  }
+  // RBL range cadence consumes issued report events only. Assign every new
+  // report first so two-track lines never mix one new pose with one stale pose.
+  if (caState?.rbl) {
+    for (const id of issued) {
+      onRblSurveillanceReport(
+        caState.rbl,
+        id,
+        tracks,
+        tracks.get(id)?.lastReport?.reportedAtSimMs ?? world.simTimeMs,
+      );
+    }
+    pruneRblsWithoutUsableReports(caState.rbl, tracks);
   }
 }

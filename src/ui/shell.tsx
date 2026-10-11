@@ -41,7 +41,7 @@ import {
   focusRadioCommandLine,
   clearMinSepState,
   clearPerTrackPtl,
-  clearRangeBearingLines,
+  resetRangeBearingSession,
   parseDigitalMap,
   applyRadarSites,
   applyRadarTilesetBoundary,
@@ -537,7 +537,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           scopeView.tracks.clear();
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
-          clearRangeBearingLines(scopeView.rbl);
+          resetRangeBearingSession(scopeView);
           scopeView.giTextLines = nextScenario.giTextLines;
           scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
           // Session apply uses the same generic site bind as boot (T02-77).

@@ -886,8 +886,16 @@ and sized with TOOLS character size.
 
 Bounded session collection of up to nine numbered Range-Bearing Lines (`1`–`9`),
 readout formatting (`BBB/RR.RR[/M]-ID`), magnetic variation conversion, report-driven
-range smoothing cadence, literal splat `*T` input and removal workflows, exact resolution
-precedence (fix over ACID), capacity and duplicate error handling, and line graphics (T02-210).
+range smoothing cadence, literal splat `*T` input/removal, exact resolution precedence
+(fix over ACID), capacity/duplicate handling, and thin white lines with unboxed readouts.
+TOOLS sets readout size; TLS sets line/text brightness and off hides paint/obstacles.
+An optional generic authored tileset polygon produces bearing `777` outside its boundary;
+omission means an unbounded trainer plane. Track endpoints use displayed reports, remain
+attached while offscreen, and are removed on explicit drop, despawn, or missing/invalid
+reports. Lines are session-only and protected from datablock placement only while visible.
+Trainer choices: IDs reuse the lowest free slot 1–9; bearing/minutes round to nearest;
+zero-speed traversal uses `**` except coincident endpoints (`0`); no proprietary smoothing
+algorithm is claimed.
 
 T02-209 creation starts with `*T`, then selects endpoint 1 by click, a 3–7
 character catalog fix (`*TFIX Enter`), or a track (`*T SPACE ACID/BCN Enter`).
@@ -903,7 +911,7 @@ F7 `T/TV/TM/TC/TS/TX/TN` remains MULTI FUNC list input.
 | [T02-207](tickets/T02-207-multi-func-and-splat-separation.md) | MULTI FUNC and splat separation | P1 | M | none | Shipped |
 | [T02-208](tickets/T02-208-range-bearing-model-and-readouts.md) | Range-bearing model and readouts | P1 | M | T02-207 | Shipped |
 | [T02-209](tickets/T02-209-range-bearing-input-and-removal.md) | Range-bearing input and removal | P1 | L | T02-208 | Implemented |
-| [T02-210](tickets/T02-210-range-bearing-graphics-and-acceptance.md) | Range-bearing graphics and acceptance | P1 | M | T02-209 | Pending |
+| [T02-210](tickets/T02-210-range-bearing-graphics-and-acceptance.md) | Range-bearing graphics and acceptance | P1 | M | T02-209 | Shipped |
 
 ## Launching an agent
 

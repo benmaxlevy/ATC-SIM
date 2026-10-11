@@ -33,7 +33,7 @@ import {
   type AltitudeFilter,
   type FilterEntry,
 } from "./altitudeFilter";
-import { idlePreviewArea, type PreviewAreaState } from "./previewArea";
+import { cancelPreviewArea, idlePreviewArea, type PreviewAreaState } from "./previewArea";
 import { idleStarsChordEntry, type StarsChordAction, type StarsChordEntry } from "./starsChord";
 import {
   AIRPORT_REF_EAST_NM,
@@ -85,6 +85,7 @@ import {
 } from "./tpa";
 import { createMinSepState, type MinSepState } from "./minimumSeparation";
 import {
+  clearRangeBearingLines,
   createRangeBearingLineState,
   setRblRadarTilesetBoundary,
   type RangeBearingLineState,
@@ -557,6 +558,12 @@ export function applyRadarTilesetBoundary(
   boundary?: readonly NmEastNorth[],
 ): void {
   setRblRadarTilesetBoundary(view.rbl, boundary);
+}
+
+/** Session replacement clears RBL graphics and stale Preview errors/actions, including empty sessions. */
+export function resetRangeBearingSession(view: ScopeView): void {
+  clearRangeBearingLines(view.rbl);
+  cancelPreviewArea(view.preview);
 }
 
 /**

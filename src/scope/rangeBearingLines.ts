@@ -296,6 +296,33 @@ export function removeRangeBearingLine(state: RangeBearingLineState, id: number)
   return state.lines.delete(id);
 }
 
+/** Remove only active RBLs that refer to this explicitly lost/dropped track. */
+export function removeRblsForTrack(state: RangeBearingLineState, aircraftId: string): void {
+  for (const [id, line] of state.lines) {
+    if (
+      (line.endpoint1.kind === "track" && line.endpoint1.aircraftId === aircraftId) ||
+      (line.endpoint2.kind === "track" && line.endpoint2.aircraftId === aircraftId)
+    ) {
+      state.lines.delete(id);
+    }
+  }
+}
+
+/** Prune active lines with a missing/non-finite track report; retain pending entry for NO FLIGHT validation. */
+export function pruneRblsWithoutUsableReports(
+  state: RangeBearingLineState,
+  tracks: Map<string, { lastReport?: SurveillanceReport }>,
+): void {
+  for (const [id, line] of state.lines) {
+    const invalid = [line.endpoint1, line.endpoint2].some(
+      (endpoint) =>
+        endpoint.kind === "track" &&
+        !isUsableRblReport(tracks.get(endpoint.aircraftId)?.lastReport),
+    );
+    if (invalid) state.lines.delete(id);
+  }
+}
+
 /**
  * Apply the STARS report-driven range cadence logic for a single line:
  * - Any range decrease updates immediately.
@@ -518,6 +545,7 @@ export function onRblSurveillanceReport(
     const pose1 = resolveRblEndpointPose(line.endpoint1, tracks);
     const pose2 = resolveRblEndpointPose(line.endpoint2, tracks);
     if (!pose1 || !pose2) {
+      state.lines.delete(line.id);
       continue;
     }
 

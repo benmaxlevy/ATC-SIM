@@ -129,6 +129,7 @@ import {
 } from "../systemLists";
 import { buildVideoMapsListLines, getVideoMapsEntries } from "../coordinationList";
 import { resolveActiveMinSep } from "../minimumSeparation";
+import { calculateRblReadout } from "../rangeBearingLines";
 
 /** CA severity after track and pair inhibits, preserving other active pairs. */
 function caSeverityForVisibleTrack(view: ScopeView, world: World, callsign: string) {
@@ -164,8 +165,23 @@ export function collectDatablockProtectedGeometry(
   world: World,
   view: ScopeView,
   size: ScopeViewSize,
+  ctx?: CanvasRenderingContext2D,
 ): ProtectedGeometry[] {
   const out: ProtectedGeometry[] = [];
+  const tls = view.brite.tls ?? 100;
+  if (tls > 0 && ctx) {
+    for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
+      out.push({ kind: "rect", aircraftId: `rbl:${layout.id}`, rect: layout.textRect });
+      if (layout.visibleSegment) {
+        out.push({
+          kind: "segment",
+          aircraftId: `rbl:${layout.id}`,
+          ...layout.visibleSegment,
+          strokePx: 1,
+        });
+      }
+    }
+  }
   const point = (ac: Aircraft) => {
     const shown = displayAircraft(ac, view.tracks.get(ac.id));
     return shown ? nmToScreen(shown.xNm, shown.yNm, view.camera, size) : null;
@@ -1284,6 +1300,121 @@ const datablockLayoutCache = new WeakMap<
   { key: string; layouts: ResolvedDatablockLayout[] }
 >();
 
+interface RblScreenLayout {
+  id: number;
+  text: string;
+  textRect: { x: number; y: number; width: number; height: number };
+  visibleSegment: { from: { x: number; y: number }; to: { x: number; y: number } } | null;
+}
+
+/** Clip to the PPI so only visible line geometry becomes a datablock obstacle. */
+function clipRblSegment(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  width: number,
+  height: number,
+) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let low = 0;
+  let high = 1;
+  for (const [p, q] of [
+    [-dx, from.x],
+    [dx, width - from.x],
+    [-dy, from.y],
+    [dy, height - from.y],
+  ]) {
+    if (p === 0) {
+      if (q < 0) return null;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) low = Math.max(low, t);
+    else high = Math.min(high, t);
+    if (low > high) return null;
+  }
+  return {
+    from: { x: from.x + low * dx, y: from.y + low * dy },
+    to: { x: from.x + high * dx, y: from.y + high * dy },
+  };
+}
+
+/** Shared measured layout for both RBL paint and protected datablock geometry. */
+function resolveRblScreenLayouts(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): RblScreenLayout[] {
+  ctx.save();
+  ctx.font = datablockFontCss(view.charSizes.tools);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  const lineHeight = datablockLineHeightPx(view.charSizes.tools);
+  const layouts: RblScreenLayout[] = [];
+  try {
+    for (const line of view.rbl.lines.values()) {
+      const calc = calculateRblReadout(
+        line,
+        view.tracks,
+        world.navigation.magVarDeg,
+        view.rbl.radarTilesetBoundaryNm,
+      );
+      if (!calc) continue;
+      const from = nmToScreen(calc.endpoint1Pose.xNm, calc.endpoint1Pose.yNm, view.camera, size);
+      const to = nmToScreen(calc.endpoint2Pose.xNm, calc.endpoint2Pose.yNm, view.camera, size);
+      const width = ctx.measureText(calc.readoutText).width;
+      const height = lineHeight;
+      layouts.push({
+        id: line.id,
+        text: calc.readoutText,
+        textRect: {
+          x: Math.max(0, Math.min(size.widthPx - width, to.x + 6)),
+          y: Math.max(0, Math.min(size.heightPx - height, to.y + 4)),
+          width,
+          height,
+        },
+        visibleSegment: clipRblSegment(from, to, size.widthPx, size.heightPx),
+      });
+    }
+  } finally {
+    ctx.restore();
+  }
+  return layouts;
+}
+
+/** RBL lines are plain measured display geometry, separate from track hit targets. */
+export function drawRangeBearingLines(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  view: ScopeView,
+  size: ScopeViewSize,
+): void {
+  const tlsBrite = view.brite.tls ?? 100;
+  if (tlsBrite <= 0) return;
+  const ink = applyBrite(PALETTE.ptl, tlsBrite);
+  ctx.save();
+  try {
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = ink;
+    ctx.lineWidth = 1;
+    ctx.font = datablockFontCss(view.charSizes.tools);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    for (const layout of resolveRblScreenLayouts(ctx, world, view, size)) {
+      if (layout.visibleSegment) {
+        ctx.beginPath();
+        ctx.moveTo(layout.visibleSegment.from.x, layout.visibleSegment.from.y);
+        ctx.lineTo(layout.visibleSegment.to.x, layout.visibleSegment.to.y);
+        ctx.stroke();
+      }
+      ctx.fillText(layout.text, layout.textRect.x, layout.textRect.y);
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
 export function drawTracks(
   ctx: CanvasRenderingContext2D,
   world: World,
@@ -1434,7 +1565,7 @@ export function drawTracks(
   });
   const layoutOptions = {
     bounds: { x: 0, y: 0, width: size.widthPx, height: size.heightPx },
-    protectedGeometry: collectDatablockProtectedGeometry(world, view, size),
+    protectedGeometry: collectDatablockProtectedGeometry(world, view, size, ctx),
   };
   const layoutKey = JSON.stringify([layoutItems, layoutOptions]);
   const cachedLayout = datablockLayoutCache.get(view);

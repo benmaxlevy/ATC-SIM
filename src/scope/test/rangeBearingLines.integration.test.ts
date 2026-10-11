@@ -52,14 +52,24 @@ import {
   resolveRblEndpointPose,
   updateRblCadenceRange,
 } from "../rangeBearingLines";
-import { createScopeView, applyRadarTilesetBoundary, type ScopeView } from "../scopeView";
+import {
+  createScopeView,
+  applyRadarTilesetBoundary,
+  resetRangeBearingSession,
+  type ScopeView,
+} from "../scopeView";
 import type { SurveillanceReport } from "../surveillance";
 import { handleScopeKeyDown, installAlwaysOnScopeKeys, type ScopeKeyEvent } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
-import { nmToScreen } from "../camera";
+import { nmToScreen, screenToNm } from "../camera";
 import { renderScope } from "../render/renderScope";
 import { createMockCtx } from "./mockCanvas";
-import { ensureTrackDisplay } from "../trackDisplay";
+import { applyDropTrackToId, ensureTrackDisplay, syncTrackDisplays } from "../trackDisplay";
+import {
+  collectDatablockProtectedGeometry,
+  drawRangeBearingLines,
+} from "../render/renderScopePaint";
+import { applyDcbPref, serializeDcbPref } from "../dcb/dcbPref";
 import { buildFixRegistry } from "../../core/nav/fixRegistry";
 
 function makeKeyEvent(overrides: Partial<ScopeKeyEvent> = {}): ScopeKeyEvent {
@@ -93,6 +103,29 @@ function makeSyntheticReport(overrides: Partial<SurveillanceReport> = {}): Surve
     paint: "fused-puck",
     ...overrides,
   };
+}
+
+function makeStatefulMockCtx() {
+  const mock = createMockCtx();
+  const stack: {
+    font: string;
+    textAlign: CanvasTextAlign;
+    textBaseline: CanvasTextBaseline;
+  }[] = [];
+  mock.ctx.save = () =>
+    stack.push({
+      font: mock.ctx.font,
+      textAlign: mock.ctx.textAlign,
+      textBaseline: mock.ctx.textBaseline,
+    });
+  mock.ctx.restore = () => {
+    const state = stack.pop();
+    if (!state) return;
+    mock.ctx.font = state.font;
+    mock.ctx.textAlign = state.textAlign;
+    mock.ctx.textBaseline = state.textBaseline;
+  };
+  return mock;
 }
 
 describe("T02-208 Range-Bearing Line Model and Readouts", () => {
@@ -500,6 +533,41 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       onRblSurveillanceReport(state, "DAL1", tracks, 5500);
       expect(line.displayedRangeNm).toBeCloseTo(10.05, 5);
       expect(line.lastRangeUpdateSimMs).toBe(5500);
+    });
+
+    it("does not advance range cadence during render-only and camera changes", () => {
+      const aircraft = makeTestAircraft({
+        id: "CADENCE-RENDER",
+        callsign: "CADENCE-RENDER",
+        xNm: 0,
+        yNm: 0,
+      });
+      const world = createWorld({ aircraft: [aircraft], simTimeMs: 1000 });
+      const view = createScopeView();
+      ensureTrackDisplay(view.tracks, aircraft.id).lastReport = makeSyntheticReport({
+        aircraftId: aircraft.id,
+        xNm: 0,
+        yNm: 0,
+        reportedAtSimMs: 1000,
+      });
+      const line = insertRangeBearingLine(
+        view.rbl,
+        { kind: "track", aircraftId: aircraft.id },
+        { kind: "static", xNm: 0, yNm: 10 },
+        view.tracks,
+        1000,
+      )!;
+
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      aircraft.yNm = -0.05;
+      world.simTimeMs = 2000; // less than the FUSED report interval
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      view.camera.rangeNm = 30;
+      view.camera.centerEastNm = 15;
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+
+      expect(line.displayedRangeNm).toBe(10);
+      expect(line.lastRangeUpdateSimMs).toBe(1000);
     });
   });
 
@@ -1535,6 +1603,58 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       });
     });
 
+    it("preserves active MIN, TPA, PTL, and F7 state through RBL paint and deletion", () => {
+      const aircraft = makeTestAircraft({ id: "BOUNDARY", callsign: "BOUNDARY" });
+      const activeA = makeTestAircraft({ id: "ACTIVE-A", callsign: "ACTIVE-A" });
+      const activeB = makeTestAircraft({ id: "ACTIVE-B", callsign: "ACTIVE-B", xNm: 2 });
+      const world = createWorld({ aircraft: [aircraft, activeA, activeB] });
+      const view = createScopeView();
+      const activePair = { aircraftIdA: "ACTIVE-A", aircraftIdB: "ACTIVE-B" };
+      view.minSep.activePair = activePair;
+      view.tpa.on = true;
+      view.tpa.radiusNm = 3;
+      view.ptlOn = true;
+      view.ptlOwn = true;
+      view.ptlMinutes = 3;
+      view.ptlByAircraftId.set(aircraft.id, true);
+      ensureTrackDisplay(view.tracks, aircraft.id).lastReport = makeSyntheticReport({
+        aircraftId: aircraft.id,
+        xNm: aircraft.xNm,
+        yNm: aircraft.yNm,
+      });
+      for (const active of [activeA, activeB]) {
+        ensureTrackDisplay(view.tracks, active.id).lastReport = makeSyntheticReport({
+          aircraftId: active.id,
+          xNm: active.xNm,
+          yNm: active.yNm,
+        });
+      }
+
+      handleScopeKeyDown(makeKeyEvent({ key: "F7", code: "F7" }), view, "scope", world, 1000);
+      handleScopeKeyDown(makeKeyEvent({ key: "T", code: "KeyT" }), view, "scope", world, 1000);
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter", code: "Enter" }), view, "scope", world, 1000);
+      expect(view.systemLists.FL.visible).toBe(true);
+      handleScopeKeyDown(makeKeyEvent({ key: "*" }), view, "scope", world, 1001);
+      handleScopeKeyDown(makeKeyEvent({ key: "T" }), view, "scope", world, 1001);
+      handlePpiLeftClick(view, world, 300, 300, 800, 600);
+      handlePpiLeftClick(view, world, 500, 300, 800, 600);
+      expect(view.rbl.lines.size).toBe(1);
+
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      for (const key of ["*", "T", "1", "Enter"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1002);
+      }
+
+      expect(view.minSep.activePair).toEqual(activePair);
+      expect(view.tpa).toEqual({ on: true, radiusNm: 3 });
+      expect(view.ptlOn).toBe(true);
+      expect(view.ptlOwn).toBe(true);
+      expect(view.ptlMinutes).toBe(3);
+      expect(view.ptlByAircraftId.get(aircraft.id)).toBe(true);
+      expect(view.systemLists.FL.visible).toBe(true);
+      expect(view.rbl.lines.size).toBe(0);
+    });
+
     it("starts literal RBL through scope keys while a DCB numeric spinner is armed", () => {
       const view = createScopeView();
       const world = createWorld();
@@ -1695,5 +1815,431 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
         expect(view.rbl.lines.size).toBe(9);
       },
     );
+  });
+
+  describe("T02-210 graphics and lifecycle acceptance", () => {
+    it("paints plain white endpoint readout and protects its measured geometry", () => {
+      const world = createWorld();
+      world.navigation.magVarDeg = 0;
+      const view = createScopeView();
+      view.camera.rangeNm = 10;
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "static", xNm: -2, yNm: 0 },
+        endpoint2: { kind: "static", xNm: 2, yNm: 0 },
+        displayedRangeNm: 4,
+        lastRangeUpdateSimMs: 0,
+      });
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, 800, 600);
+      const readout = mock.fillTexts.find((item) => item.text === "090/4.00-1");
+      expect(readout).toMatchObject({
+        fillStyle: "#FFFFFF",
+        textAlign: "left",
+        textBaseline: "top",
+      });
+      expect(readout?.font).toContain("px");
+      expect(
+        mock.pathStrokes.some(
+          (stroke) => stroke.points.length === 2 && stroke.strokeStyle === "#FFFFFF",
+        ),
+      ).toBe(true);
+      const obstacles = collectDatablockProtectedGeometry(
+        world,
+        view,
+        { widthPx: 800, heightPx: 600 },
+        mock.ctx,
+      );
+      expect(obstacles.some((item) => item.kind === "rect" && item.aircraftId === "rbl:1")).toBe(
+        true,
+      );
+      expect(obstacles.some((item) => item.kind === "segment" && item.aircraftId === "rbl:1")).toBe(
+        true,
+      );
+      view.camera.rangeNm = 30;
+      view.camera.centerEastNm = 15;
+      const panned = createMockCtx();
+      renderScope(panned.ctx, world, view, 800, 600);
+      expect(panned.fillTexts.some((item) => item.text === "090/4.00-1")).toBe(true);
+
+      view.charSizes.tools = (view.charSizes.tools + 2) as typeof view.charSizes.tools;
+      const larger = makeStatefulMockCtx();
+      drawRangeBearingLines(larger.ctx, world, view, { widthPx: 800, heightPx: 600 });
+      expect(larger.fillTexts.find((item) => item.text === "090/4.00-1")?.font).not.toBe(
+        readout?.font,
+      );
+
+      view.brite.tls = 0;
+      const dark = createMockCtx();
+      renderScope(dark.ctx, world, view, 800, 600);
+      expect(dark.fillTexts.some((item) => item.text === "090/4.00-1")).toBe(false);
+      expect(
+        collectDatablockProtectedGeometry(
+          world,
+          view,
+          { widthPx: 800, heightPx: 600 },
+          dark.ctx,
+        ).some((item) => item.aircraftId === "rbl:1"),
+      ).toBe(false);
+    });
+
+    it("keeps clipped edge readouts in bounds and retains offscreen endpoints", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      view.camera.rangeNm = 5;
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "static", xNm: 0, yNm: 0 },
+        endpoint2: { kind: "static", xNm: 100, yNm: 100 },
+        displayedRangeNm: 141.42,
+        lastRangeUpdateSimMs: 0,
+      });
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, 800, 600);
+      const readout = mock.fillTexts.find((item) => item.text === "045/141.42-1");
+      expect(readout?.x).toBeDefined();
+      expect((readout?.x ?? -1) + "045/141.42-1".length * 7.2).toBeLessThanOrEqual(800);
+      expect(readout?.y).toBeGreaterThanOrEqual(0);
+      expect(view.rbl.lines.size).toBe(1);
+    });
+
+    it("keeps every corner readout inside bounds and preserves an offscreen track endpoint", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const size = { widthPx: 800, heightPx: 600 };
+      const corners = [
+        [0, 0],
+        [800, 0],
+        [0, 600],
+        [800, 600],
+      ] as const;
+      corners.forEach(([x, y], index) => {
+        const end = screenToNm(x, y, view.camera, size);
+        view.rbl.lines.set(index + 1, {
+          id: index + 1,
+          endpoint1: { kind: "static", xNm: 0, yNm: 0 },
+          endpoint2: { kind: "static", xNm: end.eastNm, yNm: end.northNm },
+          displayedRangeNm: 10,
+          lastRangeUpdateSimMs: 0,
+        });
+      });
+      const aircraft = makeTestAircraft({
+        id: "OFFSCREEN",
+        callsign: "OFFSCREEN",
+        xNm: 10,
+        yNm: 0,
+      });
+      world.aircraft = [aircraft];
+      ensureTrackDisplay(view.tracks, aircraft.id).lastReport = makeSyntheticReport({
+        aircraftId: aircraft.id,
+        xNm: 10,
+        yNm: 0,
+      });
+      insertRangeBearingLine(
+        view.rbl,
+        { kind: "track", aircraftId: aircraft.id },
+        { kind: "static", xNm: 0, yNm: 0 },
+        view.tracks,
+      );
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, size.widthPx, size.heightPx);
+      const rblTexts = mock.fillTexts.filter((item) => /^\d{3}\/.*-\d$/.test(item.text));
+      expect(rblTexts).toHaveLength(5);
+      for (const text of rblTexts) {
+        const measuredWidth = text.text.length * 7.2;
+        expect(text.x).toBeGreaterThanOrEqual(0);
+        expect(text.x! + measuredWidth).toBeLessThanOrEqual(size.widthPx);
+        expect(text.y).toBeGreaterThanOrEqual(0);
+        expect(text.y).toBeLessThanOrEqual(size.heightPx);
+      }
+      expect(view.rbl.lines.size).toBe(5);
+    });
+
+    it("removes attached lines when an endpoint report is absent, even with TLS off", () => {
+      const aircraft = makeTestAircraft({ id: "DROP1", callsign: "DROP1" });
+      const world = createWorld({ aircraft: [aircraft] });
+      const view = createScopeView();
+      view.brite.tls = 0;
+      view.radarSites = [
+        { id: "SITE-1", name: "SITE-1", kind: "asr", xNm: 0, yNm: 0, rangeNm: 1, periodMs: 1000 },
+      ];
+      view.surveillanceMode = { siteId: "SITE-1" };
+      aircraft.xNm = 10;
+      aircraft.yNm = 10;
+      ensureTrackDisplay(view.tracks, aircraft.id);
+      view.tracks.get(aircraft.id)!.lastReport = makeSyntheticReport({ aircraftId: aircraft.id });
+      insertRangeBearingLine(
+        view.rbl,
+        { kind: "track", aircraftId: aircraft.id },
+        { kind: "static", xNm: 0, yNm: 0 },
+        view.tracks,
+      );
+      delete view.tracks.get(aircraft.id)!.lastReport;
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      expect(view.rbl.lines.size).toBe(0);
+    });
+
+    it("uses the final two-track batch pose before applying range cadence", () => {
+      const a = makeTestAircraft({ id: "A", callsign: "A", xNm: -1, yNm: 0 });
+      const b = makeTestAircraft({ id: "B", callsign: "B", xNm: 9.05, yNm: 0 });
+      const world = createWorld({ aircraft: [a, b] });
+      world.simTimeMs = 1000;
+      const view = createScopeView();
+      ensureTrackDisplay(view.tracks, "A");
+      ensureTrackDisplay(view.tracks, "B");
+      view.tracks.get("A")!.lastReport = makeSyntheticReport({
+        aircraftId: "A",
+        xNm: 0,
+        yNm: 0,
+        reportedAtSimMs: 0,
+      });
+      view.tracks.get("B")!.lastReport = makeSyntheticReport({
+        aircraftId: "B",
+        xNm: 10,
+        yNm: 0,
+        reportedAtSimMs: 0,
+      });
+      const line = insertRangeBearingLine(
+        view.rbl,
+        { kind: "track", aircraftId: "A" },
+        { kind: "track", aircraftId: "B" },
+        view.tracks,
+        0,
+      )!;
+      expect(line.displayedRangeNm).toBe(10);
+      syncTrackDisplays(view.tracks, world, undefined, view);
+      expect(line.displayedRangeNm).toBe(10);
+      expect(line.lastRangeUpdateSimMs).toBe(0);
+    });
+
+    it("paints all nine IDs and protects only visible clipped line segments", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const size = { widthPx: 800, heightPx: 600 };
+      for (let id = 1; id <= 9; id++) {
+        view.rbl.lines.set(id, {
+          id,
+          endpoint1: { kind: "static", xNm: -4, yNm: 0 },
+          endpoint2: { kind: "static", xNm: 4, yNm: 0 },
+          displayedRangeNm: 8,
+          lastRangeUpdateSimMs: 0,
+        });
+      }
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, size.widthPx, size.heightPx);
+      for (let id = 1; id <= 9; id++) {
+        expect(mock.fillTexts.some((item) => item.text === `090/8.00-${id}`)).toBe(true);
+      }
+
+      view.rbl.lines.clear();
+      const p1 = screenToNm(-100, 10, view.camera, size);
+      const p2 = screenToNm(10, -100, view.camera, size);
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "static", xNm: p1.eastNm, yNm: p1.northNm },
+        endpoint2: { kind: "static", xNm: p2.eastNm, yNm: p2.northNm },
+        displayedRangeNm: 155.56,
+        lastRangeUpdateSimMs: 0,
+      });
+      const clipped = collectDatablockProtectedGeometry(world, view, size, mock.ctx);
+      expect(clipped.some((item) => item.kind === "segment" && item.aircraftId === "rbl:1")).toBe(
+        false,
+      );
+    });
+
+    it("runs key entry through painted output and individual deletion", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      handleScopeKeyDown(makeKeyEvent({ key: "*" }), view, "scope", world, 1000);
+      handleScopeKeyDown(makeKeyEvent({ key: "T" }), view, "scope", world, 1000);
+      handlePpiLeftClick(view, world, 300, 300, 800, 600);
+      handlePpiLeftClick(view, world, 500, 300, 800, 600);
+      const painted = createMockCtx();
+      renderScope(painted.ctx, world, view, 800, 600);
+      expect(
+        painted.fillTexts
+          .filter((item) => /^\d{3}\/.*-1$/.test(item.text))
+          .map((item) => item.text),
+      ).toEqual(["090/13.33-1"]);
+
+      for (const key of ["*", "T", "1", "Enter"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1001);
+      }
+      expect(view.rbl.lines.size).toBe(0);
+      const afterDelete = createMockCtx();
+      renderScope(afterDelete.ctx, world, view, 800, 600);
+      expect(afterDelete.fillTexts.some((item) => /^\d{3}\/.*-1$/.test(item.text))).toBe(false);
+    });
+
+    it("paints authored tileset overflow bearing as 777", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      applyRadarTilesetBoundary(view, [
+        { xNm: -2, yNm: -2 },
+        { xNm: 2, yNm: -2 },
+        { xNm: 2, yNm: 2 },
+        { xNm: -2, yNm: 2 },
+      ]);
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "static", xNm: 0, yNm: 0 },
+        endpoint2: { kind: "static", xNm: 10, yNm: 0 },
+        displayedRangeNm: 10,
+        lastRangeUpdateSimMs: 0,
+      });
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, 800, 600);
+      expect(mock.fillTexts.some((item) => item.text === "777/10.00-1")).toBe(true);
+    });
+
+    it("paints traversal only for one report-backed endpoint and preserves overflow masks", () => {
+      const a = makeTestAircraft({ id: "A", callsign: "A", xNm: 0, yNm: 0, speedKt: 30 });
+      const b = makeTestAircraft({ id: "B", callsign: "B", xNm: 5, yNm: 0, speedKt: 0 });
+      const world = createWorld({ aircraft: [a, b] });
+      const view = createScopeView();
+      ensureTrackDisplay(view.tracks, "A").lastReport = makeSyntheticReport({
+        aircraftId: "A",
+        xNm: 0,
+        yNm: 0,
+        speedKt: 30,
+      });
+      ensureTrackDisplay(view.tracks, "B").lastReport = makeSyntheticReport({
+        aircraftId: "B",
+        xNm: 5,
+        yNm: 0,
+        speedKt: 0,
+      });
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "track", aircraftId: "A" },
+        endpoint2: { kind: "static", xNm: 5, yNm: 0 },
+        displayedRangeNm: 5,
+        lastRangeUpdateSimMs: 0,
+      });
+      view.rbl.lines.set(2, {
+        id: 2,
+        endpoint1: { kind: "track", aircraftId: "A" },
+        endpoint2: { kind: "track", aircraftId: "B" },
+        displayedRangeNm: 5,
+        lastRangeUpdateSimMs: 0,
+      });
+      view.rbl.lines.set(3, {
+        id: 3,
+        endpoint1: { kind: "track", aircraftId: "B" },
+        endpoint2: { kind: "static", xNm: 10, yNm: 0 },
+        displayedRangeNm: 5,
+        lastRangeUpdateSimMs: 0,
+      });
+      view.rbl.lines.set(4, {
+        id: 4,
+        endpoint1: { kind: "static", xNm: 0, yNm: 0 },
+        endpoint2: { kind: "static", xNm: 1000, yNm: 0 },
+        displayedRangeNm: 1000,
+        lastRangeUpdateSimMs: 0,
+      });
+      const mock = createMockCtx();
+      renderScope(mock.ctx, world, view, 800, 600);
+      expect(mock.fillTexts.some((item) => item.text === "090/5.00/10-1")).toBe(true);
+      expect(mock.fillTexts.some((item) => item.text === "090/5.00-2")).toBe(true);
+      expect(mock.fillTexts.some((item) => item.text === "090/5.00/**-3")).toBe(true);
+      expect(mock.fillTexts.some((item) => item.text === "090/***.**-4")).toBe(true);
+    });
+
+    it("drops only the line with a lost shared endpoint report", () => {
+      const state = createRangeBearingLineState();
+      const tracks = new Map<string, { lastReport?: SurveillanceReport }>([
+        ["A", { lastReport: makeSyntheticReport({ aircraftId: "A" }) }],
+        ["B", { lastReport: makeSyntheticReport({ aircraftId: "B", xNm: 10 }) }],
+        ["C", { lastReport: makeSyntheticReport({ aircraftId: "C", xNm: 20 }) }],
+      ]);
+      insertRangeBearingLine(
+        state,
+        { kind: "track", aircraftId: "A" },
+        { kind: "track", aircraftId: "B" },
+        tracks,
+      );
+      insertRangeBearingLine(
+        state,
+        { kind: "track", aircraftId: "B" },
+        { kind: "track", aircraftId: "C" },
+        tracks,
+      );
+      tracks.delete("A");
+      onRblSurveillanceReport(state, "B", tracks, 2000);
+      expect([...state.lines.keys()]).toEqual([2]);
+    });
+
+    it("cleans explicit drops and despawns without pruning unrelated RBL state", () => {
+      const aircraft = makeTestAircraft({ id: "TRACK-A", callsign: "TRACK-A" });
+      const world = createWorld({ aircraft: [aircraft] });
+      const view = createScopeView();
+      ensureTrackDisplay(view.tracks, aircraft.id).lastReport = makeSyntheticReport({
+        aircraftId: aircraft.id,
+      });
+      const dropped = insertRangeBearingLine(
+        view.rbl,
+        { kind: "track", aircraftId: aircraft.id },
+        { kind: "static", xNm: 0, yNm: 0 },
+        view.tracks,
+      );
+      insertRangeBearingLine(
+        view.rbl,
+        { kind: "static", xNm: 2, yNm: 2 },
+        { kind: "static", xNm: 3, yNm: 3 },
+        view.tracks,
+      );
+      expect(applyDropTrackToId(view.tracks, world, aircraft.id, view).applied).toBe(true);
+      expect(view.rbl.lines.has(dropped!.id)).toBe(false);
+      expect(view.rbl.lines.size).toBe(1);
+
+      view.rbl.lines.set(3, {
+        id: 3,
+        endpoint1: { kind: "track", aircraftId: aircraft.id },
+        endpoint2: { kind: "static", xNm: 0, yNm: 0 },
+        displayedRangeNm: 10,
+        lastRangeUpdateSimMs: 0,
+      });
+      world.aircraft = [];
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      expect(view.rbl.lines.has(3)).toBe(false);
+      expect(view.rbl.lines.size).toBe(1);
+    });
+
+    it("resets active and pending RBL state plus Preview errors on empty-session replacement", () => {
+      const view = createScopeView();
+      view.rbl.lines.set(1, {
+        id: 1,
+        endpoint1: { kind: "static", xNm: 0, yNm: 0 },
+        endpoint2: { kind: "static", xNm: 1, yNm: 1 },
+        displayedRangeNm: 1.41,
+        lastRangeUpdateSimMs: 0,
+      });
+      view.rbl.pendingFirstEndpoint = { kind: "static", xNm: 2, yNm: 2 };
+      view.preview.rejection = "RBL ID";
+      view.preview.phase = "entry";
+      view.preview.buffer = "*T3";
+      resetRangeBearingSession(view);
+      expect(view.rbl.lines.size).toBe(0);
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      expect(view.preview.rejection).toBeNull();
+      expect(view.preview.phase).toBe("idle");
+      expect(view.preview.buffer).toBe("");
+    });
+
+    it("keeps RBL session graphics out of saved and restored PREF", () => {
+      const view = createScopeView();
+      const line = insertRangeBearingLine(
+        view.rbl,
+        { kind: "static", xNm: 0, yNm: 0 },
+        { kind: "static", xNm: 1, yNm: 1 },
+        view.tracks,
+      )!;
+      view.rbl.pendingFirstEndpoint = { kind: "static", xNm: 2, yNm: 2 };
+      const serialized = serializeDcbPref(view);
+      expect(JSON.stringify(serialized)).not.toContain("rbl");
+      applyDcbPref(view, serialized);
+      expect(view.rbl.lines.get(line.id)).toBe(line);
+      expect(view.rbl.pendingFirstEndpoint).toEqual({ kind: "static", xNm: 2, yNm: 2 });
+    });
   });
 });

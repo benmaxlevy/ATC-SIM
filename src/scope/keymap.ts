@@ -592,7 +592,7 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
         example: "*TNEMAX Enter, *T SPACE DAL123 Enter, *T then click",
         input: "Preview Area or PPI click",
         result:
-          "Create a line labeled BBB/RR.RR[/M]-ID with *T then a fix (for example *TFIX, Enter) or click. First typed track: *T SPACE ACID/BCN (for example *T SPACE DAL123, Enter); second typed track: ACID or reported BCN. Beacon means the current reported beacon code. Fix wins over a matching ACID. Second click commits; Esc cancels. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID (bad removal ID).",
+          "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T then a fix (e.g. *TFIX) or click starts creation. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Fix wins over matching ACID. Second click commits; Esc cancels. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
       },
     ],
   },
@@ -1020,7 +1020,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     focus: "scope",
     windowsKeys: "*T [operand] Enter / click",
     action:
-      "Create a line labeled BBB/RR.RR[/M]-ID with *T then a fix (e.g. *TFIX) or click. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Beacon means the current reported beacon code. Fix wins over a matching ACID. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID (bad removal ID).",
+      "Paints a thin white connection and unboxed BBB/RR.RR[/M]-ID readout. TOOLS sets size; TLS sets brightness and hides paint/obstacles at 0. *T then a fix (e.g. *TFIX) or click starts creation. First typed track: *T SPACE ACID/BCN (e.g. *T SPACE DAL123); second typed track: ACID or reported BCN. Beacon means current reported code. Fix wins over matching ACID. *T Enter removes all; *T3 Enter removes line 3. Errors: FORMAT (extra/malformed input), CAPACITY (9 lines), DUP ID (known TCPs shown), DUP BCN, NO FLIGHT, RBL ID. Optional authored tileset outside bearing is 777; absent tileset uses unbounded plane.",
     crcAnalog: "STARS §§6.7–6.8 literal splat *T (keyboard entry, click or typed endpoints)",
   },
 ];
