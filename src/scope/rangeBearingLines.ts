@@ -439,7 +439,7 @@ export function calculateRblReadout(
 
   if ((isTrack1 && !isTrack2) || (!isTrack1 && isTrack2)) {
     const trackSpeed = isTrack1 ? pose1.speedKt : pose2.speedKt;
-    traversalStr = formatRblTraversalMinutes(line.displayedRangeNm, trackSpeed);
+    traversalStr = formatRblTraversalMinutes(rawDist, trackSpeed);
   }
 
   const readoutText =

@@ -329,6 +329,46 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       expect(calc2?.readoutText).toBe("180/12.00/3-2");
     });
 
+    it("uses current distance for traversal while a subthreshold increase holds displayed range", () => {
+      const state = createRangeBearingLineState();
+      const tracks = new Map<string, { lastReport?: SurveillanceReport }>();
+      tracks.set("AAL1", {
+        lastReport: makeSyntheticReport({
+          aircraftId: "AAL1",
+          xNm: 10,
+          yNm: 10,
+          speedKt: 57.3,
+          reportedAtSimMs: 1000,
+        }),
+      });
+
+      const line = insertRangeBearingLine(
+        state,
+        { kind: "track", aircraftId: "AAL1" },
+        { kind: "static", xNm: 0, yNm: 10 },
+        tracks,
+        1000,
+      )!;
+
+      tracks.set("AAL1", {
+        lastReport: makeSyntheticReport({
+          aircraftId: "AAL1",
+          xNm: 10.05,
+          yNm: 10,
+          speedKt: 57.3,
+          reportedAtSimMs: 2000,
+        }),
+      });
+      onRblSurveillanceReport(state, "AAL1", tracks, 2000);
+
+      const calc = calculateRblReadout(line, tracks, 0)!;
+      expect(line.displayedRangeNm).toBe(10);
+      expect(calc.rawDistanceNm).toBeCloseTo(10.05);
+      expect(calc.rangeStr).toBe("10.00");
+      expect(calc.traversalStr).toBe("11");
+      expect(calc.readoutText).toBe("270/10.00/11-1");
+    });
+
     it("handles zero-speed and missing speed per trainer choices", () => {
       // Positive distance with zero speed: mask '**'
       expect(formatRblTraversalMinutes(10, 0)).toBe("**");
