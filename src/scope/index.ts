@@ -998,6 +998,6 @@ export {
   drawMinimumSeparation,
   drawUprightCpaTriangle,
   calculateMinSepBoxMetrics,
-  clampMinSepBoxCenter,
+  computeMinSepBoxCenter,
   formatMinSepDistance,
 } from "./render";

@@ -924,11 +924,11 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       expect(mock80.fillTexts.find((t) => /^\d+\.\d{2} NM$/.test(t.text))).toBeDefined();
     });
 
-    it("Clamps mileage box inside viewport when nominal midpoint is outside", () => {
+    it("Allows box to move naturally off-screen when CPA points pan away (no viewport clamping)", () => {
       const world = createWorld();
       const view = createScopeView(0, 0);
 
-      // Tracks far off to the east (x = 100 NM, nominal midpoint offscreen)
+      // Tracks far off to the east (x = 100 NM, nominal midpoint far offscreen to the right)
       const acA = makeTestAircraft({
         id: "ac-1",
         callsign: "AAL101",
@@ -952,14 +952,39 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       // Directly set active pair
       view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
 
+      const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg)!;
+      const cpaA = nmToScreen(
+        resolved.prediction.posANm.xNm,
+        resolved.prediction.posANm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
+      const cpaB = nmToScreen(
+        resolved.prediction.posBNm.xNm,
+        resolved.prediction.posBNm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
+      const boxMetrics = calculateMinSepBoxMetrics(view, resolved.prediction);
+      const { center } = computeMinSepBoxCenter(cpaA, cpaB, boxMetrics);
+
+      // Nominal midpoint is far beyond the canvas edge (CSS_W = 800)
+      expect(center.x).toBeGreaterThan(CSS_W);
+
       const mock = createMockCtx();
       renderScope(mock.ctx, world, view, CSS_W, CSS_H);
 
-      const boxRect = mock.strokeRects[0];
+      const boxRect = mock.strokeRects.find((r) => r.strokeStyle.toUpperCase() === "#FFFFFF");
       expect(boxRect).toBeDefined();
-      // Right edge of box must be within CSS_W
-      expect(boxRect.x + boxRect.w).toBeLessThanOrEqual(CSS_W);
-      expect(boxRect.x).toBeGreaterThanOrEqual(0);
+      // Box position is not clamped to viewport edge; it stays anchored to world CPA position
+      expect(boxRect!.x).toBeGreaterThan(CSS_W);
+      expect(Math.abs(boxRect!.x + boxRect!.w / 2 - center.x)).toBeLessThanOrEqual(1);
     });
 
     it("Keeps box inline at midpoint when CPA triangles are far apart (> 60 px)", () => {
@@ -989,14 +1014,24 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
 
       const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg)!;
-      const cpaA = nmToScreen(resolved.prediction.posANm.xNm, resolved.prediction.posANm.yNm, view.camera, {
-        widthPx: CSS_W,
-        heightPx: CSS_H,
-      });
-      const cpaB = nmToScreen(resolved.prediction.posBNm.xNm, resolved.prediction.posBNm.yNm, view.camera, {
-        widthPx: CSS_W,
-        heightPx: CSS_H,
-      });
+      const cpaA = nmToScreen(
+        resolved.prediction.posANm.xNm,
+        resolved.prediction.posANm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
+      const cpaB = nmToScreen(
+        resolved.prediction.posBNm.xNm,
+        resolved.prediction.posBNm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
       const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
       expect(dPx).toBeGreaterThan(60);
 
@@ -1018,7 +1053,7 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       expect(boxRect!.y + boxRect!.h / 2).toBeCloseTo((cpaA.y + cpaB.y) / 2, 1);
     });
 
-    it("Offsets box perpendicular/upward when CPA triangles are close together (e.g. 0 NM collision or < 10 px apart) while keeping triangles at CPA positions", () => {
+    it("Offsets box perpendicular/upward with larger clearance margin when CPA triangles are close together (e.g. 0 NM collision) while keeping triangles at CPA positions", () => {
       const world = createWorld();
       const view = createScopeView(0, 0);
 
@@ -1045,14 +1080,24 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       view.minSep.activePair = { aircraftIdA: "ac-1", aircraftIdB: "ac-2" };
 
       const resolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg)!;
-      const cpaA = nmToScreen(resolved.prediction.posANm.xNm, resolved.prediction.posANm.yNm, view.camera, {
-        widthPx: CSS_W,
-        heightPx: CSS_H,
-      });
-      const cpaB = nmToScreen(resolved.prediction.posBNm.xNm, resolved.prediction.posBNm.yNm, view.camera, {
-        widthPx: CSS_W,
-        heightPx: CSS_H,
-      });
+      const cpaA = nmToScreen(
+        resolved.prediction.posANm.xNm,
+        resolved.prediction.posANm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
+      const cpaB = nmToScreen(
+        resolved.prediction.posBNm.xNm,
+        resolved.prediction.posBNm.yNm,
+        view.camera,
+        {
+          widthPx: CSS_W,
+          heightPx: CSS_H,
+        },
+      );
       const dPx = Math.hypot(cpaB.x - cpaA.x, cpaB.y - cpaA.y);
       expect(dPx).toBeLessThan(1e-3);
 
@@ -1062,8 +1107,10 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
         heightPx: CSS_H,
       });
       expect(isOffset).toBe(true);
-      // Box is offset upward from (cpaA.y)
-      expect(center.y).toBeLessThan(cpaA.y);
+
+      // Verify the larger clearance margin: offsetDistPx = boxMetrics.height / 2 + MIN_SEP_TRIANGLE_HEIGHT_PX + 14
+      const expectedOffsetDist = boxMetrics.height / 2 + 9 + 14;
+      expect(cpaA.y - center.y).toBeCloseTo(expectedOffsetDist, 1);
 
       const mock = createMockCtx();
       renderScope(mock.ctx, world, view, CSS_W, CSS_H);
@@ -1071,12 +1118,20 @@ describe("Minimum-Separation Input and Selection (T02-205)", () => {
       const boxRect = mock.strokeRects.find((r) => r.strokeStyle.toUpperCase() === "#FFFFFF");
       expect(boxRect).toBeDefined();
       const renderedBoxCenterY = boxRect!.y + boxRect!.h / 2;
-      // Rendered box is offset upward from the collision point
+      // Rendered box is offset upward from the collision point by the larger margin
       expect(renderedBoxCenterY).toBeCloseTo(center.y, 1);
-      expect(renderedBoxCenterY).toBeLessThan(cpaA.y);
+      expect(cpaA.y - renderedBoxCenterY).toBeCloseTo(expectedOffsetDist, 1);
+
+      // Bottom edge of the offset box should have at least 14 px clearance above the triangle apex
+      // Triangle apex is at cpaA.y - 9/2 = cpaA.y - 4.5
+      const boxBottomY = boxRect!.y + boxRect!.h;
+      const triangleApexY = cpaA.y - 9 / 2;
+      expect(triangleApexY - boxBottomY).toBeGreaterThanOrEqual(14);
 
       // Verify no leader line was drawn (only 3 white pathStrokes: projA, projB, connecting segment)
-      const whiteStrokes = mock.pathStrokes.filter((s) => s.strokeStyle.toUpperCase() === "#FFFFFF");
+      const whiteStrokes = mock.pathStrokes.filter(
+        (s) => s.strokeStyle.toUpperCase() === "#FFFFFF",
+      );
       expect(whiteStrokes.length).toBe(3);
 
       // Triangles remain painted at exact CPA positions

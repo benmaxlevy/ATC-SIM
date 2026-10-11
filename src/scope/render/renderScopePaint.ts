@@ -2463,32 +2463,18 @@ export function calculateMinSepBoxMetrics(
   };
 }
 
-export function clampMinSepBoxCenter(
-  midX: number,
-  midY: number,
-  boxWidth: number,
-  boxHeight: number,
-  size: ScopeViewSize,
-): { x: number; y: number } {
-  const halfW = boxWidth / 2;
-  const halfH = boxHeight / 2;
-  const margin = 2;
-  const clampedX = Math.max(halfW + margin, Math.min(size.widthPx - halfW - margin, midX));
-  const clampedY = Math.max(halfH + margin, Math.min(size.heightPx - halfH - margin, midY));
-  return { x: clampedX, y: clampedY };
-}
-
 /**
  * Calculates adaptive center position for the Minimum Separation readout box.
  * If the pixel distance between CPA A and CPA B is below `minInlineSpanPx`,
  * the box is offset perpendicular to the segment (pointing upwards/rightwards)
- * so it does not collide with or obscure the CPA triangles.
+ * with clearance margin so it does not collide with or obscure the CPA triangles.
+ * Coordinates are un-clamped to viewport edges so the box moves naturally with pan.
  */
 export function computeMinSepBoxCenter(
   cpaA: { x: number; y: number },
   cpaB: { x: number; y: number },
   boxMetrics: MinSepBoxMetrics,
-  size: ScopeViewSize,
+  _size?: ScopeViewSize,
 ): { center: { x: number; y: number }; isOffset: boolean } {
   const nominalMidX = (cpaA.x + cpaB.x) / 2;
   const nominalMidY = (cpaA.y + cpaB.y) / 2;
@@ -2497,7 +2483,7 @@ export function computeMinSepBoxCenter(
 
   if (dPx >= minInlineSpanPx) {
     return {
-      center: clampMinSepBoxCenter(nominalMidX, nominalMidY, boxMetrics.width, boxMetrics.height, size),
+      center: { x: nominalMidX, y: nominalMidY },
       isOffset: false,
     };
   }
@@ -2522,12 +2508,12 @@ export function computeMinSepBoxCenter(
     }
   }
 
-  const offsetDistPx = boxMetrics.height / 2 + MIN_SEP_TRIANGLE_HEIGHT_PX + 6;
+  const offsetDistPx = boxMetrics.height / 2 + MIN_SEP_TRIANGLE_HEIGHT_PX + 14;
   const targetX = nominalMidX + perpX * offsetDistPx;
   const targetY = nominalMidY + perpY * offsetDistPx;
 
   return {
-    center: clampMinSepBoxCenter(targetX, targetY, boxMetrics.width, boxMetrics.height, size),
+    center: { x: targetX, y: targetY },
     isOffset: true,
   };
 }
