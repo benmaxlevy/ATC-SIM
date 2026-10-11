@@ -6128,3 +6128,51 @@ without pushing. Unrelated untracked artifacts (`.worktrees/`, `:memory:.ses`,
 
 
 
+
+## Eighty-fourth swarm planned and started — MULTI FUNC/splat separation (2026-10-10)
+
+The user explicitly authorized subagent implementation of F7/literal-star separation
+on `feature/minimum-separation-graphics` first; range-bearing lines are deferred.
+This narrows and consolidates the approved input-boundary migration into T02-207.
+
+| Key | Value |
+| --- | --- |
+| Goal | Separate F7 MULTI FUNC from literal splat in existing input, parsing, slew, and Help. |
+| Phase | `phases/02-scope/` |
+| Include | T02-207 only |
+| Merge target/base | `feature/minimum-separation-graphics`; explicit user override of generic master target |
+| Worker limit/model | 1 implementation worker; `gpt-6-luna`, reasoning effort `medium`; independent read-only reviewer after worker exit |
+| Merge lock | Captain only; worker never merges or spawns |
+| Stop | T02-207, focused tests, npm run ci, git diff --check, independent supplied-manual review and recorded visual leftovers |
+| Push | No push |
+
+**Product law:** F7 is MULTI FUNC, Shift+8/keypad star is splat. Preserve origin
+through Preview lifecycle and route both Enter and live slew by origin. No
+interchangeable alias or cross-family parser fallback. Migrate existing manual
+MULTI FUNC lists, filters, MSAW, per-track PTL, leader, and plan actions; retain
+explicit literal-star trainer extensions and literal TPA/ATPA. Do not implement
+RBLs or newly claim full manual fidelity for existing trainer action semantics.
+Help and current user/phase docs must match actual input ownership.
+
+**Authority:** supplied `/home/ben/Documents/stars refs/full_manual.pdf`, TI
+6191.409 Rev30, Table 2-5 and Appendix D Tables D-1–3; T02-207 records exact
+procedure citations and a complete routing matrix. Independent review is a gate.
+
+**Prerequisites:** shipped Preview/lists/tracking/MIN on current feature head.
+Preserve unrelated `.worktrees/`, `:memory:.ses`, and `speech-api/:memory:.ses`.
+Verify feature ancestry, existing worktree ownership, and clean tracked state.
+
+**Wave A/ownership:** T02-207 owns the atomic existing-input-boundary migration,
+regression acceptance and current user surfaces. Ticket branch
+`ticket/T02-207-multi-function-splat-separation` and ticket
+`phases/02-scope/tickets/T02-207-multi-function-splat-separation.md`.
+Captain squash-merges on the explicit feature target and runs CI/manual gates.
+A failed gate stops completion and permits only one narrowly scoped correction
+worker. Workers return READY TO MERGE or BLOCKED.
+
+**Skip:** every other ticket, RBL, new action behaviors, Command IR, speech,
+scenario data, facility branches, new modes, master merge, and push. Preserve
+thin modules and existing radio/native-input/modifier protections.
+
+**Captain return:** PHASE EXIT GREEN or PHASE EXIT BLOCKED, followed by ticket,
+merge target, commit, CI/manual evidence, and actual browser leftovers. Stop here.
