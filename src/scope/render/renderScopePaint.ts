@@ -769,12 +769,7 @@ export function getDatablockVisualState(
     }
   }
 
-  const isSelected = world.selectedAircraftId === ac.id;
-
-  function computeBaseDatablockMode(
-    view: ScopeView,
-    td?: TrackDisplay,
-  ): "full" | "partial" | "limited" {
+  function computeBaseDatablockMode(td?: TrackDisplay): "full" | "partial" | "limited" {
     // TERM CNTL leaves the radar target alive but removes its plan. Never
     // allow selection, forced-FDB state, or an FSL mode to restore the plan
     // callsign on an unassociated target.
@@ -783,21 +778,6 @@ export function getDatablockVisualState(
     }
     if (td?.forcedFdb) {
       return "full";
-    }
-    const ownership = td?.ownership ?? "unowned";
-    if (view.modeFsl === "S") {
-      // Semi Mode: selected/clicked owned track expands to FDB; unselected tracks show PDB
-      if (isSelected && ownership === "owned") {
-        return "full";
-      }
-      return td?.unassociated ? "limited" : "partial";
-    }
-    if (view.modeFsl === "L") {
-      // Limited Mode: selected/clicked owned track expands to FDB; unselected tracks show LDB
-      if (isSelected && ownership === "owned") {
-        return "full";
-      }
-      return "limited";
     }
     return (
       td?.datablockMode ??
@@ -808,7 +788,7 @@ export function getDatablockVisualState(
   // 7. Track highlight (Cyan #00FFFF) or Dwell highlight
   const isDwellHighlighted = view.dwellMode !== "OFF" && view.dwellLockedAircraftId === ac.id;
   if (td?.highlighted || isDwellHighlighted) {
-    const baseMode = computeBaseDatablockMode(view, td);
+    const baseMode = computeBaseDatablockMode(td);
     const mode =
       isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
         ? "full"
@@ -823,7 +803,7 @@ export function getDatablockVisualState(
 
   // 8. Base ownership
   const ownership = td?.ownership ?? "unowned";
-  const baseMode = computeBaseDatablockMode(view, td);
+  const baseMode = computeBaseDatablockMode(td);
   const mode =
     isBeaconatorReadout(view.beaconatorActive, td, world.simTimeMs) && baseMode === "partial"
       ? "full"
@@ -2332,6 +2312,14 @@ export function drawChordHint(
     const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(fmaDiagnostic, x, y + occupiedLines * datablockLineHeightPx(view.charSizes.lists));
+  } else if (view.lastWarning) {
+    const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
+    ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
+    ctx.fillText(
+      view.lastWarning,
+      x,
+      y + occupiedLines * datablockLineHeightPx(view.charSizes.lists),
+    );
   }
 }
 

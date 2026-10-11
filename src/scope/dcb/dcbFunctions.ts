@@ -37,11 +37,12 @@ import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "../palette";
 import {
   snapRangeRingToViewCenter,
   VOL_STEPS,
+  configureFmaSurveillanceView,
   type VolLevel,
-  type ModeFsl,
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
+import { applyFmaAmzPreference } from "./dcbPref";
 import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
@@ -674,27 +675,6 @@ export function formatDcbVolReadout(vol: VolLevel): string {
   return `${vol}`;
 }
 
-export const MODE_FSL_STEPS: readonly ModeFsl[] = ["F", "S", "L"];
-
-/**
- * Step MODE FSL spinner ("F" <-> "S" <-> "L").
- */
-export function stepModeFsl(view: ScopeView, delta: number): ModeFsl {
-  const next = stepFrozen(MODE_FSL_STEPS, view.modeFsl, delta);
-  view.modeFsl = next;
-  return next;
-}
-
-/**
- * MAIN MODE FSL 3-state toggle latch.
- * Cycles "F" (Full) -> "S" (Semi/Partial) -> "L" (Limited) -> "F".
- */
-export function cycleModeFsl(view: ScopeView): ModeFsl {
-  const next: ModeFsl = view.modeFsl === "F" ? "S" : view.modeFsl === "S" ? "L" : "F";
-  view.modeFsl = next;
-  return next;
-}
-
 export const HISTORY_RATE_STEPS = [1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 6.0, 8.0, 10.0] as const;
 
 /**
@@ -762,4 +742,74 @@ export function stepCursorSpeed(view: ScopeView, delta: number): number {
 
 export function formatDcbCursorSpeedReadout(speed: number): string {
   return `${speed}`;
+}
+
+/**
+ * Gate checks for FMA mode availability (TI 6191.409 §6.16.1):
+ * - 2K display capability (1K omits FMA)
+ * - Controller privilege required
+ * - At least one valid adapted/derived AMZ defined
+ * - Service state compatible with FMA (not DSF/DSA)
+ */
+export function isFmaAvailable(view: ScopeView): boolean {
+  if (view.displayCapability !== "2K") {
+    return false;
+  }
+  if (view.operatorPrivilege !== "controller") {
+    return false;
+  }
+  if (!view.fmaAmzs || view.fmaAmzs.length === 0) {
+    return false;
+  }
+  if (view.serviceMode === "DSF") {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Selecting FMA in the MODE submenu enters candidate confirmation state without toggling (AC1, §6.16.1).
+ */
+export function enterFmaConfirmation(view: ScopeView): boolean {
+  if (!isFmaAvailable(view)) {
+    return false;
+  }
+  view.fmaCandidateMode = true;
+  return true;
+}
+
+/**
+ * Cancel pending FMA confirmation.
+ */
+export function cancelFmaConfirmation(view: ScopeView): void {
+  view.fmaCandidateMode = false;
+}
+
+/**
+ * ACCEPT commits FMA toggle once; exits confirmation state (AC1, §6.16.1).
+ */
+export function commitFmaConfirmation(view: ScopeView): boolean {
+  if (!view.fmaCandidateMode) {
+    return false;
+  }
+  view.fmaCandidateMode = false;
+  const enabling = !view.fmaSurveillance.enabled;
+  if (enabling) {
+    const amzId =
+      view.fmaSurveillance.selectedAmzId &&
+      view.fmaAmzs.some((a) => a.id === view.fmaSurveillance.selectedAmzId)
+        ? view.fmaSurveillance.selectedAmzId
+        : (view.fmaAmzs[0]?.id ?? null);
+    const hadPref = amzId ? applyFmaAmzPreference(view, amzId) : false;
+    if (!hadPref) {
+      view.lastWarning = "NO PREF SET FOUND";
+    } else {
+      view.lastWarning = null;
+    }
+    configureFmaSurveillanceView(view, true, amzId);
+  } else {
+    configureFmaSurveillanceView(view, false, null);
+    view.lastWarning = null;
+  }
+  return true;
 }

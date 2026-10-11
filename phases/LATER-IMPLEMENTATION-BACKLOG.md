@@ -596,6 +596,22 @@ introduced. Typed Preview Area holes that include those chords are listed under
 work must preserve the distinct Q current-alert lifetime and V persistent
 per-track lifetime.
 
+### Final Monitor Aid adjustment menus, projection, and control entry (T02-226 / T02-227)
+
+T02-225 shipped the authentic Raytheon STARS Figure 6-16 service-mode submenu
+(`EFSL`, `FSL`, `TRNG`, `FMA`, `DSF`, `DONE`), confirmed FMA toggling via `ACCEPT`,
+and per-AMZ preference storage and application with `NO PREF SET FOUND` warning.
+The remaining FMA follow-up work is explicitly partitioned across subsequent tickets:
+
+- **T02-226**: FMA AUX and BRITE menus, AMZ selection submenu, MAG selection, runway leader controls, NTZ enable/disable toggles, and voice volume controls.
+- **T02-227**: FMA high-update Canvas projection, geometry rendering (runway graphics, course lines, reference lines, fix bars, boundary polygons), and target picking.
+- **T02-228**: FMA end-to-end integration and multi-aircraft scenario acceptance.
+
+Later work must preserve:
+- FMA enablement gating (2K capability, Controller privilege, valid AMZ, compatible service mode; 1K omits FMA);
+- Local AMZ-keyed preferences and atomic application without NAS host claims;
+- Display-local alert evaluation and suppression without modifying World kinematics or intent.
+
 ### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
 
 Visible now: `CRDA STATUS` in-scope list formatting RPC pairs 1–6 (e.g., `1  BOS 27/22L`, `2  BOS 27/33L`, `3  BOS 4L/15R`, etc.) and active SSA status (`*S1 BOS 27/22L`).

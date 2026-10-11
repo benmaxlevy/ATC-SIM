@@ -394,10 +394,34 @@ export interface ScopeView {
    */
   vol: VolLevel;
   /**
-   * Global datablock display mode: "F" (Full), "S" (Semi/Partial), "L" (Limited).
-   * Default "F". Selected tracks retain full datablocks.
+   * Supported service level mode (EFSL, FSL, TRNG, FMA, DSF).
+   * TI 6191.409 Section 6.16.1, Figure 6-16.
+   * Default supported service state is "FSL".
    */
-  modeFsl: ModeFsl;
+  serviceMode: ServiceMode;
+  /**
+   * Pending FMA confirmation state when MODE -> FMA is clicked.
+   * Requires ACCEPT to commit toggle, or DONE/cancel to dismiss.
+   */
+  fmaCandidateMode: boolean;
+  /**
+   * Configured hardware/display capability ("2K" or "1K").
+   * FMA requires 2K; 1K omits FMA from MODE submenu (Figure 6-16).
+   */
+  displayCapability: "2K" | "1K";
+  /**
+   * Operator workstation privilege ("controller" or "other").
+   * FMA requires controller privilege.
+   */
+  operatorPrivilege: "controller" | "other";
+  /**
+   * AMZ-keyed FMA preference store (analog Section 4.1 / 4.1.1).
+   */
+  amzPreferences: Map<string, FmaAmzPreference>;
+  /**
+   * Last operator-facing system warning (e.g. "NO PREF SET FOUND").
+   */
+  lastWarning: string | null;
   /**
    * AUX H_RATE: History dot scan rate interval in seconds (default 4.5).
    * New history dots are sampled when elapsed time >= historyRateSec * 1000.
@@ -426,12 +450,37 @@ export interface ScopeView {
   rbl: RangeBearingLineState;
 }
 
+export type DisplayCapability = "2K" | "1K";
+export type OperatorPrivilege = "controller" | "other";
+
+export type ServiceMode = "EFSL" | "FSL" | "TRNG" | "FMA" | "DSF";
+export const DEFAULT_SERVICE_MODE: ServiceMode = "FSL";
+
+/**
+ * AMZ-keyed FMA display preference snapshot (TI 6191.409 §4.1, §4.1.1, §6.16.2).
+ */
+export interface FmaAmzPreference {
+  amzId: string;
+  mag?: number;
+  ptlSeconds?: number;
+  fmaBrite?: {
+    amz?: number;
+    ntz?: number;
+    rwy?: number;
+    ref?: number;
+  };
+  runwayLeaders?: Record<string, number>;
+  enabledNtzIds?: string[];
+  voiceLevel?: number;
+  rangeNm?: number;
+  centerEastNm?: number;
+  centerNorthNm?: number;
+  mapVisibility?: Record<string, boolean>;
+}
+
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
 export type VolLevel = (typeof VOL_STEPS)[number];
 export const DEFAULT_VOL_LEVEL: VolLevel = 2;
-
-export type ModeFsl = "F" | "S" | "L";
-export const DEFAULT_MODE_FSL: ModeFsl = "F";
 
 export type DwellMode = "OFF" | "ON" | "LOCK";
 export const DEFAULT_DWELL_MODE: DwellMode = "OFF";
@@ -455,7 +504,9 @@ export function createScopeView(
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
-    modeFsl?: ModeFsl;
+    serviceMode?: ServiceMode;
+    displayCapability?: "2K" | "1K";
+    operatorPrivilege?: "controller" | "other";
     historyRateSec?: number;
     dwellMode?: DwellMode;
     cursorHome?: boolean;
@@ -583,7 +634,12 @@ export function createScopeView(
     wxMosaic: emptyWxMosaic(),
     arp,
     vol: options?.vol ?? DEFAULT_VOL_LEVEL,
-    modeFsl: options?.modeFsl ?? DEFAULT_MODE_FSL,
+    serviceMode: options?.serviceMode ?? DEFAULT_SERVICE_MODE,
+    fmaCandidateMode: false,
+    displayCapability: options?.displayCapability ?? "2K",
+    operatorPrivilege: options?.operatorPrivilege ?? "controller",
+    amzPreferences: new Map(),
+    lastWarning: null,
     historyRateSec: options?.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
     dwellMode: options?.dwellMode ?? DEFAULT_DWELL_MODE,
     dwellLockedAircraftId: null,
@@ -737,10 +793,30 @@ export function clearFmaSurveillanceView(view: ScopeView): void {
   view.fmaAlertResults = new Map();
   view.fmaAlertOutlines = new Map();
   view.fmaAlertDiagnostics = [];
+  view.fmaAlertInhibit = {};
   view.fmaAcknowledgedEpisodeIds.clear();
   view.fmaSilencedEpisodeIds.clear();
   cancelPreviewArea(view.preview);
   for (const td of view.tracks.values()) delete td.presentationReport;
+}
+
+/**
+ * Rebind FMA configuration on scenario or catalog replacement (T02-225 contract rule 6):
+ * If previously enabled with an AMZ ID, rebind by stable known AMZ ID or initial valid AMZ;
+ * clear all session episodes, arms, retained tracks and speech.
+ */
+export function rebindFmaScenarioAmzs(view: ScopeView, nextAmzs: readonly FmaAmz[]): void {
+  view.fmaAmzs = [...nextAmzs];
+  const currentAmzId = view.fmaSurveillance.selectedAmzId;
+  const stillValid = currentAmzId ? view.fmaAmzs.some((a) => a.id === currentAmzId) : false;
+  const wasEnabled = view.fmaSurveillance.enabled;
+
+  clearFmaSurveillanceView(view);
+
+  if (wasEnabled && view.fmaAmzs.length > 0) {
+    const targetAmzId = stillValid ? currentAmzId : view.fmaAmzs[0]!.id;
+    configureFmaSurveillanceView(view, true, targetAmzId);
+  }
 }
 
 function publishFmaPresentation(view: ScopeView): void {

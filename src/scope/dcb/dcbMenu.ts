@@ -29,7 +29,8 @@ export type DcbMenu =
   | "SSA_FILTER"
   | "GI_FILTER"
   | "TPA_ATPA"
-  | "SITE";
+  | "SITE"
+  | "MODE";
 
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
@@ -81,7 +82,6 @@ export type DcbSpinnerCell =
   | "PTL"
   | "TPA_MI"
   | "VOL"
-  | "MODE_FSL"
   | CharSizeSpinnerCell
   | BriteSpinnerCell;
 
@@ -534,6 +534,9 @@ export function toggleDcbMenu(host: DcbMenuHost, menu: "MAPS" | "LDR"): void {
 /** DONE returns a submenu to its opening menu; AUX returns to MAIN. */
 export function closeDcbMenu(host: DcbMenuHost): void {
   cancelDcbSpinner(host);
+  if ("fmaCandidateMode" in host) {
+    (host as unknown as { fmaCandidateMode: boolean }).fmaCandidateMode = false;
+  }
   host.dcbMenu = isDcbSubmenu(host.dcbMenu) ? (host.dcbMenuParent ?? "MAIN") : "MAIN";
 }
 
@@ -545,9 +548,17 @@ export function handleDcbEscape(host: DcbMenuHost): boolean {
   if (cancelDcbSpinner(host)) {
     return true;
   }
+  let handled = false;
+  if (
+    "fmaCandidateMode" in host &&
+    (host as unknown as { fmaCandidateMode: boolean }).fmaCandidateMode
+  ) {
+    (host as unknown as { fmaCandidateMode: boolean }).fmaCandidateMode = false;
+    handled = true;
+  }
   if (isDcbSubmenu(host.dcbMenu)) {
     closeDcbMenu(host);
     return true;
   }
-  return false;
+  return handled;
 }

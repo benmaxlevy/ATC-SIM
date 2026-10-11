@@ -56,6 +56,9 @@ import {
   togglePtlOwn,
   toggleSsaFilter,
   SSA_FILTER_FIELDS,
+  enterFmaConfirmation,
+  commitFmaConfirmation,
+  isFmaAvailable,
   type BriteChannel,
   type CharSizeChannel,
   type CharSizes,
@@ -1904,6 +1907,167 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         data-dcb-column={20}
         data-dcb-row-span={1}
         style={{ gridColumn: 20, gridRow: "2 / span 1" }}
+      >
+        {renderDone(view, onChange)}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Figure 6-16 MODE submenu layout:
+ * [EFSL] [FSL] [TRNG] [FMA] [DSF] [DONE]
+ * If fmaCandidateMode is active, an [ACCEPT] button is also rendered for confirmation.
+ */
+export function renderModeMenu(view: ScopeView, onChange: () => void) {
+  const showFma = view.displayCapability !== "1K";
+  const fmaEnabled = view.fmaSurveillance.enabled;
+  const fmaUsable = isFmaAvailable(view);
+
+  return (
+    <div className="dcb-main-grid" data-dcb-layout="MODE">
+      {/* 1. EFSL (Emergency Full Service Level) - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-efsl"
+        data-dcb-row={1}
+        data-dcb-column={1}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 1, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="EFSL"
+          dataDcb="mode-efsl"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">EFSL</span>
+        </DcbCell>
+      </div>
+
+      {/* 2. FSL (Full Service Level) - current supported default service mode */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-fsl"
+        data-dcb-row={1}
+        data-dcb-column={2}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 2, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="FSL"
+          dataDcb="mode-fsl"
+          pressed={view.serviceMode === "FSL"}
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">FSL</span>
+        </DcbCell>
+      </div>
+
+      {/* 3. TRNG (Training) - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-trng"
+        data-dcb-row={1}
+        data-dcb-column={3}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 3, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="TRNG"
+          dataDcb="mode-trng"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">TRNG</span>
+        </DcbCell>
+      </div>
+
+      {/* 4. FMA (Final Monitoring Aid) - omitted at 1K; toggled via ACCEPT */}
+      {showFma && (
+        <div
+          className="dcb-main-grid-cell"
+          data-dcb-layout-id="mode-fma"
+          data-dcb-row={1}
+          data-dcb-column={4}
+          data-dcb-row-span={2}
+          style={{ gridColumn: 4, gridRow: "1 / span 2" }}
+        >
+          <DcbCell
+            kind={fmaUsable ? "toggle" : "disabled"}
+            ariaLabel="FMA"
+            dataDcb="mode-fma"
+            pressed={fmaEnabled || view.fmaCandidateMode}
+            disabled={!fmaUsable}
+            onClick={() => {
+              if (fmaUsable) {
+                cancelFilterIfEntering(view);
+                enterFmaConfirmation(view);
+                afterCell(onChange);
+              }
+            }}
+          >
+            <span className="dcb-cell-line">FMA</span>
+          </DcbCell>
+        </div>
+      )}
+
+      {/* 5. DSF - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-dsf"
+        data-dcb-row={1}
+        data-dcb-column={5}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 5, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="DSF"
+          dataDcb="mode-dsf"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">DSF</span>
+        </DcbCell>
+      </div>
+
+      {/* Confirmation prompt: ACCEPT button appears when fmaCandidateMode is active */}
+      {view.fmaCandidateMode && (
+        <div
+          className="dcb-main-grid-cell"
+          data-dcb-layout-id="mode-accept"
+          data-dcb-row={1}
+          data-dcb-column={6}
+          data-dcb-row-span={2}
+          style={{ gridColumn: 6, gridRow: "1 / span 2" }}
+        >
+          <DcbCell
+            kind="action"
+            ariaLabel="ACCEPT"
+            dataDcb="mode-accept"
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              commitFmaConfirmation(view);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">ACCEPT</span>
+          </DcbCell>
+        </div>
+      )}
+
+      {/* DONE button */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="done"
+        data-dcb-row={1}
+        data-dcb-column={view.fmaCandidateMode ? 7 : 6}
+        data-dcb-row-span={2}
+        style={{ gridColumn: view.fmaCandidateMode ? 7 : 6, gridRow: "1 / span 2" }}
       >
         {renderDone(view, onChange)}
       </div>

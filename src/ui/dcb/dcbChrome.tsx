@@ -478,7 +478,13 @@ export interface DcbCellProps {
     | "site-multi"
     | "site-choice"
     | "pref"
+    | "mode"
+    | "mode-efsl"
     | "mode-fsl"
+    | "mode-trng"
+    | "mode-fma"
+    | "mode-dsf"
+    | "mode-accept"
     | `pref-${number}`
     | "pref-default"
     | "pref-restore"

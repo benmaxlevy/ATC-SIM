@@ -31,15 +31,14 @@ import { cloneBrite, type BriteState } from "../palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "../ptl";
 import {
   createScopeView,
-  DEFAULT_MODE_FSL,
   DEFAULT_VOL_LEVEL,
   DEFAULT_DWELL_MODE,
   DEFAULT_HISTORY_RATE_SEC,
   DEFAULT_CURSOR_SPEED,
   setDcbDock,
   setSurveillanceMode,
-  type ModeFsl,
   type DwellMode,
+  type FmaAmzPreference,
   type ScopeView,
   type VolLevel,
 } from "../scopeView";
@@ -136,7 +135,8 @@ export interface DcbPrefBody {
   surveillanceMode: SurveillanceMode;
   wxLevels: WxLevels;
   vol?: VolLevel;
-  modeFsl?: ModeFsl;
+  modeFsl?: unknown;
+  amzPreferences?: Record<string, FmaAmzPreference>;
   historyRateSec?: number;
   dwellMode?: DwellMode;
   cursorHome?: boolean;
@@ -336,7 +336,10 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     surveillanceMode: view.surveillanceMode,
     wxLevels: cloneWxLevels(view.wxLevels),
     vol: view.vol ?? DEFAULT_VOL_LEVEL,
-    modeFsl: view.modeFsl ?? DEFAULT_MODE_FSL,
+    amzPreferences:
+      view.amzPreferences && view.amzPreferences.size > 0
+        ? Object.fromEntries(view.amzPreferences.entries())
+        : undefined,
     historyRateSec: view.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
     dwellMode: view.dwellMode ?? DEFAULT_DWELL_MODE,
     cursorHome: view.cursorHome ?? false,
@@ -429,10 +432,14 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     body.vol !== undefined && body.vol >= 0 && body.vol <= 5
       ? (body.vol as VolLevel)
       : DEFAULT_VOL_LEVEL;
-  view.modeFsl =
-    body.modeFsl === "F" || body.modeFsl === "S" || body.modeFsl === "L"
-      ? body.modeFsl
-      : DEFAULT_MODE_FSL;
+  // Note: legacy modeFsl field is intentionally ignored and discarded (T02-225).
+  if (body.amzPreferences && typeof body.amzPreferences === "object") {
+    for (const [amzId, pref] of Object.entries(body.amzPreferences)) {
+      if (pref && typeof pref === "object" && typeof pref.amzId === "string") {
+        view.amzPreferences.set(amzId, pref);
+      }
+    }
+  }
   view.historyRateSec =
     typeof body.historyRateSec === "number" && body.historyRateSec > 0
       ? body.historyRateSec
@@ -647,4 +654,52 @@ export function browserDcbPrefStorage(): DcbPrefStorage | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Apply AMZ-keyed FMA display settings from local preference store (TI 6191.409 §4.1, §6.16.2).
+ * Returns true if preference set existed and was applied; false if not found.
+ */
+export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
+  const pref = view.amzPreferences.get(amzId);
+  if (!pref) {
+    return false;
+  }
+  if (isRangeNm(pref.rangeNm)) {
+    view.camera.rangeNm = pref.rangeNm;
+  }
+  if (Number.isFinite(pref.centerEastNm) && Number.isFinite(pref.centerNorthNm)) {
+    view.camera.centerEastNm = pref.centerEastNm!;
+    view.camera.centerNorthNm = pref.centerNorthNm!;
+  }
+  if (pref.mapVisibility && typeof pref.mapVisibility === "object") {
+    applyMapVisibility(view, pref.mapVisibility);
+  }
+  return true;
+}
+
+/**
+ * Save AMZ-keyed FMA display settings to local preference store.
+ */
+export function saveFmaAmzPreference(
+  view: ScopeView,
+  amzId: string,
+  settings?: Partial<FmaAmzPreference>,
+): FmaAmzPreference {
+  const existing = view.amzPreferences.get(amzId);
+  const updated: FmaAmzPreference = {
+    amzId,
+    mag: settings?.mag ?? existing?.mag,
+    ptlSeconds: settings?.ptlSeconds ?? existing?.ptlSeconds,
+    fmaBrite: settings?.fmaBrite ?? existing?.fmaBrite,
+    runwayLeaders: settings?.runwayLeaders ?? existing?.runwayLeaders,
+    enabledNtzIds: settings?.enabledNtzIds ?? existing?.enabledNtzIds,
+    voiceLevel: settings?.voiceLevel ?? existing?.voiceLevel,
+    rangeNm: settings?.rangeNm ?? view.camera.rangeNm,
+    centerEastNm: settings?.centerEastNm ?? view.camera.centerEastNm,
+    centerNorthNm: settings?.centerNorthNm ?? view.camera.centerNorthNm,
+    mapVisibility: settings?.mapVisibility ?? mapToRecord(view.mapVisibility),
+  };
+  view.amzPreferences.set(amzId, updated);
+  return updated;
 }

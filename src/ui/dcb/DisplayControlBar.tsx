@@ -18,10 +18,11 @@
  * WX1–6 latch `view.wxLevels` (VIP 1–6). Disabled CRDA cell on SSA FILTER
  * is chrome only. MAIN SITE opens FUSED / MULTI / one cap per adapted
  * `radarSites` row (R05 FOA display data). CRC R07 SITE is disabled in its
- * FUSION-only analog; this trainer lifts that. Empty sites keep FUSED only.
- * MODE FSL stays disabled. PREF is 32 local slots (not a NAS host). SAVE AS names via
+ * MAIN MODE opens Figure 6-16 service-mode submenu (EFSL, FSL default, TRNG, FMA, DSF, DONE).
+ * FMA requires 2K, controller privilege, valid AMZ, and compatible service mode; confirmation on ACCEPT.
+ * PREF is 32 local slots with per-AMZ FMA settings (not a NAS host). SAVE AS names via
  * the preview-area buffer (R07 analog; no window.prompt / HTML input). MAIN
- * PREF shows the active set name. No CSA / FMA (R06). Discrete **range** presets only.
+ * PREF shows the active set name. No CSA (R06). Discrete **range** presets only.
  * CHAR SIZE scales **datablock** / lists / DCB / tools / POS. BRITE multiplies
  * drawn channels. Not NAS STARS.
  *
@@ -63,7 +64,6 @@ import {
   openDcbMenu,
   stepDcbLeaderDir,
   stepDcbLeaderLength,
-  stepModeFsl,
   stepRange,
   stepRrInterval,
   type ScopeView,
@@ -103,6 +103,7 @@ import {
   renderGiFilter,
   renderLdr,
   renderMaps,
+  renderModeMenu,
   renderPref,
   renderSsaFilter,
   renderTpaAtpa,
@@ -145,7 +146,7 @@ function renderPhysicalMain(
     <DcbCell
       kind="disabled"
       ariaLabel={label}
-      dataDcb={id === "mode-fsl" ? undefined : (id as DcbCellProps["dataDcb"])}
+      dataDcb={id as DcbCellProps["dataDcb"]}
       disabled
       onClick={() => undefined}
     >
@@ -417,28 +418,20 @@ function renderPhysicalMain(
             <span className="dcb-cell-line">FILTER</span>
           </DcbCell>
         );
-      case "mode-fsl":
+      case "mode":
         return (
           <DcbCell
-            kind="spinner"
-            ariaLabel="Mode FSL"
-            dataDcb="mode-fsl"
-            pressed={spinnerArmed(view, "MODE_FSL")}
-            onClick={() => toggleSpinner(view, onChange, "MODE_FSL")}
-            onWheel={(event) =>
-              onSpinnerWheel(view, "MODE_FSL", event, (step) => stepModeFsl(view, step), onChange)
-            }
-            onDragDelta={(step) => {
-              for (let i = 0; i < Math.abs(step); i++) {
-                stepModeFsl(view, step > 0 ? 1 : -1);
-              }
+            kind="submenu"
+            ariaLabel="Mode"
+            dataDcb="mode"
+            pressed={view.dcbMenu === "MODE"}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              openDcbMenu(view, "MODE");
               afterCell(onChange);
             }}
           >
             <span className="dcb-cell-line">MODE</span>
-            <span className="dcb-cell-line">
-              {formatSpinnerCellReadout(view, "MODE_FSL", view.modeFsl)}
-            </span>
           </DcbCell>
         );
       case "shift":
@@ -736,7 +729,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                     ? "pref"
                     : menu === "SITE"
                       ? "site-fused"
-                      : undefined;
+                      : menu === "MODE"
+                        ? "mode"
+                        : undefined;
 
   const submenuRef = useRef<HTMLDivElement>(null);
   const [submenuLeft, setSubmenuLeft] = useState<number | null>(null);
@@ -845,7 +840,9 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
                         ? renderGiFilter(view, onChange)
                         : menu === "PREF"
                           ? renderPref(view, onChange)
-                          : renderSite(view, onChange)}
+                          : menu === "SITE"
+                            ? renderSite(view, onChange)
+                            : renderModeMenu(view, onChange)}
         </div>
       ) : null}
       {trap.cursor ? (

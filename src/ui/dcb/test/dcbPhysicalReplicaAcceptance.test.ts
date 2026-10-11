@@ -50,7 +50,7 @@ test("AC1 — MAIN is the fixed two-row, 22-column physical DCB descriptor", () 
     "ldr-dir",
     "ldr-length",
     "char",
-    "mode-fsl",
+    "mode",
     "pref",
     "site-fused",
     "ssa-filter",
@@ -79,15 +79,15 @@ test("AC1 — MAIN is the fixed two-row, 22-column physical DCB descriptor", () 
   expect(MAIN_DCB_LAYOUT.every(({ row, rowSpan }) => row === 1 || rowSpan === 1)).toBe(true);
 });
 
-test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE FSL spinner", () => {
+test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE submenu", () => {
   const html = dcbHtml();
   for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
     expect(html).toMatch(new RegExp(`data-dcb-layout-id="${id}"`));
     expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*data-dcb-kind="toggle"`));
     expect(html).not.toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*\\bdisabled\\b`));
   }
-  expect(html).toMatch(/aria-label="Mode FSL"[^>]*data-dcb-kind="spinner"/);
-  expect(html).not.toMatch(/aria-label="Mode FSL"[^>]*disabled/);
+  expect(html).toMatch(/aria-label="Mode"[^>]*data-dcb-kind="submenu"/);
+  expect(html).not.toMatch(/aria-label="Mode"[^>]*disabled/);
   expect(html).toMatch(/aria-label="SITE FUSED"/);
   expect(html).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
   expect(html).toContain('data-dcb-layout="MAIN"');

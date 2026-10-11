@@ -37,6 +37,17 @@ import { formatFmaAlertDiagnostic, observeFmaAlertRuntime } from "../fmaAlerts";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
 import { nmToScreen } from "../camera";
+import {
+  isFmaAvailable,
+  enterFmaConfirmation,
+  cancelFmaConfirmation,
+  commitFmaConfirmation,
+} from "../dcb/dcbFunctions";
+import { handleDcbEscape } from "../dcb/dcbMenu";
+import { serializeDcbPref, applyDcbPref, saveFmaAmzPreference } from "../dcb/dcbPref";
+import { rebindFmaScenarioAmzs } from "../scopeView";
+import { getDatablockVisualState } from "../render/renderScopePaint";
+import { makeTestAircraft } from "../../core";
 
 function syntheticAmz(): FmaAmz {
   const box = (x1: number, y1: number, x2: number, y2: number) => ({
@@ -1620,4 +1631,176 @@ test("AC3 & AC4 — Field 0 uses exact STARS abbreviations (NTZ, CST, RWY) with 
   view.fmaAlertInhibit.ntzIds = new Set(["NTZ-08"]);
   const allNtzInhibitedPresentation = buildScopeDatablockPresentation(view, world, aircraft);
   expect(allNtzInhibitedPresentation.alertGlyphs).toEqual([]);
+});
+
+test("T02-225 AC1 — MODE submenu order, types, confirmation lifecycle, and capability gating", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance.selectedAmzId = amz.id;
+
+  // Initial state: FSL service mode, no submenu
+  expect(view.serviceMode).toBe("FSL");
+  expect(view.dcbMenu).toBe("MAIN");
+  expect(view.fmaCandidateMode).toBe(false);
+
+  // Open MODE submenu
+  view.dcbMenu = "MODE";
+
+  // Check availability
+  expect(isFmaAvailable(view)).toBe(true);
+
+  // In 1K display capability, FMA is omitted/unavailable
+  view.displayCapability = "1K";
+  expect(isFmaAvailable(view)).toBe(false);
+  view.displayCapability = "2K";
+
+  // Without controller privilege, FMA is unavailable
+  view.operatorPrivilege = "other";
+  expect(isFmaAvailable(view)).toBe(false);
+  view.operatorPrivilege = "controller";
+
+  // Without valid AMZ, FMA is unavailable
+  view.fmaAmzs = [];
+  expect(isFmaAvailable(view)).toBe(false);
+  view.fmaAmzs = [amz];
+
+  // In DSF mode, FMA is unavailable
+  view.serviceMode = "DSF";
+  expect(isFmaAvailable(view)).toBe(false);
+  view.serviceMode = "FSL";
+
+  // Confirm availability passes again
+  expect(isFmaAvailable(view)).toBe(true);
+
+  // Clicking FMA enters confirmation state without toggling immediately
+  expect(enterFmaConfirmation(view)).toBe(true);
+  expect(view.fmaCandidateMode).toBe(true);
+  expect(view.fmaSurveillance.enabled).toBe(false);
+
+  // Repeated enter does not change state or apply twice
+  expect(enterFmaConfirmation(view)).toBe(true);
+  expect(view.fmaCandidateMode).toBe(true);
+
+  // Cancel confirmation resets candidate mode
+  cancelFmaConfirmation(view);
+  expect(view.fmaCandidateMode).toBe(false);
+  expect(view.fmaSurveillance.enabled).toBe(false);
+
+  // Re-enter confirmation and commit via ACCEPT
+  enterFmaConfirmation(view);
+  expect(commitFmaConfirmation(view)).toBe(true);
+  expect(view.fmaCandidateMode).toBe(false);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+
+  // Committing again when not in candidate mode returns false
+  expect(commitFmaConfirmation(view)).toBe(false);
+
+  // Escape closes menu and resets candidate mode if pending
+  enterFmaConfirmation(view);
+  expect(view.fmaCandidateMode).toBe(true);
+  handleDcbEscape(view);
+  expect(view.dcbMenu).toBe("MAIN");
+  expect(view.fmaCandidateMode).toBe(false);
+});
+
+test("T02-225 AC2 — modeFsl state removed and legacy PREF migration discards modeFsl", () => {
+  const view = createScopeView();
+  expect((view as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
+
+  // Serialize PREF: no modeFsl field
+  const serialized = serializeDcbPref(view);
+  expect((serialized as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
+
+  // Restore legacy PREF containing modeFsl: preserves unrelated fields and ignores modeFsl
+  const legacyPref = {
+    ...serialized,
+    vol: 5 as const,
+    modeFsl: "S",
+  };
+  const target = createScopeView();
+  applyDcbPref(target, legacyPref);
+  expect(target.vol).toBe(5);
+  expect((target as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
+  expect(target.serviceMode).toBe("FSL");
+});
+
+test("T02-225 AC3 — explicit full/partial/limited datablock modes remain independent of serviceMode", () => {
+  const view = createScopeView();
+  const acOwned = makeTestAircraft({ id: "ac1", callsign: "DAL101", altitudeFt: 5000 });
+  const acUnowned = makeTestAircraft({ id: "ac2", callsign: "AAL202", altitudeFt: 7000 });
+  const world = createWorld({ aircraft: [acOwned, acUnowned] });
+
+  view.tracks.set("ac1", createTrackDisplay("owned"));
+  view.tracks.set("ac2", createTrackDisplay("unowned"));
+
+  // Default datablocks: owned is full, unowned is partial
+  expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+  expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
+
+  // Forced FDB overrides
+  view.tracks.get("ac2")!.forcedFdb = true;
+  expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("full");
+
+  // Changing serviceMode does not alter datablock presentation
+  view.serviceMode = "EFSL";
+  expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+  view.serviceMode = "TRNG";
+  expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+  view.serviceMode = "DSF";
+  expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
+  view.serviceMode = "FSL";
+});
+
+test("T02-225 AC4 — per-AMZ preference application, missing preference warning, and catalog replacement", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance.selectedAmzId = amz.id;
+
+  // Enable FMA without saved preference for this AMZ: succeeds and shows NO PREF SET FOUND
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.lastWarning).toBe("NO PREF SET FOUND");
+
+  // Clear warning and save preference for this AMZ
+  view.lastWarning = null;
+  saveFmaAmzPreference(view, amz.id, {
+    mag: 2,
+    ptlSeconds: 90,
+    voiceLevel: 7,
+    runwayLeaders: { "08L": 3 },
+    enabledNtzIds: ["NTZ-08"],
+    rangeNm: 20,
+  });
+
+  // Toggle FMA off then on again: applies saved preference and does NOT show warning
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaSurveillance.enabled).toBe(false);
+
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.lastWarning).toBeNull();
+  expect(view.camera.rangeNm).toBe(20);
+
+  // Preference persistence across PREF serialization
+  const serialized = serializeDcbPref(view);
+  expect(serialized.amzPreferences?.[amz.id]).toBeDefined();
+  expect(serialized.amzPreferences?.[amz.id].voiceLevel).toBe(7);
+
+  // Reapply to a new view
+  const restoredView = createScopeView();
+  restoredView.fmaAmzs = [amz];
+  applyDcbPref(restoredView, serialized);
+  expect(restoredView.amzPreferences.get(amz.id)?.voiceLevel).toBe(7);
+
+  // Catalog / scenario replacement rebinds AMZ and clears runtime state
+  view.fmaAlertInhibit.aircraftIds = new Set(["ac1"]);
+  const nextAmz = { ...amz, id: "AMZ-NEXT" };
+  rebindFmaScenarioAmzs(view, [nextAmz]);
+  expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-NEXT");
+  expect(view.fmaAlertInhibit.aircraftIds?.size ?? 0).toBe(0);
 });

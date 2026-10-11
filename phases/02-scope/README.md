@@ -783,7 +783,7 @@ shipped without weather paint.
 
 ### Phase 2 addendum (T02-81–83 DCB controls & SSA WX telemetry)
 
-DCB `VOL` audio gain wiring, `MODE FSL` datablock mode latch, `BRITE BKC` canvas background contrast, and live SSA `WX` / `WX HIST` telemetry.
+DCB `VOL` audio gain wiring, historical `MODE FSL` datablock mode latch (superseded by T02-225 authentic Figure 6-16 MODE submenu), `BRITE BKC` canvas background contrast, and live SSA `WX` / `WX HIST` telemetry. Note: T02-225 removed the invented global Full/Semi/Limited F/S/L datablock behavior and restored authentic STARS service-mode submenu semantics (`EFSL`, `FSL`, `TRNG`, `FMA`, `DSF`, `DONE`) with local AMZ preferences.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
