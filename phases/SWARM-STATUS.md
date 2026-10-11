@@ -2407,3 +2407,36 @@ No unrelated worktree or session artifacts were staged. Push was authorized by
 the user and is the next captain action.
 
 **PHASE EXIT GREEN**
+
+## EIGHTY-FOURTH SWARM — MULTI FUNC/SPLAT SEPARATION (T02-207, 2026-10-10)
+
+Implemented and squash-merged on `feature/minimum-separation-graphics`:
+
+- T02-207 `b305cda` — Separate F7 MULTI FUNC from literal splat across Preview
+  entry, Enter parsing, live slew, and current Help/user documentation. Existing
+  MULTI FUNC lists, filters, MSAW, per-track PTL, positioning, and plan operations
+  require F7; literal TPA/ATPA and explicit trainer extensions retain `*`.
+- Preserve origin through entry and cancellation; F7 cancels pending MIN while
+  preserving the active pair and rolls back competing DCB spinner entry.
+- Known radio input routes plain F7/owned Preview operands and Ctrl+F7 DCB SHIFT;
+  native inputs, modal/Help controls, Ctrl/Alt/Meta editing shortcuts, and modified
+  F7 retain their documented owners. Literal *T is reserved; RBL is not implemented.
+
+Final captain `npm run ci`: **255 files, 2,897 passed, 4 skipped**.
+Focused separation acceptance: **10 passed**. `git diff --check`: **0 errors**.
+
+Manual gate: independent read-only subagent review **PASS** against the supplied
+Raytheon TI 6191.409 Rev30 Table 2-5, Appendix D Tables D-1–3, and the ticket's
+procedure citations. Initial review found a wrong-origin *FP live-slew bypass;
+captain review also found hidden pending MIN and radio-input/spinner ownership
+issues. Narrow corrections addressed those findings. Recheck identified the
+radio Ctrl+F7 owner and superseded doc wording; final correction and independent
+recheck passed. Existing trainer action semantics are preserved, not newly
+claimed as complete STARS functionality.
+
+Manual leftover: live interactive browser verification was not performed; the
+session browser/app inventory was empty. Synthetic keyboard/PPI/mockCanvas and
+current Help tests provide automated evidence, not a browser visual pass.
+Unrelated worktrees and memory artifacts remain preserved. No push or master merge.
+
+**PHASE EXIT GREEN**
