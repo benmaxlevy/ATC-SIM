@@ -898,7 +898,7 @@ zero-speed traversal uses `**` except coincident endpoints (`0`); no proprietary
 algorithm is claimed.
 
 T02-209 creation starts with `*T`, then selects endpoint 1 by click, a 3–7
-character catalog fix (`*TFIX Enter`), or a track (`*T SPACE ACID/BCN Enter`).
+character catalog fix (`*T SPACE FIX1 Enter`), or a track (`*T SPACE ACID/BCN Enter`).
 Select endpoint 2 by click (immediate commit) or typed FIX/ACID/BCN plus Enter.
 `*T Enter` clears all; `*T3 Enter` removes line 3. Fix wins over a homonymous
 ACID. Errors are `FORMAT`, `CAPACITY`, `RBL ID`, `DUP ID <ACID>` with known TCP

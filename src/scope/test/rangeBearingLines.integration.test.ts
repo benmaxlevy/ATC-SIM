@@ -71,6 +71,7 @@ import {
 } from "../render/renderScopePaint";
 import { applyDcbPref, serializeDcbPref } from "../dcb/dcbPref";
 import { buildFixRegistry } from "../../core/nav/fixRegistry";
+import { formatPreviewDisplayReadout } from "../previewDisplayLabels";
 
 function makeKeyEvent(overrides: Partial<ScopeKeyEvent> = {}): ScopeKeyEvent {
   const key = overrides.key ?? "Enter";
@@ -963,6 +964,36 @@ describe("T02-208 Range-Bearing Line Model and Readouts", () => {
       const line = view.rbl.lines.get(1);
       expect(line?.endpoint1).toMatchObject({ kind: "fix", fixId: "NEMAX" });
       expect(line?.endpoint2).toMatchObject({ kind: "fix", fixId: "BAMMI" });
+    });
+
+    it("accepts spaced typed fixes across the two Enter stages and intervening paint", () => {
+      const world = createWorld({
+        fixRegistry: buildFixRegistry({
+          navaids: [],
+          fixes: [
+            { id: "FIXAL", xNm: 0, yNm: 0, kind: "fix" },
+            { id: "FIXBE", xNm: 5, yNm: 0, kind: "fix" },
+          ],
+        }),
+      });
+      const view = createScopeView();
+      for (const key of ["*", "T", " ", ..."FIXAL", "Enter"]) {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 1000);
+      }
+      expect(view.rbl.lines.size).toBe(0);
+      expect(view.rbl.pendingFirstEndpoint).toMatchObject({ kind: "fix", fixId: "FIXAL" });
+      expect(formatPreviewDisplayReadout(view.preview)).toBe("RBL");
+      renderScope(createMockCtx().ctx, world, view, 800, 600);
+      for (const key of "FIXBE") {
+        handleScopeKeyDown(makeKeyEvent({ key }), view, "scope", world, 2000);
+      }
+      expect(formatPreviewDisplayReadout(view.preview)).toBe("RBL FIXBE");
+      handleScopeKeyDown(makeKeyEvent({ key: "Enter" }), view, "scope", world, 2000);
+      expect(view.rbl.lines.get(1)?.endpoint2).toMatchObject({ kind: "fix", fixId: "FIXBE" });
+      expect(view.rbl.pendingFirstEndpoint).toBeNull();
+      const painted = createMockCtx();
+      renderScope(painted.ctx, world, view, 800, 600);
+      expect(painted.fillTexts.some((item) => item.text === "090/5.00-1")).toBe(true);
     });
 
     it.each(["ABD", "LAMES", "NEMAX"])(
