@@ -6547,3 +6547,19 @@ CI and supplied-manual gate remain required before launching the next wave.
 Final handoff includes a per-ticket table of commits, tests, manual results,
 corrections and actual manual/browser/audio leftovers. All other configuration
 and the T02-228 stop boundary remain unchanged.
+
+## Eighty-sixth swarm planning amendment — concurrent waves E & F (2026-10-11)
+
+The user explicitly authorized maximum parallelization where work is not added.
+T02-224 (speech queue / browser audio) and T02-225 (DCB MODE submenu / AMZ preferences)
+touch completely disjoint files and share no merge conflict surface once T02-223
+is merged onto `feature/fma`.
+
+| Key | Value |
+| --- | --- |
+| Concurrent tickets | T02-224 (Wave E) ∥ T02-225 (Wave F) |
+| Worker limit | Up to 2 concurrent isolated workers |
+| Worktrees | `/tmp/atc-fma-224` and `/tmp/atc-fma-225` |
+| Merge lock | Captain squash-merges sequentially; CI and manual gate required per ticket |
+| Stop boundary | Unchanged (stop after T02-228) |
+
