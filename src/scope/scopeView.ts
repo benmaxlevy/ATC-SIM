@@ -10,8 +10,8 @@
  * per-subsystem fonts converted from Vice's STARS bitmaps (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
- * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
- * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
+ * phosphor; AUX HISTORY spinner shows 0–5 of those dots (H toggles 0 ↔ last non-zero).
+ * Default SITE mode is FUSED. PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F10 toggles PTL ALL. F7 is MULTI FUNC and starts a separate operand buffer. PTL OWN is F3-owned
  * tracks; ALL wins if both are on. Per-track PTL is F7 `R` plus click
  * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
@@ -208,11 +208,11 @@ export interface ScopeView {
   mapCache: MapCache | null;
   /**
    * HISTORY dots to draw (0–9 from keyboard; AUX spinner 0–5). 0 = off (same skip as
-   * historyEnabled === false). Sampler still keeps 5 dots. F8 / H toggles 0 ↔ last
+   * historyEnabled === false). Sampler still keeps 5 dots. H toggles 0 ↔ last
    * non-zero (default 5).
    */
   historyDotCount: HistoryDotCount;
-  /** Last non-zero HISTORY count restored by F8 / H. */
+  /** Last non-zero HISTORY count restored by H. */
   lastHistoryDotCount: Exclude<HistoryDotCount, 0>;
   /** Derived from historyDotCount > 0. Kept so existing readers stay valid. */
   historyEnabled: boolean;
@@ -372,6 +372,11 @@ export interface ScopeView {
   fmaAlertDiagnostics: string[];
   fmaAmzs: FmaAmz[];
   fmaAlertInhibit: FmaAlertInhibit;
+  /** Display-local episode acknowledgments; IDs expire with their alert episode. */
+  fmaAcknowledgedEpisodeIds: Set<string>;
+  fmaSilencedEpisodeIds: Set<string>;
+  /** T02-224 consumes these episode-local onset/cancel events for speech. */
+  fmaSpeechEvents: Array<{ type: "onset" | "cancel"; episodeId: string; aircraftId: string }>;
   /**
    * STARS VIP 1–6 display latches. Default all false.
    * Display only. Paint is weatherLayer. Does not steer aircraft.
@@ -571,6 +576,9 @@ export function createScopeView(
     fmaAlertDiagnostics: [],
     fmaAmzs: options?.fmaAmzs ? [...options.fmaAmzs] : [],
     fmaAlertInhibit: {},
+    fmaAcknowledgedEpisodeIds: new Set(),
+    fmaSilencedEpisodeIds: new Set(),
+    fmaSpeechEvents: [],
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
@@ -657,10 +665,16 @@ export function configureFmaSurveillanceView(
     nextMonitoring,
   );
   if (view.fmaSurveillance !== previous) {
+    for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    }
     view.fmaAlertState = createFmaAlertState(selectedAmzId);
     view.fmaAlertResults = new Map();
     view.fmaAlertOutlines = new Map();
     view.fmaAlertDiagnostics = [];
+    view.fmaAcknowledgedEpisodeIds.clear();
+    view.fmaSilencedEpisodeIds.clear();
+    cancelPreviewArea(view.preview);
     for (const td of view.tracks.values()) delete td.presentationReport;
   }
 }
@@ -715,11 +729,17 @@ export function releaseFmaTracksView(view: ScopeView, aircraftIds: Iterable<stri
 }
 
 export function clearFmaSurveillanceView(view: ScopeView): void {
+  for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
+    view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+  }
   view.fmaSurveillance = clearFmaSurveillance(view.fmaSurveillance);
   view.fmaAlertState = createFmaAlertState();
   view.fmaAlertResults = new Map();
   view.fmaAlertOutlines = new Map();
   view.fmaAlertDiagnostics = [];
+  view.fmaAcknowledgedEpisodeIds.clear();
+  view.fmaSilencedEpisodeIds.clear();
+  cancelPreviewArea(view.preview);
   for (const td of view.tracks.values()) delete td.presentationReport;
 }
 
@@ -746,7 +766,7 @@ function syncHistoryEnabled(view: ScopeView): void {
   view.historyEnabled = view.historyDotCount > 0;
 }
 
-/** F8 always-on; H only when scope-focused. Toggles 0 ↔ last non-zero (default 5). Never a Command. */
+/** H when scope-focused. Toggles history 0 ↔ last non-zero (default 5). Never a Command. */
 export function toggleHistoryEnabled(view: ScopeView): void {
   if (view.historyDotCount === 0) {
     view.historyDotCount = view.lastHistoryDotCount;

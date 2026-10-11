@@ -37,6 +37,7 @@ import type { VipLevel } from "./wx";
  */
 export type PreviewArmedAction =
   | { readonly type: "minSep" }
+  | { readonly type: "fmaTrackInhibit" }
   | {
       readonly type: "createFlightPlan";
       pendingDiscrete: boolean;
@@ -1216,6 +1217,7 @@ const TRACKING_SLEW_TYPES: ReadonlySet<PreviewArmedAction["type"]> = new Set([
   "msawCurrentAlertInhibit",
   "toggleMsawProcessing",
   "createVfrActiveTrack",
+  "fmaTrackInhibit",
 ]);
 
 function compactTrackingBuffer(buffer: string): string {

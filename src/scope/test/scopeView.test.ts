@@ -146,7 +146,7 @@ test("toggleMapLayer hides runway, loc, rings, coastline independently; CST no-o
   expect(withCoast.showCoastline).toBe(false);
 });
 
-test("PTL and history toggles match F7/F8 (click ≡ key)", () => {
+test("PTL and history controls update their display state", () => {
   const view = createScopeView();
   expect(view.ptlOn).toBe(false);
   expect(view.historyEnabled).toBe(true);
@@ -242,7 +242,7 @@ test("PLACE RR: next PPI click sets ring origin; RR CNTR snaps to view center", 
   expect(isRangeRingOffViewCenter(view)).toBe(true);
 });
 
-test("AC1 — F8 toggles HISTORY 0 ↔ last non-zero; spinner 0–5", () => {
+test("History state toggles 0 ↔ last non-zero; spinner 0–5", () => {
   const view = createScopeView();
   expect(view.historyDotCount).toBe(5);
   expect(view.historyEnabled).toBe(true);

@@ -27,7 +27,7 @@
  *
  * UI copy: SHIFT / DONE / MAIN / AUX / HISTORY / PTL / range / center / range rings /
  * leader — not toolbar or modal.
- * F8 / scope-focus H still call toggleHistoryEnabled(view) (0 ↔ last non-zero).
+ * Scope-focus H still calls toggleHistoryEnabled(view) (0 ↔ last non-zero).
  * F7 still calls togglePtlOn(view) (PTL ALL).
  * Clicks call the same `src/scope` functions as the keyboard. Action caps
  * (SAVE / DONE / CLR ALL) flash the inset bevel then pop; they are not latches.

@@ -893,7 +893,7 @@ function trackColor(view: ScopeView, world: World, ac: Aircraft): string {
 }
 
 type AlertGlyph = {
-  text: "Δ" | "*" | "+";
+  text: "Δ" | "*" | "+" | "▼";
   color: string;
   visible: boolean;
 };
@@ -964,6 +964,7 @@ function alertGlyphsForTrack(args: {
 interface Field0AlertState {
   text: string;
   requiresBlink: boolean;
+  color: string;
 }
 
 /** Existing renderer alert state projected into physical Field 0. */
@@ -974,7 +975,8 @@ function field0AlertState(
   world: World,
   mode: DatablockMode,
 ): Field0AlertState {
-  if (mode !== "full" && mode !== "partial") return { text: "", requiresBlink: false };
+  if (mode !== "full" && mode !== "partial")
+    return { text: "", requiresBlink: false, color: PALETTE.alert };
   const caInhibited = isCaInhibitedForTrack(ac, td, view);
   const caSeverity = !caInhibited ? caSeverityForVisibleTrack(view, world, ac.callsign) : null;
   const msawInhibited = Boolean(
@@ -992,9 +994,32 @@ function field0AlertState(
   const mciInhibited = mciActive && view.mciEnabled === false;
   const hasLa = msawSeverity != null;
   const hasCa = caSeverity != null || (mciActive && !mciInhibited);
+  const fma = view.fmaAlertResults.get(ac.id);
+  const episode = fma?.episode;
+  const warning = Boolean(episode && episode.condition !== "NTZ_CAUTION");
+  const fmaText = fma?.primary
+    ? fma.primary === "NTZ_WARNING"
+      ? "NTZ"
+      : fma.primary === "SURVEILLANCE_LOST"
+        ? "CST"
+        : fma.primary === "RUNWAY_ERROR"
+          ? "RWY"
+          : fma.primary === "NTZ_CAUTION"
+            ? "NTZ"
+            : null
+    : null;
+  const nom = fma?.supplementary.nom ? "NOM" : null;
+  const existing = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean);
+  const isRedAlert = warning || hasLa || caSeverity != null || (mciActive && !mciInhibited);
   return {
-    text: [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean).join("/"),
+    text: [...[fmaText, nom].filter(Boolean), ...existing].join("/"),
+    color: isRedAlert
+      ? PALETTE.alert
+      : fma?.primary === "NTZ_CAUTION" || nom
+        ? PALETTE.caution
+        : PALETTE.alert,
     requiresBlink:
+      (warning && Boolean(episode && !view.fmaAcknowledgedEpisodeIds.has(episode.id))) ||
       (hasLa && !isMsawAlertAcknowledged(ac, td, view, world)) ||
       (caSeverity != null && !isCaAlertAcknowledged(ac, td, view, world)) ||
       (mciActive && !mciInhibited),
@@ -1104,7 +1129,7 @@ export function buildScopeDatablockPresentation(
   );
   const mciInhibited = hasMciAlertForTrack(world, ac) && view.mciEnabled === false;
   const briteCh = mode === "limited" || mode === "partial" ? view.brite.ldb : view.brite.fdb;
-  const alertGlyphs =
+  let alertGlyphs =
     mode === "full" || mode === "partial"
       ? alertGlyphsForTrack({
           caInhibited: isCaInhibited || isCaPairInhibited,
@@ -1113,6 +1138,17 @@ export function buildScopeDatablockPresentation(
           normalColor: applyBrite(PALETTE.owned, briteCh),
         })
       : [];
+  const fmaInhibited =
+    view.fmaSurveillance.enabled && Boolean(view.fmaAlertInhibit.aircraftIds?.has(ac.id));
+  const activeAmz = view.fmaAmzs.find((amz) => amz.id === view.fmaSurveillance.selectedAmzId);
+  const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+  const allNtzsDisabled = Boolean(
+    activeAmz &&
+    (activeAmz.ntzs.length === 0 || activeAmz.ntzs.every((ntz) => disabledNtzs.has(ntz.id))),
+  );
+  if ((mode === "full" || mode === "partial") && fmaInhibited && !allNtzsDisabled) {
+    alertGlyphs = [{ text: "▼", color: applyBrite(PALETTE.owned, briteCh), visible: true }];
+  }
   const taggedLine = visual.line1Tag ? `${base.line1} ${visual.line1Tag}` : base.line1;
   let line1WithoutAlert = taggedLine;
   if (!visual.line1Tag && mode !== "limited" && mode !== "partial") {
@@ -1241,7 +1277,7 @@ export function drawDatablock(
       field0Alerts.text.length > 0 &&
       (!field0Alerts.requiresBlink || isAlertBlinkOn(world.simTimeMs));
     if (showAlerts) {
-      ctx.fillStyle = applyBrite(PALETTE.alert, briteCh);
+      ctx.fillStyle = applyBrite(field0Alerts.color, briteCh);
       const separator = staticField0 == null ? "" : "/";
       const alertX = textX + ctx.measureText(`${staticField0 ?? ""}${separator}`).width;
       ctx.fillText(`${separator}${field0Alerts.text}`, alertX, line0Y);

@@ -4,7 +4,7 @@
  * Legal now: Canvas2D north-up PPI with discrete range 5–60 NM, view center,
  * `nmToScreen` / `screenToNm`, always-on Page/Home/End/F7/F8/wheel, click pick,
  * KDEM digital map (runway, localizer feather, range rings, optional coastline),
- * target diamond + history dots (F8 / scope-focus H), full/limited datablocks
+ * target diamond + history dots (scope-focus H), full/limited datablocks
  * (scope-focus T / M; Mode C hundreds + assigned + GS), predicted track line
  * (PTL, F7 always-on, default off), L1–L9 **leader** lines (scope-focus `L`
  * then 1–9; pixel-constant default 36 CSS px; DCB LDR LEN 0–7 at 12 px per step), altitude filter

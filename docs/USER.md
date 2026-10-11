@@ -84,7 +84,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
   an LDB does not retain stale plan-backed `R###` or `A###` data. FDB, PDB, and
   LDB use the same source semantics, with each mode's normal field visibility.
 - **Target history & prediction**:
-  - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `F8` or `*HIST <count>`).
+  - Discrete radar history dots (0–9 dots sampled at 5-second intervals, set via `H`, DCB, or `*HIST <count>`).
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (F7 `R`).
 - **Target Proximity Alert (TPA)**: Selectable J-rings / separation halos (1–30 NM via `*J`) and ground-track predictive cones (1–30 NM via `*P`) for spacing management.
 - **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (levels 0–5, 10/11/12/13/14/15 CSS px).
@@ -569,7 +569,7 @@ Keys below are divided into **Always-On** shortcuts (which work regardless of wh
 | `F9` | `<VFR DATA>` VFR flight plan | Enters local VFR create/modify/delete mode. `Ctrl+F9` remains the DCB range-ring command. |
 | `F5` / `Shift + H` | `<HND OFF>` Smart Handoff | Initiates shared outbound handoff: Tower for eligible arrivals, Center (`C`) for eligible climbing departures. Supported destinations auto-accept after five simulated seconds. |
 | `F7` | `<MULTI FUNC>` Multi-Function | Starts a distinct Preview Area operand buffer; type the command after F7 without a star. |
-| `F8` | `<HIST>` History Dots | Toggles radar history trail dots (0 ↔ last non-zero dot count). |
+| `F8` | `<FMA/TSAS>` Final Monitor Aid | Starts a visible Preview entry; in FMA, slew-click an associated arrival to toggle its local FMA track inhibit. Outside FMA, a target click returns `FORMAT`. `Escape` cancels. |
 | `F10` | `<PTL>` Predicted Track Line | Toggles global Predicted Track Line (`PTL ALL`). |
 | `F11` | `<CA>` Conflict Alert | Buffers `CA ` in the Preview Area. Complete a CA command or press Enter for two-track slew inhibit. |
 | `Insert` / `Ins` | `<PREF SET>` Preference Menu | Opens the DCB `PREF` configuration submenu. |
@@ -609,7 +609,7 @@ Clicking or selecting a numeric DCB adjustment button (Range, Range Rings, Leade
 |---|---|---|
 | `T` | Datablock Tag | Toggles Full Datablock (FDB) ↔ Limited Datablock (LDB) on selected track (or all if none selected). |
 | `M` | Mode C Toggle / Map Prefix | Tap `M` toggles Mode C reported altitude field on FDBs. Typing a map id afterwards (e.g. `M DEM1_27`) starts a video map buffer. |
-| `H` | History Toggle | Toggles history dots (same as `F8`). |
+| `H` | History Toggle | Toggles history dots. |
 | `F` then `<floor>` Enter `<ceiling>` Enter | Altitude Filter Chord | 1.5 s chord window: enters altitude filter limits in 3-digit hundreds (e.g. `F` → `000` Enter → `150` Enter). |
 | `B` then `<digits>` | Beacon Code Select | Table 30 beacon select chord (e.g. `B45` Enter for block 45; `B4501` for discrete). |
 | `/` | Slew / Drop Prefix | Buffers `/` into Preview Area (drop track `TERM CNTL`, set leader length, or toggle PDB ↔ FDB). |
@@ -940,3 +940,15 @@ RWY adjacency follows the stabilized observed runway. Reassignment changes
 the affected runway evidence and starts a new alert episode. Track and NTZ
 inhibit state is local to that TCW and does not change aircraft, flight plans,
 association, intent, or global alerts.
+
+F8 starts the visible `FMA/TSAS` Preview function in or outside FMA mode. In
+FMA mode, slew-click an associated arrival to toggle its local track inhibit;
+the click clears its pending entry and does not select the target. Applying
+FMA outside FMA mode shows `FORMAT`. `Escape` cancels, and an empty Enter keeps
+the pending function visible. Ordinary clicks acknowledge unacknowledged
+warning episodes and cancel their speech. A caution click only silences its
+speech; its yellow indication remains unchanged. No ACK chord is provided.
+Field 0 combines FMA/NOM with existing LA/CA indicators. Field 2 shows solid
+`▼` for inhibited FMA tracks; it takes precedence over MSAW/CA inhibit symbols,
+and hides while every NTZ is inhibited. Frozen presentation clears through
+the configured track, mode, AMZ, inhibition and NTZ-adjacency lifecycle.

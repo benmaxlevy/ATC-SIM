@@ -20,6 +20,7 @@ import {
   previewRelocateListId,
   previewTrackingSlew,
   rejectPreviewArea,
+  rejectPreviewAreaWithReason,
   rejectPreviewCntl,
   type PreviewArmedAction,
 } from "./previewArea";
@@ -66,6 +67,7 @@ import {
   handleFlightPlanListClick,
   handleVideoMapsListClick,
   hitTestSystemListEntry,
+  getAircraftDestination,
   normalizedClickAnchor,
   pointInsideRect,
   relocateSystemList,
@@ -74,6 +76,7 @@ import {
 import { toggleVideoMap } from "./dcb/dcbFunctions";
 import { cancelDcbSpinner, commitDcbSpinner } from "./dcb/dcbMenu";
 import { datablockLineHeightPx, scopeFontsReady } from "./fonts";
+import { releaseFmaTracksView } from "./scopeView";
 import {
   applyBeaconatorSlewToId,
   clearTrackQuery,
@@ -448,6 +451,61 @@ export function handlePpiLeftClick(
   }
   const size = viewSize(cssWidth, cssHeight);
   const nm = screenToNm(cssX, cssY, view.camera, size);
+  // FMA function entry owns its target click before last-click, HO, selection,
+  // pointout or list routing can observe it.
+  const fmaPending = previewTrackingSlew(view.preview);
+  if (fmaPending?.type === "fmaTrackInhibit") {
+    const hit = pickAircraftHitAt(
+      world,
+      cssX,
+      cssY,
+      view.camera,
+      cssWidth,
+      cssHeight,
+      HIT_RADIUS_CSS_PX,
+      view,
+    );
+    if (!hit) return;
+    if (view.preview.buffer.trim().length > 0) {
+      rejectPreviewAreaWithReason(view.preview, Date.now(), "FORMAT");
+      return;
+    }
+    if (!view.fmaSurveillance.enabled) {
+      rejectPreviewAreaWithReason(view.preview, Date.now(), "FORMAT");
+      return;
+    }
+    const ac = hit.aircraft;
+    const track = view.tracks.get(ac.id);
+    const amz = view.fmaAmzs.find(
+      (candidate) => candidate.id === view.fmaSurveillance.selectedAmzId,
+    );
+    const plan = flightPlanForAircraft(world, ac.id);
+    const associatedArrival = Boolean(
+      amz &&
+      track?.tracked === true &&
+      track.unassociated !== true &&
+      plan &&
+      isFlightPlanOperational(plan) &&
+      getAircraftDestination(world, ac) === amz.airportId,
+    );
+    if (!associatedArrival) return;
+    const inhibited = new Set(view.fmaAlertInhibit.aircraftIds ?? []);
+    const turningOff = inhibited.has(ac.id);
+    if (turningOff) inhibited.delete(ac.id);
+    else inhibited.add(ac.id);
+    view.fmaAlertInhibit = { ...view.fmaAlertInhibit, aircraftIds: inhibited };
+    const episode = view.fmaAlertState.episodes.get(ac.id);
+    if (episode) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId: ac.id });
+      view.fmaAcknowledgedEpisodeIds.delete(episode.id);
+      view.fmaSilencedEpisodeIds.delete(episode.id);
+      view.fmaAlertState.episodes.delete(ac.id);
+    }
+    view.fmaAlertResults.delete(ac.id);
+    if (!turningOff) releaseFmaTracksView(view, [ac.id]);
+    cancelPreviewArea(view.preview);
+    return;
+  }
   recordLastClick(view, nm.eastNm, nm.northNm);
   // A live CA command is a target-slew command, not a list interaction.
   // Handle it before any movable-list hit testing can consume the click.
@@ -640,6 +698,29 @@ export function handlePpiLeftClick(
       view,
     );
     if (hit) {
+      const handoff = handoffFor(world, hit.aircraft.id);
+      const handoffOwnsClick = handoff.kind === "inbound" || handoff.kind === "pointout_inbound";
+      const fma = view.fmaAlertResults.get(hit.aircraft.id);
+      const episode = fma?.episode;
+      if (!handoffOwnsClick && episode && fma?.primary) {
+        if (fma.primary === "NTZ_CAUTION") {
+          if (!view.fmaSilencedEpisodeIds.has(episode.id)) {
+            view.fmaSilencedEpisodeIds.add(episode.id);
+            view.fmaSpeechEvents.push({
+              type: "cancel",
+              episodeId: episode.id,
+              aircraftId: hit.aircraft.id,
+            });
+          }
+        } else if (!view.fmaAcknowledgedEpisodeIds.has(episode.id)) {
+          view.fmaAcknowledgedEpisodeIds.add(episode.id);
+          view.fmaSpeechEvents.push({
+            type: "cancel",
+            episodeId: episode.id,
+            aircraftId: hit.aircraft.id,
+          });
+        }
+      }
       handleImpliedCaAcknowledge(view, world, hit.aircraft.id);
     } else {
       for (const td of view.tracks.values()) {

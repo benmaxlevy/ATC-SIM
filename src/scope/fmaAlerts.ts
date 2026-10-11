@@ -173,5 +173,21 @@ export function observeFmaAlertRuntime(
   view.fmaAlertResults = result.tracks;
   view.fmaAlertOutlines = result.outlines;
   view.fmaAlertDiagnostics = result.diagnostics;
+  for (const [id, track] of result.tracks) {
+    const episode = track.episode;
+    if (!episode) continue;
+    if (track.onset) {
+      view.fmaSpeechEvents.push({ type: "onset", episodeId: episode.id, aircraftId: id });
+    }
+  }
+  const activeEpisodes = new Set(
+    [...result.tracks.values()].flatMap((track) => (track.episode ? [track.episode.id] : [])),
+  );
+  for (const episodeId of view.fmaAcknowledgedEpisodeIds) {
+    if (!activeEpisodes.has(episodeId)) view.fmaAcknowledgedEpisodeIds.delete(episodeId);
+  }
+  for (const episodeId of view.fmaSilencedEpisodeIds) {
+    if (!activeEpisodes.has(episodeId)) view.fmaSilencedEpisodeIds.delete(episodeId);
+  }
   return result;
 }

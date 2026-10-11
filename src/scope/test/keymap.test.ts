@@ -22,7 +22,7 @@ const REQUIRED_BINDING_IDS = [
   "drop-track",
   "tower-handoff",
   "multi-func",
-  "history",
+  "fma-tsas",
   "ptl",
   "ca-inhibit",
   "dcb-maps",

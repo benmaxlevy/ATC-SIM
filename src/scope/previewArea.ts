@@ -381,6 +381,8 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
 
 function trackingMnemonic(action: PreviewArmedAction): string {
   switch (action.type) {
+    case "fmaTrackInhibit":
+      return "FMA/TSAS";
     case "initCntl":
       return "INIT CNTL";
     case "termCntl":

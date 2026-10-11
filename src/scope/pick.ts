@@ -26,6 +26,7 @@ import {
 } from "./minimumSeparation";
 import { cancelRblPending, insertRangeBearingLine, type RblEndpoint } from "./rangeBearingLines";
 import { cancelPreviewArea, rejectPreviewAreaWithReason } from "./previewArea";
+import { fmaPresentationReport } from "./fmaSurveillance";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -111,12 +112,16 @@ function pickSymbolAt(
   cssWidth: number,
   cssHeight: number,
   radiusPx: number,
+  scopeView?: ScopeView,
 ): Aircraft | null {
   const view = { widthPx: cssWidth, heightPx: cssHeight };
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
   for (const ac of world.aircraft) {
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, view);
+    const fmaReport = scopeView?.fmaSurveillance.enabled
+      ? fmaPresentationReport(scopeView.fmaSurveillance, ac.id)
+      : undefined;
+    const p = nmToScreen(fmaReport?.xNm ?? ac.xNm, fmaReport?.yNm ?? ac.yNm, cam, view);
     const dist = Math.hypot(p.x - cssX, p.y - cssY);
     if (dist <= radiusPx && dist < nearestDist) {
       nearest = ac;
@@ -146,7 +151,16 @@ export function pickAircraftHitAt(
       return { aircraft: blockHit, region: "datablock" };
     }
   }
-  const symbol = pickSymbolAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx);
+  const symbol = pickSymbolAt(
+    world,
+    cssX,
+    cssY,
+    cam,
+    cssWidth,
+    cssHeight,
+    radiusPx,
+    datablockView as ScopeView | undefined,
+  );
   if (symbol) {
     return { aircraft: symbol, region: "symbol" };
   }

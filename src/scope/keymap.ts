@@ -381,9 +381,9 @@ export const HELP_COMMAND_GROUPS: HelpCommandGroup[] = [
       },
       {
         id: "history",
-        command: "H / F8",
+        command: "H",
         example: "H",
-        input: "PPI or any focus",
+        input: "PPI focus",
         result: "Toggles history dots.",
       },
     ],
@@ -690,7 +690,7 @@ export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
       {
         id: "scope-datablocks",
         title: "Datablocks and filters",
-        bindingIds: ["history", "ptl", "datablock", "mode-c", "altitude-filter", "history-scope"],
+        bindingIds: ["ptl", "datablock", "mode-c", "altitude-filter", "history-scope"],
       },
       {
         id: "scope-dcb",
@@ -718,7 +718,7 @@ export const HELP_NAVIGATION_GROUPS: HelpNavigationGroup[] = [
       {
         id: "workstation-preview",
         title: "Focus and Preview Area",
-        bindingIds: ["cycle-focus", "radio-focus", "stars-tpa-atpa", "multi-func"],
+        bindingIds: ["cycle-focus", "radio-focus", "stars-tpa-atpa", "multi-func", "fma-tsas"],
       },
       {
         id: "workstation-navigation",
@@ -812,11 +812,12 @@ export const KEY_BINDINGS: KeyBinding[] = [
     crcAnalog: "F7 <MULTI FUNC>",
   },
   {
-    id: "history",
+    id: "fma-tsas",
     focus: "always",
     windowsKeys: "F8",
-    action: "Toggles history dots.",
-    crcAnalog: "F8 <HIST>",
+    action:
+      "Starts FMA/TSAS Preview; slew an associated arrival to toggle its track inhibit while FMA is active.",
+    crcAnalog: "F8 <FMA/TSAS>",
   },
   {
     id: "ptl",
@@ -991,7 +992,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
     focus: "scope",
     windowsKeys: "H",
     action: "Toggles history dots.",
-    crcAnalog: "DCB history (always-on duplicate is F8)",
+    crcAnalog: "DCB history",
   },
   {
     id: "radio-focus",

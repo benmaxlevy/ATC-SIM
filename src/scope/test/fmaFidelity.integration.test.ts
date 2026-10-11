@@ -31,8 +31,12 @@ import {
   setFmaSensorFixtureView,
 } from "../scopeView";
 import { createTrackDisplay } from "../trackDisplay";
-import { displayAircraft } from "../render/renderScopePaint";
+import { buildScopeDatablockPresentation, displayAircraft } from "../render/renderScopePaint";
+import { PALETTE } from "../palette";
 import { formatFmaAlertDiagnostic, observeFmaAlertRuntime } from "../fmaAlerts";
+import { handleScopeKeyDown } from "../scopeKeys";
+import { handlePpiLeftClick } from "../ppi";
+import { nmToScreen } from "../camera";
 
 function syntheticAmz(): FmaAmz {
   const box = (x1: number, y1: number, x2: number, y2: number) => ({
@@ -1347,4 +1351,273 @@ test("FMA warning, CST, RWY and crossing caution use precedence with NOM supplem
     inhibit: { aircraftIds: new Set(["nom"]) },
   });
   expect(trackInhibitedNom.tracks.get("nom")?.supplementary.nom).toBe(false);
+});
+
+test("F8 Preview applies FMA inhibit at coasted report position without changing World or selection", () => {
+  const made = createFlightPlan({
+    id: "click-plan",
+    acid: "DAL123",
+    assignedBeacon: "7022",
+    airportId: "KABC",
+    fixes: [],
+    scratchpads: ["08L"],
+  });
+  if (!made.ok) throw new Error(made.error.message);
+  const aircraft = createAircraft({
+    id: "click-track",
+    callsign: "DAL123",
+    squawk: "7022",
+    xNm: 28,
+    yNm: 28,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 180,
+    destination: "KABC",
+  });
+  const world = createWorld({ aircraft: [aircraft], flightPlans: [made.value] });
+  const view = createScopeView();
+  view.fmaAmzs = [syntheticAmz()];
+  const track = createTrackDisplay();
+  track.tracked = true;
+  view.tracks.set(aircraft.id, track);
+  configureFmaSurveillanceView(view, true, "AMZ-SYN");
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 0,
+    reports: [report(0, { aircraftId: aircraft.id, xNm: 0.5, yNm: -0.5 })],
+    liveTrackIds: new Set([aircraft.id]),
+    associatedTrackIds: new Set([aircraft.id]),
+  });
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 40_000,
+    reports: [],
+    liveTrackIds: new Set([aircraft.id]),
+    associatedTrackIds: new Set([aircraft.id]),
+  });
+  const coast = view.fmaSurveillance.tracks.get(aircraft.id)?.coastedReport;
+  expect(view.fmaSurveillance.tracks.get(aircraft.id)?.frozen).toBe(true);
+  expect(coast?.xNm).not.toBe(aircraft.xNm);
+  const target = nmToScreen(coast!.xNm, coast!.yNm, view.camera, { widthPx: 800, heightPx: 800 });
+  handleScopeKeyDown(
+    { key: "F8", preventDefault() {}, stopPropagation() {} },
+    view,
+    "radio",
+    world,
+    1,
+  );
+  expect(view.preview.mnemonic).toBe("FMA/TSAS");
+  expect(view.historyDotCount).toBe(5);
+  handlePpiLeftClick(view, world, target.x, target.y, 800, 800);
+  expect(view.fmaAlertInhibit.aircraftIds?.has(aircraft.id)).toBe(true);
+  expect(view.fmaSurveillance.tracks.has(aircraft.id)).toBe(false);
+  expect(view.preview.phase).toBe("idle");
+  expect(world.selectedAircraftId).toBeNull();
+  expect(aircraft.xNm).toBe(28);
+});
+
+test("bare F8 keeps a non-FMA Preview entry visible through empty Enter and rejects unsupported operands as FORMAT", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  const event = (key: string) => ({ key, preventDefault() {}, stopPropagation() {} });
+  handleScopeKeyDown(event("F8"), view, "radio", world, 1);
+  expect(view.preview.mnemonic).toBe("FMA/TSAS");
+  handleScopeKeyDown(event("Enter"), view, "radio", world, 2);
+  expect(view.preview.mnemonic).toBe("FMA/TSAS");
+  expect(view.preview.phase).toBe("armed");
+  handleScopeKeyDown(event("A"), view, "radio", world, 3);
+  handleScopeKeyDown(event("Enter"), view, "radio", world, 4);
+  expect(view.preview.rejection).toBe("FORMAT");
+  expect(view.historyDotCount).toBe(5);
+  expect(world.selectedAircraftId).toBeNull();
+});
+
+test("AC2 — warning acknowledgment stops flashing and cancels speech; caution click silences speech only", () => {
+  const made = createFlightPlan({
+    id: "ack-plan",
+    acid: "DAL456",
+    assignedBeacon: "7023",
+    airportId: "KABC",
+    fixes: [],
+    scratchpads: ["08L"],
+  });
+  if (!made.ok) throw new Error(made.error.message);
+  const aircraft = createAircraft({
+    id: "ack-track",
+    callsign: "DAL456",
+    squawk: "7023",
+    xNm: 0.5,
+    yNm: -0.5,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 180,
+    destination: "KABC",
+  });
+  const world = createWorld({ aircraft: [aircraft], flightPlans: [made.value] });
+  const view = createScopeView();
+  view.fmaAmzs = [syntheticAmz()];
+  const track = createTrackDisplay();
+  track.tracked = true;
+  view.tracks.set(aircraft.id, track);
+  configureFmaSurveillanceView(view, true, "AMZ-SYN");
+
+  // Warning episode
+  const episodeWarning = {
+    id: "ep-warn",
+    condition: "NTZ_WARNING" as const,
+    onsetSimMs: 1000,
+    amzId: "AMZ-SYN",
+    runwayIds: ["08L"],
+    ntzIds: ["NTZ-1"],
+    evidence: [],
+  };
+  view.fmaAlertResults.set(aircraft.id, {
+    aircraftId: aircraft.id,
+    assignment: { kind: "RUNWAY", runwayId: "08L" },
+    observedRunwayId: "08L",
+    primary: "NTZ_WARNING",
+    episode: episodeWarning,
+    onset: false,
+    supplementary: { nom: false },
+  });
+
+  const screenPos = nmToScreen(aircraft.xNm, aircraft.yNm, view.camera, {
+    widthPx: 800,
+    heightPx: 800,
+  });
+  handlePpiLeftClick(view, world, screenPos.x, screenPos.y, 800, 800);
+  expect(view.fmaAcknowledgedEpisodeIds.has("ep-warn")).toBe(true);
+  expect(view.fmaSpeechEvents).toEqual(
+    expect.arrayContaining([{ type: "cancel", episodeId: "ep-warn", aircraftId: aircraft.id }]),
+  );
+
+  // Caution episode
+  const episodeCaution = {
+    id: "ep-caut",
+    condition: "NTZ_CAUTION" as const,
+    onsetSimMs: 2000,
+    amzId: "AMZ-SYN",
+    runwayIds: ["08L"],
+    ntzIds: ["NTZ-1"],
+    evidence: [],
+  };
+  view.fmaAlertResults.set(aircraft.id, {
+    aircraftId: aircraft.id,
+    assignment: { kind: "RUNWAY", runwayId: "08L" },
+    observedRunwayId: "08L",
+    primary: "NTZ_CAUTION",
+    episode: episodeCaution,
+    onset: false,
+    supplementary: { nom: false },
+  });
+
+  handlePpiLeftClick(view, world, screenPos.x, screenPos.y, 800, 800);
+  expect(view.fmaAcknowledgedEpisodeIds.has("ep-caut")).toBe(false); // Caution is never visually acknowledged!
+  expect(view.fmaSilencedEpisodeIds.has("ep-caut")).toBe(true); // Caution is speech-silenced only
+  expect(view.fmaSpeechEvents).toEqual(
+    expect.arrayContaining([{ type: "cancel", episodeId: "ep-caut", aircraftId: aircraft.id }]),
+  );
+});
+
+test("AC3 & AC4 — Field 0 uses exact STARS abbreviations (NTZ, CST, RWY) with red alert precedence; Field 2 solid ▼ takes precedence", () => {
+  const made = createFlightPlan({
+    id: "f0-plan",
+    acid: "AAL789",
+    assignedBeacon: "7024",
+    airportId: "KABC",
+    fixes: [],
+    scratchpads: ["08L"],
+  });
+  if (!made.ok) throw new Error(made.error.message);
+  const aircraft = createAircraft({
+    id: "f0-track",
+    callsign: "AAL789",
+    squawk: "7024",
+    xNm: 10,
+    yNm: 10,
+    headingDeg: 90,
+    altitudeFt: 4000,
+    speedKt: 180,
+    destination: "KABC",
+  });
+  const world = createWorld({ aircraft: [aircraft], flightPlans: [made.value] });
+  const view = createScopeView();
+  view.fmaAmzs = [syntheticAmz()];
+  configureFmaSurveillanceView(view, true, "AMZ-SYN");
+
+  // NTZ Warning with NOM supplementary
+  view.fmaAlertResults.set(aircraft.id, {
+    aircraftId: aircraft.id,
+    assignment: { kind: "RUNWAY", runwayId: "08L" },
+    observedRunwayId: "08L",
+    primary: "NTZ_WARNING",
+    episode: {
+      id: "ep-1",
+      condition: "NTZ_WARNING",
+      onsetSimMs: 1000,
+      amzId: "AMZ-SYN",
+      runwayIds: ["08L"],
+      ntzIds: ["NTZ-1"],
+      evidence: [],
+    },
+    onset: false,
+    supplementary: { nom: true },
+  });
+
+  const track = createTrackDisplay();
+  track.tracked = true;
+  view.tracks.set(aircraft.id, track);
+
+  const presentation = buildScopeDatablockPresentation(view, world, aircraft);
+  expect(presentation.lines.line0).toBe("NTZ/NOM");
+  expect(presentation.field0Alerts.color).toBe(PALETTE.alert); // Red alert must not be corrupted by NOM!
+
+  // CST and RWY abbreviations
+  view.fmaAlertResults.set(aircraft.id, {
+    aircraftId: aircraft.id,
+    assignment: { kind: "RUNWAY", runwayId: "08L" },
+    observedRunwayId: "08L",
+    primary: "SURVEILLANCE_LOST",
+    episode: {
+      id: "ep-2",
+      condition: "SURVEILLANCE_LOST",
+      onsetSimMs: 1000,
+      amzId: "AMZ-SYN",
+      runwayIds: ["08L"],
+      ntzIds: ["NTZ-1"],
+      evidence: [],
+    },
+    onset: false,
+    supplementary: { nom: false },
+  });
+  expect(buildScopeDatablockPresentation(view, world, aircraft).lines.line0).toBe("CST");
+
+  view.fmaAlertResults.set(aircraft.id, {
+    aircraftId: aircraft.id,
+    assignment: { kind: "RUNWAY", runwayId: "08L" },
+    observedRunwayId: "08L",
+    primary: "RUNWAY_ERROR",
+    episode: {
+      id: "ep-3",
+      condition: "RUNWAY_ERROR",
+      onsetSimMs: 1000,
+      amzId: "AMZ-SYN",
+      runwayIds: ["08L"],
+      ntzIds: ["NTZ-1"],
+      evidence: [],
+    },
+    onset: false,
+    supplementary: { nom: false },
+  });
+  expect(buildScopeDatablockPresentation(view, world, aircraft).lines.line0).toBe("RWY");
+
+  // Field 2 solid ▼ glyph precedence over MSAW/CA
+  view.fmaAlertInhibit.aircraftIds = new Set([aircraft.id]);
+  const inhibitedPresentation = buildScopeDatablockPresentation(view, world, aircraft);
+  expect(inhibitedPresentation.alertGlyphs).toEqual([
+    { text: "▼", color: expect.any(String), visible: true },
+  ]);
+
+  // When all NTZs in AMZ are inhibited, FMA suppression glyphs are hidden
+  view.fmaAlertInhibit.ntzIds = new Set(["NTZ-08"]);
+  const allNtzInhibitedPresentation = buildScopeDatablockPresentation(view, world, aircraft);
+  expect(allNtzInhibitedPresentation.alertGlyphs).toEqual([]);
 });

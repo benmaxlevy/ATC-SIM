@@ -101,7 +101,7 @@ One physical keyboard, two foci.
 | Track suspend | `F3` / `TRK SUSP` | Reserved/no-op; the suspend lifecycle is not simulated yet. |
 | Terminate track | `F4` / `TERM CNTL` | Shared trainer implementation: deletes the associated local plan, removes association, clears ownership, and leaves a moving unassociated `*` LDB. |
 | Multi Function | `F7` / `MULTI FUNC` | Starts a distinct Preview Area operand buffer; type `T`, `P1`, `F`, `Q`, etc. without a prefix. |
-| History toggle | `F8` | Global history dots. |
+| FMA/TSAS | `F8` | Starts Preview entry; in FMA, slew-click an associated arrival to toggle its local track inhibit. Outside FMA, target application returns `FORMAT`. |
 | Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
 
 **Mouse (pointer over PPI), always-on:**
@@ -121,7 +121,7 @@ One physical keyboard, two foci.
 | Full ↔ limited datablock | `T` | Tag/untag analog. Selected track; if none selected, **all** tracks. |
 | Mode C field on/off | `M` | Hide/show reported altitude on **full** blocks. Assigned + GS remain. |
 | Altitude filter | `F`, then 3-digit min, `Enter`, 3-digit max, `Enter` | Hundreds of feet. `Esc` cancels the chord. |
-| History (duplicate of F8) | `H` | Convenience when scope-focused. |
+| History | `H` | Convenience when scope-focused. |
 
 **Hard conflicts — do not bind these letters as always-on:**
 
@@ -131,7 +131,7 @@ One physical keyboard, two foci.
 | `T` | `T20L` turn degrees | Scope focus, datablock toggle |
 | `C` | `C30` climb | **Never** a scope key. Center is `Home`. |
 | `R` | `R180` right heading | **Never** a scope key. Range is PageUp/Down. |
-| `H` | `H270` heading | Scope focus only (history). Always-on history is `F8`. |
+| `H` | `H270` heading | Scope focus only (history). |
 | `A` / `D` / `S` / `I` | altitude / speed / ident | Never scope keys. |
 
 Chord rule: after `L` or `F`, a 1.5 s timer. Invalid digit or timeout → cancel, no mutation, no error readback (optionally a dim status-line hint: `LEADER?`). **Never** forward leftover digits into the parser.
@@ -329,7 +329,7 @@ interface AltitudeFilter {
 
 ### 11. History dots
 
-- Optional, default **on** (radar feel). Toggle F8 / `H` / DCB.
+- Optional, default **on** (radar feel). Toggle `H` / DCB.
 - Sample position every **5.0 s of sim time** (not wall, not every physics frame).
 - Keep **5** dots (plus current symbol = 6 positions visually).
 - Ring buffer per track; clear on spawn.
@@ -1053,5 +1053,14 @@ conditions, NOM, and NOZ history. Condition episodes identify their
 qualifying assigned/observed runway so reassignment starts a new episode.
 These conditions, local episodes, diagnostics, and outline severity live on a
 TCW `ScopeView`, never in global World alerts or aircraft/plan/association/
-intent state. Mode controls and datablock rendering are owned by later FMA
-tickets.
+intent state. F8 owns one visible FMA/TSAS Preview arm. In FMA mode, an
+associated-arrival slew-click toggles local inhibition and consumes the click;
+outside FMA the application returns Preview `FORMAT`. Ordinary eligible
+clicks acknowledge warning episodes and cancel their speech. Caution clicks
+silence speech only; yellow presentation does not change. Field 0 composes
+FMA/NOM with LA/CA; warning flashes red until acknowledged, while caution/NOM
+stay steady yellow. Field 2 uses a solid `▼` for track inhibition, above the
+existing inhibit symbols, and hides it while every NTZ is disabled. Frozen
+presentation follows the configured track, mode, AMZ, inhibition and
+NTZ-adjacency lifecycle. All interactions remain display-local. T02-225 owns
+public mode controls.
