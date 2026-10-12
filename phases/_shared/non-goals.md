@@ -10,8 +10,8 @@ These are out of scope unless a later ticket explicitly lifts them. Implementing
 - Tower cab, ASDE-X, ERAM, or oceanic.
 - Multi-facility NAS, ARTCC, or overlapping sectors (phase 5 may *stub* a second position).
 - Wind (until a later ticket). Phase-2 addendum T02-68–72 ships the IEM N0Q VIP mosaic on the PPI (trainer fills + WXC contours, display only). MAIN WX1–6 and BRITE WX/WXC are live. Wind, BKC, SSA WX HIST, and pilot deviate stay later. Certification remains out of scope.
-- CRDA, FMA, ARV, dual FSL/EFSL.
-- Full NAS DCB / preference host. T02-22–30 lift a **trainer DCB subset** (main/aux/submenus, local PREF slots). MAIN WX1–6 are live; VOL/MODE/SITE stay disabled. Still not a Raytheon clone.
+- CRDA, ARV, dual FSL/EFSL. FMA has a separately approved trainer implementation under T02-220–228; it is not operationally certified.
+- Full NAS DCB / preference host. T02-22–30 lift a **trainer DCB subset** (main/aux/submenus, local PREF slots). MAIN WX1–6 are live; VOL/MODE/SITE are trainer controls. MODE exposes service-level choices and FMA confirmation; VOL retains inherited local gain behavior. Still not a Raytheon clone.
 
 ## Architecture
 

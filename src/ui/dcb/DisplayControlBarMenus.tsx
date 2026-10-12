@@ -14,6 +14,7 @@ import {
   browserDcbPrefStorage,
   closeDcbMenu,
   commitDcbSpinner,
+  cancelDcbSpinner,
   clearAllVideoMaps,
   DCB_LEADER_DIRS,
   LEADER_DIR_LABELS,
@@ -39,6 +40,7 @@ import {
   stepBriteChannel,
   stepCharSizeChannel,
   stepDcbVol,
+  stepDcbSpinner,
   stepHistoryDots,
   stepHistoryRate,
   stepDwellMode,
@@ -68,7 +70,7 @@ import {
   formatFmaRunwayLeaderReadout,
   toggleFmaNtz,
   toggleFmaNtzAll,
-  stepFmaAmz,
+  stageFmaAmzSpinnerCandidate,
   commitFmaAmzSwitch,
   type BriteChannel,
   type CharSizeChannel,
@@ -606,6 +608,23 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
 
   const allNtzEnabled = ntzs.length > 0 && ntzs.every((n) => !disabledNtzs.has(n.id));
 
+  const applyFmaDrag = (cell: DcbSpinnerCell, steps: number, apply: (delta: -1 | 1) => void) => {
+    if (steps === 0) return;
+    if (!spinnerArmed(view, cell)) armDcbSpinner(view, cell);
+    const delta: -1 | 1 = steps > 0 ? 1 : -1;
+    for (let i = 0; i < Math.abs(steps); i++) stepDcbSpinner(view, delta, apply);
+    afterCell(onChange);
+  };
+
+  const armAmz = () => {
+    if (view.dcbSpinner.armed && view.dcbSpinner.cell !== "FMA_AMZ") cancelDcbSpinner(view);
+    armDcbSpinner(view, "FMA_AMZ", {
+      onCommit: (_cell, targetAmzId) => {
+        if (typeof targetAmzId === "string") commitFmaAmzSwitch(view, targetAmzId);
+      },
+    });
+  };
+
   return (
     <div className="dcb-main-grid" data-dcb-layout="AUX">
       {/* Col 1: VOL (rowSpan 2) */}
@@ -951,13 +970,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
               if (amzArmed) {
                 commitDcbSpinner(view);
               } else {
-                armDcbSpinner(view, "FMA_AMZ", {
-                  onCommit: (_cell, targetAmzId) => {
-                    if (typeof targetAmzId === "string") {
-                      commitFmaAmzSwitch(view, targetAmzId);
-                    }
-                  },
-                });
+                armAmz();
               }
               afterCell(onChange);
             }}
@@ -967,16 +980,26 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
                 "FMA_AMZ",
                 event,
                 (step) => {
-                  const nextId = stepFmaAmz(view, step);
-                  if (nextId) commitFmaAmzSwitch(view, nextId);
+                  if (!spinnerArmed(view, "FMA_AMZ")) armAmz();
+                  stageFmaAmzSpinnerCandidate(
+                    view,
+                    view.fmaAmzs,
+                    view.fmaSurveillance.selectedAmzId,
+                    step,
+                  );
                 },
                 onChange,
               )
             }
             onDragDelta={(step) => {
+              if (!spinnerArmed(view, "FMA_AMZ")) armAmz();
               for (let i = 0; i < Math.abs(step); i++) {
-                const nextId = stepFmaAmz(view, step > 0 ? 1 : -1);
-                if (nextId) commitFmaAmzSwitch(view, nextId);
+                stageFmaAmzSpinnerCandidate(
+                  view,
+                  view.fmaAmzs,
+                  view.fmaSurveillance.selectedAmzId,
+                  step > 0 ? 1 : -1,
+                );
               }
               afterCell(onChange);
             }}
@@ -1016,10 +1039,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
             onSpinnerWheel(view, "MAG", event, (step) => stepFmaMag(view, step), onChange)
           }
           onDragDelta={(step) => {
-            for (let i = 0; i < Math.abs(step); i++) {
-              stepFmaMag(view, step > 0 ? 1 : -1);
-            }
-            afterCell(onChange);
+            applyFmaDrag("MAG", step, (delta) => stepFmaMag(view, delta));
           }}
         >
           <span className="dcb-cell-line">MAG</span>
@@ -1062,10 +1082,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
             onSpinnerWheel(view, "FMA_VOICE", event, (step) => stepFmaVoice(view, step), onChange)
           }
           onDragDelta={(step) => {
-            for (let i = 0; i < Math.abs(step); i++) {
-              stepFmaVoice(view, step > 0 ? 1 : -1);
-            }
-            afterCell(onChange);
+            applyFmaDrag("FMA_VOICE", step, (delta) => stepFmaVoice(view, delta));
           }}
         >
           <span className="dcb-cell-line">VOICE</span>
@@ -1124,10 +1141,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
             onSpinnerWheel(view, "FMA_PTL", event, (step) => stepFmaPtl(view, step), onChange)
           }
           onDragDelta={(step) => {
-            for (let i = 0; i < Math.abs(step); i++) {
-              stepFmaPtl(view, step > 0 ? 1 : -1);
-            }
-            afterCell(onChange);
+            applyFmaDrag("FMA_PTL", step, (delta) => stepFmaPtl(view, delta));
           }}
         >
           <span className="dcb-cell-line">PTL</span>
@@ -1307,10 +1321,9 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
                   )
                 }
                 onDragDelta={(step) => {
-                  for (let i = 0; i < Math.abs(step); i++) {
-                    stepFmaRunwayLeader(view, rwyId, step > 0 ? 1 : -1);
-                  }
-                  afterCell(onChange);
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
                 }}
               >
                 <span className="dcb-cell-line">{rwyId}</span>
@@ -1371,10 +1384,9 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
                   )
                 }
                 onDragDelta={(step) => {
-                  for (let i = 0; i < Math.abs(step); i++) {
-                    stepFmaRunwayLeader(view, rwyId, step > 0 ? 1 : -1);
-                  }
-                  afterCell(onChange);
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
                 }}
               >
                 <span className="dcb-cell-line">{rwyId}</span>
@@ -1437,10 +1449,9 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
                   )
                 }
                 onDragDelta={(step) => {
-                  for (let i = 0; i < Math.abs(step); i++) {
-                    stepFmaRunwayLeader(view, rwyId, step > 0 ? 1 : -1);
-                  }
-                  afterCell(onChange);
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
                 }}
               >
                 <span className="dcb-cell-line">{rwyId}</span>
@@ -1501,10 +1512,9 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
                   )
                 }
                 onDragDelta={(step) => {
-                  for (let i = 0; i < Math.abs(step); i++) {
-                    stepFmaRunwayLeader(view, rwyId, step > 0 ? 1 : -1);
-                  }
-                  afterCell(onChange);
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
                 }}
               >
                 <span className="dcb-cell-line">{rwyId}</span>
@@ -2714,8 +2724,18 @@ export function renderBrite(view: ScopeView, onChange: () => void) {
                 )
               }
               onDragDelta={(step) => {
-                for (let i = 0; i < Math.abs(step); i++) {
-                  stepBriteChannel(view, cell.channel!, step > 0 ? 1 : -1);
+                const delta: -1 | 1 = step > 0 ? 1 : -1;
+                if (view.fmaSurveillance.enabled && step !== 0) {
+                  if (!spinnerArmed(view, spinnerKey)) armDcbSpinner(view, spinnerKey);
+                  for (let i = 0; i < Math.abs(step); i++) {
+                    stepDcbSpinner(view, delta, (direction) =>
+                      stepBriteChannel(view, cell.channel!, direction),
+                    );
+                  }
+                } else {
+                  for (let i = 0; i < Math.abs(step); i++) {
+                    stepBriteChannel(view, cell.channel!, delta);
+                  }
                 }
                 afterCell(onChange);
               }}

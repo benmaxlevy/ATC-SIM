@@ -42,7 +42,7 @@ import {
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
-import { applyFmaAmzPreference } from "./dcbPref";
+import { applyFmaAmzPreference, getFmaMaximumPtlSeconds } from "./dcbPref";
 import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
@@ -812,14 +812,23 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
       view.fmaSurveillance.selectedAmzId &&
       view.fmaAmzs.some((a) => a.id === view.fmaSurveillance.selectedAmzId)
         ? view.fmaSurveillance.selectedAmzId
-        : (view.fmaDefaultAmzId ?? view.fmaAmzs[0]?.id ?? null);
+        : view.fmaAmzs.some((a) => a.id === view.fmaDefaultAmzId)
+          ? view.fmaDefaultAmzId
+          : (view.fmaAmzs[0]?.id ?? null);
+    if (amzId) view.fmaDefaultAmzId = amzId;
+    configureFmaSurveillanceView(view, true, amzId);
     const hadPref = amzId ? applyFmaAmzPreference(view, amzId) : false;
+    if (amzId) {
+      view.fmaPtlSeconds = Math.min(
+        view.fmaPtlSeconds,
+        getFmaMaximumPtlSeconds(view.fmaAmzs, amzId),
+      );
+    }
     if (!hadPref) {
       view.lastWarning = "NO PREF SET FOUND";
     } else {
       view.lastWarning = null;
     }
-    configureFmaSurveillanceView(view, true, amzId);
   } else {
     configureFmaSurveillanceView(view, false, null);
     view.lastWarning = null;
@@ -835,10 +844,13 @@ export function stepFmaMag(view: ScopeView, delta: number): number {
   return next;
 }
 
+/** Legacy default-max ladder, retained for consumers; runtime PTL steps use the active AMZ cap. */
 export const FMA_PTL_STEPS = [0, 5, 10, 15, 20, 25, 30] as const;
 
 export function stepFmaPtl(view: ScopeView, delta: number): number {
-  const next = stepFrozen(FMA_PTL_STEPS, view.fmaPtlSeconds, delta);
+  const maximum = getFmaMaximumPtlSeconds(view.fmaAmzs, view.fmaSurveillance.selectedAmzId);
+  const current = Number.isFinite(view.fmaPtlSeconds) ? view.fmaPtlSeconds : 5;
+  const next = Math.max(0, Math.min(maximum, current + Math.trunc(delta) * 5));
   view.fmaPtlSeconds = next;
   return next;
 }
@@ -949,16 +961,23 @@ export function stepFmaAmz(view: ScopeView, delta: number): string | null {
 }
 
 export function commitFmaAmzSwitch(view: ScopeView, targetAmzId: string): boolean {
+  if (!view.fmaAmzs.some((amz) => amz.id === targetAmzId)) return false;
   if (view.fmaSurveillance.selectedAmzId === targetAmzId) {
+    view.fmaDefaultAmzId = targetAmzId;
     view.lastWarning = null;
     return true;
   }
+  configureFmaSurveillanceView(view, true, targetAmzId);
+  view.fmaDefaultAmzId = targetAmzId;
   const hadPref = applyFmaAmzPreference(view, targetAmzId);
+  view.fmaPtlSeconds = Math.min(
+    view.fmaPtlSeconds,
+    getFmaMaximumPtlSeconds(view.fmaAmzs, targetAmzId),
+  );
   if (!hadPref) {
     view.lastWarning = "NO PREF SET FOUND";
   } else {
     view.lastWarning = null;
   }
-  configureFmaSurveillanceView(view, true, targetAmzId);
   return true;
 }

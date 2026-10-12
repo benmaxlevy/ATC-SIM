@@ -10,7 +10,7 @@ You are implementing **ATC-SIM phase 2 (Scope)** in `c:\Users\Ben\Documents\ATC-
 
 Replace the phase 1 crude PPI (dots + callsign) with a **STARS-like terminal radar**: dark north-up PPI, KDEM digital maps, full/limited datablocks, leader lines, altitude filter, a small Windows keyboard subset, DCB-lite, flight strips, and a 30-target / 60 FPS budget. The workstation must feel like a **terminal radar, not a game map**.
 
-CRC/vNAS STARS and vice are **references for feel**. Do **not** clone every key, do not scrape charts, do not bundle a STARS font, do not build full DCB / CRDA / FMA / weather / NAS handoff.
+CRC/vNAS STARS and vice are **references for feel**. Do **not** clone every key, scrape charts, bundle a STARS font, or build full NAS DCB / CRDA / weather / NAS handoff. The later approved FMA trainer feature is scoped by T02-220–228.
 
 **Research protocol:** For every ticket, complete its **Research** section first (IDs in `phases/_shared/references.md`). Add the analog+delta comment in the module. If CRC and this README disagree, **this README wins**, but you must still cite CRC so the help overlay can show the delta.
 
@@ -71,7 +71,7 @@ If a canvas or chat summary disagrees with these files, **these files win**.
 | 20 | T02-20 | `phases/02-scope/tickets/T02-20-ssa-status-and-on-ppi-lists.md` |
 | 21 | T02-21 | `phases/02-scope/tickets/T02-21-tcw-visual-acceptance.md` |
 
-**Stop after T02-21** unless the human asked for the **DCB addendum** (T02-22–30). That run lifts a trainer main/aux/submenu subset. Still no weather mosaic, CRDA, FMA, OSM, or STARS font.
+**Stop after T02-21** unless the human asked for the **DCB addendum** (T02-22–30). That run lifts a trainer main/aux/submenu subset. Still no weather mosaic, CRDA, OSM, or STARS font. The later approved FMA trainer feature is governed by T02-220–228.
 
 | Order | ID | File |
 | --- | --- | --- |

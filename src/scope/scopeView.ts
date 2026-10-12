@@ -129,7 +129,7 @@ import {
   type FmaSurveillanceState,
   type FmaSurveillanceTick,
 } from "./fmaSurveillance";
-import { applyFmaAmzPreference } from "./dcb/dcbPref";
+import { applyFmaAmzPreference, getFmaMaximumPtlSeconds } from "./dcb/dcbPref";
 import type { DatablockRenderSnapshot } from "./datablock";
 import { resolveFmaFlow, type RadarSite, type Scenario } from "@scenario";
 import {
@@ -752,7 +752,15 @@ export function configureFmaSurveillanceView(
   selectedAmzId: string | null,
   monitoring?: { surveillanceLossS: number; coastOutS: number },
 ): void {
-  const nextMonitoring = monitoring ?? view.fmaSurveillance.monitoring;
+  const selectedMonitoring = view.fmaAmzs.find((amz) => amz.id === selectedAmzId)?.monitoring;
+  const nextMonitoring =
+    monitoring ??
+    (selectedMonitoring
+      ? {
+          surveillanceLossS: selectedMonitoring.surveillanceLossS,
+          coastOutS: selectedMonitoring.coastOutS,
+        }
+      : view.fmaSurveillance.monitoring);
   const previous = view.fmaSurveillance;
   view.fmaSurveillance = configureFmaSurveillance(
     view.fmaSurveillance,
@@ -761,6 +769,7 @@ export function configureFmaSurveillanceView(
     nextMonitoring,
   );
   if (view.fmaSurveillance !== previous) {
+    view.fmaAlertInhibit = {};
     for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
       view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
     }
@@ -874,9 +883,13 @@ export function rebindFmaScenarioAmzs(
   if (wasEnabled && view.fmaAmzs.length > 0 && view.fmaDefaultAmzId) {
     const targetAmzId =
       resolvedAmzId === undefined && stillValid ? currentAmzId! : view.fmaDefaultAmzId;
+    configureFmaSurveillanceView(view, true, targetAmzId);
     if (!applyFmaAmzPreference(view, targetAmzId)) view.lastWarning = "NO PREF SET FOUND";
     else view.lastWarning = null;
-    configureFmaSurveillanceView(view, true, targetAmzId);
+    view.fmaPtlSeconds = Math.min(
+      view.fmaPtlSeconds,
+      getFmaMaximumPtlSeconds(view.fmaAmzs, targetAmzId),
+    );
   } else if (wasEnabled) {
     configureFmaSurveillanceView(view, false, null);
   }
@@ -889,7 +902,7 @@ export function bindFmaScenarioFlow(
 ) {
   const resolution = resolveFmaFlow(scenario.catalog, scenario.activeRunwayId, {
     initialAmzId: scenario.fma?.initialAmzId,
-    preferredAmzId: view.fmaSurveillance.selectedAmzId,
+    preferredAmzId: view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId,
     excludeDerived: scenario.fma?.excludeDerivedGroups,
   });
   rebindFmaScenarioAmzs(view, resolution.amzs, resolution.selectedAmzId);

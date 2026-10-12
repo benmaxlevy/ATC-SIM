@@ -26,7 +26,12 @@ import { RANGE_PRESETS_NM, type RangeNm } from "../camera";
 import { snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
 import { cloneCharSizes, type CharSizes } from "../fonts";
 import { type HistoryDotCount } from "../history";
-import { LEADER_LENGTH_STEPS_PX, type LeaderDir, type LeaderLengthPx } from "../leader";
+import {
+  LEADER_LENGTH_STEPS_PX,
+  isLeaderDir,
+  type LeaderDir,
+  type LeaderLengthPx,
+} from "../leader";
 import { cloneBrite, type BriteLevel, type BriteState } from "../palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "../ptl";
 import {
@@ -137,6 +142,8 @@ export interface DcbPrefBody {
   vol?: VolLevel;
   modeFsl?: unknown;
   amzPreferences?: Record<string, FmaAmzPreference>;
+  /** Last locally selected AMZ; validated against the scenario flow when rebound. */
+  selectedFmaAmzId?: string;
   historyRateSec?: number;
   dwellMode?: DwellMode;
   cursorHome?: boolean;
@@ -242,10 +249,6 @@ function isDock(value: unknown): value is DcbDock {
   return typeof value === "string" && (DOCKS as readonly string[]).includes(value);
 }
 
-function isLeaderDir(value: unknown): value is LeaderDir {
-  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 9;
-}
-
 function isLeaderLength(value: unknown): value is LeaderLengthPx {
   return (LEADER_LENGTH_STEPS_PX as readonly number[]).includes(value as number);
 }
@@ -340,6 +343,7 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
       view.amzPreferences && view.amzPreferences.size > 0
         ? Object.fromEntries(view.amzPreferences.entries())
         : undefined,
+    selectedFmaAmzId: view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId ?? undefined,
     historyRateSec: view.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
     dwellMode: view.dwellMode ?? DEFAULT_DWELL_MODE,
     cursorHome: view.cursorHome ?? false,
@@ -440,6 +444,9 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
       }
     }
   }
+  if (typeof body.selectedFmaAmzId === "string") {
+    view.fmaDefaultAmzId = body.selectedFmaAmzId;
+  }
   view.historyRateSec =
     typeof body.historyRateSec === "number" && body.historyRateSec > 0
       ? body.historyRateSec
@@ -525,6 +532,7 @@ function persistRuntime(view: ScopeView, storage: DcbPrefStorage | undefined): v
 export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
   const index = view.dcbPref.activeIndex;
   const name = view.dcbPref.slots[index]?.name ?? `PREF ${index + 1}`;
+  captureSelectedFmaAmzPreference(view);
   view.dcbPref.slots[index] = { name, body: serializeDcbPref(view) };
   persistRuntime(view, storage);
 }
@@ -562,6 +570,7 @@ export function commitDcbPrefSaveAs(
     return null;
   }
   const index = nextDcbPrefSaveAsIndex(view);
+  captureSelectedFmaAmzPreference(view);
   view.dcbPref.slots[index] = { name: parsed.name, body: serializeDcbPref(view) };
   view.dcbPref.activeIndex = index;
   view.dcbPref.pendingSaveAs = false;
@@ -656,13 +665,26 @@ export function browserDcbPrefStorage(): DcbPrefStorage | null {
   }
 }
 
+/** Per-AMZ FMA PTL ceiling; older/authored adapters without one keep the 30 s default. */
+export function getFmaMaximumPtlSeconds(
+  amzs: readonly { id: string; monitoring?: { maximumPtlS?: number } }[],
+  amzId: string | null | undefined,
+): number {
+  const adaptedMaximum = amzs.find((amz) => amz.id === amzId)?.monitoring?.maximumPtlS;
+  return typeof adaptedMaximum === "number" &&
+    Number.isFinite(adaptedMaximum) &&
+    adaptedMaximum >= 0
+    ? Math.floor(adaptedMaximum)
+    : 30;
+}
+
 /**
  * Apply AMZ-keyed FMA display settings from local preference store (TI 6191.409 §4.1, §6.16.2).
  * Returns true if preference set existed and was applied; false if not found.
  */
 export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   const pref = view.amzPreferences.get(amzId);
-  if (!pref) {
+  if (!pref || pref.amzId !== amzId) {
     return false;
   }
   if (isRangeNm(pref.rangeNm)) {
@@ -675,29 +697,56 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   if (pref.mapVisibility && typeof pref.mapVisibility === "object") {
     applyMapVisibility(view, pref.mapVisibility);
   }
-  if (typeof pref.mag === "number" && pref.mag >= 1 && pref.mag <= 8) {
+  if (
+    typeof pref.mag === "number" &&
+    Number.isInteger(pref.mag) &&
+    pref.mag >= 1 &&
+    pref.mag <= 8
+  ) {
     view.fmaMag = pref.mag;
   }
-  if (typeof pref.ptlSeconds === "number" && pref.ptlSeconds >= 0) {
-    view.fmaPtlSeconds = pref.ptlSeconds;
+  if (
+    typeof pref.ptlSeconds === "number" &&
+    Number.isInteger(pref.ptlSeconds) &&
+    pref.ptlSeconds >= 0
+  ) {
+    view.fmaPtlSeconds = Math.min(pref.ptlSeconds, getFmaMaximumPtlSeconds(view.fmaAmzs, amzId));
   }
-  if (typeof pref.voiceLevel === "number" && pref.voiceLevel >= 1 && pref.voiceLevel <= 10) {
+  if (
+    typeof pref.voiceLevel === "number" &&
+    Number.isInteger(pref.voiceLevel) &&
+    pref.voiceLevel >= 1 &&
+    pref.voiceLevel <= 10
+  ) {
     view.fmaVoiceLevel = pref.voiceLevel;
   }
   if (pref.fmaBrite) {
-    if (typeof pref.fmaBrite.amz === "number")
-      view.brite.amz = pref.fmaBrite.amz as unknown as BriteLevel;
-    if (typeof pref.fmaBrite.ntz === "number")
+    const validBrite = (n: unknown) =>
+      Number.isInteger(n) && (n === 0 || ((n as number) >= 5 && (n as number) <= 100));
+    const validNtzBrite = (n: unknown) =>
+      Number.isInteger(n) && (n as number) >= 50 && (n as number) <= 100;
+    if (validBrite(pref.fmaBrite.amz)) view.brite.amz = pref.fmaBrite.amz as unknown as BriteLevel;
+    if (validNtzBrite(pref.fmaBrite.ntz))
       view.brite.ntz = pref.fmaBrite.ntz as unknown as BriteLevel;
-    if (typeof pref.fmaBrite.rwy === "number")
-      view.brite.rwy = pref.fmaBrite.rwy as unknown as BriteLevel;
-    if (typeof pref.fmaBrite.ref === "number")
-      view.brite.ref = pref.fmaBrite.ref as unknown as BriteLevel;
+    if (validBrite(pref.fmaBrite.rwy)) view.brite.rwy = pref.fmaBrite.rwy as unknown as BriteLevel;
+    if (validBrite(pref.fmaBrite.ref)) view.brite.ref = pref.fmaBrite.ref as unknown as BriteLevel;
   }
-  if (pref.runwayLeaders && typeof pref.runwayLeaders === "object") {
-    view.fmaRunwayLeaders.clear();
-    for (const [rwy, dir] of Object.entries(pref.runwayLeaders)) {
-      if (typeof dir === "number") {
+  if (
+    pref.runwayLeaders &&
+    typeof pref.runwayLeaders === "object" &&
+    !Array.isArray(pref.runwayLeaders)
+  ) {
+    const activeAmz = view.fmaAmzs.find((a) => a.id === amzId);
+    const activeRunways = new Set(activeAmz?.members.map((member) => member.runwayId) ?? []);
+    const entries = Object.entries(pref.runwayLeaders);
+    const knownRunwayEntries = entries.filter(([rwy]) => activeRunways.has(rwy));
+    // An empty snapshot means all this AMZ's runway overrides are NONE. An
+    // unknown-only field is invalid and must not disturb live assignments.
+    if (entries.length === 0 || knownRunwayEntries.length > 0) {
+      for (const runwayId of activeRunways) view.fmaRunwayLeaders.delete(runwayId);
+    }
+    for (const [rwy, dir] of knownRunwayEntries) {
+      if (activeRunways.has(rwy) && dir !== null && isLeaderDir(dir)) {
         view.fmaRunwayLeaders.set(rwy, dir as unknown as LeaderDir);
       }
     }
@@ -705,14 +754,50 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   if (Array.isArray(pref.enabledNtzIds)) {
     const activeAmz = view.fmaAmzs.find((a) => a.id === amzId);
     if (activeAmz) {
-      const enabledSet = new Set(pref.enabledNtzIds);
-      const disabledNtzs = new Set(
-        activeAmz.ntzs.filter((n) => !enabledSet.has(n.id)).map((n) => n.id),
+      const knownIds = new Set(activeAmz.ntzs.map((n) => n.id));
+      const allReferencesValid = pref.enabledNtzIds.every(
+        (id) => typeof id === "string" && knownIds.has(id),
       );
-      view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabledNtzs };
+      if (allReferencesValid) {
+        const enabledSet = new Set(pref.enabledNtzIds);
+        const disabledNtzs = new Set(
+          activeAmz.ntzs.filter((n) => !enabledSet.has(n.id)).map((n) => n.id),
+        );
+        view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabledNtzs };
+      }
     }
   }
   return true;
+}
+
+/** Capture current selected-AMZ display state only on explicit PREF SAVE. */
+function captureSelectedFmaAmzPreference(view: ScopeView): void {
+  const amzId = view.fmaSurveillance.enabled ? view.fmaSurveillance.selectedAmzId : null;
+  const amz = view.fmaAmzs.find((candidate) => candidate.id === amzId);
+  if (!amz) return;
+  const runwayLeaders: Record<string, number> = {};
+  const activeRunways = new Set(amz.members.map((member) => member.runwayId));
+  for (const [rwy, dir] of view.fmaRunwayLeaders) {
+    if (activeRunways.has(rwy) && dir !== null && isLeaderDir(dir)) runwayLeaders[rwy] = dir;
+  }
+  const disabled = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+  saveFmaAmzPreference(view, amz.id, {
+    mag: view.fmaMag,
+    ptlSeconds: view.fmaPtlSeconds,
+    voiceLevel: view.fmaVoiceLevel,
+    fmaBrite: {
+      amz: view.brite.amz,
+      ntz: view.brite.ntz,
+      rwy: view.brite.rwy,
+      ref: view.brite.ref,
+    },
+    runwayLeaders,
+    enabledNtzIds: amz.ntzs.filter((ntz) => !disabled.has(ntz.id)).map((ntz) => ntz.id),
+    rangeNm: view.camera.rangeNm,
+    centerEastNm: view.camera.centerEastNm,
+    centerNorthNm: view.camera.centerNorthNm,
+    mapVisibility: mapToRecord(view.mapVisibility),
+  });
 }
 
 /**

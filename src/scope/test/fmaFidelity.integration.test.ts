@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { ProcedureCatalog } from "../../scenario/procedures/types";
 import { resolveFmaFlow } from "../../scenario/fmaFlow";
 import { loadPlayableScenario } from "../../scenario/playableScenarios";
@@ -39,8 +41,8 @@ import { armPreviewSlewAction } from "../previewArea";
 import { buildScopeDatablockPresentation, displayAircraft } from "../render/renderScopePaint";
 import { PALETTE } from "../palette";
 import { formatFmaAlertDiagnostic, observeFmaAlertRuntime } from "../fmaAlerts";
-import { handleScopeKeyDown } from "../scopeKeys";
-import { handlePpiLeftClick } from "../ppi";
+import { handleScopeKeyDown, installAlwaysOnScopeKeys } from "../scopeKeys";
+import { handlePpiCanvasClick, handlePpiLeftClick } from "../ppi";
 import { nmToScreen, type ScopeCamera } from "../camera";
 import {
   isFmaAvailable,
@@ -70,6 +72,7 @@ import {
   saveDcbPref,
   saveFmaAmzPreference,
   applyFmaAmzPreference,
+  commitDcbPrefSaveAs,
 } from "../dcb/dcbPref";
 import { bindFmaScenarioFlow, rebindFmaScenarioAmzs, setFmaVoiceLevel } from "../scopeView";
 import { buildSsaRenderLines } from "../ssa";
@@ -92,10 +95,13 @@ import {
 } from "../projection";
 import { createMockCtx } from "./mockCanvas";
 import { generateCompassRoseGeometry } from "../compassRose";
-import { drawFmaLayers, drawMapLayers } from "../render/renderScopePaint";
+import { drawChordHint, drawFmaLayers, drawMapLayers } from "../render/renderScopePaint";
 import type { MapCache } from "../mapLayers";
 import { pickAircraftAt } from "../pick";
 import { renderScope } from "../render/renderScope";
+import { renderPref } from "../../ui/dcb/DisplayControlBarMenus";
+import { renderFmaAux, renderModeMenu } from "../../ui/dcb/DisplayControlBarMenus";
+import { FmaAudioStatus } from "../../ui/shell";
 
 function syntheticAmz(): FmaAmz {
   const box = (x1: number, y1: number, x2: number, y2: number) => ({
@@ -155,6 +161,18 @@ function syntheticAmz(): FmaAmz {
     },
     provenance: "DERIVED_TRAINER",
   };
+}
+
+function findRenderedDcbCell(node: unknown, id: string): Record<string, unknown> | null {
+  if (!node || typeof node !== "object") return null;
+  const candidate = node as { props?: Record<string, unknown> };
+  if (candidate.props?.dataDcb === id) return candidate.props;
+  const children = candidate.props?.children;
+  for (const child of Array.isArray(children) ? children : [children]) {
+    const found = findRenderedDcbCell(child, id);
+    if (found) return found;
+  }
+  return null;
 }
 
 function alertTrack(
@@ -1389,6 +1407,79 @@ test("FMA adapted loss and coast-out intervals override the trainer defaults", (
   expect(state.tracks.get("track-a")?.coastedReport.xNm).toBeCloseTo(10);
 });
 
+test("selected AMZ binds adapted loss/coast clocks and switching restores the next AMZ intervals", () => {
+  const fastLoss = {
+    ...syntheticAmz(),
+    id: "AMZ-FAST-LOSS",
+    monitoring: { ...syntheticAmz().monitoring, surveillanceLossS: 3, coastOutS: 8 },
+  };
+  const defaultTiming = {
+    ...syntheticAmz(),
+    id: "AMZ-DEFAULT-TIMING",
+    label: "Default Timing",
+  };
+  const view = createScopeView();
+  view.fmaAmzs = [fastLoss, defaultTiming];
+  view.tracks.set("track-a", createTrackDisplay());
+  configureFmaSurveillanceView(view, true, fastLoss.id);
+  expect(view.fmaSurveillance.monitoring).toEqual({ surveillanceLossS: 3, coastOutS: 8 });
+  const ids = new Set(["track-a"]);
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 0,
+    reports: [report(0)],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 3_000,
+    reports: [],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  expect(view.fmaSurveillance.tracks.get("track-a")?.code).toBe("CST");
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 8_000,
+    reports: [],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  expect(view.fmaSurveillance.tracks.get("track-a")?.code).toBe("FROZEN");
+
+  const getAmz = () =>
+    findRenderedDcbCell(
+      renderFmaAux(view, () => undefined),
+      "fma-amz",
+    )!;
+  const amzWheel = { deltaY: -1, preventDefault() {}, stopPropagation() {} };
+  (getAmz().onClick as () => void)();
+  (getAmz().onWheel as (event: typeof amzWheel) => void)(amzWheel);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(fastLoss.id);
+  expect(view.fmaSurveillance.monitoring).toEqual({ surveillanceLossS: 3, coastOutS: 8 });
+  (getAmz().onClick as () => void)();
+  expect(view.fmaSurveillance.monitoring).toEqual({ surveillanceLossS: 10, coastOutS: 30 });
+  expect(view.fmaSurveillance.tracks.size).toBe(0);
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 9_000,
+    reports: [report(9_000)],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 18_999,
+    reports: [],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  expect(view.fmaSurveillance.tracks.get("track-a")?.code).toBe("CURRENT");
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 19_000,
+    reports: [],
+    liveTrackIds: ids,
+    associatedTrackIds: ids,
+  });
+  expect(view.fmaSurveillance.tracks.get("track-a")?.code).toBe("CST");
+});
+
 test("FMA cleanup is per display and cannot revive inhibited, disassociated, or prior-AMZ poses", () => {
   const left = tick(fmaState(), 0, [report(0)]);
   const right = tick(fmaState(), 0, [report(0, { aircraftId: "track-b" })], new Set(["track-b"]));
@@ -2100,12 +2191,88 @@ test("F8 Preview applies FMA inhibit at coasted report position without changing
   );
   expect(view.preview.mnemonic).toBe("FMA/TSAS");
   expect(view.historyDotCount).toBe(5);
-  handlePpiLeftClick(view, world, target.x, target.y, 800, 800);
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 800 }),
+  } as HTMLCanvasElement;
+  handlePpiCanvasClick(canvas, world, target.x, target.y, view);
   expect(view.fmaAlertInhibit.aircraftIds?.has(aircraft.id)).toBe(true);
   expect(view.fmaSurveillance.tracks.has(aircraft.id)).toBe(false);
   expect(view.preview.phase).toBe("idle");
   expect(world.selectedAircraftId).toBeNull();
   expect(aircraft.xNm).toBe(28);
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaAlertInhibit.aircraftIds).toBeUndefined();
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-SYN");
+  expect(view.fmaAlertInhibit.aircraftIds).toBeUndefined();
+});
+
+test("F8 global listener owns only bare F8; modifiers, Help, native input, H, and warnings retain their routes", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const fakeWindow = new EventTarget();
+  const fakeDocument = new EventTarget() as EventTarget & {
+    activeElement: Element | null;
+    getElementById: () => null;
+  };
+  fakeDocument.activeElement = null;
+  fakeDocument.getElementById = () => null;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
+  Object.defineProperty(globalThis, "document", { configurable: true, value: fakeDocument });
+  const dispatch = (key: string, modifiers: Partial<KeyboardEvent> = {}, target?: object) => {
+    const event = new Event("keydown", { cancelable: true });
+    Object.assign(event, { key, code: key, stopPropagation() {}, ...modifiers });
+    if (target) Object.defineProperty(event, "target", { configurable: true, value: target });
+    fakeWindow.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  const keyUi = { helpOverlayHasFocus: false };
+  const uninstall = installAlwaysOnScopeKeys(view, world, keyUi);
+  try {
+    const initialHistoryCount = view.historyDotCount;
+    expect(dispatch("F8")).toBe(true);
+    expect(view.preview.mnemonic).toBe("FMA/TSAS");
+    expect(view.historyDotCount).toBe(initialHistoryCount);
+    view.preview.phase = "idle";
+    for (const modifier of [{ shiftKey: true }, { altKey: true }, { metaKey: true }]) {
+      expect(dispatch("F8", modifier)).toBe(false);
+      expect(view.preview.phase).toBe("idle");
+    }
+    view.helpOpen = true;
+    keyUi.helpOverlayHasFocus = true;
+    expect(dispatch("F8")).toBe(false);
+    keyUi.helpOverlayHasFocus = false;
+    view.helpOpen = false;
+    expect(dispatch("F8", {}, { tagName: "INPUT" })).toBe(false);
+    expect(dispatch("H")).toBe(false); // radio focus keeps H for the command line
+    expect(view.historyDotCount).toBe(initialHistoryCount);
+    view.lastWarning = "NO PREF SET FOUND";
+    const ctx = createMockCtx();
+    drawChordHint(ctx.ctx, view);
+    expect(ctx.fillTexts.map((call) => call.text)).toContain("NO PREF SET FOUND");
+    view.fmaScenarioDiagnostics = ["no inbound approach course"];
+    const diagnosticAndWarning = createMockCtx();
+    drawChordHint(diagnosticAndWarning.ctx, view);
+    expect(diagnosticAndWarning.fillTexts.map((call) => call.text)).toContain(
+      "FMA: ACTIVE RUNWAY COURSE UNKNOWN",
+    );
+    expect(diagnosticAndWarning.fillTexts.map((call) => call.text)).toContain("NO PREF SET FOUND");
+    view.fmaScenarioDiagnostics = [];
+    view.lastWarning = null;
+    const cleared = createMockCtx();
+    drawChordHint(cleared.ctx, view);
+    expect(cleared.fillTexts).toHaveLength(0);
+  } finally {
+    uninstall();
+    if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+    if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
+    else Reflect.deleteProperty(globalThis, "document");
+  }
 });
 
 test("bare F8 keeps a non-FMA Preview entry visible through empty Enter and rejects unsupported operands as FORMAT", () => {
@@ -2387,6 +2554,30 @@ test("T02-225 AC1 — MODE submenu order, types, confirmation lifecycle, and cap
   expect(view.fmaCandidateMode).toBe(false);
 });
 
+test("T02-228 — actual MODE callbacks enable FMA with missing-pref warning and retain service-level semantics", () => {
+  const view = createScopeView();
+  view.fmaAmzs = [syntheticAmz()];
+  view.dcbMenu = "MODE";
+  const cell = (id: string) =>
+    findRenderedDcbCell(
+      renderModeMenu(view, () => undefined),
+      id,
+    )!;
+  (cell("mode-fsl").onClick as () => void)();
+  expect(view.serviceMode).toBe("FSL");
+  expect((view as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
+  (cell("mode-fma").onClick as () => void)();
+  expect(view.fmaSurveillance.enabled).toBe(false);
+  (
+    findRenderedDcbCell(
+      renderModeMenu(view, () => undefined),
+      "mode-accept",
+    )!.onClick as () => void
+  )();
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.lastWarning).toBe("NO PREF SET FOUND");
+});
+
 test("T02-225 AC2 — modeFsl state removed and legacy PREF migration discards modeFsl", () => {
   const view = createScopeView();
   expect((view as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
@@ -2486,6 +2677,151 @@ test("T02-225 AC4 — per-AMZ preference application, missing preference warning
   rebindFmaScenarioAmzs(view, [nextAmz]);
   expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-NEXT");
   expect(view.fmaAlertInhibit.aircraftIds?.size ?? 0).toBe(0);
+});
+
+test("T02-228 — rendered PREF SAVE snapshots current selected FMA settings and selected AMZ", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  view.fmaDefaultAmzId = amz.id;
+  view.fmaMag = 6;
+  view.fmaPtlSeconds = 15;
+  view.fmaVoiceLevel = 8;
+  view.fmaRunwayLeaders.set("08L", null);
+  const props = findRenderedDcbCell(
+    renderPref(view, () => undefined),
+    "pref-save",
+  );
+  expect(props).not.toBeNull();
+  (props!.onClick as () => void)();
+  const saved = view.dcbPref.slots[view.dcbPref.activeIndex]!.body;
+  expect(saved.amzPreferences?.[amz.id]).toMatchObject({ mag: 6, ptlSeconds: 15, voiceLevel: 8 });
+  expect(saved.amzPreferences?.[amz.id].runwayLeaders).toEqual({});
+  expect(saved.selectedFmaAmzId).toBe(amz.id);
+  view.fmaRunwayLeaders.set("08L", 8);
+  view.fmaRunwayLeaders.set("99", 6);
+  const standardLeader = view.defaultLeaderDir;
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  enterFmaConfirmation(view);
+  commitFmaConfirmation(view);
+  expect(view.fmaRunwayLeaders.has("08L")).toBe(false);
+  expect(view.fmaRunwayLeaders.get("99")).toBe(6);
+  expect(view.defaultLeaderDir).toBe(standardLeader);
+  const restored = createScopeView();
+  applyDcbPref(restored, saved);
+  expect(restored.fmaDefaultAmzId).toBe(amz.id);
+  restored.fmaAmzs = [amz];
+  rebindFmaScenarioAmzs(restored, [amz], restored.fmaDefaultAmzId);
+  expect(restored.fmaSurveillance.selectedAmzId).toBeNull();
+  // A subsequent enable resolves the persisted choice while the runtime mode remains off.
+  enterFmaConfirmation(restored);
+  commitFmaConfirmation(restored);
+  expect(restored.fmaSurveillance.selectedAmzId).toBe(amz.id);
+});
+
+test("T02-228 — malformed stored AMZ values are ignored and unknown references cannot disable valid zones", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  const baselineMag = view.fmaMag;
+  const baselineVoice = view.fmaVoiceLevel;
+  const baselineBrite = { ...view.brite };
+  view.fmaAlertInhibit.ntzIds = new Set();
+  const runwayId = amz.members[0]!.runwayId;
+  const ntzId = amz.ntzs[0]!.id;
+  view.amzPreferences.set(amz.id, {
+    amzId: amz.id,
+    mag: 4.5,
+    ptlSeconds: 2.5,
+    voiceLevel: 4.5,
+    fmaBrite: { amz: 101, ntz: 0, rwy: 3, ref: -1 },
+    runwayLeaders: { [runwayId]: 10, UNKNOWN: 8 },
+    enabledNtzIds: ["UNKNOWN-NTZ"],
+  });
+  expect(applyFmaAmzPreference(view, amz.id)).toBe(true);
+  expect(view.fmaMag).toBe(baselineMag);
+  expect(view.fmaVoiceLevel).toBe(baselineVoice);
+  expect(view.brite.amz).toBe(baselineBrite.amz);
+  expect(view.brite.ntz).toBe(baselineBrite.ntz);
+  expect(view.brite.rwy).toBe(baselineBrite.rwy);
+  expect(view.brite.ref).toBe(baselineBrite.ref);
+  expect(view.fmaRunwayLeaders.has("UNKNOWN")).toBe(false);
+  expect(view.fmaRunwayLeaders.has(runwayId)).toBe(false);
+  view.fmaRunwayLeaders.set(runwayId, 3);
+  view.amzPreferences.set(amz.id, { amzId: amz.id, runwayLeaders: { UNKNOWN: 8 } });
+  expect(applyFmaAmzPreference(view, amz.id)).toBe(true);
+  expect(view.fmaRunwayLeaders.get(runwayId)).toBe(3);
+  expect(view.fmaAlertInhibit.ntzIds?.has(ntzId)).toBe(false);
+  view.amzPreferences.set(amz.id, { amzId: amz.id, enabledNtzIds: [] });
+  expect(applyFmaAmzPreference(view, amz.id)).toBe(true);
+  expect(view.fmaAlertInhibit.ntzIds?.has(ntzId)).toBe(true);
+  view.amzPreferences.set(amz.id, { amzId: amz.id, enabledNtzIds: [ntzId, "UNKNOWN-NTZ"] });
+  view.fmaAlertInhibit = {};
+  expect(applyFmaAmzPreference(view, amz.id)).toBe(true);
+  expect(view.fmaAlertInhibit.ntzIds).toBeUndefined();
+  expect(commitFmaAmzSwitch(view, "UNKNOWN-AMZ")).toBe(false);
+  expect(view.fmaSurveillance.selectedAmzId).toBeNull();
+});
+
+test("T02-228 — stale saved AMZ choice cannot enable FMA outside the eligible set", () => {
+  const view = createScopeView();
+  const first = syntheticAmz();
+  const second = { ...syntheticAmz(), id: "AMZ-SECOND", label: "Second" };
+  view.fmaAmzs = [first, second];
+  view.fmaDefaultAmzId = "AMZ-OPPOSITE-FLOW";
+  enterFmaConfirmation(view);
+  expect(commitFmaConfirmation(view)).toBe(true);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(first.id);
+  expect(view.fmaDefaultAmzId).toBe(first.id);
+});
+
+test("T02-228 — rendered SAVE AS cancellation writes no FMA preference", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  view.fmaMag = 7;
+  const before = view.dcbPref.slots.map((slot) => slot && structuredClone(slot));
+  const props = findRenderedDcbCell(
+    renderPref(view, () => undefined),
+    "pref-save-as",
+  );
+  (props!.onClick as () => void)();
+  expect(view.dcbPref.pendingSaveAs).toBe(true);
+  const event = { key: "Escape", preventDefault() {}, stopPropagation() {} };
+  handleScopeKeyDown(event, view, "radio", createWorld(), 1);
+  expect(view.dcbPref.pendingSaveAs).toBe(false);
+  expect(view.dcbPref.slots).toEqual(before);
+  expect(view.amzPreferences.has(amz.id)).toBe(false);
+});
+
+test("T02-228 — rendered SAVE AS commit round-trips the selected AMZ snapshot", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  view.fmaMag = 3;
+  view.fmaVoiceLevel = 9;
+  const props = findRenderedDcbCell(
+    renderPref(view, () => undefined),
+    "pref-save-as",
+  );
+  (props!.onClick as () => void)();
+  const index = commitDcbPrefSaveAs(view, "FMALOCAL");
+  expect(index).toBe(0);
+  if (index === null) throw new Error("SAVE AS should commit an alphanumeric name");
+  const body = view.dcbPref.slots[index]!.body;
+  const restored = createScopeView();
+  restored.fmaAmzs = [amz];
+  applyDcbPref(restored, body);
+  enterFmaConfirmation(restored);
+  commitFmaConfirmation(restored);
+  expect(restored.fmaSurveillance.selectedAmzId).toBe(amz.id);
+  expect(restored.fmaMag).toBe(3);
+  expect(restored.fmaVoiceLevel).toBe(9);
 });
 
 describe("T02-224 FMA Browser Speech Queue integration", () => {
@@ -2852,6 +3188,146 @@ describe("T02-224 FMA Browser Speech Queue integration", () => {
     }).not.toThrow();
   });
 
+  test("AC2 — remote or non-English local voices stay unavailable; status subscription tracks discovery", () => {
+    const remoteEnglish: SpeechSynthesisVoiceLike = { ...defaultLocalVoice, localService: false };
+    const localFrench: SpeechSynthesisVoiceLike = {
+      ...defaultLocalVoice,
+      lang: "fr-FR",
+      name: "French local",
+    };
+    const mock = createMockSpeechSession([remoteEnglish, localFrench]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth });
+    const statuses: boolean[] = [];
+    const unsubscribe = controller.subscribeStatus((status) =>
+      statuses.push(status.voiceAvailable),
+    );
+    expect(controller.getStatus().voiceAvailable).toBe(false);
+    mock.voices.push(defaultLocalVoice);
+    mock.triggerVoicesChanged();
+    expect(controller.getStatus().voiceAvailable).toBe(true);
+    expect(statuses).toEqual([false, true]);
+    unsubscribe();
+    mock.triggerVoicesChanged();
+    expect(statuses).toEqual([false, true]);
+    controller.dispose();
+  });
+
+  test("AC2 — Shell exposes unavailable FMA audio in a separate live status only while FMA is enabled", () => {
+    const status = {
+      supported: true,
+      voiceAvailable: false,
+      activeUtteranceText: null,
+      queueLength: 0,
+    };
+    const markup = renderToStaticMarkup(createElement(FmaAudioStatus, { enabled: true, status }));
+    expect(markup).toContain('class="fma-audio-status"');
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain("local English voice unavailable");
+    expect(renderToStaticMarkup(createElement(FmaAudioStatus, { enabled: false, status }))).toBe(
+      "",
+    );
+    expect(
+      renderToStaticMarkup(
+        createElement(FmaAudioStatus, {
+          enabled: true,
+          status: { ...status, voiceAvailable: true },
+        }),
+      ),
+    ).toBe("");
+  });
+
+  test("AC3 — actual FMA AUX callbacks stage AMZ until commit and cancel without rebind", () => {
+    const view = createScopeView();
+    const east = syntheticAmz();
+    const south = { ...syntheticAmz(), id: "AMZ-SOUTH", label: "SOUTH34" };
+    view.fmaAmzs = [east, south];
+    configureFmaSurveillanceView(view, true, east.id);
+    view.fmaMag = 4;
+    const getAmz = () =>
+      findRenderedDcbCell(
+        renderFmaAux(view, () => undefined),
+        "fma-amz",
+      )!;
+    const event = { deltaY: -1, preventDefault() {}, stopPropagation() {} };
+    (getAmz().onClick as () => void)();
+    (getAmz().onWheel as (ev: typeof event) => void)(event);
+    expect(view.dcbSpinner.buffer).toBe(south.label);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(east.id);
+    expect(view.fmaMag).toBe(4);
+    cancelDcbSpinner(view);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(east.id);
+    expect(view.fmaMag).toBe(4);
+
+    (getAmz().onClick as () => void)();
+    (getAmz().onDragDelta as (steps: number) => void)(1);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(east.id);
+    (getAmz().onClick as () => void)();
+    expect(view.fmaSurveillance.selectedAmzId).toBe(south.id);
+    expect(view.lastWarning).toBe("NO PREF SET FOUND");
+    (getAmz().onClick as () => void)();
+    (getAmz().onWheel as (ev: typeof event) => void)(event);
+    expect(view.dcbSpinner.buffer).toBe(south.label); // no wrap at last eligible candidate
+    cancelDcbSpinner(view);
+
+    view.fmaAmzs.push({ ...south, id: "AMZ-SOUTH-2" });
+    (getAmz().onClick as () => void)();
+    for (const character of "SOUTH34") inputDcbSpinnerKey(view, character);
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(south.id);
+    expect(view.lastWarning).toBe("FORMAT");
+
+    const getMag = () =>
+      findRenderedDcbCell(
+        renderFmaAux(view, () => undefined),
+        "fma-mag",
+      )!;
+    (getMag().onClick as () => void)();
+    (getMag().onWheel as (ev: typeof event) => void)(event);
+    expect(view.fmaMag).toBe(5);
+    cancelDcbSpinner(view);
+    expect(view.fmaMag).toBe(4);
+
+    const getLeader = () =>
+      findRenderedDcbCell(
+        renderFmaAux(view, () => undefined),
+        "fma-rwy-1",
+      )!;
+    const world = createWorld();
+    const key = (value: string) =>
+      handleScopeKeyDown(
+        { key: value, preventDefault() {}, stopPropagation() {} },
+        view,
+        "scope",
+        world,
+        10,
+      );
+    (getLeader().onDragDelta as (steps: number) => void)(1);
+    expect(view.fmaRunwayLeaders.get("08L")).not.toBeNull();
+    key("Escape");
+    expect(view.fmaRunwayLeaders.get("08L") ?? null).toBeNull();
+
+    (getLeader().onClick as () => void)();
+    key("8");
+    key("Enter");
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(2); // keypad 8 = south
+    (getLeader().onClick as () => void)();
+    inputDcbSpinnerKey(view, "8");
+    (getLeader().onClick as () => void)();
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(2); // pointer commit uses same keypad mapping
+
+    (getLeader().onDragDelta as (steps: number) => void)(1);
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(1); // preview is keypad 7 = southwest
+    key("Enter");
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(1);
+
+    (getLeader().onClick as () => void)();
+    inputDcbSpinnerKey(view, "0");
+    inputDcbSpinnerKey(view, "8");
+    key("Enter");
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(1);
+    expect(view.lastWarning).toBe("FORMAT");
+  });
+
   test("AC3 — level/10 volume mapping, setVoiceLevel, and voiceTest queue Test without mutating world or alerts", () => {
     const mock = createMockSpeechSession([defaultLocalVoice]);
     const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
@@ -3045,7 +3521,12 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     expect(view.lastWarning).toBe("FORMAT");
 
     // Saving pref and switching clears warning
-    saveFmaAmzPreference(view, amz1.id, { mag: 5 });
+    saveFmaAmzPreference(view, amz1.id, {
+      mag: 5,
+      enabledNtzIds: [],
+      runwayLeaders: { "08L": 3 },
+    });
+    view.fmaAlertInhibit.aircraftIds = new Set(["OLD-TRACK"]);
     armDcbSpinner(view, "FMA_AMZ", {
       onCommit: (_cell, targetAmzId) => {
         if (typeof targetAmzId === "string") {
@@ -3059,7 +3540,18 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     expect(commitDcbSpinner(view)).toBe(true);
     expect(view.fmaSurveillance.selectedAmzId).toBe(amz1.id);
     expect(view.fmaMag).toBe(5);
+    expect(view.fmaRunwayLeaders.get("08L")).toBe(3);
+    expect(view.fmaAlertInhibit.aircraftIds).toBeUndefined();
+    expect(view.fmaAlertInhibit.ntzIds?.size).toBe(amz1.ntzs.length);
     expect(view.lastWarning).toBeNull();
+
+    enterFmaConfirmation(view);
+    commitFmaConfirmation(view);
+    expect(view.fmaSurveillance.selectedAmzId).toBeNull();
+    expect(view.fmaDefaultAmzId).toBe(amz1.id);
+    enterFmaConfirmation(view);
+    commitFmaConfirmation(view);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(amz1.id);
   });
 
   test("AC3 — PTL seconds 0 removes PTLs+SSA, nonzero updates PTL, independent of caution horizon", () => {
@@ -3125,6 +3617,57 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     expect(commitDcbSpinner(view)).toBe(false);
     expect(view.fmaPtlSeconds).toBe(0);
     expect(view.lastWarning).toBe("FORMAT");
+  });
+
+  test("AC3 — PTL spinner follows each selected AMZ maximum for typed, stepped, and restored values", () => {
+    const view = createScopeView();
+    const max45 = {
+      ...syntheticAmz(),
+      id: "AMZ-PTL-45",
+      monitoring: { ...syntheticAmz().monitoring, maximumPtlS: 45 },
+    };
+    const max15 = {
+      ...syntheticAmz(),
+      id: "AMZ-PTL-15",
+      monitoring: { ...syntheticAmz().monitoring, maximumPtlS: 15 },
+    };
+    view.fmaAmzs = [max45];
+    configureFmaSurveillanceView(view, true, max45.id);
+    view.fmaPtlSeconds = 12;
+    const getPtl = () =>
+      findRenderedDcbCell(
+        renderFmaAux(view, () => undefined),
+        "fma-ptl-len",
+      )!;
+    const wheel = { deltaY: -1, preventDefault() {}, stopPropagation() {} };
+
+    (getPtl().onClick as () => void)();
+    (getPtl().onWheel as (event: typeof wheel) => void)(wheel);
+    expect(view.fmaPtlSeconds).toBe(17);
+    (getPtl().onClick as () => void)();
+
+    (getPtl().onClick as () => void)();
+    for (const ch of "40") inputDcbSpinnerKey(view, ch);
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.fmaPtlSeconds).toBe(40);
+    saveFmaAmzPreference(view, max45.id);
+    view.fmaPtlSeconds = 5;
+    expect(applyFmaAmzPreference(view, max45.id)).toBe(true);
+    expect(view.fmaPtlSeconds).toBe(40);
+
+    view.fmaPtlSeconds = 44;
+    (getPtl().onClick as () => void)();
+    (getPtl().onWheel as (event: typeof wheel) => void)(wheel);
+    expect(view.fmaPtlSeconds).toBe(45);
+    (getPtl().onClick as () => void)();
+
+    rebindFmaScenarioAmzs(view, [{ ...max15, id: max45.id }], max45.id);
+    expect(view.fmaPtlSeconds).toBe(15);
+    (getPtl().onClick as () => void)();
+    for (const ch of "20") inputDcbSpinnerKey(view, ch);
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaPtlSeconds).toBe(15);
+    expect(view.lastWarning).toBe("ILL VALUE");
   });
 
   test("AC4 — Runway leader entry accepts keypad directions and NONE, applies per runway", () => {

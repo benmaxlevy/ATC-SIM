@@ -462,6 +462,7 @@ export {
   isDcbSubmenu,
   openDcbMenu,
   stepDcbSpinner,
+  stageFmaAmzSpinnerCandidate,
   toggleDcbMenu,
   validateDcbSpinnerValue,
 } from "./dcb/dcbMenu";

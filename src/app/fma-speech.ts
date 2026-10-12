@@ -78,6 +78,7 @@ export interface FmaSpeechController {
   voiceTest(): void;
   getVoiceLevel(): number;
   getStatus(): FmaSpeechStatus;
+  subscribeStatus(listener: (status: FmaSpeechStatus) => void): () => void;
   clearQueue(): void;
   dispose(): void;
 }
@@ -103,15 +104,7 @@ export function formatFmaAlertUtterance(callsign: string, condition: FmaPrimaryC
 function selectEnglishLocalVoice(
   voices: readonly SpeechSynthesisVoiceLike[],
 ): SpeechSynthesisVoiceLike | null {
-  // First prefer English localService voice
-  const enLocal = voices.find(
-    (v) => v.localService && (v.lang?.toLowerCase().startsWith("en") || !v.lang),
-  );
-  if (enLocal) return enLocal;
-  // Fallback: any local voice
-  const anyLocal = voices.find((v) => v.localService);
-  if (anyLocal) return anyLocal;
-  return null;
+  return voices.find((v) => v.localService && v.lang?.toLowerCase().startsWith("en")) ?? null;
 }
 
 export function createFmaSpeechController(
@@ -148,6 +141,7 @@ export function createFmaSpeechController(
   let disposed = false;
   let selectedVoice: SpeechSynthesisVoiceLike | null = null;
   let nextItemId = 1;
+  const statusListeners = new Set<(status: FmaSpeechStatus) => void>();
 
   function queryVoice(): SpeechSynthesisVoiceLike | null {
     if (!synth || disposed) return null;
@@ -190,7 +184,9 @@ export function createFmaSpeechController(
   }
 
   function notifyStatus(): void {
-    options.onStatusChange?.(getStatus());
+    const status = getStatus();
+    options.onStatusChange?.(status);
+    for (const listener of statusListeners) listener(status);
   }
 
   function pumpQueue(): void {
@@ -387,6 +383,11 @@ export function createFmaSpeechController(
     },
 
     getStatus,
+    subscribeStatus(listener) {
+      statusListeners.add(listener);
+      listener(getStatus());
+      return () => statusListeners.delete(listener);
+    },
 
     clearQueue(): void {
       if (disposed) return;
@@ -413,6 +414,7 @@ export function createFmaSpeechController(
     dispose(): void {
       if (disposed) return;
       disposed = true;
+      statusListeners.clear();
       queue = [];
       if (activeUtterance) {
         activeUtterance.onend = null;

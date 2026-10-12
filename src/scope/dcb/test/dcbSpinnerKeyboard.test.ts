@@ -239,7 +239,7 @@ describe("T02-200: DCB spinner numeric keyboard entry state & validation", () =>
   it("supports VOL, CSR_SPD, and HISTORY spinners", () => {
     const view = createScopeView();
 
-    // VOL 0-7
+    // Inherited workstation VOL 0-5
     armDcbSpinner(view, "VOL");
     inputDcbSpinnerKey(view, "4");
     expect(commitDcbSpinner(view)).toBe(true);
@@ -524,8 +524,9 @@ describe("T02-200: Scope keyboard routing (handleScopeKeyDown)", () => {
     expect(validateDcbSpinnerValue("PTL", 5.5)).toBe(false);
 
     expect(validateDcbSpinnerValue("VOL", 0)).toBe(true);
-    expect(validateDcbSpinnerValue("VOL", 7)).toBe(true);
-    expect(validateDcbSpinnerValue("VOL", 8)).toBe(false);
+    expect(validateDcbSpinnerValue("VOL", 5)).toBe(true);
+    expect(validateDcbSpinnerValue("VOL", 6)).toBe(false);
+    expect(validateDcbSpinnerValue("VOL", 7)).toBe(false);
 
     expect(validateDcbSpinnerValue("CSR_SPD", 1)).toBe(true);
     expect(validateDcbSpinnerValue("CSR_SPD", 5)).toBe(true);

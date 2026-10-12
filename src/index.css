@@ -940,6 +940,18 @@ html[data-dcb-cursor-trap] * {
   pointer-events: auto;
 }
 
+.fma-audio-status {
+  flex: 0 0 20px;
+  box-sizing: border-box;
+  text-align: right;
+  padding: 2px 6px;
+  border: 1px solid #aa8f00;
+  background: #080800;
+  color: #ffd800;
+  font: 11px/16px monospace;
+  pointer-events: none;
+}
+
 .command-readback {
   flex: 1 1 100%;
   min-width: 0;

@@ -7,12 +7,13 @@
  * (arm, wheel steps frozen presets, second click / Esc commits; cursor stays in
  * that cell). An open submenu (PREF, MAPS, …) keeps the cursor in the DCB boxes.
  * CHAR SIZE and
- * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: VOL
- * disabled, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
+ * BRITE open submenus (`CHAR_SIZE` / `BRITE`) with per-channel spinners. AUX: inherited VOL
+ * 0–5, HISTORY spinner 0–5, DCB TOP/LEFT/RIGHT/BOTTOM, PTL length spinner,
  * PTL OWN, PTL ALL, TPA/ATPA submenu (TPA ON, TPA MI, ATPA master, four live
  * ATPA cells). FILTER (altitude)
  * stays on MAIN. SSA FILTER hides existing SSA lines; GI TEXT toggles authored
- * facility lines (not METAR HTTP). HIST/PTL cells live on AUX (F7/F8 still work).
+ * facility lines (not METAR HTTP). History is also available via H / DCB HISTORY;
+ * F7 remains MULTI FUNC and F8 is FMA/TSAS Preview.
  * MAIN quick video maps 1–6; MAPS submenu slots 1–32 (KDEM) or group
  * submenu 7–38. Empty slots disabled. Group cells show CRC starsId plus short name.
  * WX1–6 latch `view.wxLevels` (VIP 1–6). Disabled CRDA cell on SSA FILTER

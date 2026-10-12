@@ -42,7 +42,7 @@ Service-side env, models, and Path C: [`speech-api/README.md`](../speech-api/REA
 ### Final Monitor Aid (trainer adaptation)
 
 FMA surveillance is a per-display report lifecycle for associated tracks. When
-enabled by a later FMA mode control, valid surveillance reports are retained
+enabled from `MODE -> FMA -> ACCEPT`, valid surveillance reports are retained
 independently of World position. The adapted surveillance-loss interval defaults
 to 10 seconds and coast-out defaults to 30 seconds; these are trainer defaults,
 not published STARS tracking-filter values. Between reports, the displayed pose
@@ -58,6 +58,14 @@ deterministic trainer exercises; ATC-SIM does not connect to live radar, MLAT,
 NAS sensor networks, or operational surveillance health systems. Ordinary
 FUSED, MULTI, and single-site display modes keep their existing immediate
 no-coast coverage behavior outside FMA.
+
+FMA AMZ geometry is derived automatically for straight parallel runway groups
+from catalog approaches. Offset/SOIA adaptation requires explicit authored
+geometry; the trainer does not create automatic SOIA flight behavior. The
+active scenario runway filters eligible AMZ choices and seeds the default
+selection. FMA audio availability appears in a separate trainer status while
+FMA is active; this reports SpeechSynthesis support and installed local English
+voice availability without using the radio readback line.
 
 #### FMA speech alert queue (SpeechSynthesis exception)
 
@@ -89,11 +97,13 @@ When FMA surveillance is enabled via the `MODE` submenu (`MODE -> FMA -> ACCEPT`
 
 - **AMZ Selection**: AMZ cell is selectable if more than one adapted AMZ exists. Accepts wheel/drag or typed case-normalized adapted label (e.g. `NORTH34`). Unknown or duplicate labels are rejected with `FORMAT` warning. Switching AMZ applies saved preferences and cancels obsolete episodes. Missing preference triggers `NO PREF SET FOUND` warning while switch succeeds.
 - **MAG**: Lateral magnification factor 1–8. Integer entry 1–8; out of range yields `ILL VALUE`; non-numeric yields `FORMAT`. CLEAR restores previous factor.
-- **PTL LNTH**: Whole seconds 0–30 (default 5). Non-integer/non-numeric gives `FORMAT`; out-of-range gives `ILL VALUE`. 0 removes displayed PTL lines and clears SSA PTL readout. Non-zero updates PTL length across all tracks. Caution horizon remains independent.
+- **PTL LNTH**: Whole seconds 0 through the selected AMZ's adapted maximum (default maximum 30; default setting 5). Non-integer/non-numeric gives `FORMAT`; out-of-range gives `ILL VALUE`. 0 removes displayed PTL lines and clears SSA PTL readout. Non-zero updates PTL length across all tracks. Caution horizon remains independent.
 - **VOICE & VOICE TEST**: Integer 1–10. Commit speaks a "Test" utterance at the new level (`level / 10`). `VOICE TEST` immediately speaks "Test" at the current level.
 - **Runway Leaders**: Keypad direction entry: 1=NW, 2=N, 3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE. `NONE` restores standard leader orientation. Applies to current and future assigned arrivals for that runway.
 - **NTZ Inhibition**: Toggles individual adapted NTZ zones (NTZ 1, 2, 3) or all zones (NTZ ALL). Inhibiting a zone suppresses boundary drawing and warning/caution episodes. Disabling all adjacent zones suppresses CST/RWY.
 - **BRITE Channels**: Adds AMZ, RWY, REF (0 for off, or 5–100) and NTZ (50–100 only, no off). Out of range yields `ILL VALUE`. Wheel steps follow adapted ladders (`[0, 5, 10, ... 100]` for AMZ/RWY/REF; `[50, 60, ... 100]` for NTZ).
+
+PREF `SAVE` / `SAVE AS` captures the current enabled AMZ's validated FMA display settings and remembers that local AMZ choice for the next load when it remains eligible for the scenario flow. It does not persist whether FMA is enabled or any runtime alert/track state. The FMA PTL maximum comes from the selected AMZ monitoring adaptation (30 seconds when omitted); inherited workstation VOL retains its separate 0–5 scale.
 
 
 ### STARS TCW display
@@ -125,7 +135,7 @@ Datablock altitude and flight-rules display follows one shared runtime contract:
   - Predicted Track Line (PTL): 0.5 to 15.0 minute forward ground track lookahead vector with global toggle (`F10` / `*PTL <min>`) and per-track PTL toggle (F7 `R`).
 - **Target Proximity Alert (TPA)**: Selectable J-rings / separation halos (1–30 NM via `*J`) and ground-track predictive cones (1–30 NM via `*P`) for spacing management.
 - **Compass Rose heading vectoring ring**: Outermost range ring overlay with 72 radial tick marks (5° minor, 10° medium, 30° major) and twelve 3-digit heading numerals (`360`, `030`, `060`, `090`, `120`, `150`, `180`, `210`, `240`, `270`, `300`, `330`) radially inward for rapid heading assignment and vectoring. Brightness is controlled via `BRITE CMP` (0% / OFF to 100%) and numeral font sizing follows `CHAR SIZE TOOLS` (levels 0–5, 10/11/12/13/14/15 CSS px).
-- **Display Control Bar (DCB)**: Green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN 0–7, BRITE channels including CMP and BCN, CHAR SIZE including TOOLS, H_RATE, DWELL hover brightening, CURSOR HOME, CSR SPD, VOL alert volume), MODE service-mode submenu (EFSL, FSL default, TRNG, FMA with confirmation/ACCEPT, DSF, DONE), altitude filters, and persistent local PREF slots stored in `localStorage`. FMA display settings are keyed per adapted AMZ in local preferences (missing settings show `NO PREF SET FOUND` warning).
+- **Display Control Bar (DCB)**: Green physical button matrix with MAIN and AUX menu switching, interactive wheel spinners (RANGE, RR, LDR DIR, LDR LEN 0–7, BRITE channels including CMP and BCN, CHAR SIZE including TOOLS, H_RATE, DWELL hover brightening, CURSOR HOME, CSR SPD, inherited VOL gain 0–5), MODE service-mode submenu (EFSL Emergency Full Service Level, FSL Full Service Level, TRNG training, FMA Final Monitor Aid with confirmation/ACCEPT, DSF, DONE), altitude filters, and persistent local PREF slots stored in `localStorage`. FMA display settings are keyed per adapted AMZ in local preferences (missing settings show `NO PREF SET FOUND` warning).
 - **System Status Area (SSA)**: Top-left status showing UTC/sim time, altimeter setting (29.92), active altitude filter limits, and sensor mode. Relocatable via F7 `S`, then click (F7 `S` + click) and resettable via Shift+click.
 - **On-Scope System Lists**: Movable, draggable operational data windows including TAB List (`F7 T`), Tower Lists (F7 `P1`–`P3`), VFR List (`F7 TV`), Video Maps Directory (`F7 TX`), Alert Status Box LA/CA/MCI (`F7 TM`), CRDA Status (`F7 TN`), Coast/Suspend (`F7 TC`), and Sign-On (`F7 TS`). All lists feature click-and-drag title headers, Shift+click default reset, collision warning frames, interactive row clicks, and persistent layout retention via DCB `PREF`. STARS system list commands strictly use authorized `<MULTI FUNC>` prefix syntax without aliases.
 
@@ -944,10 +954,11 @@ dash lengths are trainer styling. An unresolved runway length appears as a
 short screen-space threshold marker only. Monitoring
 defaults are 10 seconds caution, 10 seconds surveillance loss, 30 seconds
 coast-out, 10 seconds stabilization, 3 degrees course tolerance, 0.15 NM
-alignment half-width, and 30 seconds maximum displayed PTL. These are trainer
-choices, not a published STARS adaptation algorithm or operational PRM
-qualification. Automatic SOIA geometry and visual-transition behavior are not
-included; offsets require explicit catalog adaptation.
+alignment half-width, and a 30-second displayed PTL maximum unless an AMZ
+adaptation supplies another maximum. These are trainer choices, not a published
+STARS adaptation algorithm or operational PRM qualification. Automatic SOIA
+geometry and visual-transition behavior are not included; offsets require
+explicit catalog adaptation.
 
 At application boot and after each session replacement, the trainer derives
 all catalog AMZ geometry and exposes only groups aligned with the scenario's

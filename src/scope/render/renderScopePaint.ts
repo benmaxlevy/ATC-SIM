@@ -2580,7 +2580,7 @@ export function drawChordHint(
     view.fmaAlertDiagnostics,
     view.fmaScenarioDiagnostics,
   );
-  if (!stars && !preview && !hint && !fmaDiagnostic) {
+  if (!stars && !preview && !hint && !fmaDiagnostic && !view.lastWarning) {
     return;
   }
   const placement = view.systemLists?.PREVIEW ?? DEFAULT_SYSTEM_LIST_PLACEMENTS.PREVIEW;
@@ -2606,17 +2606,17 @@ export function drawChordHint(
     ctx.fillStyle = PALETTE.uiChrome;
     ctx.fillText(hint, x, y);
   }
+  const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
   if (fmaDiagnostic) {
-    const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(fmaDiagnostic, x, y + occupiedLines * datablockLineHeightPx(view.charSizes.lists));
-  } else if (view.lastWarning) {
-    const occupiedLines = stars ? 1 : preview ? preview.split("\n").length : hint ? 1 : 0;
+  }
+  if (view.lastWarning) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(
       view.lastWarning,
       x,
-      y + occupiedLines * datablockLineHeightPx(view.charSizes.lists),
+      y + (occupiedLines + (fmaDiagnostic ? 1 : 0)) * datablockLineHeightPx(view.charSizes.lists),
     );
   }
 }

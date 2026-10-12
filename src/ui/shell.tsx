@@ -56,6 +56,7 @@ import {
 
 import { flightPlanForAircraft, handoffFor, isFlightPlanOperational, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
+import type { FmaSpeechStatus } from "../app/fma-speech";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
 import { focusPpi } from "./strips/FlightStrips";
@@ -74,6 +75,16 @@ export interface ShellProps {
   scopeView: ScopeView;
 }
 
+export function FmaAudioStatus({ enabled, status }: { enabled: boolean; status: FmaSpeechStatus }) {
+  if (!enabled || (status.supported && status.voiceAvailable)) return null;
+  return (
+    <div className="fma-audio-status" role="status" aria-live="polite">
+      FMA AUDIO UNAVAILABLE —{" "}
+      {!status.supported ? "SpeechSynthesis unsupported" : "local English voice unavailable"}
+    </div>
+  );
+}
+
 export function Shell({ app, scenario, scopeView }: ShellProps) {
   const [activeScenario, setActiveScenario] = useState(scenario);
   const [setupOpen, setSetupOpen] = useState(true);
@@ -89,6 +100,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   });
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [fmaSpeechStatus, setFmaSpeechStatus] = useState(() => app.fmaSpeech.getStatus());
   const [speechId, setSpeechId] = useState(app.speech.id);
   const [stripsOpen, setStripsOpen] = useState(false);
   const [, setStripsTick] = useState(0);
@@ -232,6 +244,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
       }
     });
   }, [app]);
+
+  useEffect(() => app.fmaSpeech.subscribeStatus(setFmaSpeechStatus), [app]);
 
   useEffect(() => {
     return installAlwaysOnScopeKeys(scopeView, app.world, {
@@ -435,30 +449,36 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           }}
           onCanvasContextMenu={(event) => event.preventDefault()}
           footer={
-            <CommandLine
-              readback={readback}
-              voiceStatus={voiceStatus}
-              selectedCallsign={selectedCallsign}
-              selectionToken={selectionToken}
-              onPttPress={() => app.ptt.pressFromPointer()}
-              onPttRelease={() => app.ptt.releaseFromPointer()}
-              onSubmit={(input) => {
-                setVoiceStatus(null);
-                void submitCommand(app.world, input, app.log, {
-                  pathC: app.speechSettings.pathCActive,
-                }).then((result) => {
-                  setReadback(result.readback);
-                  if (result.readback && (result.accepted || result.command?.callsign)) {
-                    void app.voiceLoop
-                      .playReadback(
-                        result.spokenReadback ?? result.readback,
-                        result.command?.callsign,
-                      )
-                      .finally(() => setReadback(""));
-                  }
-                });
-              }}
-            />
+            <>
+              <FmaAudioStatus
+                enabled={scopeView.fmaSurveillance.enabled}
+                status={fmaSpeechStatus}
+              />
+              <CommandLine
+                readback={readback}
+                voiceStatus={voiceStatus}
+                selectedCallsign={selectedCallsign}
+                selectionToken={selectionToken}
+                onPttPress={() => app.ptt.pressFromPointer()}
+                onPttRelease={() => app.ptt.releaseFromPointer()}
+                onSubmit={(input) => {
+                  setVoiceStatus(null);
+                  void submitCommand(app.world, input, app.log, {
+                    pathC: app.speechSettings.pathCActive,
+                  }).then((result) => {
+                    setReadback(result.readback);
+                    if (result.readback && (result.accepted || result.command?.callsign)) {
+                      void app.voiceLoop
+                        .playReadback(
+                          result.spokenReadback ?? result.readback,
+                          result.command?.callsign,
+                        )
+                        .finally(() => setReadback(""));
+                    }
+                  });
+                }}
+              />
+            </>
           }
         >
           {fpsDebug ? <FpsDebug /> : null}

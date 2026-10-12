@@ -136,8 +136,6 @@ import {
   setRangeRingInterval,
   toggleVideoMap,
   videoMapTokenLayout,
-  FMA_RUNWAY_KEYPAD_TO_DIR,
-  setFmaRunwayLeader,
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -1441,13 +1439,6 @@ export function handleScopeKeyDown(
         const dir = Number(buffer);
         if (Number.isInteger(dir) && dir !== 5) {
           applyDcbLeaderDir(view, world, dir as LeaderDir);
-        }
-      } else if (cell?.startsWith("FMA_LDR_") && buffer.trim().length > 0) {
-        const keypadDigit = Number(buffer.trim());
-        const mapped = FMA_RUNWAY_KEYPAD_TO_DIR[keypadDigit];
-        if (mapped !== undefined) {
-          const rwy = cell.slice(8);
-          setFmaRunwayLeader(view, rwy, mapped);
         }
       }
       ui?.onHandled?.();
