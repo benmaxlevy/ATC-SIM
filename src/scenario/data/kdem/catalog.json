@@ -5,8 +5,11 @@
   "spokenAliases": ["DEMO FIELD", "DEMO AIRPORT"],
   "magVarDeg": 0,
   "fieldElevFt": 0,
-  "arp": { "latDeg": 0, "lonDeg": 0 },
-  "originNote": "Local tangent NM: +x east, +y north from ARP. Rwy 27 threshold / GS origin at (0, 0). Mag var 0, field elev 0. A later FAA import writes this same folder shape for a real ICAO (lat/lon on records → xNm/yNm at load). KDEM stays the shipped default.",
+  "arp": {
+    "latDeg": 0,
+    "lonDeg": 0
+  },
+  "originNote": "Local tangent NM: +x east, +y north from ARP. Rwy 27 threshold / GS origin at (0, 0). Mag var 0, field elev 0. A later FAA import writes this same folder shape for a real ICAO (lat/lon on records \u2192 xNm/yNm at load). KDEM stays the shipped default.",
   "files": {
     "vors": "vors.json",
     "ndbs": "ndbs.json",
@@ -15,5 +18,169 @@
     "procedures": "procedures.json",
     "sids": "sids.json",
     "atpaVolumes": "atpa-volumes.json"
+  },
+  "fmaOverrides": {
+    "source": "TRAINER_AUTHORED",
+    "sourceNote": "Trainer-authored illustrative parallel approach geometry for simulation; not verified authentic facility adaptation. RW28 is a trainer fixture.",
+    "groups": [
+      {
+        "id": "DEMO1",
+        "label": "DEMO AMZ",
+        "approachIds": ["ILS27", "ILS27R"],
+        "runwayIds": ["27", "27R"],
+        "runwayAliases": {
+          "27": ["R27"],
+          "27R": ["R27R"]
+        },
+        "captureLengthNm": 20,
+        "ntzWidthFt": 850,
+        "outerMarginNm": 0.5,
+        "geometry": {
+          "amzBoundary": [
+            {
+              "xNm": -2,
+              "yNm": -0.5
+            },
+            {
+              "xNm": -2,
+              "yNm": 1
+            },
+            {
+              "xNm": 22,
+              "yNm": 1
+            },
+            {
+              "xNm": 22,
+              "yNm": -0.5
+            }
+          ],
+          "runways": [
+            {
+              "runwayId": "27",
+              "noz": [
+                {
+                  "xNm": -1,
+                  "yNm": -0.12
+                },
+                {
+                  "xNm": -1,
+                  "yNm": 0.12
+                },
+                {
+                  "xNm": 21,
+                  "yNm": 0.12
+                },
+                {
+                  "xNm": 21,
+                  "yNm": -0.12
+                }
+              ],
+              "departureEnd": {
+                "xNm": -1,
+                "yNm": 0
+              }
+            },
+            {
+              "runwayId": "27R",
+              "noz": [
+                {
+                  "xNm": -1,
+                  "yNm": 0.38
+                },
+                {
+                  "xNm": -1,
+                  "yNm": 0.62
+                },
+                {
+                  "xNm": 21,
+                  "yNm": 0.62
+                },
+                {
+                  "xNm": 21,
+                  "yNm": 0.38
+                }
+              ],
+              "departureEnd": {
+                "xNm": -1,
+                "yNm": 0.5
+              }
+            }
+          ],
+          "ntzs": [
+            {
+              "id": "NTZ1",
+              "leftRunwayId": "27",
+              "rightRunwayId": "27R",
+              "polygon": [
+                {
+                  "xNm": -1,
+                  "yNm": 0.18
+                },
+                {
+                  "xNm": -1,
+                  "yNm": 0.32
+                },
+                {
+                  "xNm": 21,
+                  "yNm": 0.32
+                },
+                {
+                  "xNm": 21,
+                  "yNm": 0.18
+                }
+              ]
+            }
+          ],
+          "courseLines": [
+            {
+              "runwayId": "27",
+              "approach": [
+                {
+                  "xNm": 20,
+                  "yNm": 0
+                },
+                {
+                  "xNm": 0,
+                  "yNm": 0
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 0,
+                  "yNm": 0
+                },
+                {
+                  "xNm": -1,
+                  "yNm": 0
+                }
+              ]
+            },
+            {
+              "runwayId": "27R",
+              "approach": [
+                {
+                  "xNm": 20,
+                  "yNm": 0.5
+                },
+                {
+                  "xNm": 0,
+                  "yNm": 0.5
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 0,
+                  "yNm": 0.5
+                },
+                {
+                  "xNm": -1,
+                  "yNm": 0.5
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
   }
 }

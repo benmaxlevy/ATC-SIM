@@ -4,14 +4,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ProcedureCatalog } from "../../scenario/procedures/types";
 import { resolveFmaFlow } from "../../scenario/fmaFlow";
 import { loadPlayableScenario } from "../../scenario/playableScenarios";
-import { deriveFmaAmzs } from "../../core/alerts/fmaGeometry";
+import { deriveFmaAmzs, deriveFmaFixtureAmzs } from "../../core/alerts/fmaGeometry";
 import {
   createFmaAlertState,
   createFlightPlan,
   createWorld,
   deleteFlightPlanFromWorld,
   evaluateFmaAlerts,
-  magneticToTrueDeg,
   resolveFmaRunwayAssignment,
   type FmaAmz,
   type FmaAlertTrackInput,
@@ -243,8 +242,42 @@ function catalog(
   };
 }
 
-test("FMA derives cardinal and wrapped common axes, converts magnetic once, and ignores along-track staggering", () => {
-  const north = deriveFmaAmzs(
+function authorFixtureGeometry(source: ProcedureCatalog): ProcedureCatalog {
+  const { amzs } = deriveFmaFixtureAmzs(source);
+  return {
+    ...source,
+    fmaOverrides: {
+      source: "TRAINER_AUTHORED",
+      sourceNote: "Synthetic authored geometry fixture.",
+      groups: amzs.map((amz, index) => ({
+        id: `TEST${String(index + 1).padStart(3, "0")}`,
+        approachIds: amz.approachIds,
+        runwayIds: amz.members.map((member) => member.runwayId),
+        captureLengthNm: amz.dimensions.captureLengthNm,
+        ntzWidthFt: amz.dimensions.ntzWidthFt,
+        outerMarginNm: amz.dimensions.outerMarginNm,
+        geometry: {
+          amzBoundary: amz.boundary.points,
+          runways: amz.members.map((member) => ({
+            runwayId: member.runwayId,
+            noz: member.noz.points,
+            departureEnd: amz.runwayGraphics.find((row) => row.runwayId === member.runwayId)!
+              .departureEnd,
+          })),
+          ntzs: amz.ntzs.map((ntz) => ({
+            id: ntz.id,
+            leftRunwayId: ntz.leftRunwayId,
+            rightRunwayId: ntz.rightRunwayId,
+            polygon: ntz.polygon.points,
+          })),
+        },
+      })),
+    },
+  };
+}
+
+test("offline FMA fixture geometry derives cardinal and wrapped axes without production binding", () => {
+  const north = deriveFmaFixtureAmzs(
     catalog(
       [
         { runway: "01", course: 355, x: -0.5, y: -0.2, id: "N1" },
@@ -258,7 +291,7 @@ test("FMA derives cardinal and wrapped common axes, converts magnetic once, and 
   expect(north.amzs[0]?.approachIds).toEqual(["N1", "N2"]);
   expect(north.amzs[0]?.courseTrueDeg).toBe(0);
   expect(north.amzs[0]?.ntzs).toHaveLength(1);
-  const east = deriveFmaAmzs(
+  const east = deriveFmaFixtureAmzs(
     catalog([
       { runway: "09", course: 90, x: 0, y: -0.5 },
       { runway: "10", course: 90, x: 0, y: 0.5 },
@@ -266,7 +299,7 @@ test("FMA derives cardinal and wrapped common axes, converts magnetic once, and 
   );
   expect(east.amzs).toHaveLength(1);
   expect(east.amzs[0]?.ntzs).toHaveLength(1);
-  const wrapped = deriveFmaAmzs(
+  const wrapped = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 359.8, x: -0.5 },
       { runway: "B", course: 0.2, x: 0.5 },
@@ -275,7 +308,7 @@ test("FMA derives cardinal and wrapped common axes, converts magnetic once, and 
   expect(wrapped.amzs[0]?.courseTrueDeg).toBeCloseTo(0);
 });
 
-test("T02-230 resolves active runway flow, magnetic wrap, overrides, and safe unavailable diagnostics", () => {
+test("FMA production binding does not infer geometry when adaptation is absent", () => {
   const reciprocalFlows = catalog(
     [
       { runway: "09", course: 85, x: 0, y: -0.5, id: "E09" },
@@ -285,94 +318,12 @@ test("T02-230 resolves active runway flow, magnetic wrap, overrides, and safe un
     ],
     5,
   );
-  const east = resolveFmaFlow(reciprocalFlows, "09");
-  const west = resolveFmaFlow(reciprocalFlows, "27");
-  expect(east.amzs.length).toBeGreaterThan(0);
-  expect(east.amzs.every((amz) => amz.courseTrueDeg === 90)).toBe(true);
-  expect(east.amzs.some((amz) => amz.members.some((member) => member.runwayId === "27"))).toBe(
-    false,
-  );
-  expect(west.amzs.length).toBeGreaterThan(0);
-  expect(west.amzs.every((amz) => amz.courseTrueDeg === 270)).toBe(true);
-
-  const explicit = east.amzs[east.amzs.length - 1]!;
-  expect(resolveFmaFlow(reciprocalFlows, "09", { initialAmzId: explicit.id }).selectedAmzId).toBe(
-    explicit.id,
-  );
-  const stale = resolveFmaFlow(reciprocalFlows, "09", { initialAmzId: west.amzs[0]!.id });
-  expect(stale.selectedAmzId).toBe(east.selectedAmzId);
-  expect(stale.diagnostics.join(" ")).toMatch(/stale or opposite-flow/);
-  expect(resolveFmaFlow(reciprocalFlows, "09", { preferredAmzId: explicit.id }).selectedAmzId).toBe(
-    explicit.id,
-  );
-
-  const wrapped = resolveFmaFlow(
-    catalog(
-      [
-        { runway: "A", course: 355, x: 0, y: -0.5 },
-        { runway: "B", course: 355, x: 0.5, y: 0.5 },
-      ],
-      5,
-    ),
-    "A",
-  );
-  expect(wrapped.amzs).toHaveLength(1);
-  expect(wrapped.amzs[0]?.courseTrueDeg).toBe(0);
-
-  const ambiguousCatalog = catalog([
-    { runway: "09", course: 0, x: 0, id: "A" },
-    { runway: "09", course: 0.7, x: 0, y: 0.5, id: "B" },
-    { runway: "09", course: 1.4, x: 0.5, y: 0.5, id: "C" },
-  ]);
-  const ambiguous = resolveFmaFlow(ambiguousCatalog, "09");
-  const reverseOrdered = resolveFmaFlow(
-    {
-      ...ambiguousCatalog,
-      approaches: [...ambiguousCatalog.approaches].reverse(),
-    },
-    "09",
-  );
-  expect(ambiguous.amzs).toEqual([]);
-  expect(ambiguous.diagnostics.join(" ")).toMatch(/ambiguous inbound/);
-  expect(formatFmaAlertDiagnostic([], ambiguous.diagnostics)).toBe(
-    "FMA: ACTIVE RUNWAY COURSE AMBIGUOUS",
-  );
-  expect(reverseOrdered).toEqual(ambiguous);
-  const stableOrder = resolveFmaFlow(
-    {
-      ...reciprocalFlows,
-      approaches: [...reciprocalFlows.approaches].reverse(),
-      fixes: [...reciprocalFlows.fixes].reverse(),
-    },
-    "09",
-  );
-  expect(stableOrder.selectedAmzId).toBe(east.selectedAmzId);
-  const multipleEligible = catalog([
-    { runway: "A", course: 90, x: 0, y: -0.5, id: "A" },
-    { runway: "B", course: 90, x: 0.5, y: 0.5, id: "B" },
-    { runway: "C", course: 90, x: 0, y: 10, id: "C" },
-    { runway: "D", course: 90, x: 0.5, y: 10.5, id: "D" },
-    { runway: "E", course: 90, x: 0, y: 25, id: "E" },
-  ]);
-  const stableFallback = resolveFmaFlow(multipleEligible, "E");
-  const reversedFallback = resolveFmaFlow(
-    {
-      ...multipleEligible,
-      approaches: [...multipleEligible.approaches].reverse(),
-    },
-    "E",
-  );
-  expect(stableFallback.amzs.length).toBe(2);
-  expect(stableFallback.selectedAmzId).toBe(
-    [...stableFallback.amzs].map((amz) => amz.id).sort()[0],
-  );
-  expect(reversedFallback.selectedAmzId).toBe(stableFallback.selectedAmzId);
-  const unknown = resolveFmaFlow(reciprocalFlows, "36");
-  expect(unknown).toMatchObject({ amzs: [], selectedAmzId: null });
-  expect(unknown.diagnostics.join(" ")).toMatch(/no inbound approach course/);
+  const result = resolveFmaFlow(reciprocalFlows, "09");
+  expect(result).toMatchObject({ amzs: [], selectedAmzId: null });
+  expect(result.diagnostics.join(" ")).toMatch(/trainer-authored provenance/);
 });
 
-test("T02-230 preserves authored offset membership and resolves selected active-runway variants", () => {
+test("authored AMZs remain available across reciprocal flows and preserve manual selection", () => {
   const adapted = catalog(
     [
       { runway: "A", course: 355, x: 0, id: "A-NORTH" },
@@ -417,16 +368,28 @@ test("T02-230 preserves authored offset membership and resolves selected active-
     })),
   });
   adapted.fmaOverrides = {
-    excludeDerived: true,
+    source: "TRAINER_AUTHORED",
+    sourceNote: "Synthetic authored geometry fixture.",
     groups: [
-      { id: "OFFSET", approachIds: ["A-NORTH", "B-OFFSET"], geometry: geometry(["A", "B"]) },
-      { id: "RECIPROCAL", approachIds: ["C-SOUTH", "D-OFFSET"], geometry: geometry(["C", "D"]) },
+      { id: "AMZ001", approachIds: ["A-NORTH", "B-OFFSET"], geometry: geometry(["A", "B"]) },
+      {
+        id: "AMZ002",
+        approachIds: ["C-SOUTH", "D-OFFSET"],
+        geometry: {
+          ...geometry(["C", "D"]),
+          ntzs: [{ ...geometry(["C", "D"]).ntzs[0]!, leftRunwayId: "D", rightRunwayId: "C" }],
+        },
+      },
     ],
   };
 
-  const result = resolveFmaFlow(adapted, "A", { initialAmzId: "OFFSET", excludeDerived: true });
-  expect(result.amzs.map((amz) => amz.id)).toEqual(["OFFSET"]);
-  expect(result.selectedAmzId).toBe("OFFSET");
+  const result = resolveFmaFlow(adapted, "A", { initialAmzId: "AMZ001" });
+  expect(result.amzs.map((amz) => amz.id)).toEqual(["AMZ001", "AMZ002"]);
+  expect(result.selectedAmzId).toBe("AMZ001");
+  expect(
+    resolveFmaFlow(adapted, "UNKNOWN", { preferredAmzId: "AMZ002", initialAmzId: "AMZ001" })
+      .selectedAmzId,
+  ).toBe("AMZ002");
   expect(result.amzs[0]?.members.map((member) => member.approachId)).toEqual([
     "A-NORTH",
     "B-OFFSET",
@@ -439,18 +402,21 @@ test("T02-230 preserves authored offset membership and resolves selected active-
     { xNm: 0, yNm: 0 },
   ]);
   expect(
-    resolveFmaFlow(adapted, "A", { preferredAmzId: "OFFSET", excludeDerived: true }).selectedAmzId,
-  ).toBe("OFFSET");
+    resolveFmaFlow(adapted, "A", { preferredAmzId: "AMZ002", excludeDerived: true }).selectedAmzId,
+  ).toBe("AMZ002");
 
-  const staleVariantWithoutAdaptation = resolveFmaFlow(adapted, "A", { excludeDerived: true });
+  const { fmaOverrides: _adaptation, ...unadapted } = adapted;
+  const staleVariantWithoutAdaptation = resolveFmaFlow(unadapted, "A", { excludeDerived: true });
   expect(staleVariantWithoutAdaptation.amzs).toEqual([]);
-  expect(staleVariantWithoutAdaptation.diagnostics.join(" ")).toMatch(/ambiguous inbound/);
+  expect(staleVariantWithoutAdaptation.diagnostics.join(" ")).toMatch(
+    /trainer-authored provenance/,
+  );
 
   const noGeometry = resolveFmaFlow(catalog([{ runway: "A", course: 0, x: 0 }]), "A", {
     excludeDerived: true,
   });
   expect(noGeometry).toMatchObject({ amzs: [], selectedAmzId: null });
-  expect(noGeometry.diagnostics.join(" ")).toMatch(/no AMZ geometry matches/);
+  expect(noGeometry.diagnostics.join(" ")).toMatch(/trainer-authored provenance/);
 });
 
 test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, and applies override preference", () => {
@@ -465,8 +431,11 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
     { runway: "H", course: 270, x: 0.5, y: 30.5, id: "APP-H" },
   ]);
   nextCatalog.airportId = "KXYZ";
-  const derived = deriveFmaAmzs(nextCatalog).amzs;
+  const derived = deriveFmaFixtureAmzs(nextCatalog).amzs;
   expect(derived).toHaveLength(4);
+  derived.forEach((amz, index) => {
+    amz.id = `TEST${String(index + 1).padStart(3, "0")}`;
+  });
   const runwayAmz = derived.find((amz) => amz.members.some((member) => member.runwayId === "A"))!;
   const overrideAmz = derived.find((amz) => amz.courseTrueDeg === 90 && amz !== runwayAmz)!;
   const westRunwayAmz = derived.find((amz) =>
@@ -477,6 +446,7 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
   configureFmaSurveillanceView(view, true, runwayAmz.id);
   saveFmaAmzPreference(view, overrideAmz.id, { mag: 6 });
   saveFmaAmzPreference(view, westRunwayAmz.id, { mag: 4 });
+  view.fmaSurveillance.selectedAmzId = null;
   view.dcbPref.icao = "KXYZ";
   const storedPreferences = new Map<string, string>();
   const preferenceStorage = {
@@ -515,7 +485,7 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
 
   const nextScenario = {
     activeRunwayId: "A",
-    catalog: nextCatalog,
+    catalog: authorFixtureGeometry(nextCatalog),
     fma: { initialAmzId: overrideAmz.id },
   };
   const result = bindFmaScenarioFlow(view, nextScenario);
@@ -539,7 +509,7 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
   expect(world).toEqual(worldBeforeBind);
 
   armDcbSpinner(view, "FMA_AMZ");
-  for (const key of westRunwayAmz.id) inputDcbSpinnerKey(view, key);
+  for (const key of "INVALID8") inputDcbSpinnerKey(view, key);
   expect(commitDcbSpinner(view)).toBe(false);
   expect(view.lastWarning).toBe("FORMAT");
 
@@ -554,10 +524,10 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
     activeRunwayId: "E",
     fma: undefined,
   });
-  expect(westbound.amzs.map((amz) => amz.courseTrueDeg)).toEqual([270, 270]);
-  expect(view.fmaSurveillance.selectedAmzId).toBe(westRunwayAmz.id);
+  expect(westbound.amzs.map((amz) => amz.courseTrueDeg)).toEqual([90, 90, 270, 270]);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(overrideAmz.id);
   expect(storedPreferences.has(dcbPrefStorageKey("KXYZ"))).toBe(true);
-  expect(view.fmaMag).toBe(4);
+  expect(view.fmaMag).toBe(6);
   expect(view.lastWarning).toBeNull();
   expect(view.fmaSurveillance.tracks.size).toBe(0);
   commitFmaAmzSwitch(view, westManualAmz.id);
@@ -571,20 +541,17 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
   expect(retainedWest.selectedAmzId).toBe(westManualAmz.id);
   expect(view.fmaSurveillance.selectedAmzId).toBe(westManualAmz.id);
 
-  const unavailable = bindFmaScenarioFlow(view, {
+  const unknownFlow = bindFmaScenarioFlow(view, {
     ...nextScenario,
     activeRunwayId: "36",
     fma: undefined,
   });
-  expect(unavailable.amzs).toEqual([]);
-  expect(view.fmaSurveillance.enabled).toBe(false);
-  expect(view.fmaAmzs).toEqual([]);
-  expect(formatFmaAlertDiagnostic([], view.fmaScenarioDiagnostics)).toBe(
-    "FMA: ACTIVE RUNWAY COURSE UNKNOWN",
-  );
+  expect(unknownFlow.amzs).toHaveLength(4);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.fmaAmzs).toHaveLength(4);
 });
 
-test("T02-230 KATL east/west data smoke binds AMZs to each active catalog runway", () => {
+test("trainer-authored KATL AMZ data is available for every scenario flow", () => {
   for (const scenarioId of ["katl", "katl-08"]) {
     const scenario = loadPlayableScenario(scenarioId);
     const resolution = resolveFmaFlow(scenario.catalog, scenario.activeRunwayId, {
@@ -593,23 +560,14 @@ test("T02-230 KATL east/west data smoke binds AMZs to each active catalog runway
     });
     expect(resolution.amzs.length).toBeGreaterThan(0);
     expect(resolution.selectedAmzId).not.toBeNull();
-    const activeCourse = scenario.catalog.approaches.find(
-      (approach) => approach.runway.toUpperCase() === scenario.activeRunwayId.toUpperCase(),
-    )?.publishedCourseMagneticDeg;
-    expect(activeCourse).toBeDefined();
-    const activeCourseTrue = magneticToTrueDeg(activeCourse!, scenario.catalog.magVarDeg);
-    expect(
-      resolution.amzs.every(
-        (amz) => Math.abs(((amz.courseTrueDeg - activeCourseTrue + 540) % 360) - 180) <= 1,
-      ),
-    ).toBe(true);
+    expect(resolution.amzs).toEqual(deriveFmaAmzs(scenario.catalog).amzs);
     const selected = resolution.amzs.find((amz) => amz.id === resolution.selectedAmzId);
     expect(selected).toBeDefined();
   }
 });
 
 test("FMA groups only adjacent same-direction runways and rejects reciprocal or unsupported geometry", () => {
-  const triple = deriveFmaAmzs(
+  const triple = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 0, x: -1 },
       { runway: "B", course: 0, x: 0 },
@@ -622,16 +580,16 @@ test("FMA groups only adjacent same-direction runways and rejects reciprocal or 
     ["B", "C"],
   ]);
   expect(
-    deriveFmaAmzs(
+    deriveFmaFixtureAmzs(
       catalog([
         { runway: "09", course: 90, x: -0.5 },
         { runway: "27", course: 270, x: 0.5 },
       ]),
     ).amzs,
   ).toHaveLength(0);
-  expect(deriveFmaAmzs(catalog([{ runway: "09", course: 90, x: 0 }])).amzs).toHaveLength(0);
+  expect(deriveFmaFixtureAmzs(catalog([{ runway: "09", course: 90, x: 0 }])).amzs).toHaveLength(0);
   expect(
-    deriveFmaAmzs(
+    deriveFmaFixtureAmzs(
       catalog([
         { runway: "A", course: 0, x: 0 },
         { runway: "B", course: 0, x: 2 },
@@ -725,7 +683,7 @@ test("FMA adaptation uses explicit catalog geometry, defaults, provenance and ve
       },
     ],
   };
-  const result = deriveFmaAmzs(base);
+  const result = deriveFmaFixtureAmzs(base);
   expect(result.diagnostics).toEqual([]);
   expect(result.amzs[0]).toMatchObject({
     id: "CUSTOM",
@@ -748,11 +706,11 @@ test("FMA adaptation uses explicit catalog geometry, defaults, provenance and ve
   });
   expect(result.amzs[0]?.members[1]?.threshold.xNm).toBe(2);
   base.fmaOverrides.groups![0]!.geometry!.amzBoundary[0]!.xNm = Number.NaN;
-  expect(deriveFmaAmzs(base).diagnostics[0]?.message).toMatch(/invalid polygons/);
+  expect(deriveFmaFixtureAmzs(base).diagnostics[0]?.message).toMatch(/invalid polygons/);
 });
 
 test("derived FMA defaults use a buffered 20 NM trapezoid and 200-foot references", () => {
-  const result = deriveFmaAmzs(
+  const result = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 0, x: -0.5 },
       { runway: "B", course: 0, x: 0.5 },
@@ -817,7 +775,7 @@ test("derived FMA defaults use a buffered 20 NM trapezoid and 200-foot reference
       );
     }),
   ).toBe(true);
-  const translated = deriveFmaAmzs(
+  const translated = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 0, x: 101.5, y: 90 },
       { runway: "B", course: 0, x: 102.5, y: 108 },
@@ -830,7 +788,7 @@ test("derived FMA defaults use a buffered 20 NM trapezoid and 200-foot reference
   expect(Math.max(...translatedAmz.boundary.points.map((p) => p.yNm))).toBe(109);
   expect(translatedAmz.ntzs[0]?.polygon.points.some((p) => p.yNm >= 70 && p.yNm <= 109)).toBe(true);
   expect(
-    deriveFmaAmzs(
+    deriveFmaFixtureAmzs(
       catalog([
         { runway: "A", course: 0, x: -0.5 },
         { runway: "B", course: 0, x: 0.5 },
@@ -851,7 +809,7 @@ test("staggered FAF bars stop at their own NOZ edges and match NTZ thickness", (
   );
   source.approaches[0]!.fafFixId = "FAFA";
   source.approaches[1]!.fafFixId = "FAFB";
-  const result = deriveFmaAmzs(source);
+  const result = deriveFmaFixtureAmzs(source);
   expect(result.diagnostics).toEqual([]);
   const amz = result.amzs[0]!;
   expect(amz.fixBars.map((bar) => [bar.runwayId, bar.fixId])).toEqual([
@@ -892,7 +850,7 @@ test("staggered FAF bars stop at their own NOZ edges and match NTZ thickness", (
 test("missing thresholds produce diagnostics without fabricated geometry", () => {
   const missing = catalog([{ runway: "A", course: 0, x: 0 }]);
   delete missing.approaches[0]!.thresholdFixId;
-  const result = deriveFmaAmzs(missing);
+  const result = deriveFmaFixtureAmzs(missing);
   expect(result.amzs).toEqual([]);
   expect(result.diagnostics[0]).toMatchObject({ path: "approaches.APP0.thresholdFixId" });
 });
@@ -970,7 +928,7 @@ test("inhibited NTZ shared edges preserve partial NOZ contours and active NTZ pa
 });
 
 test("inhibited NTZ boundaries hide coincident 200-foot reference strokes at narrow derived spacing", () => {
-  const result = deriveFmaAmzs(
+  const result = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 0, x: -1400 / 6076.12 },
       { runway: "B", course: 0, x: 1400 / 6076.12 },
@@ -1016,7 +974,7 @@ test("FMA adaptation diagnoses unknown references, duplicate IDs and unsupported
     { runway: "B", course: 0, x: 0.5 },
   ]);
   unknown.fmaOverrides = { groups: [{ id: "UNKNOWN", runwayIds: ["A", "NOPE"] }] };
-  expect(deriveFmaAmzs(unknown)).toMatchObject({
+  expect(deriveFmaFixtureAmzs(unknown)).toMatchObject({
     amzs: [],
     diagnostics: [
       { path: "fmaOverrides.groups.UNKNOWN", message: "unknown approach/runway reference" },
@@ -1033,7 +991,7 @@ test("FMA adaptation diagnoses unknown references, duplicate IDs and unsupported
       { id: "SAME", runwayIds: ["A", "B"] },
     ],
   };
-  expect(deriveFmaAmzs(duplicate).diagnostics[0]?.message).toBe("duplicate AMZ id");
+  expect(deriveFmaFixtureAmzs(duplicate).diagnostics[0]?.message).toBe("duplicate AMZ id");
 
   const tooMany = catalog([
     { runway: "A", course: 0, x: -2 },
@@ -1042,7 +1000,7 @@ test("FMA adaptation diagnoses unknown references, duplicate IDs and unsupported
     { runway: "D", course: 0, x: 1 },
     { runway: "E", course: 0, x: 2 },
   ]);
-  const capacity = deriveFmaAmzs(tooMany);
+  const capacity = deriveFmaFixtureAmzs(tooMany);
   expect(capacity.amzs).toEqual([]);
   expect(
     capacity.diagnostics.some((item) => item.message.includes("supports 2–4 runway members")),
@@ -1056,7 +1014,7 @@ test("FMA parallel eligibility measures ENU cross-track and preserves true depar
     { runway: "18R", course: 180, x: -0.5, y: 1, id: "RA" },
     { runway: "18L", course: 180, x: 0.5, y: 1, id: "RB" },
   ]);
-  const result = deriveFmaAmzs(source);
+  const result = deriveFmaFixtureAmzs(source);
   const northbound = result.amzs.find((a) => a.courseTrueDeg === 0)!;
   expect(northbound.runwayGraphics[0]?.departureEnd).toEqual({ xNm: -0.5, yNm: 1 });
   expect(northbound.courseLines[0]?.departure[0]).toEqual({ xNm: -0.5, yNm: 1 });
@@ -1071,8 +1029,8 @@ test("FMA parallel eligibility measures ENU cross-track and preserves true depar
     { runway: "A", course: 45, x: 0, y: 0 },
     { runway: "B", course: 45, x: 0.75, y: 0.75 },
   ]);
-  expect(deriveFmaAmzs(diagonal).amzs).toHaveLength(0);
-  expect(deriveFmaAmzs(diagonal).diagnostics[0]?.message).toMatch(/spacing/);
+  expect(deriveFmaFixtureAmzs(diagonal).amzs).toHaveLength(0);
+  expect(deriveFmaFixtureAmzs(diagonal).diagnostics[0]?.message).toMatch(/spacing/);
 });
 
 test("derived departure courses stop at the first authored AMZ exit and reject no-room geometry", () => {
@@ -1131,7 +1089,7 @@ test("derived departure courses stop at the first authored AMZ exit and reject n
       },
     ],
   };
-  const clipped = deriveFmaAmzs(source);
+  const clipped = deriveFmaFixtureAmzs(source);
   expect(clipped.diagnostics).toEqual([]);
   const amz = clipped.amzs[0]!;
   for (const line of amz.courseLines) {
@@ -1142,7 +1100,7 @@ test("derived departure courses stop at the first authored AMZ exit and reject n
   }
 
   source.fmaOverrides.groups![0]!.geometry!.runways[0]!.departureEnd = { xNm: -0.5, yNm: 0.8 };
-  const noRoom = deriveFmaAmzs(source);
+  const noRoom = deriveFmaFixtureAmzs(source);
   expect(noRoom.amzs).toEqual([]);
   expect(
     noRoom.diagnostics.some((item) =>
@@ -1209,7 +1167,7 @@ test("FMA references preserve separate approach intervals in a concave authored 
       },
     ],
   };
-  const result = deriveFmaAmzs(source);
+  const result = deriveFmaFixtureAmzs(source);
   expect(result.diagnostics).toEqual([]);
   const lateral = -0.5 + 200 / 6076.12;
   const intervals = result.amzs[0]!.referenceLines.filter(
@@ -1225,7 +1183,7 @@ test("FMA references preserve separate approach intervals in a concave authored 
 });
 
 test("FMA separates disjoint eligible runway pairs without duplicating or dropping members", () => {
-  const result = deriveFmaAmzs(
+  const result = deriveFmaFixtureAmzs(
     catalog([
       { runway: "A", course: 0, x: 0 },
       { runway: "B", course: 0, x: 1 },
@@ -1249,7 +1207,7 @@ test("FMA rejects derived NTZ overrides that engulf an approach course", () => {
     { runway: "B", course: 0, x: 0.5 },
   ]);
   source.fmaOverrides = { groups: [{ id: "WIDE-NTZ", runwayIds: ["A", "B"], ntzWidthFt: 9000 }] };
-  expect(deriveFmaAmzs(source)).toMatchObject({
+  expect(deriveFmaFixtureAmzs(source)).toMatchObject({
     amzs: [],
     diagnostics: [
       {
@@ -1273,7 +1231,7 @@ test("FMA diagnoses unresolved referenced FAFs while keeping unrelated valid AMZ
     ]);
     if (point) source.fixes.push({ id: fafId, kind: "FAF", ...point });
     source.approaches.find((approach) => approach.id === "APP2")!.fafFixId = fafId;
-    const missing = deriveFmaAmzs(source);
+    const missing = deriveFmaFixtureAmzs(source);
     expect(missing.amzs.map((amz) => amz.members.map((member) => member.runwayId))).toEqual([
       ["A", "B"],
     ]);
@@ -1283,7 +1241,7 @@ test("FMA diagnoses unresolved referenced FAFs while keeping unrelated valid AMZ
     });
 
     delete source.approaches.find((approach) => approach.id === "APP2")!.fafFixId;
-    const optional = deriveFmaAmzs(source);
+    const optional = deriveFmaFixtureAmzs(source);
     expect(optional.diagnostics.some((item) => item.path === "approaches.APP2.fafFixId")).toBe(
       false,
     );
@@ -1298,7 +1256,7 @@ test("FMA unresolved FAF runway remains a barrier between valid outer thresholds
     { runway: "C", course: 0, x: 1 },
   ]);
   source.approaches.find((approach) => approach.id === "APP1")!.fafFixId = "NOPE";
-  const result = deriveFmaAmzs(source);
+  const result = deriveFmaFixtureAmzs(source);
   expect(result.amzs).toEqual([]);
   expect(result.diagnostics).toContainEqual({
     path: "approaches.APP1.fafFixId",

@@ -35,6 +35,7 @@ import {
   DEFAULT_GS_BEAM_FULL_WIDTH_DEG,
   DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD,
 } from "./types";
+import { magneticToTrueDeg } from "../../core/nav/headingFrames";
 
 const DATA_JSON = import.meta.glob<unknown>("../data/*/*.json", {
   eager: true,
@@ -60,6 +61,95 @@ const APPROACH_TYPES = new Set<ApproachType>(["ILS", "LOC", "RNAV", "VOR", "NDB"
 const ALT_TYPES = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 
 const NAVAID_CLASSES = new Set(["T", "L", "H"]);
+const FMA_GROUP_ID_RE = /^[A-Z0-9]{1,7}$/;
+
+function isSimpleFmaPolygon(points: readonly { xNm: number; yNm: number }[]): boolean {
+  if (points.length < 3 || points.some((p) => !Number.isFinite(p.xNm) || !Number.isFinite(p.yNm)))
+    return false;
+  const cross = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    c: (typeof points)[number],
+  ) => (b.xNm - a.xNm) * (c.yNm - a.yNm) - (b.yNm - a.yNm) * (c.xNm - a.xNm);
+  const onSegment = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    p: (typeof points)[number],
+  ) =>
+    Math.abs(cross(a, b, p)) <= 1e-12 &&
+    p.xNm >= Math.min(a.xNm, b.xNm) - 1e-12 &&
+    p.xNm <= Math.max(a.xNm, b.xNm) + 1e-12 &&
+    p.yNm >= Math.min(a.yNm, b.yNm) - 1e-12 &&
+    p.yNm <= Math.max(a.yNm, b.yNm) + 1e-12;
+  const intersects = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    c: (typeof points)[number],
+    d: (typeof points)[number],
+  ) => {
+    const abC = cross(a, b, c),
+      abD = cross(a, b, d),
+      cdA = cross(c, d, a),
+      cdB = cross(c, d, b);
+    if (abC * abD < -1e-12 && cdA * cdB < -1e-12) return true;
+    return (
+      (Math.abs(abC) <= 1e-12 && onSegment(a, b, c)) ||
+      (Math.abs(abD) <= 1e-12 && onSegment(a, b, d)) ||
+      (Math.abs(cdA) <= 1e-12 && onSegment(c, d, a)) ||
+      (Math.abs(cdB) <= 1e-12 && onSegment(c, d, b))
+    );
+  };
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!,
+      b = points[(i + 1) % points.length]!;
+    if (Math.hypot(a.xNm - b.xNm, a.yNm - b.yNm) <= 1e-12) return false;
+  }
+  const area = points.reduce((sum, p, i) => {
+    const q = points[(i + 1) % points.length]!;
+    return sum + p.xNm * q.yNm - q.xNm * p.yNm;
+  }, 0);
+  if (Math.abs(area) <= 1e-9) return false;
+  for (let i = 0; i < points.length; i++)
+    for (let j = i + 1; j < points.length; j++) {
+      if (j === i || j === i + 1 || (i === 0 && j === points.length - 1)) continue;
+      if (
+        intersects(
+          points[i]!,
+          points[(i + 1) % points.length]!,
+          points[j]!,
+          points[(j + 1) % points.length]!,
+        )
+      )
+        return false;
+    }
+  return true;
+}
+
+function containsInPolygon(
+  point: { xNm: number; yNm: number },
+  polygon: readonly { xNm: number; yNm: number }[],
+): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j]!,
+      b = polygon[i]!;
+    const cross = (b.xNm - a.xNm) * (point.yNm - a.yNm) - (b.yNm - a.yNm) * (point.xNm - a.xNm);
+    if (
+      Math.abs(cross) <= 1e-10 &&
+      point.xNm >= Math.min(a.xNm, b.xNm) - 1e-10 &&
+      point.xNm <= Math.max(a.xNm, b.xNm) + 1e-10 &&
+      point.yNm >= Math.min(a.yNm, b.yNm) - 1e-10 &&
+      point.yNm <= Math.max(a.yNm, b.yNm) + 1e-10
+    )
+      return true;
+    if (
+      a.yNm > point.yNm !== b.yNm > point.yNm &&
+      point.xNm < ((b.xNm - a.xNm) * (point.yNm - a.yNm)) / (b.yNm - a.yNm) + a.xNm
+    )
+      inside = !inside;
+  }
+  return inside;
+}
 
 /** ILS DME ids (IDEMDME, IDEMDME09) are up to 9 chars; keep the ceiling at 10. */
 const ID_RE = /^[A-Z0-9]{2,10}$/;
@@ -228,6 +318,56 @@ function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
                     }),
                   }
                 : {}),
+              ...(item.geometry.referenceLines !== undefined
+                ? {
+                    referenceLines: assertArray(
+                      item.geometry.referenceLines,
+                      `${path}.geometry.referenceLines`,
+                    ).map((line, j) => {
+                      const points = pointList(line, `referenceLines[${j}]`);
+                      if (points.length !== 2)
+                        throw new Error(
+                          `Catalog ${path}.geometry.referenceLines[${j}] must have two endpoints`,
+                        );
+                      return [points[0]!, points[1]!] as [
+                        (typeof points)[number],
+                        (typeof points)[number],
+                      ];
+                    }),
+                  }
+                : {}),
+              ...(item.geometry.fixBars !== undefined
+                ? {
+                    fixBars: assertArray(item.geometry.fixBars, `${path}.geometry.fixBars`).map(
+                      (bar, j) => {
+                        if (!isRecord(bar))
+                          throw new Error(
+                            `Catalog ${path}.geometry.fixBars[${j}] must be an object`,
+                          );
+                        const segment = pointList(bar.segment, `fixBars[${j}].segment`);
+                        if (segment.length !== 2)
+                          throw new Error(
+                            `Catalog ${path}.geometry.fixBars[${j}].segment must have two endpoints`,
+                          );
+                        return {
+                          fixId: assertString(
+                            bar.fixId,
+                            `${path}.geometry.fixBars[${j}].fixId`,
+                          ).toUpperCase(),
+                          runwayId: assertString(
+                            bar.runwayId,
+                            `${path}.geometry.fixBars[${j}].runwayId`,
+                          ).toUpperCase(),
+                          point: pointList([bar.point], `fixBars[${j}].point`)[0]!,
+                          segment: [segment[0]!, segment[1]!] as [
+                            (typeof segment)[number],
+                            (typeof segment)[number],
+                          ],
+                        };
+                      },
+                    ),
+                  }
+                : {}),
             };
           }
           let verticalLimits: FmaGroupAdaptation["verticalLimits"];
@@ -283,9 +423,10 @@ function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
             }
           }
           const groupId = assertString(item.id, `${path}.id`);
-          if (!groupId.trim()) throw new Error(`Catalog ${path}.id must be non-empty`);
+          if (!FMA_GROUP_ID_RE.test(groupId.toUpperCase()))
+            throw new Error(`Catalog ${path}.id must match [A-Z0-9]{1,7}`);
           return {
-            id: groupId,
+            id: groupId.toUpperCase(),
             ...(item.label !== undefined
               ? { label: assertString(item.label, `${path}.label`) }
               : {}),
@@ -317,11 +458,48 @@ function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
         });
   if (raw.enabled !== undefined && typeof raw.enabled !== "boolean")
     throw new Error("Catalog fmaOverrides.enabled must be boolean");
-  if (raw.excludeDerived !== undefined && typeof raw.excludeDerived !== "boolean")
-    throw new Error("Catalog fmaOverrides.excludeDerived must be boolean");
+  if (raw.source !== undefined && raw.source !== "TRAINER_AUTHORED")
+    throw new Error("Catalog fmaOverrides.source must be TRAINER_AUTHORED");
+  const sourceNote =
+    raw.sourceNote === undefined
+      ? undefined
+      : assertString(raw.sourceNote, "fmaOverrides.sourceNote").trim();
+  if (raw.source !== undefined && !sourceNote)
+    throw new Error("Catalog fmaOverrides.sourceNote is required for trainer-authored adaptation");
+  if (raw.source === "TRAINER_AUTHORED") {
+    const seen = new Set<string>();
+    for (const [i, group] of (groups ?? []).entries()) {
+      const path = `fmaOverrides.groups[${i}]`;
+      if (seen.has(group.id.toUpperCase()))
+        throw new Error(`Catalog ${path}.id duplicates ${group.id}`);
+      seen.add(group.id.toUpperCase());
+      if (!group.geometry || (!group.approachIds?.length && !group.runwayIds?.length))
+        throw new Error(`Catalog ${path} requires complete geometry and approachIds or runwayIds`);
+      if (!isSimpleFmaPolygon(group.geometry.amzBoundary))
+        throw new Error(
+          `Catalog ${path}.geometry.amzBoundary must be finite, simple and nondegenerate`,
+        );
+      for (const [j, runway] of group.geometry.runways.entries())
+        if (!isSimpleFmaPolygon(runway.noz))
+          throw new Error(
+            `Catalog ${path}.geometry.runways[${j}].noz must be finite, simple and nondegenerate`,
+          );
+      for (const [j, ntz] of group.geometry.ntzs.entries())
+        if (!isSimpleFmaPolygon(ntz.polygon))
+          throw new Error(
+            `Catalog ${path}.geometry.ntzs[${j}].polygon must be finite, simple and nondegenerate`,
+          );
+      const ntzIds = new Set<string>();
+      for (const [j, ntz] of group.geometry.ntzs.entries()) {
+        if (ntzIds.has(ntz.id))
+          throw new Error(`Catalog ${path}.geometry.ntzs[${j}].id duplicates ${ntz.id}`);
+        ntzIds.add(ntz.id);
+      }
+    }
+  }
   return {
     ...(raw.enabled !== undefined ? { enabled: raw.enabled } : {}),
-    ...(raw.excludeDerived !== undefined ? { excludeDerived: raw.excludeDerived } : {}),
+    ...(raw.source !== undefined ? { source: "TRAINER_AUTHORED" as const, sourceNote } : {}),
     ...(groups ? { groups } : {}),
   };
 }
@@ -1081,7 +1259,129 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
     throw new Error(`Catalog airportId ${airportId} must not also be a fix or navaid`);
   }
   validateRefs(catalog, ids);
+  validateFmaReferences(catalog);
   return catalog;
+}
+
+function validateFmaReferences(catalog: ProcedureCatalog): void {
+  const adaptation = catalog.fmaOverrides;
+  if (adaptation?.source !== "TRAINER_AUTHORED") return;
+  const approaches = new Map(catalog.approaches.map((approach) => [approach.id, approach]));
+  for (const [i, group] of (adaptation.groups ?? []).entries()) {
+    const path = `fmaOverrides.groups[${i}]`;
+    const selected = group.approachIds?.length
+      ? group.approachIds.map((id) => approaches.get(id))
+      : (group.runwayIds ?? []).map((runwayId) =>
+          catalog.approaches.find((approach) => approach.runway.toUpperCase() === runwayId),
+        );
+    if (selected.length < 2 || selected.length > 4)
+      throw new Error(`Catalog ${path} must reference 2–4 runway approaches`);
+    if (
+      selected.length < 2 ||
+      selected.some(
+        (approach) =>
+          !approach?.thresholdFixId ||
+          approach.publishedCourseMagneticDeg === undefined ||
+          !catalog.fixes.some((fix) => fix.id === approach.thresholdFixId),
+      )
+    )
+      throw new Error(`Catalog ${path} has unresolved approach/runway references`);
+    const runwayIds = selected.map((approach) => approach!.runway.toUpperCase());
+    if (
+      group.approachIds?.length &&
+      group.runwayIds?.length &&
+      (new Set(group.runwayIds.map((id) => id.toUpperCase())).size !== runwayIds.length ||
+        runwayIds.some((id) => !group.runwayIds!.some((runwayId) => runwayId.toUpperCase() === id)))
+    )
+      throw new Error(`Catalog ${path}.runwayIds must match its approachIds runway set`);
+    if (new Set(runwayIds).size !== runwayIds.length)
+      throw new Error(`Catalog ${path} references a runway more than once`);
+    const geometry = group.geometry!;
+    if (!isSimpleFmaPolygon(geometry.amzBoundary))
+      throw new Error(
+        `Catalog ${path}.geometry.amzBoundary must be finite, simple and nondegenerate`,
+      );
+    for (const [j, runway] of geometry.runways.entries())
+      if (!isSimpleFmaPolygon(runway.noz))
+        throw new Error(
+          `Catalog ${path}.geometry.runways[${j}].noz must be finite, simple and nondegenerate`,
+        );
+    for (const [j, ntz] of geometry.ntzs.entries())
+      if (!isSimpleFmaPolygon(ntz.polygon))
+        throw new Error(
+          `Catalog ${path}.geometry.ntzs[${j}].polygon must be finite, simple and nondegenerate`,
+        );
+    const geometryRunways = geometry.runways.map((runway) => runway.runwayId.toUpperCase());
+    if (
+      geometryRunways.length !== runwayIds.length ||
+      new Set(geometryRunways).size !== geometryRunways.length ||
+      runwayIds.some((id) => !geometryRunways.includes(id))
+    )
+      throw new Error(`Catalog ${path}.geometry.runways must match referenced runways`);
+    if (geometry.ntzs.length !== runwayIds.length - 1)
+      throw new Error(`Catalog ${path}.geometry.ntzs must define each adjacent runway pair`);
+    const runwayAxis = selected
+      .map((approach) => {
+        const fix = catalog.fixes.find((candidate) => candidate.id === approach!.thresholdFixId)!;
+        const course =
+          magneticToTrueDeg(approach!.publishedCourseMagneticDeg!, catalog.magVarDeg) *
+          (Math.PI / 180);
+        return {
+          id: approach!.runway.toUpperCase(),
+          cross: fix.xNm * Math.cos(course) - fix.yNm * Math.sin(course),
+        };
+      })
+      .sort((a, b) => a.cross - b.cross || a.id.localeCompare(b.id));
+    const expectedPairs = new Set(
+      runwayAxis.slice(0, -1).map((row, j) => `${row.id}/${runwayAxis[j + 1]!.id}`),
+    );
+    const actualPairs = new Set<string>();
+    const ntzIds = new Set<string>();
+    for (const [j, ntz] of geometry.ntzs.entries()) {
+      if (ntzIds.has(ntz.id))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}].id duplicates ${ntz.id}`);
+      ntzIds.add(ntz.id);
+      const left = ntz.leftRunwayId.toUpperCase(),
+        right = ntz.rightRunwayId.toUpperCase();
+      if (left === right || !expectedPairs.has(`${left}/${right}`))
+        throw new Error(
+          `Catalog ${path}.geometry.ntzs[${j}] must reference an adjacent runway pair in lateral order (${left}/${right}; expected ${[...expectedPairs].join(", ")})`,
+        );
+      const key = `${left}/${right}`;
+      if (actualPairs.has(key))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}] duplicates an adjacent pair`);
+      actualPairs.add(key);
+      if (ntz.polygon.some((point) => !containsInPolygon(point, geometry.amzBoundary)))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}].polygon extends outside AMZ boundary`);
+    }
+    if (actualPairs.size !== expectedPairs.size)
+      throw new Error(`Catalog ${path}.geometry.ntzs must define every adjacent runway pair`);
+    for (const [j, runway] of geometry.runways.entries())
+      if (runway.noz.some((point) => !containsInPolygon(point, geometry.amzBoundary)))
+        throw new Error(`Catalog ${path}.geometry.runways[${j}].noz extends outside AMZ boundary`);
+    const checkGraphicalRunways = (
+      items: Array<{ runwayId: string }> | undefined,
+      name: string,
+    ) => {
+      for (const [j, item] of (items ?? []).entries())
+        if (!runwayIds.includes(item.runwayId.toUpperCase()))
+          throw new Error(
+            `Catalog ${path}.geometry.${name}[${j}].runwayId is not a referenced runway`,
+          );
+    };
+    checkGraphicalRunways(geometry.courseLines, "courseLines");
+    checkGraphicalRunways(geometry.fixBars, "fixBars");
+    if (
+      geometry.courseLines &&
+      (geometry.courseLines.length !== runwayIds.length ||
+        new Set(geometry.courseLines.map((line) => line.runwayId.toUpperCase())).size !==
+          geometry.courseLines.length)
+    )
+      throw new Error(`Catalog ${path}.geometry.courseLines must include every referenced runway`);
+    for (const [j, bar] of (geometry.fixBars ?? []).entries())
+      if (!catalog.fixes.some((fix) => fix.id === bar.fixId))
+        throw new Error(`Catalog ${path}.geometry.fixBars[${j}].fixId is unresolved`);
+  }
 }
 
 /** Last path segment, so `kdem` and `src/scenario/data/kdem` both work. */

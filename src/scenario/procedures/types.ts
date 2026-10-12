@@ -191,7 +191,9 @@ export interface AtpaWakeAdaptation {
 /** Catalog-owned FMA trainer adaptation. Coordinates are ENU NM. */
 export interface FmaAdaptation {
   enabled?: boolean;
-  excludeDerived?: boolean;
+  /** Catalog authority for the trainer-authored geometry stored below. */
+  source?: "TRAINER_AUTHORED";
+  sourceNote?: string;
   groups?: FmaGroupAdaptation[];
 }
 
@@ -220,6 +222,13 @@ export interface FmaGroupAdaptation {
       runwayId: string;
       approach: [FmaPoint, FmaPoint];
       departure: [FmaPoint, FmaPoint];
+    }>;
+    referenceLines?: Array<[FmaPoint, FmaPoint]>;
+    fixBars?: Array<{
+      fixId: string;
+      runwayId: string;
+      point: FmaPoint;
+      segment: [FmaPoint, FmaPoint];
     }>;
   };
   verticalLimits?: { floorFt: number; ceilingFt: number };

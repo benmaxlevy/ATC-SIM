@@ -230,6 +230,7 @@ function makeAmz(
   id: string,
 ): FmaAmz | FmaDiagnostic {
   const path = `fmaOverrides.groups.${id}`;
+  const geometry = adaptation?.geometry;
   if (rows.length < 2 || rows.length > 4)
     return { path, message: `supports 2–4 runway members; got ${rows.length}` };
   const sumSin = rows.reduce((s, r) => s + Math.sin(rad(r.course)), 0),
@@ -267,56 +268,61 @@ function makeAmz(
     (r) => r.threshold.xNm * Math.cos(rad(course)) - r.threshold.yNm * Math.sin(rad(course)),
   );
   const centers = offsets;
-  const ntzs: FmaNtz[] = [];
-  for (let i = 0; i < rows.length - 1; i++) {
-    const spacing = (centers[i + 1]! - centers[i]!) * 6076.12;
-    if (
-      !adaptation?.geometry &&
-      (spacing < FMA_GEOMETRY_DEFAULTS.minSpacingFt || spacing > FMA_GEOMETRY_DEFAULTS.maxSpacingFt)
-    )
-      return {
-        path,
-        message: `adjacent runway spacing ${Math.round(spacing)} ft outside trainer interval`,
-      };
-    if (!adaptation?.geometry && ntzWidth * 6076.12 >= spacing)
-      return {
-        path,
-        message: `NTZ width ${Math.round(ntzWidth * 6076.12)} ft must be narrower than adjacent course spacing ${Math.round(spacing)} ft`,
-      };
-    const left = rows[i]!,
-      right = rows[i + 1]!;
-    const lateral = (centers[i]! + centers[i + 1]!) / 2;
-    const base = point({ xNm: 0, yNm: 0 }, 0, lateral, course);
-    const minAlong =
-      Math.min(
+  const ntzs: FmaNtz[] = geometry
+    ? geometry.ntzs.map((ntz) => ({ ...ntz, polygon: { points: ntz.polygon } }))
+    : [];
+  if (!geometry)
+    for (let i = 0; i < rows.length - 1; i++) {
+      const spacing = (centers[i + 1]! - centers[i]!) * 6076.12;
+      if (
+        !adaptation?.geometry &&
+        (spacing < FMA_GEOMETRY_DEFAULTS.minSpacingFt ||
+          spacing > FMA_GEOMETRY_DEFAULTS.maxSpacingFt)
+      )
+        return {
+          path,
+          message: `adjacent runway spacing ${Math.round(spacing)} ft outside trainer interval`,
+        };
+      if (!adaptation?.geometry && ntzWidth * 6076.12 >= spacing)
+        return {
+          path,
+          message: `NTZ width ${Math.round(ntzWidth * 6076.12)} ft must be narrower than adjacent course spacing ${Math.round(spacing)} ft`,
+        };
+      const left = rows[i]!,
+        right = rows[i + 1]!;
+      const lateral = (centers[i]! + centers[i + 1]!) / 2;
+      const base = point({ xNm: 0, yNm: 0 }, 0, lateral, course);
+      const minAlong =
+        Math.min(
+          ...rows.map(
+            (r) =>
+              r.threshold.xNm * Math.sin(rad(course)) + r.threshold.yNm * Math.cos(rad(course)),
+          ),
+        ) - capture;
+      const maxAlong = Math.max(
         ...rows.map(
-          (r) => r.threshold.xNm * Math.sin(rad(course)) + r.threshold.yNm * Math.cos(rad(course)),
+          (r, j) =>
+            r.threshold.xNm * Math.sin(rad(course)) +
+            r.threshold.yNm * Math.cos(rad(course)) +
+            physicalRunwayLengths[j]! +
+            departures[j]!,
         ),
-      ) - capture;
-    const maxAlong = Math.max(
-      ...rows.map(
-        (r, j) =>
-          r.threshold.xNm * Math.sin(rad(course)) +
-          r.threshold.yNm * Math.cos(rad(course)) +
-          physicalRunwayLengths[j]! +
-          departures[j]!,
-      ),
-    );
-    const poly = rect(
-      base,
-      minAlong + zoneInset,
-      maxAlong - zoneInset,
-      -ntzWidth / 2,
-      ntzWidth / 2,
-      course,
-    );
-    ntzs.push({
-      id: `${id}-NTZ-${left.runwayId}-${right.runwayId}`,
-      leftRunwayId: left.runwayId,
-      rightRunwayId: right.runwayId,
-      polygon: poly,
-    });
-  }
+      );
+      const poly = rect(
+        base,
+        minAlong + zoneInset,
+        maxAlong - zoneInset,
+        -ntzWidth / 2,
+        ntzWidth / 2,
+        course,
+      );
+      ntzs.push({
+        id: `${id}-NTZ-${left.runwayId}-${right.runwayId}`,
+        leftRunwayId: left.runwayId,
+        rightRunwayId: right.runwayId,
+        polygon: poly,
+      });
+    }
   for (let i = 0; i < rows.length; i++) {
     const low = i === 0 ? centers[i]! - outer : (centers[i - 1]! + centers[i]!) / 2 + ntzWidth / 2;
     const high =
@@ -338,14 +344,16 @@ function makeAmz(
       approachId: r.approachId,
       threshold: r.threshold,
       courseTrueDeg: course,
-      noz: rect(
-        { xNm: 0, yNm: 0 },
-        along - capture + zoneInset,
-        along + physicalRunwayLengths[i]! + departures[i]! - zoneInset,
-        low,
-        high,
-        course,
-      ),
+      noz: geometry
+        ? { points: geometry.runways.find((runway) => runway.runwayId === r.runwayId)!.noz }
+        : rect(
+            { xNm: 0, yNm: 0 },
+            along - capture + zoneInset,
+            along + physicalRunwayLengths[i]! + departures[i]! - zoneInset,
+            low,
+            high,
+            course,
+          ),
     };
   });
   const left = centers[0]! - outer,
@@ -368,30 +376,36 @@ function makeAmz(
   // Figure 6-15 shows a wider approach end around inset NOZ/NTZ polygons.
   // These trainer buffers are inferred from the figure; explicit adaptation
   // geometry, when present, remains authoritative.
-  const boundary: FmaPolygon = {
-    points: [
-      point({ xNm: 0, yNm: 0 }, minAlong, left - FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm, course),
-      point(
-        { xNm: 0, yNm: 0 },
-        minAlong,
-        right + FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm,
-        course,
-      ),
-      point(
-        { xNm: 0, yNm: 0 },
-        maxAlong,
-        right + FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
-        course,
-      ),
-      point(
-        { xNm: 0, yNm: 0 },
-        maxAlong,
-        left - FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
-        course,
-      ),
-    ],
-  };
-  const geometry = adaptation?.geometry;
+  const boundary: FmaPolygon = geometry
+    ? { points: geometry.amzBoundary }
+    : {
+        points: [
+          point(
+            { xNm: 0, yNm: 0 },
+            minAlong,
+            left - FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm,
+            course,
+          ),
+          point(
+            { xNm: 0, yNm: 0 },
+            minAlong,
+            right + FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm,
+            course,
+          ),
+          point(
+            { xNm: 0, yNm: 0 },
+            maxAlong,
+            right + FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
+            course,
+          ),
+          point(
+            { xNm: 0, yNm: 0 },
+            maxAlong,
+            left - FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
+            course,
+          ),
+        ],
+      };
   if (geometry) {
     if (
       !validPolygon(geometry.amzBoundary) ||
@@ -433,8 +447,8 @@ function makeAmz(
       ntz.polygon = { points: authored.polygon };
     }
   }
-  const fixBars: FmaAmz["fixBars"] = [];
-  for (const row of rows) {
+  const fixBars: FmaAmz["fixBars"] = geometry?.fixBars ? [...geometry.fixBars] : [];
+  for (const row of geometry?.fixBars ? [] : rows) {
     if (!row.faf || !row.fafFixId) continue;
     const along = row.faf.xNm * Math.sin(rad(course)) + row.faf.yNm * Math.cos(rad(course));
     const cross = row.faf.xNm * Math.cos(rad(course)) - row.faf.yNm * Math.sin(rad(course));
@@ -494,12 +508,14 @@ function makeAmz(
         FmaPoint,
       ],
     }));
-  const referenceLines: Array<[FmaPoint, FmaPoint]> = [];
+  const referenceLines: Array<[FmaPoint, FmaPoint]> = geometry?.referenceLines
+    ? [...geometry.referenceLines]
+    : [];
   const feetToNm = 1 / 6076.12;
   // Reference strokes follow each course at exact 200 ft offsets and are
   // clipped to that runway's approach-side NOZ. Do not overlay a solid stroke
   // on the dashed zero-offset course line or fill NTZ/departure areas.
-  for (const member of members) {
+  for (const member of geometry?.referenceLines ? [] : members) {
     const originAlong =
       member.threshold.xNm * Math.sin(rad(course)) + member.threshold.yNm * Math.cos(rad(course));
     const originCross =
@@ -571,7 +587,7 @@ function makeAmz(
 }
 
 /** Pure catalog-to-AMZ approximation. Does not read or mutate World or assignments. */
-export function deriveFmaAmzs(
+export function deriveFmaFixtureAmzs(
   catalog: ProcedureCatalog,
   options?: { excludeDerived?: boolean },
 ): { amzs: FmaAmz[]; diagnostics: FmaDiagnostic[] } {
@@ -786,7 +802,7 @@ export function deriveFmaAmzs(
     }
     emit();
   }
-  if (!(options?.excludeDerived ?? adaptation?.excludeDerived))
+  if (!(options?.excludeDerived ?? false))
     candidates.forEach((members) =>
       groups.push({
         id: `${catalog.airportId}-FMA-${members.map((m) => m.runwayId).join("-")}`,
@@ -822,14 +838,14 @@ export function deriveFmaAmzs(
       continue;
     }
     const groupRunways = (selected as SourceRow[]).map((row) => row.runwayId);
-    if (groupRunways.some((runwayId) => claimedRunways.has(runwayId))) {
+    if (!group.geometry && groupRunways.some((runwayId) => claimedRunways.has(runwayId))) {
       diagnostics.push({
         path: `fmaOverrides.groups.${group.id}`,
         message: "runway is already assigned to another AMZ",
       });
       continue;
     }
-    groupRunways.forEach((runwayId) => claimedRunways.add(runwayId));
+    if (!group.geometry) groupRunways.forEach((runwayId) => claimedRunways.add(runwayId));
     const result = makeAmz(
       catalog,
       group,
@@ -843,4 +859,32 @@ export function deriveFmaAmzs(
     }
   }
   return { amzs, diagnostics };
+}
+
+/** Production catalog binding accepts complete, explicitly trainer-authored geometry only. */
+export function deriveFmaAmzs(
+  catalog: ProcedureCatalog,
+  _options?: { excludeDerived?: boolean },
+): { amzs: FmaAmz[]; diagnostics: FmaDiagnostic[] } {
+  const adaptation = catalog.fmaOverrides;
+  if (adaptation?.enabled === false) return { amzs: [], diagnostics: [] };
+  const diagnostics: FmaDiagnostic[] = [];
+  if (adaptation?.source !== "TRAINER_AUTHORED" || !adaptation.sourceNote?.trim()) {
+    return {
+      amzs: [],
+      diagnostics: [
+        { path: "fmaOverrides.source", message: "missing trainer-authored provenance" },
+      ],
+    };
+  }
+  for (const group of adaptation.groups ?? []) {
+    if (!group.geometry || (!group.approachIds?.length && !group.runwayIds?.length)) {
+      diagnostics.push({
+        path: `fmaOverrides.groups.${group.id}`,
+        message: "complete authored geometry and approach/runway references are required",
+      });
+    }
+  }
+  if (diagnostics.length) return { amzs: [], diagnostics };
+  return deriveFmaFixtureAmzs(catalog, { excludeDerived: true });
 }

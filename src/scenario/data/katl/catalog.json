@@ -23,5 +23,631 @@
     "sids": "sids.json",
     "atpaVolumes": "atpa-volumes.json"
   },
-  "originNote": "Trainer catalog pack imported through the generic CIFP pack CLI (not a national dump). Local tangent NM from ARP using the phase 0 projector. Heading-only vector SID ATL2 omitted: remaining CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF legs. KDEM remains the sim default. Video maps are not part of this pack."
+  "originNote": "Trainer catalog pack imported through the generic CIFP pack CLI (not a national dump). Local tangent NM from ARP using the phase 0 projector. Heading-only vector SID ATL2 omitted: remaining CIFP legs were unsupported path terminators with no named-fix TF/IF/CF/DF legs. KDEM remains the sim default. Video maps are not part of this pack.",
+  "fmaOverrides": {
+    "source": "TRAINER_AUTHORED",
+    "sourceNote": "Trainer-authored illustrative geometry for simulation; not verified authentic facility adaptation.",
+    "groups": [
+      {
+        "id": "AMZ1",
+        "label": "AMZ 1",
+        "approachIds": ["I08R", "I09L"],
+        "runwayIds": ["08R", "09L"],
+        "runwayAliases": {},
+        "captureLengthNm": 20,
+        "ntzWidthFt": 2000,
+        "outerMarginNm": 0.5,
+        "geometry": {
+          "amzBoundary": [
+            {
+              "xNm": -21.004214,
+              "yNm": 1.8551669999999987
+            },
+            {
+              "xNm": -21.004214,
+              "yNm": -1.3696670000000013
+            },
+            {
+              "xNm": 2.116749,
+              "yNm": -0.8696669999999999
+            },
+            {
+              "xNm": 2.116749,
+              "yNm": 1.3551670000000002
+            }
+          ],
+          "runways": [
+            {
+              "runwayId": "08R",
+              "noz": [
+                {
+                  "xNm": -20.024378,
+                  "yNm": 1.1051669999999987
+                },
+                {
+                  "xNm": -20.024378,
+                  "yNm": 0.4073287114145199
+                },
+                {
+                  "xNm": 1.616749,
+                  "yNm": 0.4073287114145212
+                },
+                {
+                  "xNm": 1.616749,
+                  "yNm": 1.105167
+                }
+              ],
+              "departureEnd": {
+                "xNm": 1.116749,
+                "yNm": 0.605667
+              }
+            },
+            {
+              "runwayId": "09L",
+              "noz": [
+                {
+                  "xNm": -20.504214,
+                  "yNm": 0.07817128858547767
+                },
+                {
+                  "xNm": -20.504214,
+                  "yNm": -0.6196670000000012
+                },
+                {
+                  "xNm": 1.446906,
+                  "yNm": -0.6196669999999999
+                },
+                {
+                  "xNm": 1.446906,
+                  "yNm": 0.078171288585479
+                }
+              ],
+              "departureEnd": {
+                "xNm": 0.946906,
+                "yNm": -0.119833
+              }
+            }
+          ],
+          "ntzs": [
+            {
+              "id": "N108R09L",
+              "leftRunwayId": "08R",
+              "rightRunwayId": "09L",
+              "polygon": [
+                {
+                  "xNm": -20.504214,
+                  "yNm": 0.4073287114145199
+                },
+                {
+                  "xNm": -20.504214,
+                  "yNm": 0.07817128858547767
+                },
+                {
+                  "xNm": 1.616749,
+                  "yNm": 0.07817128858547903
+                },
+                {
+                  "xNm": 1.616749,
+                  "yNm": 0.4073287114145212
+                }
+              ]
+            }
+          ],
+          "courseLines": [
+            {
+              "runwayId": "08R",
+              "approach": [
+                {
+                  "xNm": -20.524378,
+                  "yNm": 0.6051669999999988
+                },
+                {
+                  "xNm": -0.524378,
+                  "yNm": 0.605167
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 1.116749,
+                  "yNm": 0.605667
+                },
+                {
+                  "xNm": 2.116749,
+                  "yNm": 0.6056670000000001
+                }
+              ]
+            },
+            {
+              "runwayId": "09L",
+              "approach": [
+                {
+                  "xNm": -21.004214,
+                  "yNm": -0.11966700000000122
+                },
+                {
+                  "xNm": -1.004214,
+                  "yNm": -0.119667
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 0.946906,
+                  "yNm": -0.119833
+                },
+                {
+                  "xNm": 1.946906,
+                  "yNm": -0.11983299999999994
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "AMZ2",
+        "label": "AMZ 2",
+        "approachIds": ["I09R", "I10"],
+        "runwayIds": ["09R", "10"],
+        "runwayAliases": {},
+        "captureLengthNm": 20,
+        "ntzWidthFt": 2000,
+        "outerMarginNm": 0.5,
+        "geometry": {
+          "amzBoundary": [
+            {
+              "xNm": -21.004214,
+              "yNm": 0.9568329999999987
+            },
+            {
+              "xNm": -21.004214,
+              "yNm": -2.235667000000001
+            },
+            {
+              "xNm": 1.4769219999999998,
+              "yNm": -1.7356669999999998
+            },
+            {
+              "xNm": 1.4769219999999998,
+              "yNm": 0.45683300000000016
+            }
+          ],
+          "runways": [
+            {
+              "runwayId": "09R",
+              "noz": [
+                {
+                  "xNm": -20.504214,
+                  "yNm": 0.2068329999999988
+                },
+                {
+                  "xNm": -20.504214,
+                  "yNm": -0.4748382885854801
+                },
+                {
+                  "xNm": 0.9727589999999999,
+                  "yNm": -0.4748382885854788
+                },
+                {
+                  "xNm": 0.9727589999999999,
+                  "yNm": 0.2068330000000001
+                }
+              ],
+              "departureEnd": {
+                "xNm": 0.472759,
+                "yNm": -0.292667
+              }
+            },
+            {
+              "runwayId": "10",
+              "noz": [
+                {
+                  "xNm": -20.499774,
+                  "yNm": -0.8039957114145222
+                },
+                {
+                  "xNm": -20.499774,
+                  "yNm": -1.4856670000000012
+                },
+                {
+                  "xNm": 0.976922,
+                  "yNm": -1.4856669999999998
+                },
+                {
+                  "xNm": 0.9769219999999998,
+                  "yNm": -0.8039957114145209
+                }
+              ],
+              "departureEnd": {
+                "xNm": 0.476922,
+                "yNm": -0.984833
+              }
+            }
+          ],
+          "ntzs": [
+            {
+              "id": "N209R10",
+              "leftRunwayId": "09R",
+              "rightRunwayId": "10",
+              "polygon": [
+                {
+                  "xNm": -20.504214,
+                  "yNm": -0.47483828858548005
+                },
+                {
+                  "xNm": -20.504214,
+                  "yNm": -0.8039957114145222
+                },
+                {
+                  "xNm": 0.9769219999999998,
+                  "yNm": -0.8039957114145209
+                },
+                {
+                  "xNm": 0.9769219999999998,
+                  "yNm": -0.4748382885854787
+                }
+              ]
+            }
+          ],
+          "courseLines": [
+            {
+              "runwayId": "09R",
+              "approach": [
+                {
+                  "xNm": -21.004214,
+                  "yNm": -0.29316700000000123
+                },
+                {
+                  "xNm": -1.004214,
+                  "yNm": -0.293167
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 0.472759,
+                  "yNm": -0.292667
+                },
+                {
+                  "xNm": 1.472759,
+                  "yNm": -0.29266699999999995
+                }
+              ]
+            },
+            {
+              "runwayId": "10",
+              "approach": [
+                {
+                  "xNm": -20.999774,
+                  "yNm": -0.9856670000000012
+                },
+                {
+                  "xNm": -0.999774,
+                  "yNm": -0.985667
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": 0.476922,
+                  "yNm": -0.984833
+                },
+                {
+                  "xNm": 1.476922,
+                  "yNm": -0.9848329999999998
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "AMZ3",
+        "label": "AMZ 3",
+        "approachIds": ["I28", "I27L"],
+        "runwayIds": ["28", "27L"],
+        "runwayAliases": {},
+        "captureLengthNm": 20,
+        "ntzWidthFt": 2000,
+        "outerMarginNm": 0.5,
+        "geometry": {
+          "amzBoundary": [
+            {
+              "xNm": 20.476922,
+              "yNm": -2.2348329999999965
+            },
+            {
+              "xNm": 20.476922,
+              "yNm": 0.9573330000000037
+            },
+            {
+              "xNm": -2.004214,
+              "yNm": 0.4573329999999995
+            },
+            {
+              "xNm": -2.0042139999999997,
+              "yNm": -1.7348330000000005
+            }
+          ],
+          "runways": [
+            {
+              "runwayId": "28",
+              "noz": [
+                {
+                  "xNm": 19.976922,
+                  "yNm": -1.4848329999999963
+                },
+                {
+                  "xNm": 19.976922,
+                  "yNm": -0.8033287114145176
+                },
+                {
+                  "xNm": -1.499774,
+                  "yNm": -0.8033287114145214
+                },
+                {
+                  "xNm": -1.499774,
+                  "yNm": -1.4848330000000003
+                }
+              ],
+              "departureEnd": {
+                "xNm": -0.999774,
+                "yNm": -0.985667
+              }
+            },
+            {
+              "runwayId": "27L",
+              "noz": [
+                {
+                  "xNm": 19.972759,
+                  "yNm": -0.4741712885854754
+                },
+                {
+                  "xNm": 19.972759,
+                  "yNm": 0.20733300000000354
+                },
+                {
+                  "xNm": -1.5042140000000002,
+                  "yNm": 0.2073329999999996
+                },
+                {
+                  "xNm": -1.5042140000000002,
+                  "yNm": -0.47417128858547936
+                }
+              ],
+              "departureEnd": {
+                "xNm": -1.004214,
+                "yNm": -0.293167
+              }
+            }
+          ],
+          "ntzs": [
+            {
+              "id": "N32827L",
+              "leftRunwayId": "28",
+              "rightRunwayId": "27L",
+              "polygon": [
+                {
+                  "xNm": 19.976922,
+                  "yNm": -0.8033287114145176
+                },
+                {
+                  "xNm": 19.976922,
+                  "yNm": -0.4741712885854754
+                },
+                {
+                  "xNm": -1.504214,
+                  "yNm": -0.4741712885854793
+                },
+                {
+                  "xNm": -1.504214,
+                  "yNm": -0.8033287114145214
+                }
+              ]
+            }
+          ],
+          "courseLines": [
+            {
+              "runwayId": "28",
+              "approach": [
+                {
+                  "xNm": 20.476922,
+                  "yNm": -0.9848329999999963
+                },
+                {
+                  "xNm": 0.476922,
+                  "yNm": -0.984833
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": -0.999774,
+                  "yNm": -0.985667
+                },
+                {
+                  "xNm": -1.999774,
+                  "yNm": -0.9856670000000002
+                }
+              ]
+            },
+            {
+              "runwayId": "27L",
+              "approach": [
+                {
+                  "xNm": 20.472759,
+                  "yNm": -0.29266699999999635
+                },
+                {
+                  "xNm": 0.472759,
+                  "yNm": -0.292667
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": -1.004214,
+                  "yNm": -0.293167
+                },
+                {
+                  "xNm": -2.004214,
+                  "yNm": -0.2931670000000002
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "AMZ4",
+        "label": "AMZ 4",
+        "approachIds": ["I27R", "I26L"],
+        "runwayIds": ["27R", "26L"],
+        "runwayAliases": {},
+        "captureLengthNm": 20,
+        "ntzWidthFt": 2000,
+        "outerMarginNm": 0.5,
+        "geometry": {
+          "amzBoundary": [
+            {
+              "xNm": 21.116749,
+              "yNm": -1.3698329999999965
+            },
+            {
+              "xNm": 21.116749,
+              "yNm": 1.8556670000000035
+            },
+            {
+              "xNm": -2.0042140000000006,
+              "yNm": 1.3556669999999993
+            },
+            {
+              "xNm": -2.004214,
+              "yNm": -0.8698330000000005
+            }
+          ],
+          "runways": [
+            {
+              "runwayId": "27R",
+              "noz": [
+                {
+                  "xNm": 20.446906,
+                  "yNm": -0.6198329999999964
+                },
+                {
+                  "xNm": 20.446906,
+                  "yNm": 0.07833828858548243
+                },
+                {
+                  "xNm": -1.5042140000000002,
+                  "yNm": 0.0783382885854784
+                },
+                {
+                  "xNm": -1.504214,
+                  "yNm": -0.6198330000000004
+                }
+              ],
+              "departureEnd": {
+                "xNm": -1.004214,
+                "yNm": -0.119667
+              }
+            },
+            {
+              "runwayId": "26L",
+              "noz": [
+                {
+                  "xNm": 20.616749,
+                  "yNm": 0.4074957114145247
+                },
+                {
+                  "xNm": 20.616749,
+                  "yNm": 1.1056670000000035
+                },
+                {
+                  "xNm": -1.024378,
+                  "yNm": 1.1056669999999995
+                },
+                {
+                  "xNm": -1.0243779999999998,
+                  "yNm": 0.40749571141452073
+                }
+              ],
+              "departureEnd": {
+                "xNm": -0.524378,
+                "yNm": 0.605167
+              }
+            }
+          ],
+          "ntzs": [
+            {
+              "id": "N427R26L",
+              "leftRunwayId": "27R",
+              "rightRunwayId": "26L",
+              "polygon": [
+                {
+                  "xNm": 20.616749,
+                  "yNm": 0.07833828858548245
+                },
+                {
+                  "xNm": 20.616749,
+                  "yNm": 0.4074957114145247
+                },
+                {
+                  "xNm": -1.5042140000000002,
+                  "yNm": 0.40749571141452057
+                },
+                {
+                  "xNm": -1.5042140000000002,
+                  "yNm": 0.0783382885854784
+                }
+              ]
+            }
+          ],
+          "courseLines": [
+            {
+              "runwayId": "27R",
+              "approach": [
+                {
+                  "xNm": 20.946906,
+                  "yNm": -0.11983299999999632
+                },
+                {
+                  "xNm": 0.946906,
+                  "yNm": -0.119833
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": -1.004214,
+                  "yNm": -0.119667
+                },
+                {
+                  "xNm": -2.004214,
+                  "yNm": -0.11966700000000018
+                }
+              ]
+            },
+            {
+              "runwayId": "26L",
+              "approach": [
+                {
+                  "xNm": 21.116749,
+                  "yNm": 0.6056670000000036
+                },
+                {
+                  "xNm": 1.116749,
+                  "yNm": 0.605667
+                }
+              ],
+              "departure": [
+                {
+                  "xNm": -0.524378,
+                  "yNm": 0.605167
+                },
+                {
+                  "xNm": -1.524378,
+                  "yNm": 0.6051669999999998
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
 }
