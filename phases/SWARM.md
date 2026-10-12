@@ -6563,3 +6563,15 @@ is merged onto `feature/fma`.
 | Merge lock | Captain squash-merges sequentially; CI and manual gate required per ticket |
 | Stop boundary | Unchanged (stop after T02-228) |
 
+
+## Eighty-seventh swarm started — FMA graphic fidelity and active flow (2026-10-11)
+
+The user approved the read-only correction plan and explicitly authorized implementation with subagents. The invoking captain coordinates two sequential correction tickets on `feature/fma`, followed by reconciliation of the existing T02-228 acceptance work. Existing T02-228 edits and all historical swarm entries remain preserved.
+
+- Include T02-229 graphics/geometry fidelity, T02-230 generic active-flow selection and scenario lifecycle, and T02-228 final acceptance reconciliation.
+- One isolated `gpt-6-luna` worker at medium reasoning at a time; independent read-only manual reviewers are separate from implementation workers. Captain owns squash merges, CI, STATUS and final report.
+- Product law: bold NTZ boundaries, thin NOZ contours, thicker gray runways, dashed approach/departure extensions, 200-ft reference spacing in approach/NOZ bands. Pixel widths are trainer styling, not published dimensions. Keep range/MAG <=16 reference eligibility and suppress rings/compass at MAG>1 without mutating preferences.
+- Active flow derives from scenario activeRunwayId and catalog inbound courses; no KATL runtime branch. Default to an eligible AMZ containing the active runway, retain manual AMZ selection among same-flow groups, rederive/rebind at boot and session changes, and clear old runtime/speech/Preview state through existing helpers. Honor valid same-flow initialAmzId adaptation.
+- Wave A T02-229, Wave B T02-230, Wave C T02-228 reconciliation. Workers start from current feature target after predecessor gates. No unrelated alert, radio, speech-backend, service-mode or TSAS changes.
+- Pre-merge check-stars-manual with `/home/ben/Documents/stars refs/full_manual.pdf` and independent reviewer; fix unintended divergences before merge. Captain CI and post-merge manual check required before next wave.
+- Stop after final T02-228 acceptance and CI. Browser/audio checks must be actual or explicitly UNRUN. Preserve dirty/untracked artifacts; no reset, clean, force, master merge or push. Return PHASE EXIT GREEN or PHASE EXIT BLOCKED with per-ticket table.
