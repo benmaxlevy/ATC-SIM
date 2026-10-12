@@ -77,6 +77,7 @@ export const FMA_GEOMETRY_DEFAULTS = {
   minSpacingFt: 2500,
   maxSpacingFt: 9000,
 } as const;
+export const FMA_PARALLEL_COURSE_TOLERANCE_DEG = 1;
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const norm = (deg: number) => ((deg % 360) + 360) % 360;
 const angleDistance = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
@@ -522,7 +523,8 @@ export function deriveFmaAmzs(
           !reciprocalId ||
           candidate.runway.toUpperCase() !== reciprocalId ||
           trueCourseByApproach.get(candidate.id) === undefined ||
-          angleDistance(trueCourseByApproach.get(candidate.id)!, norm(course + 180)) > 1 ||
+          angleDistance(trueCourseByApproach.get(candidate.id)!, norm(course + 180)) >
+            FMA_PARALLEL_COURSE_TOLERANCE_DEG ||
           !candidate.thresholdFixId
         )
           return [];
@@ -626,7 +628,8 @@ export function deriveFmaAmzs(
     ...eligibleBarriers.map((row) => ({ row, barrier: true })),
   ]) {
     const cluster = courseClusters.find(
-      (group) => angleDistance(group[0]!.row.course, row.row.course) <= 1,
+      (group) =>
+        angleDistance(group[0]!.row.course, row.row.course) <= FMA_PARALLEL_COURSE_TOLERANCE_DEG,
     );
     if (cluster) cluster.push(row);
     else courseClusters.push([row]);

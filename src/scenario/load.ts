@@ -23,7 +23,6 @@ import type {
   SpawnPolicy,
   VideoMap,
 } from "./types";
-import { deriveFmaAmzs } from "../core/alerts/fmaGeometry";
 import { ARRIVAL_COUNT_MAX, ARRIVAL_COUNT_MIN, GI_TEXT_LINE_COUNT } from "./types";
 import { loadCatalog, parseAtpaWakeAdaptation, sidRouteFixIds } from "./procedures/loadCatalog";
 import { starRouteFixIds } from "./starSpawn";
@@ -480,10 +479,7 @@ function parseBeaconPools(value: unknown): BeaconPoolConfig | undefined {
   return result.value;
 }
 
-function parseFmaScenarioConfig(
-  value: unknown,
-  catalog: ReturnType<typeof loadCatalog>,
-): FmaScenarioConfig | undefined {
+function parseFmaScenarioConfig(value: unknown): FmaScenarioConfig | undefined {
   if (value === undefined) return undefined;
   if (!isRecord(value)) throw new Error("Scenario fma must be an object");
   if (value.excludeDerivedGroups !== undefined && typeof value.excludeDerivedGroups !== "boolean") {
@@ -493,13 +489,6 @@ function parseFmaScenarioConfig(
     value.initialAmzId === undefined
       ? undefined
       : assertString(value.initialAmzId, "fma.initialAmzId", "Scenario", true);
-  if (initialAmzId !== undefined) {
-    const { amzs } = deriveFmaAmzs(catalog, {
-      excludeDerived: value.excludeDerivedGroups === true,
-    });
-    if (!amzs.some((amz) => amz.id === initialAmzId))
-      throw new Error(`Scenario fma.initialAmzId references unavailable AMZ ${initialAmzId}`);
-  }
   return {
     ...(initialAmzId !== undefined ? { initialAmzId } : {}),
     ...(value.excludeDerivedGroups !== undefined
@@ -591,7 +580,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       : parseAtpaWakeAdaptation(s.atpaWakeAdaptation, "atpaWakeAdaptation", "Scenario");
   const departureConfig = parseDepartureConfig(s.departureConfig);
   const beaconPools = parseBeaconPools(s.beaconPools);
-  const fma = parseFmaScenarioConfig(s.fma, catalog);
+  const fma = parseFmaScenarioConfig(s.fma);
   const spawnPolicy = parseSpawnPolicy(s.spawnPolicy);
   const arrivals = assertArrivals(s.arrivals, {
     min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,

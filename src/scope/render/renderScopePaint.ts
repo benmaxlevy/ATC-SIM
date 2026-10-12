@@ -2576,7 +2576,10 @@ export function drawChordHint(
   const stars = formatStarsChordReadout(view.starsChordEntry, view.starsChordArmed);
   const preview = formatPreviewReadout(view.preview);
   const hint = view.pendingChord?.hint;
-  const fmaDiagnostic = formatFmaAlertDiagnostic(view.fmaAlertDiagnostics);
+  const fmaDiagnostic = formatFmaAlertDiagnostic(
+    view.fmaAlertDiagnostics,
+    view.fmaScenarioDiagnostics,
+  );
   if (!stars && !preview && !hint && !fmaDiagnostic) {
     return;
   }

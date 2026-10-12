@@ -283,3 +283,4 @@ export {
   validateVfrRequestConfig,
   validateVfrTrafficConfig,
 } from "./vfrTraffic";
+export { resolveFmaFlow, type FmaFlowResolution } from "./fmaFlow";

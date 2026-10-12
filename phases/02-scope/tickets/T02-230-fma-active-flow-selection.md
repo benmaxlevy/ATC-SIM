@@ -37,11 +37,11 @@ Supplied TI6191.409 Rev30 manual: §§6.16.1–2 pp.6-127–130 (PDF657–660), 
 
 Generic scenario/FMA resolver; src/main.tsx boot; src/ui/shell.tsx actual replacement; scopeView lifecycle; existing DCB helpers/preferences as needed; shared acceptance and docs.
 
-- [ ] AC1: synthetic reciprocal and same-flow groups with wrapped/nonzero-magnetic-variation headings; no facility-specific branches.
-- [ ] AC2: eligible initial override, stale/opposite override, ambiguous/missing course and no-candidate cases have deterministic safe results/diagnostics.
-- [ ] AC3: actual boot/binder and session replacement path reuse the resolver; east/west switch clears runtime/speech/pending entry and uses new preferences/projection.
-- [ ] AC4: manual AMZ choice remains within eligible groups, group capacity preserved, ordinary controls/World/radio state untouched.
-- [ ] AC5: KATL east/west data contract smoke and manual comparison; actual browser transition or explicit UNRUN.
+- [x] AC1: synthetic reciprocal and same-flow groups with wrapped/nonzero-magnetic-variation headings; no facility-specific branches.
+- [x] AC2: eligible initial override, stale/opposite override, ambiguous/missing course and no-candidate cases have deterministic safe results/diagnostics.
+- [x] AC3: actual boot/binder and session replacement path reuse the resolver; east/west switch clears runtime/speech/pending entry and uses new preferences/projection.
+- [x] AC4: manual AMZ choice remains within eligible groups, group capacity preserved, ordinary controls/World/radio state untouched.
+- [x] AC5: KATL east/west data contract smoke and manual comparison; browser transition **UNRUN** (browser unavailable in this session).
 
 ## Validation and handoff
 

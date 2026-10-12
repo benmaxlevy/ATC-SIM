@@ -1008,6 +1008,26 @@ removed when magnification exceeds 1; display gating is handled by later FMA
 surface work. FAA AIM §§5-4-13–16 distinguish straight parallel procedures
 from SOIA; geometry alone does not establish PRM eligibility.
 
+### Active runway flow and scenario lifecycle (T02-230)
+
+At boot and every session replacement, the same scenario binder derives all
+catalog AMZ geometry, filters groups by the scenario active runway's inbound
+course, then chooses a valid `fma.initialAmzId`, the group containing that
+runway, or a stable eligible fallback. It compares true courses with wrapped
+one-degree tolerance after applying magnetic variation once. The AMZ control
+offers only eligible same-flow groups and retains a valid same-flow manual
+selection across replacement. Invalid overrides, unknown/ambiguous courses,
+and empty eligible sets produce trainer diagnostics; an empty set leaves FMA
+unavailable and exits active FMA cleanly. The filter is trainer display
+context, never an aircraft runway assignment rule. Scenario replacement clears
+display-local episodes, acknowledgments, speech, retained reports, Preview and
+spinner state before applying the new AMZ preferences.
+For authored offsets, eligibility follows selected source approach membership,
+not an averaged group axis: a same-flow source keeps the adaptation eligible,
+while a reciprocal source excludes it. A valid authored initial or retained
+AMZ may identify the active runway approach variant when catalog variants are
+otherwise ambiguous. This remains trainer policy, not a published STARS rule.
+
 ## Final Monitor Aid surveillance lifecycle (T02-221)
 
 FMA retains valid report snapshots per display and track. Its 10-second

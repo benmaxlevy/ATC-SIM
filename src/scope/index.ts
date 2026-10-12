@@ -397,6 +397,7 @@ export {
   DEFAULT_CURSOR_SPEED,
   resetRangeBearingSession,
   rebindFmaScenarioAmzs,
+  bindFmaScenarioFlow,
   pruneFmaSurveillanceView,
   releaseFmaTrackView,
   releaseFmaTracksView,

@@ -57,7 +57,12 @@ import {
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
 import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcb/dcbPref";
-import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcb/dcbMenu";
+import {
+  cancelDcbSpinner,
+  idleDcbSpinner,
+  type DcbMenu,
+  type DcbSpinnerState,
+} from "./dcb/dcbMenu";
 import {
   cloneCharSizes,
   DEFAULT_CHAR_SIZE_PX,
@@ -124,8 +129,9 @@ import {
   type FmaSurveillanceState,
   type FmaSurveillanceTick,
 } from "./fmaSurveillance";
+import { applyFmaAmzPreference } from "./dcb/dcbPref";
 import type { DatablockRenderSnapshot } from "./datablock";
-import type { RadarSite } from "@scenario";
+import { resolveFmaFlow, type RadarSite, type Scenario } from "@scenario";
 import {
   defaultSurveillanceMode,
   effectiveSurveillanceMode,
@@ -370,7 +376,9 @@ export interface ScopeView {
   fmaAlertResults: Map<string, FmaAlertTrackResult>;
   fmaAlertOutlines: Map<string, "RED" | "YELLOW">;
   fmaAlertDiagnostics: string[];
+  fmaScenarioDiagnostics: string[];
   fmaAmzs: FmaAmz[];
+  fmaDefaultAmzId: string | null;
   fmaAlertInhibit: FmaAlertInhibit;
   /** Display-local episode acknowledgments; IDs expire with their alert episode. */
   fmaAcknowledgedEpisodeIds: Set<string>;
@@ -535,6 +543,7 @@ export function createScopeView(
     cursorSpeed?: number;
     radarTilesetBoundaryNm?: readonly NmEastNorth[];
     fmaAmzs?: readonly FmaAmz[];
+    fmaDefaultAmzId?: string | null;
     fmaMag?: number;
     fmaPtlSeconds?: number;
     fmaRunwayLeaders?: ReadonlyMap<string, LeaderDir | null>;
@@ -650,7 +659,9 @@ export function createScopeView(
     fmaAlertResults: new Map(),
     fmaAlertOutlines: new Map(),
     fmaAlertDiagnostics: [],
+    fmaScenarioDiagnostics: [],
     fmaAmzs: options?.fmaAmzs ? [...options.fmaAmzs] : [],
+    fmaDefaultAmzId: options?.fmaDefaultAmzId ?? null,
     fmaAlertInhibit: {},
     fmaAcknowledgedEpisodeIds: new Set(),
     fmaSilencedEpisodeIds: new Set(),
@@ -814,8 +825,17 @@ export function releaseFmaTracksView(view: ScopeView, aircraftIds: Iterable<stri
 }
 
 export function clearFmaSurveillanceView(view: ScopeView): void {
+  const pendingCancels = view.fmaSpeechEvents.filter(
+    (event): event is { type: "cancel"; episodeId: string; aircraftId: string } =>
+      event.type === "cancel",
+  );
+  view.fmaSpeechEvents.length = 0;
+  view.fmaSpeechEvents.push(...pendingCancels);
+  const canceledEpisodeIds = new Set(pendingCancels.map((event) => event.episodeId));
   for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
-    view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    if (!canceledEpisodeIds.has(episode.id)) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    }
   }
   view.fmaSurveillance = clearFmaSurveillance(view.fmaSurveillance);
   view.fmaAlertState = createFmaAlertState();
@@ -826,6 +846,7 @@ export function clearFmaSurveillanceView(view: ScopeView): void {
   view.fmaAcknowledgedEpisodeIds.clear();
   view.fmaSilencedEpisodeIds.clear();
   cancelPreviewArea(view.preview);
+  cancelDcbSpinner(view);
   for (const td of view.tracks.values()) delete td.presentationReport;
 }
 
@@ -834,18 +855,46 @@ export function clearFmaSurveillanceView(view: ScopeView): void {
  * If previously enabled with an AMZ ID, rebind by stable known AMZ ID or initial valid AMZ;
  * clear all session episodes, arms, retained tracks and speech.
  */
-export function rebindFmaScenarioAmzs(view: ScopeView, nextAmzs: readonly FmaAmz[]): void {
+export function rebindFmaScenarioAmzs(
+  view: ScopeView,
+  nextAmzs: readonly FmaAmz[],
+  resolvedAmzId?: string | null,
+): void {
   view.fmaAmzs = [...nextAmzs];
   const currentAmzId = view.fmaSurveillance.selectedAmzId;
   const stillValid = currentAmzId ? view.fmaAmzs.some((a) => a.id === currentAmzId) : false;
   const wasEnabled = view.fmaSurveillance.enabled;
 
   clearFmaSurveillanceView(view);
+  view.fmaCandidateMode = false;
+  view.fmaDefaultAmzId = nextAmzs.some((amz) => amz.id === resolvedAmzId)
+    ? resolvedAmzId!
+    : (nextAmzs[0]?.id ?? null);
 
-  if (wasEnabled && view.fmaAmzs.length > 0) {
-    const targetAmzId = stillValid ? currentAmzId : view.fmaAmzs[0]!.id;
+  if (wasEnabled && view.fmaAmzs.length > 0 && view.fmaDefaultAmzId) {
+    const targetAmzId =
+      resolvedAmzId === undefined && stillValid ? currentAmzId! : view.fmaDefaultAmzId;
+    if (!applyFmaAmzPreference(view, targetAmzId)) view.lastWarning = "NO PREF SET FOUND";
+    else view.lastWarning = null;
     configureFmaSurveillanceView(view, true, targetAmzId);
+  } else if (wasEnabled) {
+    configureFmaSurveillanceView(view, false, null);
   }
+}
+
+/** Shared scenario-flow resolver and lifecycle binder used at boot and replacement. */
+export function bindFmaScenarioFlow(
+  view: ScopeView,
+  scenario: Pick<Scenario, "catalog" | "activeRunwayId" | "fma">,
+) {
+  const resolution = resolveFmaFlow(scenario.catalog, scenario.activeRunwayId, {
+    initialAmzId: scenario.fma?.initialAmzId,
+    preferredAmzId: view.fmaSurveillance.selectedAmzId,
+    excludeDerived: scenario.fma?.excludeDerivedGroups,
+  });
+  rebindFmaScenarioAmzs(view, resolution.amzs, resolution.selectedAmzId);
+  view.fmaScenarioDiagnostics = resolution.diagnostics;
+  return resolution;
 }
 
 function publishFmaPresentation(view: ScopeView): void {

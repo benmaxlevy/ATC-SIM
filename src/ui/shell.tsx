@@ -40,10 +40,13 @@ import {
   scopeFocusFromDocument,
   focusRadioCommandLine,
   clearMinSepState,
-  clearFmaSurveillanceView,
+  cancelDcbSpinner,
+  bindFmaScenarioFlow,
   clearPerTrackPtl,
   resetRangeBearingSession,
   parseDigitalMap,
+  browserDcbPrefStorage,
+  loadDcbPrefFromStorage,
   applyRadarSites,
   applyRadarTilesetBoundary,
   getVisibleFlightPlanEntries,
@@ -518,6 +521,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         onCancel={() => setSetupOpen(false)}
         onApply={(next) => {
           const nextScenario = loadPlayableScenario(next.scenarioId);
+          app.fmaSpeech.clearQueue();
           app.replaceWorld(
             createWorldForSession(
               nextScenario,
@@ -540,7 +544,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             ),
           );
           scopeView.tracks.clear();
-          clearFmaSurveillanceView(scopeView);
+          cancelDcbSpinner(scopeView);
+          const prefStore = browserDcbPrefStorage();
+          if (prefStore) loadDcbPrefFromStorage(scopeView, nextScenario.icao, prefStore);
+          else scopeView.dcbPref.icao = nextScenario.icao;
+          bindFmaScenarioFlow(scopeView, nextScenario);
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
           resetRangeBearingSession(scopeView);

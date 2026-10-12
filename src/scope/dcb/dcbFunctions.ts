@@ -812,7 +812,7 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
       view.fmaSurveillance.selectedAmzId &&
       view.fmaAmzs.some((a) => a.id === view.fmaSurveillance.selectedAmzId)
         ? view.fmaSurveillance.selectedAmzId
-        : (view.fmaAmzs[0]?.id ?? null);
+        : (view.fmaDefaultAmzId ?? view.fmaAmzs[0]?.id ?? null);
     const hadPref = amzId ? applyFmaAmzPreference(view, amzId) : false;
     if (!hadPref) {
       view.lastWarning = "NO PREF SET FOUND";
@@ -943,7 +943,7 @@ export function toggleFmaNtzAll(view: ScopeView): void {
 export function stepFmaAmz(view: ScopeView, delta: number): string | null {
   if (view.fmaAmzs.length <= 1) return view.fmaSurveillance.selectedAmzId;
   const ids = view.fmaAmzs.map((a) => a.id);
-  const current = view.fmaSurveillance.selectedAmzId ?? ids[0]!;
+  const current = view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId ?? ids[0]!;
   const next = stepFrozen(ids, current, delta);
   return next;
 }

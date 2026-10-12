@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { ProcedureCatalog } from "../../scenario/procedures/types";
+import { resolveFmaFlow } from "../../scenario/fmaFlow";
+import { loadPlayableScenario } from "../../scenario/playableScenarios";
 import { deriveFmaAmzs } from "../../core/alerts/fmaGeometry";
 import {
   createFmaAlertState,
@@ -7,6 +9,7 @@ import {
   createWorld,
   deleteFlightPlanFromWorld,
   evaluateFmaAlerts,
+  magneticToTrueDeg,
   resolveFmaRunwayAssignment,
   type FmaAmz,
   type FmaAlertTrackInput,
@@ -25,12 +28,14 @@ import {
 import type { SurveillanceReport } from "../surveillance";
 import {
   advanceFmaSurveillanceView,
+  clearFmaSurveillanceView,
   configureFmaSurveillanceView,
   createScopeView,
   fmaReportsForSimulationTick,
   setFmaSensorFixtureView,
 } from "../scopeView";
 import { createTrackDisplay } from "../trackDisplay";
+import { armPreviewSlewAction } from "../previewArea";
 import { buildScopeDatablockPresentation, displayAircraft } from "../render/renderScopePaint";
 import { PALETTE } from "../palette";
 import { formatFmaAlertDiagnostic, observeFmaAlertRuntime } from "../fmaAlerts";
@@ -60,10 +65,13 @@ import {
 import {
   serializeDcbPref,
   applyDcbPref,
+  dcbPrefStorageKey,
+  loadDcbPrefFromStorage,
+  saveDcbPref,
   saveFmaAmzPreference,
   applyFmaAmzPreference,
 } from "../dcb/dcbPref";
-import { rebindFmaScenarioAmzs, setFmaVoiceLevel } from "../scopeView";
+import { bindFmaScenarioFlow, rebindFmaScenarioAmzs, setFmaVoiceLevel } from "../scopeView";
 import { buildSsaRenderLines } from "../ssa";
 import { getDatablockVisualState } from "../render/renderScopePaint";
 import { makeTestAircraft } from "../../core";
@@ -245,6 +253,339 @@ test("FMA derives cardinal and wrapped common axes, converts magnetic once, and 
     ]),
   );
   expect(wrapped.amzs[0]?.courseTrueDeg).toBeCloseTo(0);
+});
+
+test("T02-230 resolves active runway flow, magnetic wrap, overrides, and safe unavailable diagnostics", () => {
+  const reciprocalFlows = catalog(
+    [
+      { runway: "09", course: 85, x: 0, y: -0.5, id: "E09" },
+      { runway: "10", course: 85, x: 0.5, y: 0.5, id: "E10" },
+      { runway: "27", course: 265, x: 10, y: -0.5, id: "W27" },
+      { runway: "28", course: 265, x: 10.5, y: 0.5, id: "W28" },
+    ],
+    5,
+  );
+  const east = resolveFmaFlow(reciprocalFlows, "09");
+  const west = resolveFmaFlow(reciprocalFlows, "27");
+  expect(east.amzs.length).toBeGreaterThan(0);
+  expect(east.amzs.every((amz) => amz.courseTrueDeg === 90)).toBe(true);
+  expect(east.amzs.some((amz) => amz.members.some((member) => member.runwayId === "27"))).toBe(
+    false,
+  );
+  expect(west.amzs.length).toBeGreaterThan(0);
+  expect(west.amzs.every((amz) => amz.courseTrueDeg === 270)).toBe(true);
+
+  const explicit = east.amzs[east.amzs.length - 1]!;
+  expect(resolveFmaFlow(reciprocalFlows, "09", { initialAmzId: explicit.id }).selectedAmzId).toBe(
+    explicit.id,
+  );
+  const stale = resolveFmaFlow(reciprocalFlows, "09", { initialAmzId: west.amzs[0]!.id });
+  expect(stale.selectedAmzId).toBe(east.selectedAmzId);
+  expect(stale.diagnostics.join(" ")).toMatch(/stale or opposite-flow/);
+  expect(resolveFmaFlow(reciprocalFlows, "09", { preferredAmzId: explicit.id }).selectedAmzId).toBe(
+    explicit.id,
+  );
+
+  const wrapped = resolveFmaFlow(
+    catalog(
+      [
+        { runway: "A", course: 355, x: 0, y: -0.5 },
+        { runway: "B", course: 355, x: 0.5, y: 0.5 },
+      ],
+      5,
+    ),
+    "A",
+  );
+  expect(wrapped.amzs).toHaveLength(1);
+  expect(wrapped.amzs[0]?.courseTrueDeg).toBe(0);
+
+  const ambiguousCatalog = catalog([
+    { runway: "09", course: 0, x: 0, id: "A" },
+    { runway: "09", course: 0.7, x: 0, y: 0.5, id: "B" },
+    { runway: "09", course: 1.4, x: 0.5, y: 0.5, id: "C" },
+  ]);
+  const ambiguous = resolveFmaFlow(ambiguousCatalog, "09");
+  const reverseOrdered = resolveFmaFlow(
+    {
+      ...ambiguousCatalog,
+      approaches: [...ambiguousCatalog.approaches].reverse(),
+    },
+    "09",
+  );
+  expect(ambiguous.amzs).toEqual([]);
+  expect(ambiguous.diagnostics.join(" ")).toMatch(/ambiguous inbound/);
+  expect(formatFmaAlertDiagnostic([], ambiguous.diagnostics)).toBe(
+    "FMA: ACTIVE RUNWAY COURSE AMBIGUOUS",
+  );
+  expect(reverseOrdered).toEqual(ambiguous);
+  const stableOrder = resolveFmaFlow(
+    {
+      ...reciprocalFlows,
+      approaches: [...reciprocalFlows.approaches].reverse(),
+      fixes: [...reciprocalFlows.fixes].reverse(),
+    },
+    "09",
+  );
+  expect(stableOrder.selectedAmzId).toBe(east.selectedAmzId);
+  const multipleEligible = catalog([
+    { runway: "A", course: 90, x: 0, y: -0.5, id: "A" },
+    { runway: "B", course: 90, x: 0.5, y: 0.5, id: "B" },
+    { runway: "C", course: 90, x: 0, y: 10, id: "C" },
+    { runway: "D", course: 90, x: 0.5, y: 10.5, id: "D" },
+    { runway: "E", course: 90, x: 0, y: 25, id: "E" },
+  ]);
+  const stableFallback = resolveFmaFlow(multipleEligible, "E");
+  const reversedFallback = resolveFmaFlow(
+    {
+      ...multipleEligible,
+      approaches: [...multipleEligible.approaches].reverse(),
+    },
+    "E",
+  );
+  expect(stableFallback.amzs.length).toBe(2);
+  expect(stableFallback.selectedAmzId).toBe(
+    [...stableFallback.amzs].map((amz) => amz.id).sort()[0],
+  );
+  expect(reversedFallback.selectedAmzId).toBe(stableFallback.selectedAmzId);
+  const unknown = resolveFmaFlow(reciprocalFlows, "36");
+  expect(unknown).toMatchObject({ amzs: [], selectedAmzId: null });
+  expect(unknown.diagnostics.join(" ")).toMatch(/no inbound approach course/);
+});
+
+test("T02-230 preserves authored offset membership and resolves selected active-runway variants", () => {
+  const adapted = catalog(
+    [
+      { runway: "A", course: 355, x: 0, id: "A-NORTH" },
+      { runway: "B", course: 358, x: 0.5, y: 0.5, id: "B-OFFSET" },
+      { runway: "C", course: 175, x: 10, id: "C-SOUTH" },
+      { runway: "D", course: 178, x: 10.5, y: 0.5, id: "D-OFFSET" },
+    ],
+    5,
+  );
+  adapted.approaches.push({
+    ...adapted.approaches[0]!,
+    id: "A-ALT",
+    publishedCourseMagneticDeg: 15 as never,
+  });
+  const polygon = (x: number, y: number) => [
+    { xNm: x, yNm: y },
+    { xNm: x + 1, yNm: y },
+    { xNm: x + 1, yNm: y + 20 },
+    { xNm: x, yNm: y + 20 },
+  ];
+  const geometry = (runwayIds: string[]) => ({
+    amzBoundary: polygon(-1, -1),
+    runways: runwayIds.map((runwayId, index) => ({ runwayId, noz: polygon(index * 0.5, 0) })),
+    ntzs: [
+      {
+        id: `NTZ-${runwayIds.join("-")}`,
+        leftRunwayId: runwayIds[0]!,
+        rightRunwayId: runwayIds[1]!,
+        polygon: polygon(2, 2),
+      },
+    ],
+    courseLines: runwayIds.map((runwayId) => ({
+      runwayId,
+      approach: [
+        { xNm: 0, yNm: -10 },
+        { xNm: 0, yNm: 0 },
+      ] as [{ xNm: number; yNm: number }, { xNm: number; yNm: number }],
+      departure: [
+        { xNm: 0, yNm: 0 },
+        { xNm: 0, yNm: 10 },
+      ] as [{ xNm: number; yNm: number }, { xNm: number; yNm: number }],
+    })),
+  });
+  adapted.fmaOverrides = {
+    excludeDerived: true,
+    groups: [
+      { id: "OFFSET", approachIds: ["A-NORTH", "B-OFFSET"], geometry: geometry(["A", "B"]) },
+      { id: "RECIPROCAL", approachIds: ["C-SOUTH", "D-OFFSET"], geometry: geometry(["C", "D"]) },
+    ],
+  };
+
+  const result = resolveFmaFlow(adapted, "A", { initialAmzId: "OFFSET", excludeDerived: true });
+  expect(result.amzs.map((amz) => amz.id)).toEqual(["OFFSET"]);
+  expect(result.selectedAmzId).toBe("OFFSET");
+  expect(result.amzs[0]?.members.map((member) => member.approachId)).toEqual([
+    "A-NORTH",
+    "B-OFFSET",
+  ]);
+  expect(result.amzs[0]?.provenance).toBe("CATALOG_ADAPTED");
+  expect(result.amzs[0]?.courseTrueDeg).toBeCloseTo(1.5);
+  expect(result.amzs[0]?.courseLines.map((line) => line.runwayId)).toEqual(["A", "B"]);
+  expect(result.amzs[0]?.courseLines[0]?.approach).toEqual([
+    { xNm: 0, yNm: -10 },
+    { xNm: 0, yNm: 0 },
+  ]);
+  expect(
+    resolveFmaFlow(adapted, "A", { preferredAmzId: "OFFSET", excludeDerived: true }).selectedAmzId,
+  ).toBe("OFFSET");
+
+  const staleVariantWithoutAdaptation = resolveFmaFlow(adapted, "A", { excludeDerived: true });
+  expect(staleVariantWithoutAdaptation.amzs).toEqual([]);
+  expect(staleVariantWithoutAdaptation.diagnostics.join(" ")).toMatch(/ambiguous inbound/);
+
+  const noGeometry = resolveFmaFlow(catalog([{ runway: "A", course: 0, x: 0 }]), "A", {
+    excludeDerived: true,
+  });
+  expect(noGeometry).toMatchObject({ amzs: [], selectedAmzId: null });
+  expect(noGeometry.diagnostics.join(" ")).toMatch(/no AMZ geometry matches/);
+});
+
+test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, and applies override preference", () => {
+  const nextCatalog = catalog([
+    { runway: "A", course: 90, x: 0, y: -0.5, id: "APP-A" },
+    { runway: "B", course: 90, x: 0.5, y: 0.5, id: "APP-B" },
+    { runway: "C", course: 90, x: 0, y: 10, id: "APP-C" },
+    { runway: "D", course: 90, x: 0.5, y: 10.5, id: "APP-D" },
+    { runway: "E", course: 270, x: 0, y: 20, id: "APP-E" },
+    { runway: "F", course: 270, x: 0.5, y: 20.5, id: "APP-F" },
+    { runway: "G", course: 270, x: 0, y: 30, id: "APP-G" },
+    { runway: "H", course: 270, x: 0.5, y: 30.5, id: "APP-H" },
+  ]);
+  nextCatalog.airportId = "KXYZ";
+  const derived = deriveFmaAmzs(nextCatalog).amzs;
+  expect(derived).toHaveLength(4);
+  const runwayAmz = derived.find((amz) => amz.members.some((member) => member.runwayId === "A"))!;
+  const overrideAmz = derived.find((amz) => amz.courseTrueDeg === 90 && amz !== runwayAmz)!;
+  const westRunwayAmz = derived.find((amz) =>
+    amz.members.some((member) => member.runwayId === "E"),
+  )!;
+  const westManualAmz = derived.find((amz) => amz.courseTrueDeg === 270 && amz !== westRunwayAmz)!;
+  const view = createScopeView(0, 0, { fmaAmzs: derived });
+  configureFmaSurveillanceView(view, true, runwayAmz.id);
+  saveFmaAmzPreference(view, overrideAmz.id, { mag: 6 });
+  saveFmaAmzPreference(view, westRunwayAmz.id, { mag: 4 });
+  view.dcbPref.icao = "KXYZ";
+  const storedPreferences = new Map<string, string>();
+  const preferenceStorage = {
+    getItem: (key: string) => storedPreferences.get(key) ?? null,
+    setItem: (key: string, value: string) => storedPreferences.set(key, value),
+  };
+  saveDcbPref(view, preferenceStorage);
+  view.fmaMag = 2;
+  view.tracks.set("track-a", createTrackDisplay());
+  advanceFmaSurveillanceView(view, {
+    nowSimMs: 1000,
+    reports: [report(1000)],
+    liveTrackIds: new Set(["track-a"]),
+    associatedTrackIds: new Set(["track-a"]),
+  });
+  const oldEpisode = {
+    id: "old-episode",
+    condition: "NTZ_WARNING" as const,
+    onsetSimMs: 900,
+    amzId: runwayAmz.id,
+    runwayIds: ["A"],
+    ntzIds: [],
+    evidence: [],
+  };
+  view.fmaAlertState.episodes.set("track-a", oldEpisode);
+  view.fmaAlertOutlines.set("track-a", "RED");
+  view.fmaAcknowledgedEpisodeIds.add(oldEpisode.id);
+  view.fmaSilencedEpisodeIds.add(oldEpisode.id);
+  view.placeCenterArmed = true;
+  armPreviewSlewAction(view.preview, { type: "fmaTrackInhibit" }, 1000);
+  armDcbSpinner(view, "MAG");
+  view.fmaSpeechEvents.push({ type: "onset", episodeId: oldEpisode.id, aircraftId: "track-a" });
+  view.fmaSpeechEvents.push({ type: "test", level: 5 });
+  const world = createWorld();
+  const worldBeforeBind = structuredClone(world);
+
+  const nextScenario = {
+    activeRunwayId: "A",
+    catalog: nextCatalog,
+    fma: { initialAmzId: overrideAmz.id },
+  };
+  const result = bindFmaScenarioFlow(view, nextScenario);
+
+  expect(result.amzs.map((amz) => amz.id)).toContain(overrideAmz.id);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(overrideAmz.id);
+  expect(view.fmaMag).toBe(6);
+  expect(view.dcbSpinner.armed).toBe(false);
+  expect(view.fmaSpeechEvents).toEqual([
+    { type: "cancel", episodeId: oldEpisode.id, aircraftId: "track-a" },
+  ]);
+  expect(view.fmaSurveillance.enabled).toBe(true);
+  expect(view.fmaSurveillance.tracks.size).toBe(0);
+  expect(view.tracks.get("track-a")?.presentationReport).toBeUndefined();
+  expect(view.fmaAlertState.episodes.size).toBe(0);
+  expect(view.fmaAlertOutlines.size).toBe(0);
+  expect(view.fmaAcknowledgedEpisodeIds.size).toBe(0);
+  expect(view.fmaSilencedEpisodeIds.size).toBe(0);
+  expect(view.preview.phase).toBe("idle");
+  expect(view.placeCenterArmed).toBe(true);
+  expect(world).toEqual(worldBeforeBind);
+
+  armDcbSpinner(view, "FMA_AMZ");
+  for (const key of westRunwayAmz.id) inputDcbSpinnerKey(view, key);
+  expect(commitDcbSpinner(view)).toBe(false);
+  expect(view.lastWarning).toBe("FORMAT");
+
+  const retained = bindFmaScenarioFlow(view, { ...nextScenario, fma: undefined });
+  expect(retained.selectedAmzId).toBe(overrideAmz.id);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(overrideAmz.id);
+
+  view.amzPreferences.clear();
+  loadDcbPrefFromStorage(view, "KXYZ", preferenceStorage);
+  const westbound = bindFmaScenarioFlow(view, {
+    ...nextScenario,
+    activeRunwayId: "E",
+    fma: undefined,
+  });
+  expect(westbound.amzs.map((amz) => amz.courseTrueDeg)).toEqual([270, 270]);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(westRunwayAmz.id);
+  expect(storedPreferences.has(dcbPrefStorageKey("KXYZ"))).toBe(true);
+  expect(view.fmaMag).toBe(4);
+  expect(view.lastWarning).toBeNull();
+  expect(view.fmaSurveillance.tracks.size).toBe(0);
+  commitFmaAmzSwitch(view, westManualAmz.id);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(westManualAmz.id);
+  expect(view.lastWarning).toBe("NO PREF SET FOUND");
+  const retainedWest = bindFmaScenarioFlow(view, {
+    ...nextScenario,
+    activeRunwayId: "E",
+    fma: undefined,
+  });
+  expect(retainedWest.selectedAmzId).toBe(westManualAmz.id);
+  expect(view.fmaSurveillance.selectedAmzId).toBe(westManualAmz.id);
+
+  const unavailable = bindFmaScenarioFlow(view, {
+    ...nextScenario,
+    activeRunwayId: "36",
+    fma: undefined,
+  });
+  expect(unavailable.amzs).toEqual([]);
+  expect(view.fmaSurveillance.enabled).toBe(false);
+  expect(view.fmaAmzs).toEqual([]);
+  expect(formatFmaAlertDiagnostic([], view.fmaScenarioDiagnostics)).toBe(
+    "FMA: ACTIVE RUNWAY COURSE UNKNOWN",
+  );
+});
+
+test("T02-230 KATL east/west data smoke binds AMZs to each active catalog runway", () => {
+  for (const scenarioId of ["katl", "katl-08"]) {
+    const scenario = loadPlayableScenario(scenarioId);
+    const resolution = resolveFmaFlow(scenario.catalog, scenario.activeRunwayId, {
+      initialAmzId: scenario.fma?.initialAmzId,
+      excludeDerived: scenario.fma?.excludeDerivedGroups,
+    });
+    expect(resolution.amzs.length).toBeGreaterThan(0);
+    expect(resolution.selectedAmzId).not.toBeNull();
+    const activeCourse = scenario.catalog.approaches.find(
+      (approach) => approach.runway.toUpperCase() === scenario.activeRunwayId.toUpperCase(),
+    )?.publishedCourseMagneticDeg;
+    expect(activeCourse).toBeDefined();
+    const activeCourseTrue = magneticToTrueDeg(activeCourse!, scenario.catalog.magVarDeg);
+    expect(
+      resolution.amzs.every(
+        (amz) => Math.abs(((amz.courseTrueDeg - activeCourseTrue + 540) % 360) - 180) <= 1,
+      ),
+    ).toBe(true);
+    const selected = resolution.amzs.find((amz) => amz.id === resolution.selectedAmzId);
+    expect(selected).toBeDefined();
+  }
 });
 
 test("FMA groups only adjacent same-direction runways and rejects reciprocal or unsupported geometry", () => {
@@ -2220,6 +2561,42 @@ describe("T02-224 FMA Browser Speech Queue integration", () => {
     name: "Alex (Local)",
     voiceURI: "alex-local",
   };
+
+  test("T02-230 repeated scenario clears preserve cancellation for active and queued speech", () => {
+    const mock = createMockSpeechSession([defaultLocalVoice]);
+    const controller = createFmaSpeechController({ synthesis: mock.synth, initialVoiceLevel: 6 });
+    const active = {
+      id: "flow-active",
+      condition: "NTZ_WARNING" as const,
+      onsetSimMs: 1,
+      amzId: "AMZ-E",
+      runwayIds: [],
+      ntzIds: [],
+      evidence: [],
+    };
+    const queued = { ...active, id: "flow-queued", condition: "NTZ_CAUTION" as const };
+    controller.enqueueEpisode(active, "AAL100", "track-active");
+    controller.enqueueEpisode(queued, "AAL200", "track-queued");
+    expect(controller.getStatus().queueLength).toBe(1);
+
+    const view = createScopeView();
+    view.fmaAlertState.episodes.set("track-active", active);
+    view.fmaAlertState.episodes.set("track-queued", queued);
+    view.fmaSpeechEvents.push(
+      { type: "onset", episodeId: active.id, aircraftId: "track-active" },
+      { type: "test", level: 4 },
+    );
+    clearFmaSurveillanceView(view);
+    clearFmaSurveillanceView(view);
+    expect(view.fmaSpeechEvents).toEqual([
+      { type: "cancel", episodeId: active.id, aircraftId: "track-active" },
+      { type: "cancel", episodeId: queued.id, aircraftId: "track-queued" },
+    ]);
+    syncFmaSpeech(controller, view, { aircraft: [] });
+    expect(controller.getStatus()).toMatchObject({ activeUtteranceText: null, queueLength: 0 });
+    expect(mock.cancelledCount).toBe(2);
+    controller.dispose();
+  });
 
   test("AC1 — formatFmaAlertUtterance produces exact ACID and suffixes (telephony and phonetic callsigns)", () => {
     // DAL123 -> Delta 123

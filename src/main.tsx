@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { advanceWorld, createAccumulator, flightPlanForAircraft, deriveFmaAmzs } from "@core";
+import { advanceWorld, createAccumulator, flightPlanForAircraft } from "@core";
 import {
   createWorldForSession,
   loadPlayableScenario,
@@ -16,6 +16,7 @@ import {
   advanceFmaSurveillanceView,
   browserDcbPrefStorage,
   createScopeView,
+  bindFmaScenarioFlow,
   clearFmaSurveillanceView,
   fmaReportsForSimulationTick,
   ensureWxMosaic,
@@ -50,9 +51,6 @@ const sessionFallback = defaultSessionSetup(requestedScenario || undefined);
 const sessionDraft = loadSessionSetup(window.localStorage, sessionFallback);
 const sessionResolution = resolveSessionSetup(search, sessionFallback, sessionDraft);
 const scenario = loadPlayableScenario(sessionResolution.setup.scenarioId);
-const fmaGeometry = deriveFmaAmzs(scenario.catalog, {
-  excludeDerived: scenario.fma?.excludeDerivedGroups,
-});
 const spawnSeed = parseSpawnSeed(search);
 const departureQuery = parseDepartureOptions(search);
 const departureOptions = {
@@ -111,8 +109,8 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   arp: scenario.arp,
   ssaWeatherAirports: scenario.ssaWeatherAirports,
   towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,
-  fmaAmzs: fmaGeometry.amzs,
 });
+bindFmaScenarioFlow(scopeView, scenario);
 const stopMetarPolling = startMetarPolling(scopeView, {
   primaryIcao: scenario.icao,
   giSlot: scenario.ssaWeatherGiSlot,

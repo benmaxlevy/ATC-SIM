@@ -362,6 +362,7 @@ export {
   deriveFmaAmzs,
   FMA_GEOMETRY_DEFAULTS,
   FMA_MONITORING_DEFAULTS,
+  FMA_PARALLEL_COURSE_TOLERANCE_DEG,
 } from "./alerts/fmaGeometry";
 export type { FmaAmz, FmaDiagnostic, FmaMember, FmaNtz, FmaPolygon } from "./alerts/fmaGeometry";
 export {

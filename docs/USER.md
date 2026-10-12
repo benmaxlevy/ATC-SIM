@@ -949,6 +949,23 @@ choices, not a published STARS adaptation algorithm or operational PRM
 qualification. Automatic SOIA geometry and visual-transition behavior are not
 included; offsets require explicit catalog adaptation.
 
+At application boot and after each session replacement, the trainer derives
+all catalog AMZ geometry and exposes only groups aligned with the scenario's
+active runway inbound course. Magnetic variation and wrapped one-degree course
+comparison are applied generically; reciprocal groups are excluded. A valid
+`fma.initialAmzId` takes priority. Otherwise the trainer chooses the group
+containing the active runway, then a stable eligible fallback. The AUX AMZ
+control offers the remaining same-flow groups, and a valid manual choice stays
+selected while it remains eligible. Unknown or ambiguous runway courses and
+scenarios without eligible geometry leave FMA unavailable and report a trainer
+diagnostic. This flow filter is a trainer display policy, not a published
+STARS selection algorithm and never assigns aircraft runways.
+Authored offset groups use their selected source approach membership for flow
+eligibility rather than their averaged display axis; reciprocal source courses
+remain excluded. A valid authored initial or retained AMZ can identify which
+approach variant represents an otherwise ambiguous active runway. These are
+trainer selection rules, not STARS algorithms.
+
 ### Final Monitor Aid alert qualification
 
 Assignment and alignment are separate. A runway assignment is recognized only

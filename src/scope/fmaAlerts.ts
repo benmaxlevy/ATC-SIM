@@ -13,10 +13,26 @@ import { reportPeriodMs } from "./surveillance";
 import { getAircraftDestination } from "./systemLists";
 
 /** Stable operator-facing wording for the existing Preview/status readout. */
-export function formatFmaAlertDiagnostic(messages: readonly string[]): string | null {
-  return messages.some((message) => message.includes("conflicting runway scratchpads"))
-    ? "FMA: CONFLICTING RUNWAY ASSIGNMENT"
-    : null;
+export function formatFmaAlertDiagnostic(
+  messages: readonly string[],
+  scenarioMessages: readonly string[] = [],
+): string | null {
+  if (messages.some((message) => message.includes("conflicting runway scratchpads"))) {
+    return "FMA: CONFLICTING RUNWAY ASSIGNMENT";
+  }
+  if (scenarioMessages.some((message) => message.includes("ambiguous inbound"))) {
+    return "FMA: ACTIVE RUNWAY COURSE AMBIGUOUS";
+  }
+  if (scenarioMessages.some((message) => message.includes("no inbound approach course"))) {
+    return "FMA: ACTIVE RUNWAY COURSE UNKNOWN";
+  }
+  if (scenarioMessages.some((message) => message.includes("no AMZ geometry"))) {
+    return "FMA: NO ELIGIBLE AMZ";
+  }
+  if (scenarioMessages.some((message) => message.includes("initial AMZ"))) {
+    return "FMA: INITIAL AMZ OVERRIDE IGNORED";
+  }
+  return scenarioMessages.length > 0 ? "FMA: AMZ ADAPTATION DIAGNOSTIC" : null;
 }
 
 function usableReport(report: SurveillanceReport, nowSimMs: number): boolean {
