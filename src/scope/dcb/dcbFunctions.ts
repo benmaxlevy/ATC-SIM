@@ -42,7 +42,7 @@ import {
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
-import { applyFmaAmzPreference, getFmaMaximumPtlSeconds } from "./dcbPref";
+import { applyFmaAmzPreference, applyLastNormalDcbPref, getFmaMaximumPtlSeconds } from "./dcbPref";
 import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
@@ -806,6 +806,7 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
     return false;
   }
   view.fmaCandidateMode = false;
+  view.dcbPref.pendingSaveAs = false;
   const enabling = !view.fmaSurveillance.enabled;
   if (enabling) {
     const amzId =
@@ -831,6 +832,7 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
     }
   } else {
     configureFmaSurveillanceView(view, false, null);
+    applyLastNormalDcbPref(view);
     view.lastWarning = null;
   }
   return true;

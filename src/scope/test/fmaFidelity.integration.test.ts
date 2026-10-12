@@ -525,11 +525,12 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
     fma: undefined,
   });
   expect(westbound.amzs.map((amz) => amz.courseTrueDeg)).toEqual([90, 90, 270, 270]);
-  expect(view.fmaSurveillance.selectedAmzId).toBe(overrideAmz.id);
+  expect(view.fmaSurveillance.enabled).toBe(false);
+  expect(view.fmaSurveillance.selectedAmzId).toBeNull();
+  expect(view.amzPreferences.has(overrideAmz.id)).toBe(true);
   expect(storedPreferences.has(dcbPrefStorageKey("KXYZ"))).toBe(true);
-  expect(view.fmaMag).toBe(6);
-  expect(view.lastWarning).toBeNull();
   expect(view.fmaSurveillance.tracks.size).toBe(0);
+  configureFmaSurveillanceView(view, true, overrideAmz.id);
   commitFmaAmzSwitch(view, westManualAmz.id);
   expect(view.fmaSurveillance.selectedAmzId).toBe(westManualAmz.id);
   expect(view.lastWarning).toBe("NO PREF SET FOUND");
@@ -2716,7 +2717,7 @@ test("T02-225 AC4 — per-AMZ preference application, missing preference warning
   expect(view.fmaAlertInhibit.aircraftIds?.size ?? 0).toBe(0);
 });
 
-test("T02-228 — rendered PREF SAVE snapshots current selected FMA settings and selected AMZ", () => {
+test("T02-228 — rendered FMA PREF SAVE updates only the active AMZ profile", () => {
   const view = createScopeView();
   const amz = syntheticAmz();
   view.fmaAmzs = [amz];
@@ -2726,16 +2727,20 @@ test("T02-228 — rendered PREF SAVE snapshots current selected FMA settings and
   view.fmaPtlSeconds = 15;
   view.fmaVoiceLevel = 8;
   view.fmaRunwayLeaders.set("08L", null);
+  const normalSlots = structuredClone(view.dcbPref.slots);
+  const normalProfile = structuredClone(view.dcbPref.normalProfile);
   const props = findRenderedDcbCell(
     renderPref(view, () => undefined),
     "pref-save",
   );
   expect(props).not.toBeNull();
   (props!.onClick as () => void)();
-  const saved = view.dcbPref.slots[view.dcbPref.activeIndex]!.body;
-  expect(saved.amzPreferences?.[amz.id]).toMatchObject({ mag: 6, ptlSeconds: 15, voiceLevel: 8 });
-  expect(saved.amzPreferences?.[amz.id].runwayLeaders).toEqual({});
-  expect(saved.selectedFmaAmzId).toBe(amz.id);
+  const saved = view.amzPreferences.get(amz.id)!;
+  expect(saved).toMatchObject({ mag: 6, ptlSeconds: 15, voiceLevel: 8 });
+  expect(saved.runwayLeaders).toEqual({});
+  expect(saved.displayProfile).toBeDefined();
+  expect(view.dcbPref.slots).toEqual(normalSlots);
+  expect(view.dcbPref.normalProfile).toEqual(normalProfile);
   view.fmaRunwayLeaders.set("08L", 8);
   view.fmaRunwayLeaders.set("99", 6);
   const standardLeader = view.defaultLeaderDir;
@@ -2747,8 +2752,8 @@ test("T02-228 — rendered PREF SAVE snapshots current selected FMA settings and
   expect(view.fmaRunwayLeaders.get("99")).toBe(6);
   expect(view.defaultLeaderDir).toBe(standardLeader);
   const restored = createScopeView();
-  applyDcbPref(restored, saved);
-  expect(restored.fmaDefaultAmzId).toBe(amz.id);
+  restored.amzPreferences.set(amz.id, saved);
+  restored.fmaDefaultAmzId = amz.id;
   restored.fmaAmzs = [amz];
   rebindFmaScenarioAmzs(restored, [amz], restored.fmaDefaultAmzId);
   expect(restored.fmaSurveillance.selectedAmzId).toBeNull();
@@ -2835,25 +2840,31 @@ test("T02-228 — rendered SAVE AS cancellation writes no FMA preference", () =>
   expect(view.amzPreferences.has(amz.id)).toBe(false);
 });
 
-test("T02-228 — rendered SAVE AS commit round-trips the selected AMZ snapshot", () => {
+test("T02-228 — rendered SAVE AS commits to the selected AMZ without a normal slot", () => {
   const view = createScopeView();
-  const amz = syntheticAmz();
+  const amz = { ...syntheticAmz(), id: "AMZSYN" };
   view.fmaAmzs = [amz];
   view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
   view.fmaMag = 3;
   view.fmaVoiceLevel = 9;
+  const normalSlots = structuredClone(view.dcbPref.slots);
+  const normalProfile = view.dcbPref.normalProfile;
   const props = findRenderedDcbCell(
     renderPref(view, () => undefined),
     "pref-save-as",
   );
   (props!.onClick as () => void)();
-  const index = commitDcbPrefSaveAs(view, "FMALOCAL");
-  expect(index).toBe(0);
-  if (index === null) throw new Error("SAVE AS should commit an alphanumeric name");
-  const body = view.dcbPref.slots[index]!.body;
+  expect(commitDcbPrefSaveAs(view, "FMALOCAL")).toBeNull();
+  expect(view.dcbPref.pendingSaveAs).toBe(true);
+  const index = commitDcbPrefSaveAs(view, amz.id);
+  expect(index).toBe(view.dcbPref.activeIndex);
+  expect(view.dcbPref.pendingSaveAs).toBe(false);
+  expect(view.dcbPref.slots).toEqual(normalSlots);
+  expect(view.dcbPref.normalProfile).toEqual(normalProfile);
+  expect(view.amzPreferences.get(amz.id)?.displayProfile).toBeDefined();
   const restored = createScopeView();
   restored.fmaAmzs = [amz];
-  applyDcbPref(restored, body);
+  restored.amzPreferences.set(amz.id, view.amzPreferences.get(amz.id)!);
   enterFmaConfirmation(restored);
   commitFmaConfirmation(restored);
   expect(restored.fmaSurveillance.selectedAmzId).toBe(amz.id);

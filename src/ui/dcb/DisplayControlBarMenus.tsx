@@ -2815,10 +2815,15 @@ export function renderPref(view: ScopeView, onChange: () => void) {
             style={{ gridColumn: col, gridRow: "1 / span 1" }}
           >
             <DcbCell
-              kind="toggle"
-              ariaLabel={`Pref ${slot1}`}
+              kind={view.fmaSurveillance.enabled ? "disabled" : "toggle"}
+              ariaLabel={
+                view.fmaSurveillance.enabled
+                  ? `Normal Pref ${slot1} unavailable in FMA`
+                  : `Pref ${slot1}`
+              }
               dataDcb={`pref-${slot1}` as NonNullable<DcbCellProps["dataDcb"]>}
-              pressed={view.dcbPref.activeIndex === slot1 - 1}
+              pressed={!view.fmaSurveillance.enabled && view.dcbPref.activeIndex === slot1 - 1}
+              disabled={view.fmaSurveillance.enabled}
               onClick={() => {
                 cancelFilterIfEntering(view);
                 selectDcbPrefSlot(view, slot1 - 1);
@@ -2840,10 +2845,15 @@ export function renderPref(view: ScopeView, onChange: () => void) {
             style={{ gridColumn: col, gridRow: "2 / span 1" }}
           >
             <DcbCell
-              kind="toggle"
-              ariaLabel={`Pref ${slot2}`}
+              kind={view.fmaSurveillance.enabled ? "disabled" : "toggle"}
+              ariaLabel={
+                view.fmaSurveillance.enabled
+                  ? `Normal Pref ${slot2} unavailable in FMA`
+                  : `Pref ${slot2}`
+              }
               dataDcb={`pref-${slot2}` as NonNullable<DcbCellProps["dataDcb"]>}
-              pressed={view.dcbPref.activeIndex === slot2 - 1}
+              pressed={!view.fmaSurveillance.enabled && view.dcbPref.activeIndex === slot2 - 1}
+              disabled={view.fmaSurveillance.enabled}
               onClick={() => {
                 cancelFilterIfEntering(view);
                 selectDcbPrefSlot(view, slot2 - 1);
@@ -2955,7 +2965,9 @@ export function renderPref(view: ScopeView, onChange: () => void) {
       >
         <DcbCell
           kind="action"
-          ariaLabel="Save as"
+          ariaLabel={
+            view.fmaSurveillance.enabled ? "Save active AMZ preference as its exact ID" : "Save as"
+          }
           dataDcb="pref-save-as"
           onClick={() => {
             cancelFilterIfEntering(view);
@@ -2965,7 +2977,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           }}
         >
           <span className="dcb-cell-line">SAVE</span>
-          <span className="dcb-cell-line">AS</span>
+          <span className="dcb-cell-line">{view.fmaSurveillance.enabled ? "AS AMZ ID" : "AS"}</span>
         </DcbCell>
       </div>
       <div

@@ -23,7 +23,7 @@
  */
 
 import { RANGE_PRESETS_NM, type RangeNm } from "../camera";
-import { snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
+import { defaultSelectedMapGroupId, snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
 import { cloneCharSizes, type CharSizes } from "../fonts";
 import { type HistoryDotCount } from "../history";
 import {
@@ -40,6 +40,9 @@ import {
   DEFAULT_DWELL_MODE,
   DEFAULT_HISTORY_RATE_SEC,
   DEFAULT_CURSOR_SPEED,
+  DEFAULT_SERVICE_MODE,
+  clearFmaSurveillanceView,
+  configureFmaSurveillanceView,
   setDcbDock,
   setSurveillanceMode,
   type DwellMode,
@@ -58,7 +61,8 @@ import {
 } from "../tpa";
 import { resolveSurveillancePref, type SurveillanceMode } from "../surveillance";
 import { cloneWxLevels, type WxLevels } from "../wx";
-import { ensureSystemListPlacement } from "../systemLists";
+import { canonicalSystemListId, ensureSystemListPlacement } from "../systemLists";
+import type { FmaAmz } from "../../core/alerts/fmaGeometry";
 
 export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
@@ -118,6 +122,17 @@ export interface DcbPrefBody {
   rangeRingEastNm: number;
   rangeRingNorthNm: number;
   mapVisibility: Record<string, boolean>;
+  selectedMapGroupId?: string | null;
+  mapListMode?: "GEO" | "CURRENT";
+  geoMapsListOn?: boolean;
+  currentMapsListOn?: boolean;
+  dcbVisible?: boolean;
+  modeCVisible?: boolean;
+  altitudeFilter?: { minHundreds: number; maxHundreds: number };
+  associatedAltitudeFilter?: { minHundreds: number; maxHundreds: number };
+  mciEnabled?: boolean;
+  beaconSelectCodes?: string[];
+  caControllerOwnedPairsInhibited?: boolean;
   showRunway: boolean;
   showLocalizer: boolean;
   showRings: boolean;
@@ -161,6 +176,10 @@ export interface DcbPrefFile {
   icao: string;
   activeIndex?: number;
   slots: Array<DcbPrefSlot | null>;
+  /** Last successfully selected or saved normal display profile. */
+  normalProfile?: DcbPrefBody;
+  amzPreferences?: Record<string, FmaAmzPreference>;
+  selectedFmaAmzId?: string;
 }
 
 /** Live PREF machine on ScopeView. Slots are the trainer 32-set table. */
@@ -169,6 +188,10 @@ export interface DcbPrefRuntime {
   slots: Array<DcbPrefSlot | null>;
   activeIndex: number;
   restore: DcbPrefBody | null;
+  /** FMA-specific part of the in-menu RESTORE snapshot; never persisted. */
+  restoreAmzProfile: FmaAmzPreference | null;
+  /** Last successfully selected or saved normal display profile, independent of FMA edits. */
+  normalProfile: DcbPrefBody | null;
   /** True while SAVE AS waits for a preview-area name. Not persisted. */
   pendingSaveAs: boolean;
 }
@@ -185,6 +208,8 @@ export function emptyDcbPrefRuntime(icao: string = ""): DcbPrefRuntime {
     slots: emptyDcbPrefSlots(),
     activeIndex: 0,
     restore: null,
+    restoreAmzProfile: null,
+    normalProfile: null,
     pendingSaveAs: false,
   };
 }
@@ -271,6 +296,18 @@ function isTpaRadius(value: unknown): value is TpaRadiusNm {
   return (TPA_RADIUS_NM as readonly number[]).includes(value as number);
 }
 
+function isAltitudeFilter(value: unknown): value is { minHundreds: number; maxHundreds: number } {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    Number.isInteger((value as { minHundreds?: unknown }).minHundreds) &&
+    Number.isInteger((value as { maxHundreds?: unknown }).maxHundreds) &&
+    (value as { minHundreds: number }).minHundreds >= 0 &&
+    (value as { maxHundreds: number }).maxHundreds <= 180 &&
+    (value as { minHundreds: number }).minHundreds <= (value as { maxHundreds: number }).maxHundreds
+  );
+}
+
 /** Missing or malformed WX levels become six false. Valid six-boolean arrays pass through. */
 function parseWxLevels(value: unknown): WxLevels {
   if (!Array.isArray(value) || value.length !== 6) {
@@ -302,6 +339,19 @@ function mapToRecord(map: Map<string, boolean>): Record<string, boolean> {
   return record;
 }
 
+function completeDisplayProfile(view: ScopeView): DcbPrefBody {
+  const body = serializeDcbPref(view);
+  delete body.amzPreferences;
+  delete body.selectedFmaAmzId;
+  return body;
+}
+
+function slotDisplayBody(view: ScopeView): DcbPrefBody {
+  const body = serializeDcbPref(view);
+  delete body.amzPreferences;
+  return body;
+}
+
 export function serializeDcbPref(view: ScopeView): DcbPrefBody {
   return {
     dcbDock: view.dcbDock,
@@ -312,6 +362,17 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     rangeRingEastNm: view.rangeRingEastNm,
     rangeRingNorthNm: view.rangeRingNorthNm,
     mapVisibility: mapToRecord(view.mapVisibility),
+    selectedMapGroupId: view.selectedMapGroupId,
+    mapListMode: view.mapListMode ?? "GEO",
+    geoMapsListOn: view.geoMapsListOn,
+    currentMapsListOn: view.currentMapsListOn,
+    dcbVisible: view.dcbVisible,
+    modeCVisible: view.modeCVisible,
+    altitudeFilter: { ...view.altitudeFilter },
+    associatedAltitudeFilter: { ...view.associatedAltitudeFilter },
+    mciEnabled: view.mciEnabled,
+    beaconSelectCodes: [...view.beaconSelectCodes],
+    caControllerOwnedPairsInhibited: view.caControllerOwnedPairsInhibited,
     showRunway: view.showRunway,
     showLocalizer: view.showLocalizer,
     showRings: view.showRings,
@@ -350,19 +411,22 @@ export function serializeDcbPref(view: ScopeView): DcbPrefBody {
     cursorSpeed: view.cursorSpeed ?? DEFAULT_CURSOR_SPEED,
     systemLists: view.systemLists
       ? Object.fromEntries(
-          Object.entries(view.systemLists).map(([id, p]) => [
-            id,
-            { visible: p.visible, x: p.x, y: p.y, maxLines: p.maxLines },
-          ]),
+          Object.entries(view.systemLists)
+            .filter(([id]) => canonicalSystemListId(id) === id)
+            .map(([id, p]) => [id, { visible: p.visible, x: p.x, y: p.y, maxLines: p.maxLines }]),
         )
       : undefined,
   };
 }
 
-function applyMapVisibility(view: ScopeView, record: Record<string, boolean>): void {
+function applyMapVisibility(
+  view: ScopeView,
+  record: Record<string, boolean>,
+  complete = false,
+): void {
   const maps = view.digitalMap.loadedVideoMaps ?? [];
   for (const map of maps) {
-    if (Object.prototype.hasOwnProperty.call(record, map.id)) {
+    if (complete || Object.prototype.hasOwnProperty.call(record, map.id)) {
       view.mapVisibility.set(map.id, record[map.id] === true);
     }
   }
@@ -386,7 +450,38 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     view.rangeRingNorthNm = body.rangeRingNorthNm;
   }
   if (body.mapVisibility && typeof body.mapVisibility === "object") {
-    applyMapVisibility(view, body.mapVisibility);
+    applyMapVisibility(view, body.mapVisibility, body.selectedMapGroupId !== undefined);
+  }
+  if (body.selectedMapGroupId !== undefined) {
+    const validGroup = view.digitalMap.videoMapGroups?.groups.some(
+      (group) => group.id === body.selectedMapGroupId,
+    );
+    view.selectedMapGroupId =
+      body.selectedMapGroupId === null || validGroup
+        ? body.selectedMapGroupId
+        : defaultSelectedMapGroupId(view.digitalMap.videoMapGroups);
+  }
+  if (body.mapListMode === "GEO" || body.mapListMode === "CURRENT")
+    view.mapListMode = body.mapListMode;
+  if (body.geoMapsListOn !== undefined) view.geoMapsListOn = body.geoMapsListOn === true;
+  if (body.currentMapsListOn !== undefined)
+    view.currentMapsListOn = body.currentMapsListOn === true;
+  if (body.dcbVisible !== undefined) view.dcbVisible = body.dcbVisible === true;
+  if (body.modeCVisible !== undefined) view.modeCVisible = body.modeCVisible === true;
+  if (body.altitudeFilter && isAltitudeFilter(body.altitudeFilter))
+    view.altitudeFilter = { ...body.altitudeFilter };
+  if (body.associatedAltitudeFilter && isAltitudeFilter(body.associatedAltitudeFilter)) {
+    view.associatedAltitudeFilter = { ...body.associatedAltitudeFilter };
+  }
+  if (body.mciEnabled !== undefined) view.mciEnabled = body.mciEnabled === true;
+  if (
+    Array.isArray(body.beaconSelectCodes) &&
+    body.beaconSelectCodes.every((code) => typeof code === "string")
+  ) {
+    view.beaconSelectCodes = [...body.beaconSelectCodes];
+  }
+  if (body.caControllerOwnedPairsInhibited !== undefined) {
+    view.caControllerOwnedPairsInhibited = body.caControllerOwnedPairsInhibited === true;
   }
   view.showRunway = body.showRunway === true;
   view.showLocalizer = body.showLocalizer === true;
@@ -413,11 +508,11 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
   }
   view.ptlOwn = body.ptlOwn === true;
   view.ptlOn = body.ptlOn === true;
-  view.brite = cloneBrite(body.brite);
+  view.brite = cloneBrite({ ...cloneBrite(), ...(body.brite ?? {}) });
   view.charSizes = cloneCharSizes(body.charSizes);
   view.charSizePx = view.charSizes.dataBlocks;
-  view.ssaFilter = cloneSsa(body.ssaFilter);
-  view.giFilterVisible = cloneGiVisible(body.giFilterVisible);
+  view.ssaFilter = cloneSsa(body.ssaFilter ?? view.ssaFilter);
+  view.giFilterVisible = cloneGiVisible(body.giFilterVisible ?? view.giFilterVisible);
   view.tpa = {
     on: body.tpa?.on === true,
     radiusNm: isTpaRadius(body.tpa?.radiusNm) ? body.tpa.radiusNm : DEFAULT_TPA_STATE.radiusNm,
@@ -476,6 +571,17 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
 
 /** Factory display defaults. Does not wipe tracks / aircraft. */
 export function applyDcbPrefDefaults(view: ScopeView): void {
+  if (view.fmaSurveillance.enabled) {
+    const amzId = view.fmaSurveillance.selectedAmzId;
+    const applied = amzId ? applyFmaAmzPreference(view, amzId) : false;
+    view.lastWarning = applied ? null : "NO PREF SET FOUND";
+    return;
+  }
+  applyDcbPref(view, factoryDisplayProfile(view));
+  view.dcbPref.normalProfile = completeDisplayProfile(view);
+}
+
+function factoryDisplayProfile(view: ScopeView): DcbPrefBody {
   const factory = createScopeView(view.airportEastNm, view.airportNorthNm, {
     digitalMap: view.digitalMap,
     giTextLines: view.giTextLines,
@@ -483,20 +589,104 @@ export function applyDcbPrefDefaults(view: ScopeView): void {
     arp: view.arp,
     radarSites: view.radarSites,
   });
-  applyDcbPref(view, serializeDcbPref(factory));
+  return completeDisplayProfile(factory);
+}
+
+/** Return from FMA to the last selected/saved normal profile. */
+export function applyLastNormalDcbPref(view: ScopeView): void {
+  if (view.dcbPref.normalProfile) {
+    applyDcbPref(view, view.dcbPref.normalProfile);
+  } else {
+    applyDcbPrefDefaults(view);
+  }
 }
 
 export function beginDcbPrefSession(view: ScopeView): void {
   view.dcbPref.restore = serializeDcbPref(view);
+  const amzId = view.fmaSurveillance.enabled ? view.fmaSurveillance.selectedAmzId : null;
+  const amz = view.fmaAmzs.find((candidate) => candidate.id === amzId);
+  view.dcbPref.restoreAmzProfile = amz ? captureFmaAmzPreference(view, amz) : null;
 }
 
 export function restoreDcbPrefSession(view: ScopeView): void {
   if (view.dcbPref.restore) {
     applyDcbPref(view, view.dcbPref.restore);
+    const amzProfile = view.dcbPref.restoreAmzProfile;
+    if (amzProfile) applyFmaAmzPreferenceValue(view, amzProfile.amzId, amzProfile);
   }
 }
 
+function captureFmaAmzPreference(view: ScopeView, amz: FmaAmz): FmaAmzPreference {
+  const activeRunways = new Set(amz.members.map((member) => member.runwayId));
+  const runwayLeaders: Record<string, number> = {};
+  for (const [runwayId, direction] of view.fmaRunwayLeaders) {
+    if (activeRunways.has(runwayId) && direction !== null && isLeaderDir(direction)) {
+      runwayLeaders[runwayId] = direction;
+    }
+  }
+  const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+  return {
+    amzId: amz.id,
+    mag: view.fmaMag,
+    ptlSeconds: view.fmaPtlSeconds,
+    voiceLevel: view.fmaVoiceLevel,
+    fmaBrite: {
+      amz: view.brite.amz,
+      ntz: view.brite.ntz,
+      rwy: view.brite.rwy,
+      ref: view.brite.ref,
+    },
+    runwayLeaders,
+    enabledNtzIds: amz.ntzs.filter((ntz) => !disabledNtzs.has(ntz.id)).map((ntz) => ntz.id),
+    displayProfile: completeDisplayProfile(view),
+  };
+}
+
+function isCompleteDisplayProfile(value: unknown): value is DcbPrefBody {
+  if (!value || typeof value !== "object") return false;
+  const body = value as Partial<DcbPrefBody>;
+  return (
+    isDock(body.dcbDock) &&
+    isRangeNm(body.rangeNm) &&
+    Number.isFinite(body.centerEastNm) &&
+    Number.isFinite(body.centerNorthNm) &&
+    !!body.mapVisibility &&
+    typeof body.mapVisibility === "object" &&
+    !Array.isArray(body.mapVisibility) &&
+    Object.values(body.mapVisibility).every((enabled) => typeof enabled === "boolean") &&
+    !!body.brite &&
+    typeof body.brite === "object" &&
+    Object.values(body.brite).length > 0 &&
+    Object.values(body.brite).every(
+      (level) => typeof level === "number" && Number.isFinite(level) && level >= 0 && level <= 100,
+    ) &&
+    !!body.charSizes &&
+    typeof body.charSizes === "object" &&
+    !!body.ssaFilter &&
+    typeof body.ssaFilter === "object" &&
+    Array.isArray(body.giFilterVisible) &&
+    body.giFilterVisible.every((visible) => typeof visible === "boolean") &&
+    !!body.tpa &&
+    typeof body.tpa === "object" &&
+    !!body.atpa &&
+    typeof body.atpa === "object" &&
+    Array.isArray(body.wxLevels) &&
+    body.wxLevels.length === 6 &&
+    body.wxLevels.every((enabled) => typeof enabled === "boolean") &&
+    typeof body.showRunway === "boolean" &&
+    typeof body.showLocalizer === "boolean" &&
+    typeof body.showRings === "boolean" &&
+    typeof body.showCoastline === "boolean" &&
+    typeof body.ptlOwn === "boolean" &&
+    typeof body.ptlOn === "boolean" &&
+    body.defaultLeaderDir !== undefined &&
+    isLeaderDir(body.defaultLeaderDir) &&
+    isLeaderLength(body.leaderLengthPx)
+  );
+}
+
 export function selectDcbPrefSlot(view: ScopeView, index: number): void {
+  if (view.fmaSurveillance.enabled) return;
   if (index < 0 || index >= DCB_PREF_SLOT_COUNT) {
     return;
   }
@@ -504,6 +694,7 @@ export function selectDcbPrefSlot(view: ScopeView, index: number): void {
   const slot = view.dcbPref.slots[index];
   if (slot) {
     applyDcbPref(view, slot.body);
+    view.dcbPref.normalProfile = completeDisplayProfile(view);
   }
 }
 
@@ -525,15 +716,25 @@ function persistRuntime(view: ScopeView, storage: DcbPrefStorage | undefined): v
     icao,
     activeIndex: view.dcbPref.activeIndex,
     slots: view.dcbPref.slots,
+    normalProfile: view.dcbPref.normalProfile ?? undefined,
+    amzPreferences:
+      view.amzPreferences.size > 0 ? Object.fromEntries(view.amzPreferences.entries()) : undefined,
+    selectedFmaAmzId: view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId ?? undefined,
   };
   storage.setItem(dcbPrefStorageKey(icao), JSON.stringify(file));
 }
 
 export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
+  if (view.fmaSurveillance.enabled) {
+    captureSelectedFmaAmzPreference(view);
+    persistRuntime(view, storage);
+    return;
+  }
   const index = view.dcbPref.activeIndex;
   const name = view.dcbPref.slots[index]?.name ?? `PREF ${index + 1}`;
   captureSelectedFmaAmzPreference(view);
-  view.dcbPref.slots[index] = { name, body: serializeDcbPref(view) };
+  view.dcbPref.slots[index] = { name, body: slotDisplayBody(view) };
+  view.dcbPref.normalProfile = completeDisplayProfile(view);
   persistRuntime(view, storage);
 }
 
@@ -569,9 +770,18 @@ export function commitDcbPrefSaveAs(
   if (!parsed.ok) {
     return null;
   }
+  if (view.fmaSurveillance.enabled) {
+    const amzId = view.fmaSurveillance.selectedAmzId;
+    if (!amzId || parsed.name !== amzId) return null;
+    captureSelectedFmaAmzPreference(view);
+    view.dcbPref.pendingSaveAs = false;
+    persistRuntime(view, storage);
+    return view.dcbPref.activeIndex;
+  }
   const index = nextDcbPrefSaveAsIndex(view);
   captureSelectedFmaAmzPreference(view);
-  view.dcbPref.slots[index] = { name: parsed.name, body: serializeDcbPref(view) };
+  view.dcbPref.slots[index] = { name: parsed.name, body: slotDisplayBody(view) };
+  view.dcbPref.normalProfile = completeDisplayProfile(view);
   view.dcbPref.activeIndex = index;
   view.dcbPref.pendingSaveAs = false;
   persistRuntime(view, storage);
@@ -579,6 +789,12 @@ export function commitDcbPrefSaveAs(
 }
 
 export function deleteDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
+  if (view.fmaSurveillance.enabled) {
+    const amzId = view.fmaSurveillance.selectedAmzId;
+    if (amzId) view.amzPreferences.delete(amzId);
+    persistRuntime(view, storage);
+    return;
+  }
   view.dcbPref.slots[view.dcbPref.activeIndex] = null;
   persistRuntime(view, storage);
 }
@@ -603,6 +819,7 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
     icao,
     activeIndex: 0,
     slots: emptyDcbPrefSlots(),
+    amzPreferences: undefined,
   };
   if (raw === null || raw === "") {
     return fallback;
@@ -612,7 +829,15 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
     if (parsed === null || typeof parsed !== "object") {
       return fallback;
     }
-    const file = parsed as { v?: unknown; icao?: unknown; slots?: unknown; activeIndex?: unknown };
+    const file = parsed as {
+      v?: unknown;
+      icao?: unknown;
+      slots?: unknown;
+      activeIndex?: unknown;
+      normalProfile?: unknown;
+      amzPreferences?: unknown;
+      selectedFmaAmzId?: unknown;
+    };
     if (!isReadablePrefSchemaVersion(file.v) || typeof file.icao !== "string") {
       return fallback;
     }
@@ -634,6 +859,15 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       icao: file.icao,
       activeIndex,
       slots: parsedSlots,
+      ...(file.v === DCB_PREF_SCHEMA_VERSION && isCompleteDisplayProfile(file.normalProfile)
+        ? { normalProfile: file.normalProfile }
+        : {}),
+      ...(file.amzPreferences && typeof file.amzPreferences === "object"
+        ? { amzPreferences: file.amzPreferences as Record<string, FmaAmzPreference> }
+        : {}),
+      ...(typeof file.selectedFmaAmzId === "string"
+        ? { selectedFmaAmzId: file.selectedFmaAmzId }
+        : {}),
     };
   } catch {
     return fallback;
@@ -647,12 +881,55 @@ export function loadDcbPrefFromStorage(
   storage: DcbPrefStorage,
 ): void {
   view.dcbPref.icao = icao;
-  const file = parseDcbPrefJson(storage.getItem(dcbPrefStorageKey(icao)), icao);
+  view.amzPreferences.clear();
+  if (view.fmaSurveillance.enabled) {
+    clearFmaSurveillanceView(view);
+    configureFmaSurveillanceView(view, false, null);
+  }
+  view.fmaCandidateMode = false;
+  if (view.serviceMode === "FMA") view.serviceMode = DEFAULT_SERVICE_MODE;
+  const parsedFile = parseDcbPrefJson(storage.getItem(dcbPrefStorageKey(icao)), icao);
+  const file =
+    parsedFile.icao.trim().toUpperCase() === icao.trim().toUpperCase()
+      ? parsedFile
+      : parseDcbPrefJson(null, icao);
   view.dcbPref.slots = file.slots;
   view.dcbPref.activeIndex = file.activeIndex ?? 0;
+  if (file.selectedFmaAmzId) view.fmaDefaultAmzId = file.selectedFmaAmzId;
+  view.dcbPref.normalProfile = file.normalProfile ?? null;
+  if (file.amzPreferences) {
+    for (const [id, pref] of Object.entries(file.amzPreferences)) {
+      if (pref && typeof pref === "object" && pref.amzId === id) view.amzPreferences.set(id, pref);
+    }
+  }
+  // Older v1–v3 files stored AMZ preferences inside a normal slot body.
+  for (const slot of view.dcbPref.slots) {
+    if (slot?.body?.amzPreferences && typeof slot.body.amzPreferences === "object") {
+      for (const [id, pref] of Object.entries(slot.body.amzPreferences)) {
+        if (pref && typeof pref === "object" && pref.amzId === id && !view.amzPreferences.has(id)) {
+          view.amzPreferences.set(id, pref);
+        }
+      }
+    }
+  }
   const slot = view.dcbPref.slots[view.dcbPref.activeIndex];
-  if (slot) {
+  if (file.normalProfile) {
+    applyDcbPref(view, file.normalProfile);
+  } else if (slot) {
     applyDcbPref(view, slot.body);
+    view.dcbPref.normalProfile = completeDisplayProfile(view);
+  } else {
+    // Establish a valid factory baseline now; subsequent unsaved changes never
+    // become the FMA exit target.
+    applyDcbPrefDefaults(view);
+    view.dcbPref.normalProfile = completeDisplayProfile(view);
+  }
+  // Root namespace wins over legacy slot-embedded copies.
+  if (file.amzPreferences) {
+    view.amzPreferences.clear();
+    for (const [id, pref] of Object.entries(file.amzPreferences)) {
+      if (pref && typeof pref === "object" && pref.amzId === id) view.amzPreferences.set(id, pref);
+    }
   }
 }
 
@@ -687,14 +964,35 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   if (!pref || pref.amzId !== amzId) {
     return false;
   }
-  if (isRangeNm(pref.rangeNm)) {
+  return applyFmaAmzPreferenceValue(view, amzId, pref);
+}
+
+function applyFmaAmzPreferenceValue(
+  view: ScopeView,
+  amzId: string,
+  pref: FmaAmzPreference,
+): boolean {
+  const completeProfile = isCompleteDisplayProfile(pref.displayProfile)
+    ? pref.displayProfile
+    : null;
+  if (completeProfile) {
+    applyDcbPref(view, completeProfile);
+    applyMapVisibility(view, completeProfile.mapVisibility ?? {}, true);
+  } else {
+    applyDcbPref(view, view.dcbPref.normalProfile ?? factoryDisplayProfile(view));
+  }
+  if (!completeProfile && isRangeNm(pref.rangeNm)) {
     view.camera.rangeNm = pref.rangeNm;
   }
-  if (Number.isFinite(pref.centerEastNm) && Number.isFinite(pref.centerNorthNm)) {
+  if (
+    !completeProfile &&
+    Number.isFinite(pref.centerEastNm) &&
+    Number.isFinite(pref.centerNorthNm)
+  ) {
     view.camera.centerEastNm = pref.centerEastNm!;
     view.camera.centerNorthNm = pref.centerNorthNm!;
   }
-  if (pref.mapVisibility && typeof pref.mapVisibility === "object") {
+  if (!completeProfile && pref.mapVisibility && typeof pref.mapVisibility === "object") {
     applyMapVisibility(view, pref.mapVisibility);
   }
   if (
@@ -767,6 +1065,10 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
       }
     }
   }
+  if (!completeProfile) {
+    pref.displayProfile = completeDisplayProfile(view);
+    persistRuntime(view, browserDcbPrefStorage() ?? undefined);
+  }
   return true;
 }
 
@@ -797,6 +1099,7 @@ function captureSelectedFmaAmzPreference(view: ScopeView): void {
     centerEastNm: view.camera.centerEastNm,
     centerNorthNm: view.camera.centerNorthNm,
     mapVisibility: mapToRecord(view.mapVisibility),
+    displayProfile: completeDisplayProfile(view),
   });
 }
 
@@ -820,6 +1123,15 @@ export function saveFmaAmzPreference(
       currentRunwayLeaders[rwy] = dir;
     }
   }
+  const profileBase =
+    settings?.displayProfile ?? existing?.displayProfile ?? completeDisplayProfile(view);
+  const displayProfile = JSON.parse(JSON.stringify(profileBase)) as DcbPrefBody;
+  displayProfile.rangeNm = (settings?.rangeNm ?? profileBase.rangeNm) as RangeNm;
+  displayProfile.centerEastNm = settings?.centerEastNm ?? profileBase.centerEastNm;
+  displayProfile.centerNorthNm = settings?.centerNorthNm ?? profileBase.centerNorthNm;
+  displayProfile.mapVisibility = JSON.parse(
+    JSON.stringify(settings?.mapVisibility ?? profileBase.mapVisibility),
+  ) as Record<string, boolean>;
   const updated: FmaAmzPreference = {
     amzId,
     mag: settings?.mag ?? existing?.mag ?? view.fmaMag,
@@ -834,10 +1146,11 @@ export function saveFmaAmzPreference(
     runwayLeaders: settings?.runwayLeaders ?? existing?.runwayLeaders ?? currentRunwayLeaders,
     enabledNtzIds: settings?.enabledNtzIds ?? existing?.enabledNtzIds ?? currentEnabledNtzs,
     voiceLevel: settings?.voiceLevel ?? existing?.voiceLevel ?? view.fmaVoiceLevel,
-    rangeNm: settings?.rangeNm ?? view.camera.rangeNm,
-    centerEastNm: settings?.centerEastNm ?? view.camera.centerEastNm,
-    centerNorthNm: settings?.centerNorthNm ?? view.camera.centerNorthNm,
-    mapVisibility: settings?.mapVisibility ?? mapToRecord(view.mapVisibility),
+    rangeNm: displayProfile.rangeNm,
+    centerEastNm: displayProfile.centerEastNm,
+    centerNorthNm: displayProfile.centerNorthNm,
+    mapVisibility: { ...displayProfile.mapVisibility },
+    displayProfile,
   };
   view.amzPreferences.set(amzId, updated);
   return updated;

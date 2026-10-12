@@ -57,6 +57,7 @@ import {
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
 import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcb/dcbPref";
+import type { DcbPrefBody } from "./dcb/dcbPref";
 import {
   cancelDcbSpinner,
   idleDcbSpinner,
@@ -129,7 +130,11 @@ import {
   type FmaSurveillanceState,
   type FmaSurveillanceTick,
 } from "./fmaSurveillance";
-import { applyFmaAmzPreference, getFmaMaximumPtlSeconds } from "./dcb/dcbPref";
+import {
+  applyFmaAmzPreference,
+  applyLastNormalDcbPref,
+  getFmaMaximumPtlSeconds,
+} from "./dcb/dcbPref";
 import type { DatablockRenderSnapshot } from "./datablock";
 import { resolveFmaFlow, type RadarSite, type Scenario } from "@scenario";
 import {
@@ -490,6 +495,8 @@ export const DEFAULT_SERVICE_MODE: ServiceMode = "FSL";
  */
 export interface FmaAmzPreference {
   amzId: string;
+  /** Complete supported workstation display profile; legacy partial fields remain readable. */
+  displayProfile?: DcbPrefBody;
   mag?: number;
   ptlSeconds?: number;
   fmaBrite?: {
@@ -892,6 +899,7 @@ export function rebindFmaScenarioAmzs(
     );
   } else if (wasEnabled) {
     configureFmaSurveillanceView(view, false, null);
+    applyLastNormalDcbPref(view);
   }
 }
 
