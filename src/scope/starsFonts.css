@@ -123,6 +123,9 @@
 .dcb .dcb-main-grid[data-dcb-layout="AUX"] {
   grid-template-columns: repeat(17, var(--dcb-column, 72px));
 }
+.dcb .dcb-main-grid[data-dcb-layout="FMA_AUX"] {
+  grid-template-columns: repeat(22, var(--dcb-column, 72px));
+}
 .dcb .dcb-main-grid[data-dcb-layout="CHAR_SIZE"] {
   grid-template-columns: repeat(6, var(--dcb-column, 72px));
 }

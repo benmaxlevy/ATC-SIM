@@ -12,7 +12,8 @@ import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
 import { PALETTE, createScopeView } from "@scope";
-import { DisplayControlBar, MAIN_DCB_LAYOUT } from "../DisplayControlBar";
+import { DisplayControlBar, FMA_AUX_DCB_LAYOUT, MAIN_DCB_LAYOUT } from "../DisplayControlBar";
+import { renderFmaAux } from "../DisplayControlBarMenus";
 
 function dcbHtml() {
   return renderToStaticMarkup(
@@ -165,6 +166,7 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
   for (const [layout, columns] of [
     ["AUX", 17],
+    ["FMA_AUX", 22],
     ["MAPS", 18],
     ["BRITE", 10],
     ["CHAR_SIZE", 6],
@@ -193,6 +195,31 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/\.dcb-cell[\s\S]*?inset 0 1px var\(--dcb-highlight/);
   expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient|raster|stripe/i);
+});
+
+test("FMA AUX uses 22 full-width columns with only paired controls at half height", () => {
+  const html = renderToStaticMarkup(renderFmaAux(createScopeView(), () => undefined));
+  expect(html).toContain('data-dcb-layout="FMA_AUX"');
+  for (const cell of FMA_AUX_DCB_LAYOUT) {
+    expect(html).toContain(`data-dcb-layout-id="${cell.id}"`);
+    expect(html).toMatch(
+      new RegExp(`data-dcb-layout-id="${cell.id}"[^>]*data-dcb-row-span="${cell.rowSpan}"`),
+    );
+  }
+  for (const id of ["fma-amz", "fma-mag", "fma-ptl-len", "dwell-on", "shift"]) {
+    expect(FMA_AUX_DCB_LAYOUT.find((cell) => cell.id === id)?.rowSpan).toBe(2);
+  }
+  for (const id of ["fma-ntz-1", "fma-ntz-2", "fma-rwy-1", "fma-rwy-2"]) {
+    expect(FMA_AUX_DCB_LAYOUT.find((cell) => cell.id === id)?.rowSpan).toBe(1);
+  }
+  const css = cssSource();
+  expect(css).toMatch(
+    /\.dcb-vertical \.dcb-main-grid\[data-dcb-layout="FMA_AUX"\][\s\S]*?grid-template-rows:\s*repeat\(22,\s*minmax\(0,\s*1fr\)\)/,
+  );
+  const fontCss = readFileSync(new URL("../../../scope/starsFonts.css", import.meta.url), "utf8");
+  expect(fontCss).toMatch(
+    /\[data-dcb-layout="FMA_AUX"\][\s\S]*?grid-template-columns:\s*repeat\(22,\s*var\(--dcb-column,\s*72px\)\)/,
+  );
 });
 
 test("AC5 — copy and typography remain a STARS-like trainer approximation", () => {

@@ -626,7 +626,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
   };
 
   return (
-    <div className="dcb-main-grid" data-dcb-layout="AUX">
+    <div className="dcb-main-grid" data-dcb-layout="FMA_AUX">
       {/* Col 1: VOL (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
