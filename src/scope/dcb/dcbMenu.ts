@@ -65,7 +65,11 @@ export type BriteSpinnerCell =
   | "BRITE_BKC"
   | "BRITE_CMP"
   | "BRITE_BCN"
-  | "BRITE_PRI";
+  | "BRITE_PRI"
+  | "BRITE_AMZ"
+  | "BRITE_NTZ"
+  | "BRITE_RWY"
+  | "BRITE_REF";
 
 import { LEADER_LENGTH_STEPS_PX } from "../leader";
 
@@ -82,19 +86,27 @@ export type DcbSpinnerCell =
   | "PTL"
   | "TPA_MI"
   | "VOL"
+  | "MAG"
+  | "FMA_AMZ"
+  | "FMA_PTL"
+  | "FMA_VOICE"
+  | `FMA_LDR_${string}`
   | CharSizeSpinnerCell
   | BriteSpinnerCell;
+
+export type SpinnerCommittedValue = string | number | null;
 
 export interface DcbSpinnerState {
   armed: boolean;
   cell: DcbSpinnerCell | null;
   buffer: string;
   initialValue: number | null;
+  initialStringValue?: string | null;
   initialShowRings?: boolean;
   initialMapCache?: unknown;
   initialPtlOn?: boolean;
   onCancel?: () => void;
-  onCommit?: (cell: DcbSpinnerCell, value: number) => void;
+  onCommit?: (cell: DcbSpinnerCell, value: SpinnerCommittedValue) => void;
 }
 
 /** Structural host so this module stays DOM-free and does not import scopeView. */
@@ -112,6 +124,21 @@ export const idleDcbSpinnerState = idleDcbSpinner;
 
 export function isDcbSubmenu(menu: DcbMenu): boolean {
   return menu !== "MAIN" && menu !== "AUX";
+}
+
+export function isFmaDcbSpinnerCell(cell: DcbSpinnerCell | null): boolean {
+  if (!cell) return false;
+  return (
+    cell === "MAG" ||
+    cell === "FMA_AMZ" ||
+    cell === "FMA_PTL" ||
+    cell === "FMA_VOICE" ||
+    cell.startsWith("FMA_LDR_") ||
+    cell === "BRITE_NTZ" ||
+    cell === "BRITE_AMZ" ||
+    cell === "BRITE_RWY" ||
+    cell === "BRITE_REF"
+  );
 }
 
 interface SpinnerHostCandidate {
@@ -136,6 +163,13 @@ interface SpinnerHostCandidate {
   brite?: Record<string, number>;
   charSizes?: Record<string, number>;
   charSizePx?: number;
+  fmaMag?: number;
+  fmaPtlSeconds?: number;
+  fmaVoiceLevel?: number;
+  fmaRunwayLeaders?: Map<string, number | null>;
+  fmaSurveillance?: { enabled: boolean; selectedAmzId: string | null };
+  fmaAmzs?: Array<{ id: string; label?: string }>;
+  lastWarning?: string | null;
 }
 
 function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | null {
@@ -173,7 +207,19 @@ function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | 
       return typeof h.vol === "number" ? h.vol : null;
     case "TPA_MI":
       return typeof h.tpa?.radiusNm === "number" ? h.tpa.radiusNm : null;
+    case "MAG":
+      return typeof h.fmaMag === "number" ? h.fmaMag : null;
+    case "FMA_PTL":
+      return typeof h.fmaPtlSeconds === "number" ? h.fmaPtlSeconds : null;
+    case "FMA_VOICE":
+      return typeof h.fmaVoiceLevel === "number" ? h.fmaVoiceLevel : null;
+    case "FMA_AMZ":
+      return null;
     default:
+      if (cell.startsWith("FMA_LDR_")) {
+        const rwy = cell.slice(8);
+        return (h.fmaRunwayLeaders?.get(rwy) as number) ?? null;
+      }
       if (cell.startsWith("BRITE_")) {
         const channel = cell.slice(6).toLowerCase();
         return typeof h.brite?.[channel] === "number" ? h.brite[channel] : null;
@@ -199,7 +245,7 @@ function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | 
 
 export interface DcbSpinnerArmOptions {
   onCancel?: () => void;
-  onCommit?: (cell: DcbSpinnerCell, value: number) => void;
+  onCommit?: (cell: DcbSpinnerCell, value: SpinnerCommittedValue) => void;
 }
 
 function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: number): void {
@@ -283,8 +329,28 @@ function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: numbe
         h.tpa.radiusNm = val;
       }
       break;
+    case "MAG":
+      if ("fmaMag" in h) {
+        h.fmaMag = val;
+      }
+      break;
+    case "FMA_PTL":
+      if ("fmaPtlSeconds" in h) {
+        h.fmaPtlSeconds = val;
+      }
+      break;
+    case "FMA_VOICE":
+      if ("fmaVoiceLevel" in h) {
+        h.fmaVoiceLevel = val;
+      }
+      break;
     default:
-      if (cell.startsWith("BRITE_")) {
+      if (cell.startsWith("FMA_LDR_")) {
+        const rwy = cell.slice(8);
+        if (h.fmaRunwayLeaders) {
+          h.fmaRunwayLeaders.set(rwy, val === 5 ? null : val);
+        }
+      } else if (cell.startsWith("BRITE_")) {
         const channel = cell.slice(6).toLowerCase();
         if (h.brite && typeof h.brite === "object") {
           h.brite[channel] = val;
@@ -339,7 +405,22 @@ export function validateDcbSpinnerValue(cell: DcbSpinnerCell, val: number): bool
       return Number.isInteger(val) && val >= 1 && val <= 9 && val !== 5;
     case "TPA_MI":
       return [2, 3, 5, 10].includes(val) || (val > 0 && val <= 50);
+    case "MAG":
+      return Number.isInteger(val) && val >= 1 && val <= 8;
+    case "FMA_PTL":
+      return Number.isInteger(val) && val >= 0 && val <= 30;
+    case "FMA_VOICE":
+      return Number.isInteger(val) && val >= 1 && val <= 10;
     default:
+      if (cell.startsWith("FMA_LDR_")) {
+        return Number.isInteger(val) && val >= 1 && val <= 9;
+      }
+      if (cell === "BRITE_NTZ") {
+        return Number.isInteger(val) && val >= 50 && val <= 100;
+      }
+      if (cell === "BRITE_AMZ" || cell === "BRITE_RWY" || cell === "BRITE_REF") {
+        return Number.isInteger(val) && (val === 0 || (val >= 5 && val <= 100));
+      }
       if (cell.startsWith("BRITE_")) {
         return Number.isInteger(val) && val >= 0 && val <= 100;
       }
@@ -367,6 +448,10 @@ function restoreDcbSpinnerCoupledState(host: DcbMenuHost): void {
 export function cancelDcbSpinner(host: DcbMenuHost): boolean {
   if (!host.dcbSpinner.armed) {
     return false;
+  }
+  const h = host as unknown as SpinnerHostCandidate;
+  if ("lastWarning" in h && h.lastWarning !== "NO PREF SET FOUND") {
+    h.lastWarning = null;
   }
   if (host.dcbSpinner.cell && host.dcbSpinner.initialValue !== null) {
     setSpinnerCellValue(host, host.dcbSpinner.cell, host.dcbSpinner.initialValue);
@@ -412,10 +497,18 @@ export function armDcbSpinner(
 }
 
 export function inputDcbSpinnerKey(host: DcbMenuHost, key: string): boolean {
-  if (!host.dcbSpinner.armed) {
+  if (!host.dcbSpinner.armed || !host.dcbSpinner.cell) {
     return false;
   }
-  if (/^[0-9]$/.test(key)) {
+  const cell = host.dcbSpinner.cell;
+  if (cell === "FMA_AMZ") {
+    if (/^[A-Za-z0-9_-]+$/.test(key)) {
+      host.dcbSpinner.buffer += key.toUpperCase();
+      return true;
+    }
+    return false;
+  }
+  if (/^[0-9]+$/.test(key)) {
     host.dcbSpinner.buffer += key;
     return true;
   }
@@ -423,6 +516,11 @@ export function inputDcbSpinnerKey(host: DcbMenuHost, key: string): boolean {
     if (!host.dcbSpinner.buffer.includes(".")) {
       host.dcbSpinner.buffer += key;
     }
+    return true;
+  }
+  if (/^[A-Za-z]+$/.test(key) && isFmaDcbSpinnerCell(cell)) {
+    // Retain malformed alphabetic characters in numeric FMA spinner buffer so commit rejects with FORMAT
+    host.dcbSpinner.buffer += key;
     return true;
   }
   return false;
@@ -442,26 +540,85 @@ export function commitDcbSpinner(host: DcbMenuHost): boolean {
   if (!host.dcbSpinner.armed || !host.dcbSpinner.cell) {
     return false;
   }
+  const h = host as unknown as SpinnerHostCandidate;
   const cell = host.dcbSpinner.cell;
   const buffer = host.dcbSpinner.buffer.trim();
   let success = true;
-  let committedValue: number | null = null;
+  let committedValue: SpinnerCommittedValue = null;
 
-  if (buffer.length > 0) {
-    const num = Number(buffer);
-    if (!isNaN(num) && validateDcbSpinnerValue(cell, num)) {
-      setSpinnerCellValue(host, cell, num);
-      committedValue = num;
-      success = true;
+  if (cell === "FMA_AMZ") {
+    if (buffer.length > 0) {
+      const match = h.fmaAmzs?.find((a) => {
+        const idMatches = a.id.toUpperCase() === buffer.toUpperCase();
+        const labelMatches = a.label && a.label.toUpperCase() === buffer.toUpperCase();
+        return idMatches || labelMatches;
+      });
+      if (match) {
+        committedValue = match.id;
+        success = true;
+        if ("lastWarning" in h) h.lastWarning = null;
+      } else {
+        if ("lastWarning" in h) h.lastWarning = "FORMAT";
+        restoreDcbSpinnerCoupledState(host);
+        success = false;
+      }
     } else {
+      success = true;
+      if ("lastWarning" in h) h.lastWarning = null;
+    }
+  } else if (buffer.length > 0) {
+    const isStrictInteger = /^-?\d+$/.test(buffer);
+    const isStrictFloat = /^-?\d+(\.\d+)?$/.test(buffer);
+    const isFma =
+      cell === "MAG" ||
+      cell === "FMA_PTL" ||
+      cell === "FMA_VOICE" ||
+      cell.startsWith("FMA_LDR_") ||
+      cell === "BRITE_NTZ" ||
+      cell === "BRITE_AMZ" ||
+      cell === "BRITE_RWY" ||
+      cell === "BRITE_REF";
+
+    const isRunwayLeaderMultiChar = cell.startsWith("FMA_LDR_") && buffer.length !== 1;
+    if (
+      !isStrictFloat ||
+      (isFma && cell !== "PTL" && !isStrictInteger) ||
+      isRunwayLeaderMultiChar
+    ) {
+      if (isFma && "lastWarning" in h) {
+        h.lastWarning = "FORMAT";
+      }
       if (host.dcbSpinner.initialValue !== null) {
         setSpinnerCellValue(host, cell, host.dcbSpinner.initialValue);
       }
       restoreDcbSpinnerCoupledState(host);
       success = false;
+    } else {
+      const num = Number(buffer);
+      if (!isNaN(num) && validateDcbSpinnerValue(cell, num)) {
+        setSpinnerCellValue(host, cell, num);
+        committedValue = num;
+        success = true;
+        if (isFma && "lastWarning" in h) h.lastWarning = null;
+      } else {
+        if (isFma && "lastWarning" in h) {
+          h.lastWarning = "ILL VALUE";
+        }
+        if (host.dcbSpinner.initialValue !== null) {
+          setSpinnerCellValue(host, cell, host.dcbSpinner.initialValue);
+        }
+        restoreDcbSpinnerCoupledState(host);
+        success = false;
+      }
     }
   } else {
     success = true;
+    if (
+      "lastWarning" in h &&
+      (cell === "MAG" || cell === "FMA_PTL" || cell === "FMA_VOICE" || cell.startsWith("FMA_LDR_"))
+    ) {
+      h.lastWarning = null;
+    }
   }
 
   host.dcbSpinner.armed = false;

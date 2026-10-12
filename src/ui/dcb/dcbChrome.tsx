@@ -424,6 +424,10 @@ export interface DcbCellProps {
     | "brite-wx"
     | "brite-wxc"
     | "brite-bkc"
+    | "brite-amz"
+    | "brite-ntz"
+    | "brite-rwy"
+    | "brite-ref"
     | "place"
     | "off-cntr"
     | "place-rr"
@@ -490,7 +494,20 @@ export interface DcbCellProps {
     | "pref-restore"
     | "pref-save"
     | "pref-save-as"
-    | "pref-delete";
+    | "pref-delete"
+    | "fma-amz"
+    | "fma-mag"
+    | "fma-voice"
+    | "fma-voice-test"
+    | "fma-ptl-len"
+    | "fma-ntz-1"
+    | "fma-ntz-2"
+    | "fma-ntz-3"
+    | "fma-ntz-all"
+    | "fma-rwy-1"
+    | "fma-rwy-2"
+    | "fma-rwy-3"
+    | "fma-rwy-4";
   dataMapId?: string;
   dataMapSlot?: number;
   dataGiSlot?: number;

@@ -444,7 +444,10 @@ export function createFmaSpeechController(
 export function syncFmaSpeech(
   controller: FmaSpeechController,
   view: {
-    fmaSpeechEvents: Array<{ type: "onset" | "cancel"; episodeId: string; aircraftId: string }>;
+    fmaSpeechEvents: Array<
+      | { type: "onset" | "cancel"; episodeId: string; aircraftId: string }
+      | { type: "test"; level?: number }
+    >;
     fmaAlertResults: ReadonlyMap<string, { episode?: FmaAlertEpisode | null }>;
     fmaVoiceLevel?: number;
   },
@@ -472,6 +475,12 @@ export function syncFmaSpeech(
       const aircraft = world.aircraft.find((ac) => ac.id === event.aircraftId);
       const callsign = aircraft?.callsign ?? event.aircraftId;
       controller.enqueueEpisode(episode, callsign, event.aircraftId);
+    } else if (event.type === "test") {
+      if (event.level !== undefined) {
+        controller.setVoiceLevel(event.level, true);
+      } else {
+        controller.voiceTest();
+      }
     }
   }
 }

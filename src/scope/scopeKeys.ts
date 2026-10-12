@@ -117,6 +117,7 @@ import {
   commitDcbSpinner,
   handleDcbEscape,
   inputDcbSpinnerKey,
+  isFmaDcbSpinnerCell,
   openDcbMenu,
 } from "./dcb/dcbMenu";
 
@@ -135,6 +136,8 @@ import {
   setRangeRingInterval,
   toggleVideoMap,
   videoMapTokenLayout,
+  FMA_RUNWAY_KEYPAD_TO_DIR,
+  setFmaRunwayLeader,
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
 import { PpiPlaceholderId } from "./ppi-placeholder";
@@ -1439,6 +1442,13 @@ export function handleScopeKeyDown(
         if (Number.isInteger(dir) && dir !== 5) {
           applyDcbLeaderDir(view, world, dir as LeaderDir);
         }
+      } else if (cell?.startsWith("FMA_LDR_") && buffer.trim().length > 0) {
+        const keypadDigit = Number(buffer.trim());
+        const mapped = FMA_RUNWAY_KEYPAD_TO_DIR[keypadDigit];
+        if (mapped !== undefined) {
+          const rwy = cell.slice(8);
+          setFmaRunwayLeader(view, rwy, mapped);
+        }
       }
       ui?.onHandled?.();
       return true;
@@ -1468,6 +1478,20 @@ export function handleScopeKeyDown(
             ? event.code!.slice(6)
             : event.key;
       inputDcbSpinnerKey(view, ch);
+      ui?.onHandled?.();
+      return true;
+    }
+    // Consume printable letter/alphanumeric characters while a DCB spinner is armed
+    // (for AMZ label entry, or to capture malformed alphabetic inputs for numeric format rejection)
+    if (
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      /^[A-Za-z_-]$/.test(event.key) &&
+      isFmaDcbSpinnerCell(view.dcbSpinner.cell)
+    ) {
+      consume(event);
+      inputDcbSpinnerKey(view, event.key);
       ui?.onHandled?.();
       return true;
     }

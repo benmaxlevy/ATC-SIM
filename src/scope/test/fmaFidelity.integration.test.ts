@@ -42,10 +42,29 @@ import {
   enterFmaConfirmation,
   cancelFmaConfirmation,
   commitFmaConfirmation,
+  stepFmaMag,
+  stepFmaPtl,
+  stepFmaRunwayLeader,
+  toggleFmaNtz,
+  toggleFmaNtzAll,
+  commitFmaAmzSwitch,
+  stepBriteChannel,
 } from "../dcb/dcbFunctions";
-import { handleDcbEscape } from "../dcb/dcbMenu";
-import { serializeDcbPref, applyDcbPref, saveFmaAmzPreference } from "../dcb/dcbPref";
+import {
+  armDcbSpinner,
+  commitDcbSpinner,
+  cancelDcbSpinner,
+  inputDcbSpinnerKey,
+  handleDcbEscape,
+} from "../dcb/dcbMenu";
+import {
+  serializeDcbPref,
+  applyDcbPref,
+  saveFmaAmzPreference,
+  applyFmaAmzPreference,
+} from "../dcb/dcbPref";
 import { rebindFmaScenarioAmzs, setFmaVoiceLevel } from "../scopeView";
+import { buildSsaRenderLines } from "../ssa";
 import { getDatablockVisualState } from "../render/renderScopePaint";
 import { makeTestAircraft } from "../../core";
 import {
@@ -2237,5 +2256,295 @@ describe("T02-224 FMA Browser Speech Queue integration", () => {
 
     expect(view.fmaSpeechEvents.length).toBe(0);
     expect(mock.cancelledCount).toBe(1);
+  });
+});
+
+describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
+  test("AC1 & AC3 — MAG boundaries, rollback, input validation, and ILL VALUE vs FORMAT", () => {
+    const view = createScopeView();
+    view.fmaMag = 2;
+
+    // Pointer step saturation
+    expect(stepFmaMag(view, 1)).toBe(3);
+    expect(stepFmaMag(view, 10)).toBe(8); // Saturation at 8
+    expect(stepFmaMag(view, -10)).toBe(1); // Saturation at 1
+
+    // Arm and type valid whole integer
+    view.fmaMag = 2;
+    armDcbSpinner(view, "MAG");
+    expect(inputDcbSpinnerKey(view, "4")).toBe(true);
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.fmaMag).toBe(4);
+    expect(view.lastWarning).toBeNull();
+
+    // Out of range gives ILL VALUE and restores previous
+    armDcbSpinner(view, "MAG");
+    inputDcbSpinnerKey(view, "9");
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaMag).toBe(4); // Rolled back
+    expect(view.lastWarning).toBe("ILL VALUE");
+
+    // Non-integer gives FORMAT and restores previous
+    armDcbSpinner(view, "MAG");
+    inputDcbSpinnerKey(view, "2");
+    inputDcbSpinnerKey(view, ".");
+    inputDcbSpinnerKey(view, "5");
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaMag).toBe(4);
+    expect(view.lastWarning).toBe("FORMAT");
+
+    // Malformed alphabetic entry gives FORMAT and restores previous
+    armDcbSpinner(view, "MAG");
+    inputDcbSpinnerKey(view, "A");
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaMag).toBe(4);
+    expect(view.lastWarning).toBe("FORMAT");
+
+    // Escape/CLEAR restores previous factor and clears warning
+    armDcbSpinner(view, "MAG");
+    inputDcbSpinnerKey(view, "6");
+    expect(cancelDcbSpinner(view)).toBe(true);
+    expect(view.fmaMag).toBe(4);
+    expect(view.lastWarning).toBeNull();
+  });
+
+  test("AC1 & AC2 — AMZ label resolution, missing PREF warning, one-AMZ disabled selector and clean rebind", () => {
+    const view = createScopeView();
+    const amz1 = syntheticAmz();
+    const amz2: FmaAmz = {
+      ...syntheticAmz(),
+      id: "AMZ-SOUTH",
+      label: "SOUTH34",
+    };
+    view.fmaAmzs = [amz1, amz2];
+    configureFmaSurveillanceView(view, true, amz1.id);
+
+    // Initial state
+    expect(view.fmaSurveillance.selectedAmzId).toBe(amz1.id);
+
+    // Switch to known label with no pref set gives NO PREF SET FOUND but succeeds
+    armDcbSpinner(view, "FMA_AMZ", {
+      onCommit: (_cell, targetAmzId) => {
+        if (typeof targetAmzId === "string") {
+          commitFmaAmzSwitch(view, targetAmzId);
+        }
+      },
+    });
+    for (const ch of "SOUTH34") {
+      inputDcbSpinnerKey(view, ch);
+    }
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-SOUTH");
+    expect(view.lastWarning).toBe("NO PREF SET FOUND");
+
+    // Unknown label gives FORMAT and preserves selected AMZ
+    armDcbSpinner(view, "FMA_AMZ", {
+      onCommit: (_cell, targetAmzId) => {
+        if (typeof targetAmzId === "string") {
+          commitFmaAmzSwitch(view, targetAmzId);
+        }
+      },
+    });
+    for (const ch of "NORTH99") {
+      inputDcbSpinnerKey(view, ch);
+    }
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("AMZ-SOUTH");
+    expect(view.lastWarning).toBe("FORMAT");
+
+    // Saving pref and switching clears warning
+    saveFmaAmzPreference(view, amz1.id, { mag: 5 });
+    armDcbSpinner(view, "FMA_AMZ", {
+      onCommit: (_cell, targetAmzId) => {
+        if (typeof targetAmzId === "string") {
+          commitFmaAmzSwitch(view, targetAmzId);
+        }
+      },
+    });
+    for (const ch of amz1.id) {
+      inputDcbSpinnerKey(view, ch);
+    }
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.fmaSurveillance.selectedAmzId).toBe(amz1.id);
+    expect(view.fmaMag).toBe(5);
+    expect(view.lastWarning).toBeNull();
+  });
+
+  test("AC3 — PTL seconds 0 removes PTLs+SSA, nonzero updates PTL, independent of caution horizon", () => {
+    const view = createScopeView();
+    view.fmaSurveillance.enabled = true;
+    view.fmaPtlSeconds = 10;
+
+    const dummyFilter = { minHundreds: 0, maxHundreds: 600 };
+    const dummyFilterEntry = {
+      phase: "idle" as const,
+      digits: "",
+      lastKeyAtMs: 0,
+      previous: dummyFilter,
+      pendingMin: 0,
+    };
+
+    // SSA Line 7 with FMA PTL 10s
+    let lines = buildSsaRenderLines({
+      simTimeMs: 0,
+      rangeNm: 40,
+      offCenter: false,
+      filter: dummyFilter,
+      filterEntry: dummyFilterEntry,
+      fmaMode: true,
+      fmaPtlSeconds: 10,
+    });
+    let line7 = lines.find((l) => l.text.includes("40NM"));
+    expect(line7?.text).toBe("40NM PTL: 10");
+
+    // Step PTL
+    expect(stepFmaPtl(view, 1)).toBe(15);
+    expect(stepFmaPtl(view, -10)).toBe(0); // Clamped at 0
+
+    // Set 0 via spinner
+    armDcbSpinner(view, "FMA_PTL");
+    inputDcbSpinnerKey(view, "0");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.fmaPtlSeconds).toBe(0);
+
+    // SSA Line 7 with FMA PTL 0s omits PTL readout
+    lines = buildSsaRenderLines({
+      simTimeMs: 0,
+      rangeNm: 40,
+      offCenter: false,
+      filter: dummyFilter,
+      filterEntry: dummyFilterEntry,
+      fmaMode: true,
+      fmaPtlSeconds: 0,
+    });
+    line7 = lines.find((l) => l.text.includes("40NM"));
+    expect(line7?.text).toBe("40NM");
+
+    // Out of range gives ILL VALUE
+    armDcbSpinner(view, "FMA_PTL");
+    for (const ch of "31") inputDcbSpinnerKey(view, ch);
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaPtlSeconds).toBe(0);
+    expect(view.lastWarning).toBe("ILL VALUE");
+
+    // Non-integer gives FORMAT
+    armDcbSpinner(view, "FMA_PTL");
+    for (const ch of "1.5") inputDcbSpinnerKey(view, ch);
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.fmaPtlSeconds).toBe(0);
+    expect(view.lastWarning).toBe("FORMAT");
+  });
+
+  test("AC4 — Runway leader entry accepts keypad directions and NONE, applies per runway", () => {
+    const view = createScopeView();
+    const world = createWorld();
+    view.fmaSurveillance.enabled = true;
+    const rwyId = "08L";
+
+    // 8=S (2), 5=NONE (null), 1=NW (7)
+    // Direct step helper
+    stepFmaRunwayLeader(view, rwyId, 1);
+    expect(view.fmaRunwayLeaders.get(rwyId)).toBe(8); // N
+
+    // Armed spinner entry with keypad digit
+    armDcbSpinner(view, `FMA_LDR_${rwyId}`);
+    inputDcbSpinnerKey(view, "8");
+    const eventEnter = { key: "Enter", preventDefault() {}, stopPropagation() {} };
+    handleScopeKeyDown(eventEnter, view, "radio", world, 1);
+    expect(view.fmaRunwayLeaders.get(rwyId)).toBe(2); // S
+
+    // Keypad 5 = NONE
+    armDcbSpinner(view, `FMA_LDR_${rwyId}`);
+    inputDcbSpinnerKey(view, "5");
+    handleScopeKeyDown(eventEnter, view, "radio", world, 2);
+    expect(view.fmaRunwayLeaders.get(rwyId)).toBeNull();
+
+    // Invalid extra data or non-single digit gives FORMAT
+    armDcbSpinner(view, `FMA_LDR_${rwyId}`);
+    for (const ch of "08") inputDcbSpinnerKey(view, ch);
+    handleScopeKeyDown(eventEnter, view, "radio", world, 3);
+    expect(view.lastWarning).toBe("FORMAT");
+  });
+
+  test("AC4 — NTZ individual toggle, NTZ ALL toggle, and suppression", () => {
+    const view = createScopeView();
+    const amz = syntheticAmz();
+    view.fmaAmzs = [amz];
+    configureFmaSurveillanceView(view, true, amz.id);
+
+    // Initial all NTZs enabled
+    expect(view.fmaAlertInhibit.ntzIds?.size ?? 0).toBe(0);
+
+    // Toggle NTZ 1
+    const ntz1Id = amz.ntzs[0]!.id;
+    toggleFmaNtz(view, ntz1Id);
+    expect(view.fmaAlertInhibit.ntzIds?.has(ntz1Id)).toBe(true);
+
+    // NTZ ALL: when mixed/some disabled, NTZ ALL enables all
+    toggleFmaNtzAll(view);
+    expect(view.fmaAlertInhibit.ntzIds?.size).toBe(0);
+
+    // NTZ ALL: when all enabled, NTZ ALL disables all
+    toggleFmaNtzAll(view);
+    expect(view.fmaAlertInhibit.ntzIds?.size).toBe(amz.ntzs.length);
+  });
+
+  test("AC5 — FMA BRITE channel ranges, wheel ladders, and PREF persistence", () => {
+    const view = createScopeView();
+    view.fmaSurveillance.enabled = true;
+
+    // AMZ channel: 0 (off) or 5..100. 1..4 is ILL VALUE.
+    armDcbSpinner(view, "BRITE_AMZ");
+    inputDcbSpinnerKey(view, "0");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.brite.amz).toBe(0);
+
+    armDcbSpinner(view, "BRITE_AMZ");
+    inputDcbSpinnerKey(view, "5");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.brite.amz).toBe(5);
+
+    armDcbSpinner(view, "BRITE_AMZ");
+    inputDcbSpinnerKey(view, "3"); // 1..4 invalid
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.brite.amz).toBe(5); // Rollback
+    expect(view.lastWarning).toBe("ILL VALUE");
+
+    // NTZ channel: 50..100 only. 0 is ILL VALUE.
+    armDcbSpinner(view, "BRITE_NTZ");
+    inputDcbSpinnerKey(view, "50");
+    expect(commitDcbSpinner(view)).toBe(true);
+    expect(view.brite.ntz).toBe(50);
+
+    armDcbSpinner(view, "BRITE_NTZ");
+    inputDcbSpinnerKey(view, "0");
+    expect(commitDcbSpinner(view)).toBe(false);
+    expect(view.brite.ntz).toBe(50);
+    expect(view.lastWarning).toBe("ILL VALUE");
+
+    // Stepping channels
+    stepBriteChannel(view, "amz", 1);
+    expect(view.brite.amz).toBe(10);
+    stepBriteChannel(view, "ntz", 1);
+    expect(view.brite.ntz).toBe(60);
+
+    // Preference persistence
+    const saved = saveFmaAmzPreference(view, "AMZ-SYN", {
+      fmaBrite: { amz: 70, ntz: 80, rwy: 60, ref: 50 },
+      mag: 3,
+      ptlSeconds: 20,
+    });
+    expect(saved.fmaBrite?.amz).toBe(70);
+    expect(saved.mag).toBe(3);
+    expect(saved.ptlSeconds).toBe(20);
+
+    // Reapply preference
+    view.brite.amz = 10;
+    view.fmaMag = 1;
+    view.fmaPtlSeconds = 5;
+    applyFmaAmzPreference(view, "AMZ-SYN");
+    expect(view.brite.amz).toBe(70);
+    expect(view.fmaMag).toBe(3);
+    expect(view.fmaPtlSeconds).toBe(20);
   });
 });

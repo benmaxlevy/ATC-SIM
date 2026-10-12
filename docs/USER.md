@@ -83,6 +83,18 @@ readbacks, self-hosted speech services (`speech-api`), or radio FX pipelines:
   formant filters, robotic PCM modeling, or proprietary vendor speech hardware is
   claimed.
 
+#### FMA AUX and BRITE controls (Figure 6-17 & 6-18)
+
+When FMA surveillance is enabled via the `MODE` submenu (`MODE -> FMA -> ACCEPT`), pressing `SHIFT` opens the specialized FMA Auxiliary Display Control Bar (TI 6191.409 Figure 6-17) and the `BRITE` submenu switches to Figure 6-18 layout:
+
+- **AMZ Selection**: AMZ cell is selectable if more than one adapted AMZ exists. Accepts wheel/drag or typed case-normalized adapted label (e.g. `NORTH34`). Unknown or duplicate labels are rejected with `FORMAT` warning. Switching AMZ applies saved preferences and cancels obsolete episodes. Missing preference triggers `NO PREF SET FOUND` warning while switch succeeds.
+- **MAG**: Lateral magnification factor 1–8. Integer entry 1–8; out of range yields `ILL VALUE`; non-numeric yields `FORMAT`. CLEAR restores previous factor.
+- **PTL LNTH**: Whole seconds 0–30 (default 5). Non-integer/non-numeric gives `FORMAT`; out-of-range gives `ILL VALUE`. 0 removes displayed PTL lines and clears SSA PTL readout. Non-zero updates PTL length across all tracks. Caution horizon remains independent.
+- **VOICE & VOICE TEST**: Integer 1–10. Commit speaks a "Test" utterance at the new level (`level / 10`). `VOICE TEST` immediately speaks "Test" at the current level.
+- **Runway Leaders**: Keypad direction entry: 1=NW, 2=N, 3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE. `NONE` restores standard leader orientation. Applies to current and future assigned arrivals for that runway.
+- **NTZ Inhibition**: Toggles individual adapted NTZ zones (NTZ 1, 2, 3) or all zones (NTZ ALL). Inhibiting a zone suppresses boundary drawing and warning/caution episodes. Disabling all adjacent zones suppresses CST/RWY.
+- **BRITE Channels**: Adds AMZ, RWY, REF (0 for off, or 5–100) and NTZ (50–100 only, no off). Out of range yields `ILL VALUE`. Wheel steps follow adapted ladders (`[0, 5, 10, ... 100]` for AMZ/RWY/REF; `[50, 60, ... 100]` for NTZ).
+
 
 ### STARS TCW display
 

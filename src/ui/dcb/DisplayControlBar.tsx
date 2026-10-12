@@ -110,7 +110,7 @@ import {
 } from "./DisplayControlBarMenus";
 
 export type { DcbCellKind, MainDcbLayoutCell } from "./dcbLayouts";
-export { MAIN_DCB_LAYOUT } from "./dcbLayouts";
+export { MAIN_DCB_LAYOUT, FMA_AUX_DCB_LAYOUT } from "./dcbLayouts";
 export {
   DCB_BRITE_READOUT_ID,
   DCB_CHAR_READOUT_ID,
@@ -134,7 +134,11 @@ export {
   DCB_WIDTH_PX,
   type DisplayControlBarProps,
 } from "./dcbChrome";
-export { BRITE_GRID_LAYOUT, CHAR_SIZE_DCB_LAYOUT } from "./DisplayControlBarMenus";
+export {
+  BRITE_GRID_LAYOUT,
+  FMA_BRITE_GRID_LAYOUT,
+  CHAR_SIZE_DCB_LAYOUT,
+} from "./DisplayControlBarMenus";
 export { formatSpinnerCellReadout, syncDisplayControlBar } from "./dcbChrome";
 
 function renderPhysicalMain(

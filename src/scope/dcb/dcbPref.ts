@@ -27,7 +27,7 @@ import { snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
 import { cloneCharSizes, type CharSizes } from "../fonts";
 import { type HistoryDotCount } from "../history";
 import { LEADER_LENGTH_STEPS_PX, type LeaderDir, type LeaderLengthPx } from "../leader";
-import { cloneBrite, type BriteState } from "../palette";
+import { cloneBrite, type BriteLevel, type BriteState } from "../palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "../ptl";
 import {
   createScopeView,
@@ -675,6 +675,43 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   if (pref.mapVisibility && typeof pref.mapVisibility === "object") {
     applyMapVisibility(view, pref.mapVisibility);
   }
+  if (typeof pref.mag === "number" && pref.mag >= 1 && pref.mag <= 8) {
+    view.fmaMag = pref.mag;
+  }
+  if (typeof pref.ptlSeconds === "number" && pref.ptlSeconds >= 0) {
+    view.fmaPtlSeconds = pref.ptlSeconds;
+  }
+  if (typeof pref.voiceLevel === "number" && pref.voiceLevel >= 1 && pref.voiceLevel <= 10) {
+    view.fmaVoiceLevel = pref.voiceLevel;
+  }
+  if (pref.fmaBrite) {
+    if (typeof pref.fmaBrite.amz === "number")
+      view.brite.amz = pref.fmaBrite.amz as unknown as BriteLevel;
+    if (typeof pref.fmaBrite.ntz === "number")
+      view.brite.ntz = pref.fmaBrite.ntz as unknown as BriteLevel;
+    if (typeof pref.fmaBrite.rwy === "number")
+      view.brite.rwy = pref.fmaBrite.rwy as unknown as BriteLevel;
+    if (typeof pref.fmaBrite.ref === "number")
+      view.brite.ref = pref.fmaBrite.ref as unknown as BriteLevel;
+  }
+  if (pref.runwayLeaders && typeof pref.runwayLeaders === "object") {
+    view.fmaRunwayLeaders.clear();
+    for (const [rwy, dir] of Object.entries(pref.runwayLeaders)) {
+      if (typeof dir === "number") {
+        view.fmaRunwayLeaders.set(rwy, dir as unknown as LeaderDir);
+      }
+    }
+  }
+  if (Array.isArray(pref.enabledNtzIds)) {
+    const activeAmz = view.fmaAmzs.find((a) => a.id === amzId);
+    if (activeAmz) {
+      const enabledSet = new Set(pref.enabledNtzIds);
+      const disabledNtzs = new Set(
+        activeAmz.ntzs.filter((n) => !enabledSet.has(n.id)).map((n) => n.id),
+      );
+      view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabledNtzs };
+    }
+  }
   return true;
 }
 
@@ -687,14 +724,31 @@ export function saveFmaAmzPreference(
   settings?: Partial<FmaAmzPreference>,
 ): FmaAmzPreference {
   const existing = view.amzPreferences.get(amzId);
+  const activeAmz = view.fmaAmzs.find((a) => a.id === amzId);
+  const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+  const currentEnabledNtzs = activeAmz
+    ? activeAmz.ntzs.filter((n) => !disabledNtzs.has(n.id)).map((n) => n.id)
+    : undefined;
+  const currentRunwayLeaders: Record<string, number> = {};
+  for (const [rwy, dir] of view.fmaRunwayLeaders.entries()) {
+    if (dir !== null && dir !== undefined) {
+      currentRunwayLeaders[rwy] = dir;
+    }
+  }
   const updated: FmaAmzPreference = {
     amzId,
-    mag: settings?.mag ?? existing?.mag,
-    ptlSeconds: settings?.ptlSeconds ?? existing?.ptlSeconds,
-    fmaBrite: settings?.fmaBrite ?? existing?.fmaBrite,
-    runwayLeaders: settings?.runwayLeaders ?? existing?.runwayLeaders,
-    enabledNtzIds: settings?.enabledNtzIds ?? existing?.enabledNtzIds,
-    voiceLevel: settings?.voiceLevel ?? existing?.voiceLevel,
+    mag: settings?.mag ?? existing?.mag ?? view.fmaMag,
+    ptlSeconds: settings?.ptlSeconds ?? existing?.ptlSeconds ?? view.fmaPtlSeconds,
+    fmaBrite: settings?.fmaBrite ??
+      existing?.fmaBrite ?? {
+        amz: view.brite.amz,
+        ntz: view.brite.ntz,
+        rwy: view.brite.rwy,
+        ref: view.brite.ref,
+      },
+    runwayLeaders: settings?.runwayLeaders ?? existing?.runwayLeaders ?? currentRunwayLeaders,
+    enabledNtzIds: settings?.enabledNtzIds ?? existing?.enabledNtzIds ?? currentEnabledNtzs,
+    voiceLevel: settings?.voiceLevel ?? existing?.voiceLevel ?? view.fmaVoiceLevel,
     rangeNm: settings?.rangeNm ?? view.camera.rangeNm,
     centerEastNm: settings?.centerEastNm ?? view.camera.centerEastNm,
     centerNorthNm: settings?.centerNorthNm ?? view.camera.centerNorthNm,

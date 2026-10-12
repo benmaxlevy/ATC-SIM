@@ -52,6 +52,8 @@ export interface TrackDisplay {
   lastAircraftIdentDeadlineMs: number;
   datablockMode: DatablockMode;
   leaderDir: LeaderDir;
+  /** True when controller explicitly set single-track leader orientation. */
+  leaderDirManual?: boolean;
   /** Per-target leader length override (in px). Null/undefined falls back to global ScopeView.leaderLengthPx. */
   leaderLengthPx?: number;
   ownership: TrackOwnership;
@@ -941,7 +943,9 @@ export function setLeaderDirForId(
   if (!world.aircraft.some((ac) => ac.id === aircraftId)) {
     return false;
   }
-  ensureTrackDisplay(tracks, aircraftId).leaderDir = dir;
+  const td = ensureTrackDisplay(tracks, aircraftId);
+  td.leaderDir = dir;
+  td.leaderDirManual = true;
   return true;
 }
 

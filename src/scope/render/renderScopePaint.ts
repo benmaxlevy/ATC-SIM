@@ -232,14 +232,16 @@ export function collectDatablockProtectedGeometry(
         view.ptlOn,
         view.ptlOwn,
         view.ptlByAircraftId.get(ac.id),
-      )
+      ) &&
+      (!view.fmaSurveillance.enabled || view.fmaPtlSeconds > 0)
     ) {
+      const ptlMin = view.fmaSurveillance.enabled ? view.fmaPtlSeconds / 60 : view.ptlMinutes;
       const e = ptlEndpoint(
         shown.xNm,
         shown.yNm,
         shown.headingDeg,
         shown.speedKt,
-        view.ptlMinutes,
+        ptlMin,
         world.navigation.magVarDeg,
       );
       out.push({
@@ -848,7 +850,31 @@ function shouldPaintDatablock(view: ScopeView, world: World, ac: Aircraft, td?: 
 }
 
 function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
-  return view.tracks.get(aircraftId)?.leaderDir ?? DEFAULT_LEADER_DIR;
+  const td = view.tracks.get(aircraftId);
+  if (td?.leaderDirManual) {
+    return td.leaderDir;
+  }
+  if (view.fmaRunwayLeaders && view.fmaRunwayLeaders.size > 0) {
+    const sp1 = (td?.manualSp1 || td?.sp1 || "").trim().toUpperCase();
+    const sp2 = (td?.manualSp2 || td?.sp2 || "").trim().toUpperCase();
+    for (const [rwy, dir] of view.fmaRunwayLeaders.entries()) {
+      if (dir === null || dir === undefined) continue;
+      const rUpper = rwy.toUpperCase();
+      if (sp1 === rUpper || sp2 === rUpper) {
+        return dir;
+      }
+      const activeAmz = view.fmaAmzs?.find((a) => a.id === view.fmaSurveillance?.selectedAmzId);
+      if (activeAmz?.runwayAliases?.[rwy]) {
+        for (const alias of activeAmz.runwayAliases[rwy]) {
+          const aUpper = alias.toUpperCase();
+          if (sp1 === aUpper || sp2 === aUpper) {
+            return dir;
+          }
+        }
+      }
+    }
+  }
+  return td?.leaderDir ?? view.defaultLeaderDir ?? DEFAULT_LEADER_DIR;
 }
 
 function trackLeaderLength(view: ScopeView, aircraftId: string): number {
@@ -1511,7 +1537,10 @@ export function drawTracks(
     }
   }
 
-  if (view.ptlOn || view.ptlOwn || view.ptlByAircraftId.size > 0) {
+  if (
+    (view.ptlOn || view.ptlOwn || view.ptlByAircraftId.size > 0) &&
+    (!view.fmaSurveillance.enabled || view.fmaPtlSeconds > 0)
+  ) {
     drawPredictedTrackLines(ctx, world, view, size);
   }
 
@@ -1844,12 +1873,16 @@ export function drawPredictedTrackLines(
     ) {
       continue;
     }
+    const ptlMin = view.fmaSurveillance.enabled ? view.fmaPtlSeconds / 60 : view.ptlMinutes;
+    if (ptlMin <= 0) {
+      continue;
+    }
     const end = ptlEndpoint(
       shown.xNm,
       shown.yNm,
       shown.headingDeg,
       shown.speedKt,
-      view.ptlMinutes,
+      ptlMin,
       world.navigation.magVarDeg,
     );
     const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
@@ -2201,6 +2234,8 @@ export function drawSsa(
     associatedFilter: view.associatedAltitudeFilter,
     visibility: view.ssaFilter,
     ptlMinutes: view.ptlMinutes,
+    fmaMode: view.fmaSurveillance.enabled,
+    fmaPtlSeconds: view.fmaPtlSeconds,
     hasAlert: Boolean(hasAlert),
     airportCode: airportId,
     primaryAltimeter: view.primaryAltimeter ?? SSA_ALTIMETER_STUB,

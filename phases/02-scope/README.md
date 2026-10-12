@@ -1086,3 +1086,18 @@ This is a user-authorized, FMA-only exception that does not alter pilot STT/TTS,
   current volume.
 - **No filter claim**: Standard browser speech synthesis is used directly; no
   audio formant filters or PCM modeling claims are made.
+
+### T02-226 FMA AUX, BRITE and Control Entry
+
+When FMA surveillance is enabled via `MODE -> FMA -> ACCEPT`:
+
+- **Figure 6-17 AUX**: Specialized 22-column, 2-row layout replaces ordinary AUX on `SHIFT`.
+  Features VOL (0–7), HISTORY/H RATE, AMZ, MAG (1–8), VOICE (1–10) and VOICE TEST,
+  PTL LNTH (0–30s), NTZ 1/2/3/ALL inhibition toggles, runway leader directions (keypad
+  1=NW, 2=N, 3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE), and DCB dock positions.
+- **Error reporting**: FORMAT for malformed typed operands, ILL VALUE for out-of-range integers,
+  and NO PREF SET FOUND when switching to an AMZ without saved preference.
+- **FMA PTL seconds**: Configured in whole seconds (0 removes PTL lines and SSA readout).
+  Caution prediction horizon remains independent.
+- **Figure 6-18 BRITE**: Adds AMZ, RWY, REF (0 or 5–100) and NTZ (50–100 only, no off).
+  Wheel steps follow adapted discrete ladders.

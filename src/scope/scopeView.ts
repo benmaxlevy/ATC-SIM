@@ -375,8 +375,11 @@ export interface ScopeView {
   /** Display-local episode acknowledgments; IDs expire with their alert episode. */
   fmaAcknowledgedEpisodeIds: Set<string>;
   fmaSilencedEpisodeIds: Set<string>;
-  /** T02-224 consumes these episode-local onset/cancel events for speech. */
-  fmaSpeechEvents: Array<{ type: "onset" | "cancel"; episodeId: string; aircraftId: string }>;
+  /** T02-224 consumes these episode-local onset/cancel events and action tests for speech. */
+  fmaSpeechEvents: Array<
+    | { type: "onset" | "cancel"; episodeId: string; aircraftId: string }
+    | { type: "test"; level?: number }
+  >;
   /**
    * STARS VIP 1–6 display latches. Default all false.
    * Display only. Paint is weatherLayer. Does not steer aircraft.
@@ -427,6 +430,19 @@ export interface ScopeView {
    * Last operator-facing system warning (e.g. "NO PREF SET FOUND").
    */
   lastWarning: string | null;
+  /**
+   * FMA lateral magnification factor (1–8). TI 6191.409 §6.16.3. Default 1.
+   */
+  fmaMag: number;
+  /**
+   * FMA predicted track line length in whole seconds (0–adapted max, default 5). TI 6191.409 §6.16.4.
+   * 0 removes displayed PTLs in FMA and clears SSA PTL readout.
+   */
+  fmaPtlSeconds: number;
+  /**
+   * FMA runway-assigned leader direction overrides (runwayId -> LeaderDir | null). TI 6191.409 §6.16.5.
+   */
+  fmaRunwayLeaders: Map<string, LeaderDir | null>;
   /**
    * AUX H_RATE: History dot scan rate interval in seconds (default 4.5).
    * New history dots are sampled when elapsed time >= historyRateSec * 1000.
@@ -519,6 +535,9 @@ export function createScopeView(
     cursorSpeed?: number;
     radarTilesetBoundaryNm?: readonly NmEastNorth[];
     fmaAmzs?: readonly FmaAmz[];
+    fmaMag?: number;
+    fmaPtlSeconds?: number;
+    fmaRunwayLeaders?: ReadonlyMap<string, LeaderDir | null>;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -647,6 +666,9 @@ export function createScopeView(
     operatorPrivilege: options?.operatorPrivilege ?? "controller",
     amzPreferences: new Map(),
     lastWarning: null,
+    fmaMag: options?.fmaMag ?? 1,
+    fmaPtlSeconds: options?.fmaPtlSeconds ?? 5,
+    fmaRunwayLeaders: options?.fmaRunwayLeaders ? new Map(options.fmaRunwayLeaders) : new Map(),
     historyRateSec: options?.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
     dwellMode: options?.dwellMode ?? DEFAULT_DWELL_MODE,
     dwellLockedAircraftId: null,

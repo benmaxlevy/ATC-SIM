@@ -547,10 +547,23 @@ export function stepCharSizeChannel(
   }
 }
 
-const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr", "cmp"]);
+export const FMA_BRITE_STEPS = [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
+export const FMA_NTZ_BRITE_STEPS = [50, 60, 70, 80, 90, 100] as const;
+
+const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr"]);
 
 export function stepBriteChannel(view: ScopeView, channel: BriteChannel, delta: number): void {
-  view.brite[channel] = stepFrozen(BRITE_STEPS, view.brite[channel], delta);
+  const steps =
+    channel === "ntz"
+      ? FMA_NTZ_BRITE_STEPS
+      : channel === "amz" || channel === "rwy" || channel === "ref"
+        ? FMA_BRITE_STEPS
+        : BRITE_STEPS;
+  view.brite[channel] = stepFrozen(
+    steps as readonly number[],
+    view.brite[channel],
+    delta,
+  ) as unknown as BriteLevel;
   if (MAP_CACHE_BRITE_CHANNELS.has(channel)) {
     invalidateMapCache(view);
   }
@@ -811,5 +824,141 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
     configureFmaSurveillanceView(view, false, null);
     view.lastWarning = null;
   }
+  return true;
+}
+
+export const FMA_MAG_STEPS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+export function stepFmaMag(view: ScopeView, delta: number): number {
+  const next = stepFrozen(FMA_MAG_STEPS, view.fmaMag, delta);
+  view.fmaMag = next;
+  return next;
+}
+
+export const FMA_PTL_STEPS = [0, 5, 10, 15, 20, 25, 30] as const;
+
+export function stepFmaPtl(view: ScopeView, delta: number): number {
+  const next = stepFrozen(FMA_PTL_STEPS, view.fmaPtlSeconds, delta);
+  view.fmaPtlSeconds = next;
+  return next;
+}
+
+export const FMA_VOICE_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+export function stepFmaVoice(view: ScopeView, delta: number): number {
+  const next = stepFrozen(FMA_VOICE_STEPS, view.fmaVoiceLevel, delta);
+  view.fmaVoiceLevel = next;
+  return next;
+}
+
+export function commitFmaVoice(view: ScopeView, level: number): void {
+  view.fmaVoiceLevel = Math.max(1, Math.min(10, Math.round(level)));
+  view.fmaSpeechEvents.push({ type: "test", level: view.fmaVoiceLevel });
+}
+
+export function triggerFmaVoiceTest(view: ScopeView): void {
+  view.fmaSpeechEvents.push({ type: "test", level: view.fmaVoiceLevel });
+}
+
+export const FMA_RUNWAY_LEADER_STEPS: readonly (LeaderDir | null)[] = [
+  null,
+  8,
+  9,
+  6,
+  3,
+  2,
+  1,
+  4,
+  7,
+];
+
+export const FMA_RUNWAY_KEYPAD_TO_DIR: Record<number, LeaderDir | null> = {
+  1: 7, // NW
+  2: 8, // N
+  3: 9, // NE
+  4: 4, // W
+  5: null, // NONE
+  6: 6, // E
+  7: 1, // SW
+  8: 2, // S
+  9: 3, // SE
+};
+
+export const FMA_RUNWAY_DIR_TO_KEYPAD: Record<number, number> = {
+  7: 1,
+  8: 2,
+  9: 3,
+  4: 4,
+  6: 6,
+  1: 7,
+  2: 8,
+  3: 9,
+};
+
+export function formatFmaRunwayLeaderReadout(dir: LeaderDir | null | undefined): string {
+  if (dir === null || dir === undefined) return "NONE";
+  return LEADER_DIR_LABELS[dir] ?? "NONE";
+}
+
+export function stepFmaRunwayLeader(
+  view: ScopeView,
+  runwayId: string,
+  delta: number,
+): LeaderDir | null {
+  const current = view.fmaRunwayLeaders.get(runwayId) ?? null;
+  const next = stepFrozen(FMA_RUNWAY_LEADER_STEPS, current, delta);
+  view.fmaRunwayLeaders.set(runwayId, next);
+  return next;
+}
+
+export function setFmaRunwayLeader(view: ScopeView, runwayId: string, dir: LeaderDir | null): void {
+  view.fmaRunwayLeaders.set(runwayId, dir);
+}
+
+export function toggleFmaNtz(view: ScopeView, ntzId: string): void {
+  const disabled = new Set(view.fmaAlertInhibit.ntzIds ?? []);
+  if (disabled.has(ntzId)) {
+    disabled.delete(ntzId);
+  } else {
+    disabled.add(ntzId);
+  }
+  view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabled };
+}
+
+export function toggleFmaNtzAll(view: ScopeView): void {
+  const activeAmz = view.fmaAmzs.find((a) => a.id === view.fmaSurveillance.selectedAmzId);
+  if (!activeAmz || activeAmz.ntzs.length === 0) return;
+  const disabled = new Set(view.fmaAlertInhibit.ntzIds ?? []);
+  const allEnabled = activeAmz.ntzs.every((n) => !disabled.has(n.id));
+  if (allEnabled) {
+    // Disable all
+    for (const n of activeAmz.ntzs) disabled.add(n.id);
+  } else {
+    // Enable all
+    for (const n of activeAmz.ntzs) disabled.delete(n.id);
+  }
+  view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabled };
+}
+
+export function stepFmaAmz(view: ScopeView, delta: number): string | null {
+  if (view.fmaAmzs.length <= 1) return view.fmaSurveillance.selectedAmzId;
+  const ids = view.fmaAmzs.map((a) => a.id);
+  const current = view.fmaSurveillance.selectedAmzId ?? ids[0]!;
+  const next = stepFrozen(ids, current, delta);
+  return next;
+}
+
+export function commitFmaAmzSwitch(view: ScopeView, targetAmzId: string): boolean {
+  if (view.fmaSurveillance.selectedAmzId === targetAmzId) {
+    view.lastWarning = null;
+    return true;
+  }
+  const hadPref = applyFmaAmzPreference(view, targetAmzId);
+  if (!hadPref) {
+    view.lastWarning = "NO PREF SET FOUND";
+  } else {
+    view.lastWarning = null;
+  }
+  configureFmaSurveillanceView(view, true, targetAmzId);
   return true;
 }

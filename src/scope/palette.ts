@@ -107,6 +107,15 @@ export const PALETTE = {
   dcbPressedText: "#E0E0E0",
   uiChrome: "#9AA0A6",
   uiChromeBg: "#111111",
+  /** FMA Appendix B Table B-1 colors (PDF 932-933). */
+  fmaRunway: "#808080",
+  fmaNtzNormal: "#FFFFFF",
+  fmaNtzCaution: "#FFFF00",
+  fmaNtzWarning: "#FF0000",
+  fmaRef: "#FFFFFF",
+  fmaAmzOutline: "#ADD8E6",
+  fmaCourse: "#FFFFFF",
+  fmaFixBar: "#FFFFFF",
 } as const;
 
 export type Palette = typeof PALETTE;
@@ -147,7 +156,11 @@ export type BriteChannel =
   | "pri"
   | "wx"
   | "wxc"
-  | "bkc";
+  | "bkc"
+  | "amz"
+  | "ntz"
+  | "rwy"
+  | "ref";
 
 export type BriteState = Record<BriteChannel, BriteLevel>;
 
@@ -170,6 +183,10 @@ export const BRITE_PAINT_CHANNELS = [
   "wx",
   "wxc",
   "bkc",
+  "amz",
+  "ntz",
+  "rwy",
+  "ref",
 ] as const satisfies readonly BriteChannel[];
 
 /**
@@ -195,6 +212,10 @@ export const DEFAULT_BRITE: BriteState = {
   wx: DEFAULT_BRITE_LEVEL,
   wxc: DEFAULT_BRITE_LEVEL,
   bkc: DEFAULT_BRITE_LEVEL,
+  amz: DEFAULT_BRITE_LEVEL,
+  ntz: DEFAULT_BRITE_LEVEL,
+  rwy: DEFAULT_BRITE_LEVEL,
+  ref: DEFAULT_BRITE_LEVEL,
 };
 
 export function cloneBrite(brite: BriteState = DEFAULT_BRITE): BriteState {

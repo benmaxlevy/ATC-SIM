@@ -219,7 +219,15 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
                       cursor in that cell. An open submenu traps the cursor in the DCB boxes. PLACE
                       CNTR then PPI click sets view center; OFF CNTR recenters the airport. PLACE RR
                       then PPI click sets range-ring origin; RR CNTR snaps origin to the view
-                      center.
+                      center. In FMA mode, AUX provides Figure 6-17 controls: VOL (0–7), HISTORY/H
+                      RATE, AMZ, MAG (1–8), VOICE (1–10) and VOICE TEST, PTL LNTH (0–30s), NTZ
+                      1/2/3/ALL inhibition toggles, runway leader directions (keypad 1=NW, 2=N,
+                      3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE), and DCB dock positions. Entry errors
+                      show FORMAT for malformed inputs, ILL VALUE for out-of-range integers, and NO
+                      PREF SET FOUND when switching to an AMZ without saved preference. FMA PTL is
+                      in whole seconds (0 removes PTL and SSA readout); caution horizon remains
+                      independent. BRITE includes AMZ, RWY, REF (0 or 5–100) and NTZ (50–100, no
+                      off).
                     </p>
                   ) : null}
                 </details>
