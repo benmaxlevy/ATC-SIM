@@ -6627,3 +6627,10 @@ same-flow selector, and partial AMZ preference policies only for this scope.
   browser checks or explicit UNRUN leftovers, and appended SWARM-STATUS history.
   Workers return READY TO MERGE or BLOCKED; captain returns PHASE EXIT GREEN or
   PHASE EXIT BLOCKED with commits and evidence. Preserve unrelated artifacts.
+
+### Eighty-eighth preflight clarification — DEFAULT routing
+
+Current scope parser does not implement MULTI FUNC K. T02-232 corrects DEFAULT
+through its existing DCB pointer/focused keyboard activation only. The manual
+keyboard command remains an inherited unsupported trainer surface; no new parser
+grammar or scopeKeys ownership is authorized. All other configuration unchanged.

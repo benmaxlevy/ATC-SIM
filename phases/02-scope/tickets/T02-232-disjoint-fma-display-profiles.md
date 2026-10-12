@@ -18,8 +18,7 @@ Correct FMA DEFAULT; exit and reload apply the last-used normal preference.
 ## Scope and ownership
 
 Own src/scope/scopeView.ts, src/scope/dcb/dcbPref.ts, dcbFunctions.ts,
-minimal routing in src/ui/dcb/DisplayControlBarMenus.tsx and scopeKeys.ts only if
-needed for inherited MULTI FUNC K parity; add a single display-profile acceptance
+minimal routing in src/ui/dcb/DisplayControlBarMenus.tsx; add a single display-profile acceptance
 file src/scope/test/fmaDisplayProfiles.integration.test.ts. Do not edit existing
 fmaFidelity.integration.test.ts, catalog/geometry/fmaFlow, or shared docs in Wave A.
 Use existing AMZ id API; no dependency on new schema fields. Preserve thin bar.
@@ -60,7 +59,7 @@ AMZ geometry from another facility. No pre-entry normalDisplaySnapshot payload.
 | FMA PREF SAVE / SAVE AS | Save active AMZ complete body under its ID | Other AMZ/normal bodies unchanged | Cancel naming does not save; cannot overwrite another AMZ | §4.1.1; approved local host delta |
 | AUX AMZ label ENTER / pointer commit | Apply complete target profile once | Geometry/cleanup and display target agree | Incomplete/cancel/unknown label do not apply | §6.16.2 p. 6-130 |
 | Enter/switch AMZ without saved profile | Success plus NO PREF SET FOUND | Current display settings preserved, adapted graphics active | No default map substitution or implicit saved profile | §§6.16.1–2 pp. 6-128/130 |
-| FMA PREF DEFAULT / MULTI FUNC K ENTER | Reapply active AMZ complete profile | Normal body untouched | Missing AMZ profile warns without factory reset; extra data FORMAT | §4.1.10 p. 4-21 |
+| FMA PREF DEFAULT / focused Enter or Space activation | Reapply active AMZ complete profile | Normal body untouched | Missing AMZ profile warns without factory reset; existing focus/modifier guards unchanged | §4.1.10 p. 4-21 |
 | Exit FMA ACCEPT | Apply last-used normal preference | FMA runtime cleanup; no stale maps/category/camera | Not unsaved entry snapshot, not factory reset | Approved exit trainer delta |
 | Reload after saving FMA | Start normal, restore normal profile | AMZ preferences retained; no runtime mode/queue | Legacy/corrupt storage validated, no stale IDs | Approved reload trainer delta |
 | Native input/Help/modifiers/CLEAR/Esc | Preserve inherited routes/cancel | No unexpected profile application | No new radio aliases or key collisions | Existing focus contract |
@@ -69,7 +68,7 @@ AMZ geometry from another facility. No pre-entry normalDisplaySnapshot payload.
 
 - [ ] AC1 Automated: full supported display roundtrip with distinct normal/A/B values; maps/category/camera/fonts/brightness/list layout/PTL/filter/volume and FMA controls covered.
 - [ ] AC2 Automated: normal -> A -> B -> exit yields exact saved normal body; unsaved normal changes do not become entry snapshot; FMA save cannot overwrite normal/B.
-- [ ] AC3 Automated: rendered DEFAULT and MULTI FUNC K apply active AMZ; no-pref entry/switch/default preserves current settings and warns; cancellation/invalid input unchanged.
+- [ ] AC3 Automated: rendered DEFAULT and existing focused keyboard activation apply active AMZ; no-pref entry/switch/default preserves current settings and warns; cancellation/invalid input unchanged.
 - [ ] AC4 Automated: reload always normal after FMA save; AMZ persistence, legacy partial migration, corrupt references, facility replacement and runtime exclusion pass.
 - [ ] AC5 Automated: loaded video maps not selected in a complete profile become off; cache invalidates; map category and group restore.
 - [ ] AC6 Manual: browser enter/select/default/save/exit/reload and full display profile behavior; record actual evidence or UNRUN, never infer from mockCanvas.
@@ -77,7 +76,8 @@ AMZ geometry from another facility. No pre-entry normalDisplaySnapshot payload.
 
 ## Non-goals / user surfaces
 
-No new NAS user/PIN infrastructure, schema adaptation edits, automatic default map
+MULTI FUNC K is not currently implemented and remains outside this ticket; do not
+add parser grammar. No new NAS user/PIN infrastructure, schema adaptation edits, automatic default map
 fallback, NTZ algorithm redesign, new keys/grammar or speech/backend changes.
 T02-233 owns Help/docs/phase README/AGENT reconciliation. Hand off storage migration
 and visible behavior notes. Manual checklist compares §§4.1,4.1.1,4.1.10,6.16.1–2
