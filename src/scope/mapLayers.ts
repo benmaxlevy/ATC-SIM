@@ -20,6 +20,11 @@ import type {
 } from "@scenario";
 import { nmToScreen, pxPerNm, type ScopeCamera, type ScopeViewSize } from "./camera";
 import {
+  createScopeProjection,
+  type ScopeProjection,
+  type ScopeProjectionOptions,
+} from "./projection";
+import {
   generateCompassRoseGeometry,
   type CompassRoseGeometry,
   type CompassRoseLabel,
@@ -61,6 +66,9 @@ export interface MapCacheView {
   showRings: boolean;
   showCoastline: boolean;
   showCompassRose?: boolean;
+  fmaSurveillance?: { enabled: boolean; selectedAmzId: string | null };
+  fmaAmzs?: Array<{ id: string; courseTrueDeg: number }>;
+  fmaMag?: number;
   airportEastNm: number;
   airportNorthNm: number;
   mapVisibility?: ReadonlyMap<string, boolean>;
@@ -78,6 +86,7 @@ export interface MapCacheInput {
   digitalMap: DigitalMap;
   camera: ScopeCamera;
   viewSize: ScopeViewSize;
+  fma?: ScopeProjectionOptions;
   layers: MapLayerFlags;
   airportEastNm: number;
   airportNorthNm: number;
@@ -322,10 +331,18 @@ export function buildRunwayCorners(runway: DigitalMapRunway): [NmPoint, NmPoint,
 }
 
 export function toMapCacheInput(view: MapCacheView, viewSize: ScopeViewSize): MapCacheInput {
+  const activeAmz = view.fmaSurveillance?.enabled
+    ? view.fmaAmzs?.find((amz) => amz.id === view.fmaSurveillance?.selectedAmzId)
+    : undefined;
   return {
     digitalMap: view.digitalMap,
     camera: view.camera,
     viewSize,
+    fma: {
+      enabled: Boolean(activeAmz),
+      mag: view.fmaMag ?? 1,
+      courseTrueDeg: activeAmz?.courseTrueDeg ?? 0,
+    },
     layers: {
       showRunway: view.showRunway,
       showLocalizer: view.showLocalizer,
@@ -360,6 +377,9 @@ export function buildMapCacheKey(input: MapCacheInput): string {
     cam.centerNorthNm,
     viewSize.widthPx,
     viewSize.heightPx,
+    input.fma?.enabled ? 1 : 0,
+    input.fma?.enabled ? (input.fma.mag ?? 1) : 1,
+    input.fma?.enabled ? (input.fma.courseTrueDeg ?? 0) : 0,
     layers.showRunway ? 1 : 0,
     layers.showLocalizer ? 1 : 0,
     layers.showRings ? 1 : 0,
@@ -377,8 +397,8 @@ export function buildMapCacheKey(input: MapCacheInput): string {
   ].join("|");
 }
 
-function project(point: NmPoint, cam: ScopeCamera, view: ScopeViewSize): ScreenPoint {
-  return nmToScreen(point.eastNm, point.northNm, cam, view);
+function project(point: NmPoint, projection: ScopeProjection): ScreenPoint {
+  return projection.toScreen(point.eastNm, point.northNm);
 }
 
 function addPolylineToPath(path: Path2D, pts: ScreenPoint[], close: boolean): void {
@@ -453,27 +473,22 @@ function pathFromCompassRose(rose: CompassRoseGeometry | null): Path2D | null {
 
 function coastlineScreenPoints(
   coast: DigitalMapCoastline | undefined,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  projection: ScopeProjection,
 ): ScreenPoint[] | null {
   if (!coast || !coast.enabled || coast.polyline.length < 2) {
     return null;
   }
-  return coast.polyline.map(([eastNm, northNm]) => project({ eastNm, northNm }, cam, view));
+  return coast.polyline.map(([eastNm, northNm]) => project({ eastNm, northNm }, projection));
 }
 
-function runwayLabelPoint(
-  runway: DigitalMapRunway,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
-): ScreenPoint {
+function runwayLabelPoint(runway: DigitalMapRunway, projection: ScopeProjection): ScreenPoint {
   const mid = headingOffsetNm(
     runway.thresholdEastNm,
     runway.thresholdNorthNm,
     runway.headingTrueDeg,
     runway.lengthNm / 2,
   );
-  const screen = project(mid, cam, view);
+  const screen = project(mid, projection);
   return { x: screen.x, y: screen.y + 10 };
 }
 
@@ -545,8 +560,7 @@ function visibleLocalizerFeathersNm(
 function runwayEndLabels(
   maps: LoadedVideoMap[],
   fallback: DigitalMapRunway | undefined,
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  projection: ScopeProjection,
 ): MapCache["runwayLabels"] {
   const labels: MapCache["runwayLabels"] = [];
   for (const map of maps) {
@@ -559,8 +573,7 @@ function runwayEndLabels(
       }
       const screen = project(
         { eastNm: feature.thresholdNm[0], northNm: feature.thresholdNm[1] },
-        cam,
-        view,
+        projection,
       );
       labels.push({ text: feature.label, x: screen.x, y: screen.y + 10 });
     }
@@ -569,7 +582,7 @@ function runwayEndLabels(
     return labels;
   }
   if (fallback) {
-    return [{ text: fallback.id, ...runwayLabelPoint(fallback, cam, view) }];
+    return [{ text: fallback.id, ...runwayLabelPoint(fallback, projection) }];
   }
   return [];
 }
@@ -598,8 +611,7 @@ function isExtraMapOn(
  */
 function projectDrawablePolyline(
   pointsNm: [number, number][],
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  projection: ScopeProjection,
 ): ScreenPoint[] | null {
   if (pointsNm.length < 2) {
     return null;
@@ -611,7 +623,7 @@ function projectDrawablePolyline(
     if (!Number.isFinite(eastNm) || !Number.isFinite(northNm)) {
       continue;
     }
-    points.push(project({ eastNm, northNm }, cam, view));
+    points.push(project({ eastNm, northNm }, projection));
   }
   return points.length >= 2 ? points : null;
 }
@@ -623,8 +635,7 @@ function isDrawableText(text: string, atNm: [number, number]): boolean {
 /** Extra default-on MAPS polylines (no role) — dimmer than runway/loc. Not OSM. */
 function extraVideoStrokes(
   maps: LoadedVideoMap[],
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  projection: ScopeProjection,
   visibility: ReadonlyMap<string, boolean> | undefined,
 ): MapCache["videoStrokes"] {
   const strokes: MapCache["videoStrokes"] = [];
@@ -636,7 +647,7 @@ function extraVideoStrokes(
       if (feature.type !== "polyline") {
         continue;
       }
-      const points = projectDrawablePolyline(feature.pointsNm, cam, view);
+      const points = projectDrawablePolyline(feature.pointsNm, projection);
       if (!points) {
         continue;
       }
@@ -653,8 +664,7 @@ function extraVideoStrokes(
 
 function extraVideoLabels(
   maps: LoadedVideoMap[],
-  cam: ScopeCamera,
-  view: ScopeViewSize,
+  projection: ScopeProjection,
   visibility: ReadonlyMap<string, boolean> | undefined,
 ): MapCache["videoLabels"] {
   const labels: MapCache["videoLabels"] = [];
@@ -666,7 +676,7 @@ function extraVideoLabels(
       if (feature.type !== "text" || !isDrawableText(feature.text, feature.atNm)) {
         continue;
       }
-      const screen = project({ eastNm: feature.atNm[0], northNm: feature.atNm[1] }, cam, view);
+      const screen = project({ eastNm: feature.atNm[0], northNm: feature.atNm[1] }, projection);
       labels.push({
         mapId: map.id,
         text: feature.text,
@@ -685,6 +695,7 @@ export function buildMapCache(
 ): MapCache {
   mapCacheBuildCount += 1;
   const { digitalMap, camera, viewSize, layers, airportEastNm, airportNorthNm } = input;
+  const projection = createScopeProjection(camera, viewSize, input.fma);
   const ringEastNm = input.rangeRingEastNm ?? airportEastNm;
   const ringNorthNm = input.rangeRingNorthNm ?? airportNorthNm;
   const ringRadiiNm = layers.showRings
@@ -706,13 +717,8 @@ export function buildMapCache(
   let runway: ScreenPoint[] | null = null;
   let runwayLabels: MapCache["runwayLabels"] = [];
   if (layers.showRunway && digitalMap.runway) {
-    runway = buildRunwayCorners(digitalMap.runway).map((pt) => project(pt, camera, viewSize));
-    runwayLabels = runwayEndLabels(
-      digitalMap.loadedVideoMaps ?? [],
-      digitalMap.runway,
-      camera,
-      viewSize,
-    );
+    runway = buildRunwayCorners(digitalMap.runway).map((pt) => project(pt, projection));
+    runwayLabels = runwayEndLabels(digitalMap.loadedVideoMaps ?? [], digitalMap.runway, projection);
   }
 
   const localizers: ScreenPoint[][] = layers.showLocalizer
@@ -721,24 +727,22 @@ export function buildMapCache(
         input.mapVisibility,
         digitalMap.runway,
         digitalMap.localizer,
-      ).map((feather) => feather.map((pt) => project(pt, camera, viewSize)))
+      ).map((feather) => feather.map((pt) => project(pt, projection)))
     : [];
   const localizer = localizers[0] ?? null;
 
   const coastline = layers.showCoastline
-    ? coastlineScreenPoints(digitalMap.coastline, camera, viewSize)
+    ? coastlineScreenPoints(digitalMap.coastline, projection)
     : null;
 
   const videoStrokes = extraVideoStrokes(
     digitalMap.loadedVideoMaps ?? [],
-    camera,
-    viewSize,
+    projection,
     input.mapVisibility,
   );
   const videoLabels = extraVideoLabels(
     digitalMap.loadedVideoMaps ?? [],
-    camera,
-    viewSize,
+    projection,
     input.mapVisibility,
   );
 

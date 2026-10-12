@@ -94,9 +94,11 @@ import {
   applyProjectedPanDelta,
 } from "../projection";
 import { createMockCtx } from "./mockCanvas";
+import { bboxFromArp, decodeRgbaToVipMasks } from "../wx";
+import { drawWeatherLayer } from "../render/weatherLayer";
 import { generateCompassRoseGeometry } from "../compassRose";
 import { drawChordHint, drawFmaLayers, drawMapLayers } from "../render/renderScopePaint";
-import type { MapCache } from "../mapLayers";
+import { buildMapCache, reuseOrBuildMapCache, toMapCacheInput, type MapCache } from "../mapLayers";
 import { pickAircraftAt } from "../pick";
 import { renderScope } from "../render/renderScope";
 import { renderPref } from "../../ui/dcb/DisplayControlBarMenus";
@@ -3833,6 +3835,101 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
   });
 
   describe("T02-227 FMA Projection, Picking and Graphics", () => {
+    test("MAG applies the same geographic stretch to weather imagery", () => {
+      const view = createScopeView();
+      const size = { widthPx: 800, heightPx: 800 };
+      const amz = syntheticAmz();
+      view.fmaAmzs = [amz];
+      view.fmaSurveillance.enabled = true;
+      view.fmaSurveillance.selectedAmzId = amz.id;
+      view.fmaMag = 4;
+      view.arp = { latDeg: 0, lonDeg: 0 };
+      view.wxLevels = [true, false, false, false, false, false];
+      view.wxMosaic = decodeRgbaToVipMasks(
+        new Uint8Array([0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255]),
+        2,
+        2,
+        bboxFromArp(view.arp, 4),
+        1000,
+      );
+      const canvas = createMockCtx();
+      const transforms: number[][] = [];
+      canvas.ctx.transform = (...values) => transforms.push(values);
+      drawWeatherLayer(canvas.ctx, view, size);
+      expect(canvas.drawImages).toHaveLength(1);
+      expect(transforms).toHaveLength(1);
+      expect(transforms[0]?.[0]).toBeCloseTo(4);
+      expect(transforms[0]?.[1]).toBeCloseTo(0);
+      expect(transforms[0]?.[2]).toBeCloseTo(0);
+      expect(transforms[0]?.[3]).toBeCloseTo(1);
+
+      view.fmaMag = 1;
+      drawWeatherLayer(canvas.ctx, view, size);
+      expect(transforms).toHaveLength(1);
+    });
+
+    test("MAG projects geographic maps with tracks and rebuilds cache when MAG changes", () => {
+      const view = createScopeView();
+      const size = { widthPx: 800, heightPx: 800 };
+      const amz = syntheticAmz();
+      view.fmaAmzs = [amz];
+      view.fmaSurveillance.enabled = true;
+      view.fmaSurveillance.selectedAmzId = amz.id;
+      view.fmaMag = 4;
+      view.digitalMap = {
+        rangeRings: { intervalNm: 5, maxNm: 60 },
+        runway: {
+          id: "08L",
+          thresholdEastNm: 2,
+          thresholdNorthNm: 0,
+          headingTrueDeg: 0,
+          lengthNm: 1,
+          widthNm: 0.1,
+        },
+        loadedVideoMaps: [
+          {
+            id: "TEST-MAP",
+            file: "test-map.json",
+            name: "Test map",
+            dcbLabel: "TEST",
+            defaultOn: true,
+            color: "map",
+            features: [
+              {
+                type: "polyline",
+                closed: false,
+                pointsNm: [
+                  [2, 0],
+                  [2, 1],
+                ],
+              },
+              { type: "text", text: "FIX", atNm: [2, 0] },
+            ],
+          },
+        ],
+      };
+
+      const cache = buildMapCache(toMapCacheInput(view, size));
+      const projected = scopeProjectionFromView(view, size).toScreen(2, 0);
+      expect(cache.videoStrokes[0]?.points[0]).toEqual(projected);
+      expect(cache.videoLabels[0]?.x).toBe(projected.x);
+      expect(cache.videoLabels[0]?.y).toBe(projected.y);
+      expect(cache.runway?.[0]?.x).toBeCloseTo(
+        scopeProjectionFromView(view, size).toScreen(2.05, 0).x,
+      );
+
+      view.fmaMag = 1;
+      const unmagnified = reuseOrBuildMapCache(cache, toMapCacheInput(view, size));
+      expect(unmagnified).not.toBe(cache);
+      const original = nmToScreen(2, 0, view.camera, size);
+      expect(unmagnified.videoStrokes[0]?.points[0]).toEqual(original);
+      expect(unmagnified.videoLabels[0]?.x).toBe(original.x);
+      view.fmaMag = 4;
+      view.fmaSurveillance.enabled = false;
+      const normal = reuseOrBuildMapCache(cache, toMapCacheInput(view, size));
+      expect(normal.videoStrokes[0]?.points[0]).toEqual(original);
+    });
+
     test("AC1 — forward/inverse round trips and numeric invariants across MAG 1–8, cardinal/oblique courses, camera offset, DPR, zero safeguards", () => {
       const courses = [0, 45, 90, 180, 270, 315];
       const mags = [1, 2, 3, 4, 6, 8];
