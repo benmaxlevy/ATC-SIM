@@ -544,6 +544,7 @@ export {
   dcbLeaderDirValue,
   dcbMapsPageSlotNumbers,
   defaultSelectedMapGroupId,
+  initialMapVisibility,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbLdrLengthReadout,

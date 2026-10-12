@@ -92,11 +92,19 @@ test("airport identity requires a usable spoken alias set", () => {
 test("loadCatalog has no facility-id branch", () => {
   const catalog = loadCatalog("src/scenario/data/kdem");
   expect(catalog.airportId).toBe("KDEM");
-  expect(catalog.fmaOverrides).toMatchObject({
-    source: "TRAINER_AUTHORED",
-    groups: [{ id: "DEMO1", approachIds: ["ILS27", "ILS27R"] }],
-  });
-  expect(loadCatalog("katl").fmaOverrides?.groups).toHaveLength(4);
+  const authoredGroups = catalog.fmaOverrides?.groups ?? [];
+  expect(authoredGroups.length).toBeGreaterThan(0);
+  expect(new Set(authoredGroups.map((group) => group.id)).size).toBe(authoredGroups.length);
+  for (const group of authoredGroups) {
+    expect(group.id).toMatch(/^[A-Z0-9]{1,7}$/);
+    expect(group.approachIds?.length).toBeGreaterThan(1);
+    for (const approachId of group.approachIds ?? []) {
+      expect(catalog.approaches.some((approach) => approach.id === approachId)).toBe(true);
+    }
+  }
+  const fma = deriveFmaAmzs(catalog);
+  expect(fma.diagnostics).toEqual([]);
+  expect(fma.amzs).toHaveLength(authoredGroups.length);
   const loaderSrc = import.meta.glob("../loadCatalog.ts", {
     query: "?raw",
     import: "default",

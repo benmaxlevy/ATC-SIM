@@ -41,14 +41,9 @@ import {
   focusRadioCommandLine,
   clearMinSepState,
   cancelDcbSpinner,
-  bindFmaScenarioFlow,
   clearPerTrackPtl,
   resetRangeBearingSession,
-  parseDigitalMap,
   browserDcbPrefStorage,
-  loadDcbPrefFromStorage,
-  applyRadarSites,
-  applyRadarTilesetBoundary,
   getVisibleFlightPlanEntries,
   type ScopeView,
   type FlightPlanModalRequest,
@@ -60,6 +55,7 @@ import type { FmaSpeechStatus } from "../app/fma-speech";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
 import { focusPpi } from "./strips/FlightStrips";
+import { bindScenarioDisplayContext } from "./sessionScenarioBinding";
 import { StripsBoard, selectTrackFromFlightStrip, terminalStripsFromWorld } from "./strips";
 import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 import { ScopeCanvas } from "./canvas/ScopeCanvas";
@@ -565,21 +561,10 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           );
           scopeView.tracks.clear();
           cancelDcbSpinner(scopeView);
-          const prefStore = browserDcbPrefStorage();
-          if (prefStore) loadDcbPrefFromStorage(scopeView, nextScenario.icao, prefStore);
-          else scopeView.dcbPref.icao = nextScenario.icao;
-          bindFmaScenarioFlow(scopeView, nextScenario);
+          bindScenarioDisplayContext(scopeView, nextScenario, browserDcbPrefStorage());
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
           resetRangeBearingSession(scopeView);
-          scopeView.giTextLines = nextScenario.giTextLines;
-          scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
-          // Session apply uses the same generic site bind as boot (T02-77).
-          // CRC R07 SITE analog; R05 FOA display data; R01 radar-identification
-          // wording. Unknown stored SITE id → FUSED. Trainer fixtures; not live
-          // sensors. No airport-id branch.
-          applyRadarSites(scopeView, nextScenario.radarSites);
-          applyRadarTilesetBoundary(scopeView, nextScenario.radarTilesetBoundaryNm);
           if (typeof document !== "undefined") {
             document.title = `ATC-SIM — ${nextScenario.name}`;
           }

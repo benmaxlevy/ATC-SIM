@@ -10,7 +10,7 @@ You are implementing **ATC-SIM phase 2 (Scope)** in `c:\Users\Ben\Documents\ATC-
 
 Replace the phase 1 crude PPI (dots + callsign) with a **STARS-like terminal radar**: dark north-up PPI, KDEM digital maps, full/limited datablocks, leader lines, altitude filter, a small Windows keyboard subset, DCB-lite, flight strips, and a 30-target / 60 FPS budget. The workstation must feel like a **terminal radar, not a game map**.
 
-CRC/vNAS STARS and vice are **references for feel**. Do **not** clone every key, scrape charts, bundle a STARS font, or build full NAS DCB / CRDA / weather / NAS handoff. The later approved FMA trainer feature is scoped by T02-220–228.
+CRC/vNAS STARS and vice are **references for feel**. Do **not** clone every key, scrape charts, bundle a STARS font, or build full NAS DCB / CRDA / weather / NAS handoff. The approved FMA trainer feature is scoped by T02-220–233; current adaptation and profile policy is in the phase README.
 
 **Research protocol:** For every ticket, complete its **Research** section first (IDs in `phases/_shared/references.md`). Add the analog+delta comment in the module. If CRC and this README disagree, **this README wins**, but you must still cite CRC so the help overlay can show the delta.
 

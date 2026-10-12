@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { applyDcbPref, applyDcbPrefDefaults, createScopeView } from "@scope";
+import { loadPlayableScenario } from "@scenario";
+import { bindScenarioDisplayContext } from "../../ui/sessionScenarioBinding";
 import type { FmaAmz } from "../../core/alerts/fmaGeometry";
 import { renderPref } from "../../ui/dcb/DisplayControlBarMenus";
 import { rebindFmaScenarioAmzs } from "../scopeView";
@@ -138,6 +140,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     view.fmaSurveillance.selectedAmzId = "AMZ-A";
     expect(applyFmaAmzPreference(view, "AMZ-A")).toBe(true);
     expect(view.camera.rangeNm).toBe(30);
+    expect(view.mapListMode).toBe("CURRENT");
     expect(view.systemLists.FL?.x).toBe(0.2);
     expect(view.fmaMag).toBe(3);
     setDisplay(view, 3);
@@ -150,6 +153,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     view.fmaSurveillance.selectedAmzId = "AMZ-B";
     expect(applyFmaAmzPreference(view, "AMZ-B")).toBe(true);
     expect(view.camera.rangeNm).toBe(40);
+    expect(view.mapListMode).toBe("GEO");
     expect(view.fmaMag).toBe(4);
 
     // Unsaved normal edits must not become the exit target.
@@ -174,6 +178,54 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     expect(storage.data.has(dcbPrefStorageKey("KXYZ"))).toBe(true);
   });
 
+  test("session replacement binds target maps before loading the target normal profile", () => {
+    const storage = memoryStorage();
+    const target = loadPlayableScenario("katl");
+    const targetMap = target.maps.loadedVideoMaps[0];
+    const targetGroup = target.maps.videoMapGroups?.groups[0];
+    if (!targetMap || !targetGroup) throw new Error("KATL scenario must include maps and groups");
+
+    const view = createScopeView();
+    view.digitalMap.loadedVideoMaps = [
+      {
+        id: "old-facility-map",
+        name: "Old",
+        file: "old.json",
+        dcbLabel: "OLD",
+        defaultOn: true,
+        color: "map",
+        features: [],
+      },
+    ];
+    view.mapVisibility = new Map([["old-facility-map", true]]);
+    view.mapCache = {} as never;
+    view.dcbPref.icao = target.icao;
+    view.mapVisibility = new Map([[targetMap.id, false]]);
+    view.mapListMode = "CURRENT";
+    view.selectedMapGroupId = targetGroup.id;
+    saveDcbPref(view, storage);
+
+    bindScenarioDisplayContext(view, target, storage);
+
+    expect(view.digitalMap.loadedVideoMaps?.map((map) => map.id)).toContain(targetMap.id);
+    expect(view.mapVisibility.get(targetMap.id)).toBe(false);
+    expect(view.mapVisibility.has("old-facility-map")).toBe(false);
+    expect(view.mapListMode).toBe("CURRENT");
+    expect(view.selectedMapGroupId).toBe(targetGroup.id);
+    expect(view.mapCache).toBeNull();
+    expect(view.fmaAmzs.length).toBeGreaterThan(0);
+
+    view.amzPreferences.set("OLD-AMZ", { amzId: "OLD-AMZ" });
+    view.fmaSurveillance.enabled = true;
+    view.serviceMode = "FMA";
+    bindScenarioDisplayContext(view, target, null);
+    expect(view.amzPreferences.has("OLD-AMZ")).toBe(false);
+    expect(view.fmaSurveillance.enabled).toBe(false);
+    expect(view.serviceMode).not.toBe("FMA");
+    expect(view.dcbPref.normalProfile?.centerEastNm).toBe(target.arpNm.xNm);
+    expect(view.dcbPref.normalProfile?.centerNorthNm).toBe(target.arpNm.yNm);
+  });
+
   test("FMA DEFAULT reapplies its complete profile and missing preference preserves display", () => {
     const view = createScopeView();
     installGroups(view);
@@ -194,7 +246,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     expect(displaySnapshot(view)).toEqual(before);
   });
 
-  test("rendered DEFAULT targets the active AMZ; its native button supports Enter and Space", () => {
+  test("rendered DEFAULT exposes its native button and callback targets the active AMZ", () => {
     const view = createScopeView();
     view.fmaAmzs = [amz("AMZ-A")];
     view.fmaSurveillance.enabled = true;
@@ -217,8 +269,8 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     const view = createScopeView();
     installGroups(view);
     view.digitalMap.loadedVideoMaps = [
-      { id: "map-a", file: "a.json", dcbLabel: "A", defaultOn: true, color: "GREEN", features: [] },
-      { id: "map-b", file: "b.json", dcbLabel: "B", defaultOn: true, color: "GREEN", features: [] },
+      { id: "map-a", file: "a.json", dcbLabel: "A", defaultOn: true, color: "map", features: [] },
+      { id: "map-b", file: "b.json", dcbLabel: "B", defaultOn: true, color: "map", features: [] },
     ] as never;
     view.mapVisibility.set("map-a", true);
     view.mapVisibility.set("map-b", true);

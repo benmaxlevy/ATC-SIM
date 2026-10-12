@@ -225,10 +225,18 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
                       30s), NTZ 1/2/3/ALL inhibition toggles, runway leader directions (keypad 1=NW,
                       2=N, 3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE), and DCB dock positions. Entry
                       errors show FORMAT for malformed inputs, ILL VALUE for out-of-range integers,
-                      and NO PREF SET FOUND when switching to an AMZ without saved preference. FMA
-                      PTL is in whole seconds (0 removes PTL and SSA readout); caution horizon
-                      remains independent. BRITE includes AMZ, RWY, REF (0 or 5–100) and NTZ
-                      (50–100, no off).
+                      and NO PREF SET FOUND when an AMZ lacks a saved profile. Every authored AMZ is
+                      selectable. MAPS only changes map visibility/category; NTZ inhibition only
+                      changes alert and boundary behavior. PREF SAVE / SAVE AS stores complete
+                      supported display settings per AMZ, isolated from normal slots and other AMZs;
+                      SAVE AS must exactly match an authored ID. FMA DEFAULT applies that AMZ
+                      profile and preserves current display settings if none exists. FMA exit
+                      restores the last-used normal profile; reload starts normal. AMZ profiles
+                      cannot be loaded in normal mode; DELETE removes the active AMZ preference
+                      while the adaptation stays available. Live tracks, alerts, ownership, frozen
+                      poses, speech queues and pending commands are not saved. FMA PTL is in whole
+                      seconds (0 removes PTL and SSA readout); caution horizon remains independent.
+                      BRITE includes AMZ, RWY, REF (0 or 5–100) and NTZ (50–100, no off).
                     </p>
                   ) : null}
                 </details>

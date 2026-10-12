@@ -51,8 +51,7 @@ import {
   stepFmaMag,
   stepFmaPtl,
   stepFmaRunwayLeader,
-  toggleFmaNtz,
-  toggleFmaNtzAll,
+  toggleVideoMap,
   commitFmaAmzSwitch,
   stepBriteChannel,
 } from "../dcb/dcbFunctions";
@@ -167,7 +166,7 @@ function syntheticAmz(): FmaAmz {
 function findRenderedDcbCell(node: unknown, id: string): Record<string, unknown> | null {
   if (!node || typeof node !== "object") return null;
   const candidate = node as { props?: Record<string, unknown> };
-  if (candidate.props?.dataDcb === id) return candidate.props;
+  if (candidate.props?.dataDcb === id || candidate.props?.dataMapId === id) return candidate.props;
   const children = candidate.props?.children;
   for (const child of Array.isArray(children) ? children : [children]) {
     const found = findRenderedDcbCell(child, id);
@@ -2071,6 +2070,26 @@ test("FMA CST episodes follow current assigned runway and per-runway NTZ adjacen
   expect(view.fmaSurveillance.tracks.has("frozen-left")).toBe(false);
   expect(runtime.tracks.has("frozen-left")).toBe(false);
   expect(view.fmaSurveillance.tracks.has("frozen-middle")).toBe(true);
+  const activeEpisode = view.fmaAlertState.episodes.get("frozen-middle");
+  expect(activeEpisode).toBeDefined();
+  if (activeEpisode) {
+    view.fmaSpeechEvents.push({
+      type: "onset",
+      episodeId: activeEpisode.id,
+      aircraftId: "frozen-middle",
+    });
+  }
+  view.fmaAlertInhibit = { ntzIds: new Set(amz.ntzs.map((zone) => zone.id)) };
+  runtime = observeFmaAlertRuntime(view, world, 32_000);
+  expect(view.fmaSurveillance.tracks.has("frozen-middle")).toBe(false);
+  expect(runtime.tracks.get("frozen-middle")?.primary).toBeUndefined();
+  if (activeEpisode) {
+    expect(view.fmaSpeechEvents).toContainEqual({
+      type: "cancel",
+      episodeId: activeEpisode.id,
+      aircraftId: "frozen-middle",
+    });
+  }
 });
 
 test("FMA warning, CST, RWY and crossing caution use precedence with NOM supplementary and local inhibition", () => {
@@ -3749,27 +3768,64 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     expect(view.lastWarning).toBe("FORMAT");
   });
 
-  test("AC4 — NTZ individual toggle, NTZ ALL toggle, and suppression", () => {
+  test("AC1/AC2 — NTZ buttons stay independent from MAPS and clear frozen alerts when all inhibit", () => {
     const view = createScopeView();
     const amz = syntheticAmz();
+    const ntzId = amz.ntzs[0]!.id;
+    const camera = { ...view.camera };
     view.fmaAmzs = [amz];
     configureFmaSurveillanceView(view, true, amz.id);
+    view.digitalMap.videoMapGroups = undefined;
+    view.selectedMapGroupId = null;
+    view.digitalMap.loadedVideoMaps = [
+      {
+        id: "MAP-ONLY",
+        name: "Map only",
+        file: "map.json",
+        dcbNumber: 1,
+        dcbLabel: "MAP",
+        defaultOn: true,
+        color: "map",
+        features: [],
+      },
+    ];
+    view.mapVisibility = new Map([["MAP-ONLY", true]]);
+    view.mapListMode = "CURRENT";
+    // The rendered FMA AUX callback inhibits one NTZ without changing map or camera state.
+    const clickCell = (tree: unknown, id: string) => {
+      const cell = findRenderedDcbCell(tree, id);
+      expect(cell?.onClick).toBeTypeOf("function");
+      (cell!.onClick as () => void)();
+    };
+    clickCell(
+      renderFmaAux(view, () => undefined),
+      "fma-ntz-1",
+    );
+    expect(view.fmaAlertInhibit.ntzIds?.has(ntzId)).toBe(true);
+    expect(view.mapVisibility.get("MAP-ONLY")).toBe(true);
+    expect(view.mapListMode).toBe("CURRENT");
+    expect(view.camera).toEqual(camera);
 
-    // Initial all NTZs enabled
-    expect(view.fmaAlertInhibit.ntzIds?.size ?? 0).toBe(0);
+    // MAPS changes a video map only; it does not clear NTZ inhibition.
+    toggleVideoMap(view, "MAP-ONLY");
+    expect(view.mapVisibility.get("MAP-ONLY")).toBe(false);
+    expect(view.fmaAlertInhibit.ntzIds?.has(ntzId)).toBe(true);
+    expect(view.mapListMode).toBe("CURRENT");
+    expect(view.camera).toEqual(camera);
 
-    // Toggle NTZ 1
-    const ntz1Id = amz.ntzs[0]!.id;
-    toggleFmaNtz(view, ntz1Id);
-    expect(view.fmaAlertInhibit.ntzIds?.has(ntz1Id)).toBe(true);
-
-    // NTZ ALL: when mixed/some disabled, NTZ ALL enables all
-    toggleFmaNtzAll(view);
+    // Mixed NTZ ALL enables all; all-enabled NTZ ALL then inhibits all.
+    clickCell(
+      renderFmaAux(view, () => undefined),
+      "fma-ntz-all",
+    );
     expect(view.fmaAlertInhibit.ntzIds?.size).toBe(0);
-
-    // NTZ ALL: when all enabled, NTZ ALL disables all
-    toggleFmaNtzAll(view);
+    clickCell(
+      renderFmaAux(view, () => undefined),
+      "fma-ntz-all",
+    );
     expect(view.fmaAlertInhibit.ntzIds?.size).toBe(amz.ntzs.length);
+    expect(view.mapVisibility.get("MAP-ONLY")).toBe(false);
+    expect(view.camera).toEqual(camera);
   });
 
   test("AC5 — FMA BRITE channel ranges, wheel ladders, and PREF persistence", () => {

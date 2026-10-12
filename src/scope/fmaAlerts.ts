@@ -175,6 +175,7 @@ export function observeFmaAlertRuntime(
       .filter((report) => !usableReport(report, nowSimMs))
       .map((report) => report.aircraftId),
   );
+  const previousEpisodes = [...view.fmaAlertState.episodes.entries()];
   const result = evaluateFmaAlerts({
     state: view.fmaAlertState,
     amz,
@@ -189,6 +190,14 @@ export function observeFmaAlertRuntime(
   view.fmaAlertResults = result.tracks;
   view.fmaAlertOutlines = result.outlines;
   view.fmaAlertDiagnostics = result.diagnostics;
+  const currentEpisodeIds = new Set(
+    [...result.state.episodes.values()].map((episode) => episode.id),
+  );
+  for (const [aircraftId, episode] of previousEpisodes) {
+    if (!currentEpisodeIds.has(episode.id)) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    }
+  }
   for (const [id, track] of result.tracks) {
     const episode = track.episode;
     if (!episode) continue;

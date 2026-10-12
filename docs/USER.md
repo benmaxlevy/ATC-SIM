@@ -59,13 +59,15 @@ NAS sensor networks, or operational surveillance health systems. Ordinary
 FUSED, MULTI, and single-site display modes keep their existing immediate
 no-coast coverage behavior outside FMA.
 
-FMA AMZ geometry is derived automatically for straight parallel runway groups
-from catalog approaches. Offset/SOIA adaptation requires explicit authored
-geometry; the trainer does not create automatic SOIA flight behavior. The
-active scenario runway filters eligible AMZ choices and seeds the default
-selection. FMA audio availability appears in a separate trainer status while
-FMA is active; this reports SpeechSynthesis support and installed local English
-voice availability without using the radio readback line.
+FMA is available only when a facility supplies complete authored AMZ geometry.
+Every authored AMZ is selectable regardless of the active scenario flow, and a
+valid last-used/manual choice takes priority, followed by a valid scenario initial AMZ and stable authored fallback. No geometry is
+inferred from runway spacing, approach catalogs, or facility identity. KDEM and
+KATL geometry are trainer-authored fixtures, not verified facility adaptation;
+unadapted scenarios leave FMA unavailable. FMA audio availability appears in a
+separate trainer status while FMA is active; this reports SpeechSynthesis
+support and installed local English voice availability without using the radio
+readback line.
 
 #### FMA speech alert queue (SpeechSynthesis exception)
 
@@ -103,7 +105,9 @@ When FMA surveillance is enabled via the `MODE` submenu (`MODE -> FMA -> ACCEPT`
 - **NTZ Inhibition**: Toggles individual adapted NTZ zones (NTZ 1, 2, 3) or all zones (NTZ ALL). Inhibiting a zone suppresses boundary drawing and warning/caution episodes. Disabling all adjacent zones suppresses CST/RWY.
 - **BRITE Channels**: Adds AMZ, RWY, REF (0 for off, or 5–100) and NTZ (50–100 only, no off). Out of range yields `ILL VALUE`. Wheel steps follow adapted ladders (`[0, 5, 10, ... 100]` for AMZ/RWY/REF; `[50, 60, ... 100]` for NTZ).
 
-PREF `SAVE` / `SAVE AS` captures the current enabled AMZ's validated FMA display settings and remembers that local AMZ choice for the next load when it remains eligible for the scenario flow. It does not persist whether FMA is enabled or any runtime alert/track state. The FMA PTL maximum comes from the selected AMZ monitoring adaptation (30 seconds when omitted); inherited workstation VOL retains its separate 0–5 scale.
+PREF `SAVE` / `SAVE AS` stores the selected AMZ's complete supported display profile in a separate local preference record. A name must exactly match an authored AMZ ID. Normal slots and other AMZ profiles remain isolated; AMZ profiles are unavailable in normal-mode PREF, and `DELETE` removes only the active AMZ preference while leaving its adaptation available; a later DEFAULT warns if the profile is missing. FMA DEFAULT applies the selected AMZ profile. If none exists, `NO PREF SET FOUND` appears while current display settings and adapted AMZ graphics remain. Exiting FMA applies the last-used normal preference; reload starts in normal mode and restores that normal profile while retaining AMZ profiles. The FMA PTL maximum comes from the selected AMZ monitoring adaptation (30 seconds when omitted); inherited workstation VOL retains its separate 0–5 scale.
+
+The supported saved display fields include dock and camera; rings; MAPS visibility, category/list mode, group and toggles; DCB visibility; Mode C and altitude filters; MCI and beacon selection; global CA inhibit; overlay visibility; leaders; history and PTL; brightness and character sizes; SSA, GI and TPA/ATPA settings; SITE; weather; volume and dwell; cursor and system-list placements. AMZ profiles add MAG, FMA PTL, voice level, FMA brightness, runway leaders and enabled NTZ IDs. Service mode/FSL and live tracks, ownership, alerts, acknowledgments, frozen poses, speech queues and pending commands are not saved. This describes supported trainer profiles, not every manual NAS preference.
 
 
 ### STARS TCW display
@@ -925,57 +929,25 @@ not claimed to have original vendor provenance. See
 [conversion, notices, and regeneration](STARS-FONTS.md) and the
 [browser specimen](../public/fonts/stars/specimen.html).
 
-### Final Monitor Aid geometry
+### Final Monitor Aid geometry and selection
 
-FMA geometry is currently a generic, catalog-derived straight-parallel trainer
-approximation. Catalogs may define `catalog.json` `fmaOverrides.groups` with
-stable group IDs, selected `approachIds` or `runwayIds`, dimension overrides,
-optional explicit ENU polygons and course-line graphics for the AMZ/NOZ/NTZ,
-vertical limits, and monitoring parameters. Coordinates are east/north NM from the facility
-origin. Invalid values produce path-specific load or geometry diagnostics;
-unresolved references disable the affected AMZ. Scenario JSON may set `fma`
-with `initialAmzId` and/or `excludeDerivedGroups`; it selects catalog geometry
-and never carries duplicate polygons.
-
-Without an override, the geometry uses one preferred approach per runway
-(ILS, LOC, then RNAV), true courses converted from magnetic once, a wrapped
-one-degree alignment tolerance, adjacent runway spacing from 2,500 through
-9,000 feet, 18 NM capture, a 2,000-foot NTZ, and a 0.5 NM outer margin.
-Catalog reciprocal thresholds define physical runway ends when available;
-otherwise no physical runway length is inferred. The derived departure course
-extends up to 1 NM past the known physical end, or from the threshold when the
-opposite end is unavailable. For authored AMZ polygons, that trainer extension
-stops at the first positive exit from the boundary; geometry with no positive
-inside segment is diagnosed. This is a trainer extension, not a runway dimension. Reference
-strokes use exact 200-foot lateral offsets, omit the course centerline, and are
-clipped to each approach-side NOZ. Rendering uses thin NOZ contours, bold NTZ
-outlines, thick gray runway marks, and dashed course lines; pixel widths and
-dash lengths are trainer styling. An unresolved runway length appears as a
-short screen-space threshold marker only. Monitoring
-defaults are 10 seconds caution, 10 seconds surveillance loss, 30 seconds
-coast-out, 10 seconds stabilization, 3 degrees course tolerance, 0.15 NM
-alignment half-width, and a 30-second displayed PTL maximum unless an AMZ
-adaptation supplies another maximum. These are trainer choices, not a published
-STARS adaptation algorithm or operational PRM qualification. Automatic SOIA
-geometry and visual-transition behavior are not included; offsets require
-explicit catalog adaptation.
-
-At application boot and after each session replacement, the trainer derives
-all catalog AMZ geometry and exposes only groups aligned with the scenario's
-active runway inbound course. Magnetic variation and wrapped one-degree course
-comparison are applied generically; reciprocal groups are excluded. A valid
-`fma.initialAmzId` takes priority. Otherwise the trainer chooses the group
-containing the active runway, then a stable eligible fallback. The AUX AMZ
-control offers the remaining same-flow groups, and a valid manual choice stays
-selected while it remains eligible. Unknown or ambiguous runway courses and
-scenarios without eligible geometry leave FMA unavailable and report a trainer
-diagnostic. This flow filter is a trainer display policy, not a published
-STARS selection algorithm and never assigns aircraft runways.
-Authored offset groups use their selected source approach membership for flow
-eligibility rather than their averaged display axis; reciprocal source courses
-remain excluded. A valid authored initial or retained AMZ can identify which
-approach variant represents an otherwise ambiguous active runway. These are
-trainer selection rules, not STARS algorithms.
+FMA requires complete facility-authored AMZ geometry. All authored AMZs are
+selectable regardless of scenario flow. A valid last-used/manual selection takes priority, followed by the scenario initial
+AMZ and a stable authored fallback. No production geometry is inferred from
+runway spacing or approach catalogs. KDEM/KATL are trainer-authored fixtures,
+not verified facility adaptations; unadapted scenarios leave FMA unavailable.
+Catalog AMZ/NOZ/NTZ geometry, course lines, runway membership and monitoring
+values are authored trainer data. The manual describes displayed geometry,
+not how coordinates are derived. Monitoring defaults remain 10-second caution,
+10-second surveillance loss, 30-second coast-out, 10-second stabilization,
+3-degree course tolerance, 0.15 NM alignment half-width, and a 30-second PTL
+maximum unless adaptation supplies another value. Reference strokes use 200-foot
+lateral spacing, omit the course centerline, and clip to the approach-side NOZ;
+they appear only when range/MAG is at most 16 NM. When a physical reciprocal
+runway endpoint is unavailable, the trainer uses a short screen-space threshold
+marker rather than inventing runway length. These are trainer choices, not
+published adaptation algorithms, operational PRM qualification, or verified
+facility fidelity.
 
 ### Final Monitor Aid alert qualification
 
