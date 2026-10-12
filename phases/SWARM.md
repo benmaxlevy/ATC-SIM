@@ -6575,3 +6575,55 @@ The user approved the read-only correction plan and explicitly authorized implem
 - Wave A T02-229, Wave B T02-230, Wave C T02-228 reconciliation. Workers start from current feature target after predecessor gates. No unrelated alert, radio, speech-backend, service-mode or TSAS changes.
 - Pre-merge check-stars-manual with `/home/ben/Documents/stars refs/full_manual.pdf` and independent reviewer; fix unintended divergences before merge. Captain CI and post-merge manual check required before next wave.
 - Stop after final T02-228 acceptance and CI. Browser/audio checks must be actual or explicitly UNRUN. Preserve dirty/untracked artifacts; no reset, clean, force, master merge or push. Return PHASE EXIT GREEN or PHASE EXIT BLOCKED with per-ticket table.
+
+## Eighty-eighth swarm started — Authored FMA and disjoint display profiles (2026-10-12)
+
+The user approved the audited correction plan, clarified all five policy choices,
+and explicitly invoked atc-sim-plan-tickets followed by run-swarm with maximum
+parallelization using Luna medium. This section supersedes earlier derivation,
+same-flow selector, and partial AMZ preference policies only for this scope.
+
+- Include T02-231, T02-232, T02-233; target `feature/fma`, never master or push.
+- Captain is the invoking agent. Workers/reviewers use `gpt-6-luna`, medium.
+  Maximum three delegated agents concurrently, maximum two implementation workers.
+- Wave A: T02-231 authored data/loader/all-AMZ selection and T02-232 complete
+  display profiles run in isolated worktrees concurrently. Neither depends on the
+  other's schema; coordinate exported existing API contracts. T02-231 owns the
+  existing FMA fidelity test and catalog/geometry tests, T02-232 owns a separate
+  display-profile integration test. No shared documentation ownership in Wave A.
+- Wave B: T02-233 after both merges and gates; regression coverage, documentation
+  reconciliation, and any narrow discovered NTZ defect only. Captain serializes
+  squash merges and runs npm run ci after each. Stale branches rebase normally;
+  conflicts stop with BLOCKED, never forced.
+- Every READY TO MERGE triggers check-stars-manual against the exact ticket and
+  `/home/ben/Documents/stars refs/full_manual.pdf`, with independent read-only
+  Luna medium verification before merge. After merge captain CI and manual
+  recheck are required. FAIL stops new launches, permits one narrow correction.
+- Product law: production FMA requires complete authored geometry; no heuristic
+  fallback. All authored AMZs are selectable, irrespective of active flow; valid
+  last/manual or scenario initial selection remains supported. KDEM/KATL data
+  are explicitly trainer-authored, never authentic facility adaptation claims.
+- Normal and each AMZ own complete supported workstation display preferences.
+  Saving/applying FMA cannot overwrite the normal profile or other AMZ profiles.
+  Exit applies the last-used normal preference, not an entry snapshot or factory
+  reset. Reload starts normal; AMZ preferences persist. Runtime tracks, ownership,
+  alert episodes, acknowledgments, frozen poses, speech queues and pending commands
+  are never profile payloads. These full disjoint profiles are an approved trainer
+  delta; manual §4.1's narrower AMZ list is not misrepresented.
+- FMA DEFAULT applies current AMZ preference. Missing preference warns
+  `NO PREF SET FOUND`, preserves current display settings, and still displays
+  adapted AMZ graphics; no default video-map fallback. NTZ controls affect alert
+  evaluation/boundaries only; maps never mutate inhibition. Preserve suppression
+  adjacency, frozen cleanup, all-off glyph hiding and mixed NTZ ALL semantics.
+- Ownership/paths: `ticket/T02-231-authored-fma-adaptation` and
+  `phases/02-scope/tickets/T02-231-authored-fma-adaptation.md`;
+  `ticket/T02-232-disjoint-fma-display-profiles` and
+  `phases/02-scope/tickets/T02-232-disjoint-fma-display-profiles.md`;
+  `ticket/T02-233-fma-ntz-and-profile-acceptance` and
+  `phases/02-scope/tickets/T02-233-fma-ntz-and-profile-acceptance.md`.
+- Skip unrelated services, TSAS, radio/Command IR/Path C, new speech backends,
+  operational certification, authentic proprietary facility data, later phases.
+- Stop after T02-233, final feature CI, independent manual audit, recorded actual
+  browser checks or explicit UNRUN leftovers, and appended SWARM-STATUS history.
+  Workers return READY TO MERGE or BLOCKED; captain returns PHASE EXIT GREEN or
+  PHASE EXIT BLOCKED with commits and evidence. Preserve unrelated artifacts.
