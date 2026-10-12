@@ -58,6 +58,17 @@ export {
   screenToNm,
 } from "./camera";
 export {
+  createScopeProjection,
+  scopeProjectionFromView,
+  projectWorldPoint,
+  unprojectWorldPoint,
+  projectNmToScreen,
+  screenToProjectedNm,
+  applyProjectedPanDelta,
+  type ScopeProjection,
+  type ScopeProjectionOptions,
+} from "./projection";
+export {
   cssPointFromClient,
   fitCanvasToCss,
   handlePpiCanvasClick,

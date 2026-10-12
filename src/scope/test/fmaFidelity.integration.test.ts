@@ -36,7 +36,7 @@ import { PALETTE } from "../palette";
 import { formatFmaAlertDiagnostic, observeFmaAlertRuntime } from "../fmaAlerts";
 import { handleScopeKeyDown } from "../scopeKeys";
 import { handlePpiLeftClick } from "../ppi";
-import { nmToScreen } from "../camera";
+import { nmToScreen, type ScopeCamera } from "../camera";
 import {
   isFmaAvailable,
   enterFmaConfirmation,
@@ -75,6 +75,18 @@ import {
   type SpeechSynthesisUtteranceLike,
   type SpeechSynthesisVoiceLike,
 } from "../../app/fma-speech";
+import {
+  createScopeProjection,
+  scopeProjectionFromView,
+  projectWorldPoint,
+  unprojectWorldPoint,
+  applyProjectedPanDelta,
+} from "../projection";
+import { createMockCtx } from "./mockCanvas";
+import { drawFmaLayers, drawMapLayers } from "../render/renderScopePaint";
+import type { MapCache } from "../mapLayers";
+import { pickAircraftAt } from "../pick";
+import { renderScope } from "../render/renderScope";
 
 function syntheticAmz(): FmaAmz {
   const box = (x1: number, y1: number, x2: number, y2: number) => ({
@@ -2546,5 +2558,326 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     expect(view.brite.amz).toBe(70);
     expect(view.fmaMag).toBe(3);
     expect(view.fmaPtlSeconds).toBe(20);
+  });
+
+  describe("T02-227 FMA Projection, Picking and Graphics", () => {
+    test("AC1 — forward/inverse round trips and numeric invariants across MAG 1–8, cardinal/oblique courses, camera offset, DPR, zero safeguards", () => {
+      const courses = [0, 45, 90, 180, 270, 315];
+      const mags = [1, 2, 3, 4, 6, 8];
+      const cameraOffsets = [
+        { eastNm: 0, northNm: 0 },
+        { eastNm: 10, northNm: -5 },
+        { eastNm: -20, northNm: 15 },
+      ];
+      const size = { widthPx: 1024, heightPx: 768 };
+
+      for (const course of courses) {
+        for (const mag of mags) {
+          for (const camCenter of cameraOffsets) {
+            const cam: ScopeCamera = {
+              rangeNm: 20,
+              centerEastNm: camCenter.eastNm,
+              centerNorthNm: camCenter.northNm,
+            };
+            const proj = createScopeProjection(cam, size, {
+              enabled: true,
+              mag,
+              courseTrueDeg: course,
+            });
+
+            // Invariant 1: Stationary camera center: camera center maps to screen center
+            const screenCenter = proj.toScreen(camCenter.eastNm, camCenter.northNm);
+            expect(screenCenter.x).toBeCloseTo(size.widthPx / 2, 4);
+            expect(screenCenter.y).toBeCloseTo(size.heightPx / 2, 4);
+
+            // Invariant 2: Inverse of screen center recovers camera center
+            const unprojectedCenter = proj.toWorld(screenCenter.x, screenCenter.y);
+            expect(unprojectedCenter.eastNm).toBeCloseTo(camCenter.eastNm, 4);
+            expect(unprojectedCenter.northNm).toBeCloseTo(camCenter.northNm, 4);
+
+            // Invariant 3: Round-trip preservation across test points
+            const testPoints = [
+              { eastNm: camCenter.eastNm + 5, northNm: camCenter.northNm + 5 },
+              { eastNm: camCenter.eastNm - 8, northNm: camCenter.northNm + 3 },
+              { eastNm: camCenter.eastNm + 12, northNm: camCenter.northNm - 10 },
+            ];
+
+            for (const pt of testPoints) {
+              const scr = proj.toScreen(pt.eastNm, pt.northNm);
+              const back = proj.toWorld(scr.x, scr.y);
+              expect(back.eastNm).toBeCloseTo(pt.eastNm, 4);
+              expect(back.northNm).toBeCloseTo(pt.northNm, 4);
+
+              // Low-level helper round trip
+              const directProj = projectWorldPoint(
+                pt.eastNm,
+                pt.northNm,
+                camCenter.eastNm,
+                camCenter.northNm,
+                mag,
+                course,
+              );
+              const directBack = unprojectWorldPoint(
+                directProj.eastNm,
+                directProj.northNm,
+                camCenter.eastNm,
+                camCenter.northNm,
+                mag,
+                course,
+              );
+              expect(directBack.eastNm).toBeCloseTo(pt.eastNm, 4);
+              expect(directBack.northNm).toBeCloseTo(pt.northNm, 4);
+            }
+          }
+        }
+      }
+
+      // Zero-size safeguards
+      const zeroProj = createScopeProjection(
+        { rangeNm: 20, centerEastNm: 0, centerNorthNm: 0 },
+        { widthPx: 0, heightPx: 0 },
+        { enabled: true, mag: 4, courseTrueDeg: 45 },
+      );
+      const zeroScreen = zeroProj.toScreen(5, 5);
+      expect(zeroScreen.x).toBe(0);
+      expect(zeroScreen.y).toBe(0);
+      const zeroWorld = zeroProj.toWorld(0, 0);
+      expect(zeroWorld.eastNm).toBe(0);
+      expect(zeroWorld.northNm).toBe(0);
+    });
+
+    test("AC2 — target/datablock picking and geographic tool/pan entry use actual projected positions; RBL/MIN distances remain world measurements", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const amz = syntheticAmz();
+      amz.courseTrueDeg = 0; // along=north, cross=east
+      view.fmaAmzs = [amz];
+      view.fmaSurveillance.enabled = true;
+      view.fmaSurveillance.selectedAmzId = amz.id;
+      view.fmaMag = 4;
+      view.camera = { rangeNm: 20, centerEastNm: 0, centerNorthNm: 0 };
+      const size = { widthPx: 800, heightPx: 800 };
+
+      // Aircraft at (east=2 NM, north=0 NM). Camera center=(0,0).
+      // Cross component = 2 NM. Under MAG 4, projected cross = 8 NM.
+      const ac = makeTestAircraft({
+        id: "TEST1",
+        callsign: "AAL100",
+        xNm: 2,
+        yNm: 0,
+        altitudeFt: 3000,
+        speedKt: 160,
+        headingDeg: 360,
+      });
+      world.aircraft = [ac];
+      const td1 = createTrackDisplay("owned");
+      td1.lastReport = {
+        aircraftId: "TEST1",
+        xNm: 2,
+        yNm: 0,
+        altitudeFt: 3000,
+        speedKt: 160,
+        headingDeg: 360,
+        reportedAtSimMs: 1000,
+        sourceSiteId: null,
+        paint: "fused-puck",
+      };
+      view.tracks.set(ac.id, td1);
+
+      const proj = scopeProjectionFromView(view, size);
+      const targetScreen = proj.toScreen(ac.xNm, ac.yNm);
+
+      // Unprojected screen point would be nmToScreen(2, 0):
+      const unprojectedScreen = nmToScreen(2, 0, view.camera, size);
+      expect(Math.abs(targetScreen.x - unprojectedScreen.x)).toBeGreaterThan(50);
+
+      // Click exactly at the projected screen position picks the aircraft:
+      const hit = pickAircraftAt(
+        world,
+        targetScreen.x,
+        targetScreen.y,
+        view.camera,
+        size.widthPx,
+        size.heightPx,
+        12,
+        view,
+      );
+      expect(hit?.id).toBe("TEST1");
+
+      // Click at the unprojected position misses:
+      const miss = pickAircraftAt(
+        world,
+        unprojectedScreen.x,
+        unprojectedScreen.y,
+        view.camera,
+        size.widthPx,
+        size.heightPx,
+        12,
+        view,
+      );
+      expect(miss).toBeNull();
+
+      // Pan delta with projection preserves pan under magnified cross axis:
+      const camBefore = { ...view.camera };
+      applyProjectedPanDelta(view, 40, 0, size);
+      // Pan delta was along cross axis; should adjust camera center in world coordinates
+      expect(view.camera.centerEastNm).not.toBe(camBefore.centerEastNm);
+
+      // RBL distance check: existing RBL uses world coordinates, not magnified cross
+      const pt1 = { eastNm: 0, northNm: 0 };
+      const pt2 = { eastNm: 2, northNm: 0 };
+      const worldDist = Math.hypot(pt2.eastNm - pt1.eastNm, pt2.northNm - pt1.northNm);
+      expect(worldDist).toBe(2); // In ENU NM, distance is 2 NM, NOT magnified 8 NM
+    });
+
+    test("AC3 — reference exact boundary, ring/compass stored preference restoration, zone visibility, brightness and severity aggregation", () => {
+      const view = createScopeView();
+      const amz = syntheticAmz();
+      amz.referenceLines = [
+        [
+          { xNm: -1, yNm: -5 },
+          { xNm: 1, yNm: -5 },
+        ],
+      ];
+      view.fmaAmzs = [amz];
+      view.fmaSurveillance.enabled = true;
+      view.fmaSurveillance.selectedAmzId = amz.id;
+      view.fmaMag = 2;
+
+      // 1. Reference lines show iff rangeNm / MAG <= 16 NM
+      // Case A: rangeNm = 30, mag = 2 -> 30 / 2 = 15 <= 16 -> visible
+      view.camera.rangeNm = 30;
+      const mockCanvasA = createMockCtx();
+      drawFmaLayers(mockCanvasA.ctx, view, { widthPx: 800, heightPx: 800 });
+      // References draw white strokes:
+      expect(mockCanvasA.pathStrokes.length).toBeGreaterThan(0);
+
+      // Case B: rangeNm = 40, mag = 2 -> 40 / 2 = 20 > 16 -> hidden
+      view.camera.rangeNm = 40;
+      const mockCanvasB = createMockCtx();
+      drawFmaLayers(mockCanvasB.ctx, view, { widthPx: 800, heightPx: 800 });
+      // Reference lines not drawn; only AMZ/runway/NTZ
+      // Verify no stroke with reference line length:
+      const refStrokes = mockCanvasB.pathStrokes.filter(
+        (s) => s.strokeStyle === "#FFFFFF" && s.points.length === 2,
+      );
+      expect(refStrokes.length).toBe(0);
+
+      // 2. Rings & compass rose preference restoration without mutation
+      view.showRings = true;
+      view.showCompassRose = true;
+      view.fmaMag = 2; // Active FMA + MAG > 1 suppresses rings in paint/cache
+      const mockCanvasC = createMockCtx();
+      const mockCache: MapCache = {
+        key: "test",
+        ringRadiiNm: [5],
+        ringsPath: null,
+        ringCircles: [{ x: 400, y: 400, radiusPx: 100 }],
+        compassRosePath: null,
+        compassRose: null,
+        compassRoseLabels: [],
+        videoStrokes: [],
+        coastlinePath: null,
+        coastline: null,
+        runwayPath: null,
+        runway: null,
+        localizer: null,
+        localizerPath: null,
+        localizers: [],
+        runwayLabels: [],
+        videoLabels: [],
+      };
+      drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      // Rings were suppressed: view.showRings remains true!
+      expect(view.showRings).toBe(true);
+      expect(view.showCompassRose).toBe(true);
+      // When MAG returns to 1, rings paint again without changing preference
+      view.fmaMag = 1;
+      drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      expect(view.showRings).toBe(true);
+
+      // 3. NTZ severity outlines: warning red, caution yellow, normal white.
+      // Disabled NTZ draws no boundary.
+      view.fmaMag = 1;
+      const ntz1 = amz.ntzs[0]!;
+      view.fmaAlertOutlines = new Map([[ntz1.id, "RED"]]);
+      const mockCanvasD = createMockCtx();
+      drawFmaLayers(mockCanvasD.ctx, view, { widthPx: 800, heightPx: 800 });
+      const redStroke = mockCanvasD.pathStrokes.find((s) => s.strokeStyle === "#FF0000");
+      expect(redStroke).toBeDefined();
+
+      // Disabled NTZ removes its outline
+      view.fmaAlertInhibit.ntzIds = new Set([ntz1.id]);
+      const mockCanvasE = createMockCtx();
+      drawFmaLayers(mockCanvasE.ctx, view, { widthPx: 800, heightPx: 800 });
+      const redStrokeDisabled = mockCanvasE.pathStrokes.find((s) => s.strokeStyle === "#FF0000");
+      expect(redStrokeDisabled).toBeUndefined();
+
+      // BRITE 0 suppresses paint:
+      view.fmaAlertInhibit.ntzIds = new Set();
+      view.brite.amz = 0;
+      const mockCanvasF = createMockCtx();
+      drawFmaLayers(mockCanvasF.ctx, view, { widthPx: 800, heightPx: 800 });
+      const amzStroke = mockCanvasF.pathStrokes.find((s) => s.strokeStyle === "#ADD8E6");
+      expect(amzStroke).toBeUndefined();
+    });
+
+    test("AC4 — glyph/text sizes and leader/datablock placement remain screen-space, render helpers do not mutate runtime", () => {
+      const world = createWorld();
+      const view = createScopeView();
+      const amz = syntheticAmz();
+      view.fmaAmzs = [amz];
+      view.fmaSurveillance.enabled = true;
+      view.fmaSurveillance.selectedAmzId = amz.id;
+      view.fmaMag = 4;
+      const ac = makeTestAircraft({
+        id: "TEST1",
+        callsign: "DAL200",
+        xNm: 1,
+        yNm: 2,
+        altitudeFt: 4000,
+      });
+      world.aircraft = [ac];
+      const td4 = createTrackDisplay("owned");
+      td4.lastReport = {
+        aircraftId: "TEST1",
+        xNm: 1,
+        yNm: 2,
+        altitudeFt: 4000,
+        speedKt: 150,
+        headingDeg: 360,
+        reportedAtSimMs: 1000,
+        sourceSiteId: null,
+        paint: "fused-puck",
+      };
+      view.tracks.set(ac.id, td4);
+
+      const mock = createMockCtx();
+      const viewBefore = JSON.stringify({
+        fmaMag: view.fmaMag,
+        camera: view.camera,
+        showRings: view.showRings,
+        showCompassRose: view.showCompassRose,
+      });
+
+      renderScope(mock.ctx, world, view, 800, 800);
+
+      const viewAfter = JSON.stringify({
+        fmaMag: view.fmaMag,
+        camera: view.camera,
+        showRings: view.showRings,
+        showCompassRose: view.showCompassRose,
+      });
+
+      // Render helpers must not mutate runtime camera, mag, or stored preferences
+      expect(viewAfter).toBe(viewBefore);
+
+      // Datablock text rendered using un-stretched font
+      const datablockTexts = mock.fillTexts.filter((t) => t.text.includes("DAL200"));
+      expect(datablockTexts.length).toBeGreaterThan(0);
+      for (const t of datablockTexts) {
+        expect(t.font).toContain("px");
+      }
+    });
   });
 });

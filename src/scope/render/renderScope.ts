@@ -83,7 +83,7 @@ export function renderScope(
 
   drawWeatherLayer(ctx, view, size);
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
-  drawMapLayers(ctx, view.mapCache, view);
+  drawMapLayers(ctx, view.mapCache, view, size);
   drawMinimumSeparation(ctx, world, view, size);
   drawRangeBearingLines(ctx, world, view, size);
   drawTracks(ctx, world, view, size);

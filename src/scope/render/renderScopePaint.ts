@@ -12,7 +12,8 @@ import {
   type World,
 } from "@core";
 import { inAltitudeFilter, shouldShowDatablockOutsideAltitudeFilter } from "../altitudeFilter";
-import { nmToScreen, screenToNm, type ScopeViewSize } from "../camera";
+import { type ScopeViewSize } from "../camera";
+import { scopeProjectionFromView } from "../projection";
 import {
   DATABLOCK_FIELD_GAP,
   buildDatablockRuntimeState,
@@ -195,9 +196,10 @@ export function collectDatablockProtectedGeometry(
       }
     }
   }
+  const proj = scopeProjectionFromView(view, size);
   const point = (ac: Aircraft) => {
     const shown = displayAircraft(ac, view.tracks.get(ac.id));
-    return shown ? nmToScreen(shown.xNm, shown.yNm, view.camera, size) : null;
+    return shown ? proj.toScreen(shown.xNm, shown.yNm) : null;
   };
   for (const ac of world.aircraft) {
     const p = point(ac);
@@ -216,7 +218,7 @@ export function collectDatablockProtectedGeometry(
     if (view.historyEnabled && td)
       for (const h of [historyDotsToDraw(td.history, view.historyDotCount)])
         for (let i = 0; i < h.eastNm.length; i += 1) {
-          const q = nmToScreen(h.eastNm[i]!, h.northNm[i]!, view.camera, size);
+          const q = proj.toScreen(h.eastNm[i]!, h.northNm[i]!);
           out.push({ kind: "circle", aircraftId: ac.id, center: q, radius: 2 });
         }
     const shown = displayAircraft(ac, td)!;
@@ -248,7 +250,7 @@ export function collectDatablockProtectedGeometry(
         kind: "segment",
         aircraftId: ac.id,
         from: p,
-        to: nmToScreen(e.eastNm, e.northNm, view.camera, size),
+        to: proj.toScreen(e.eastNm, e.northNm),
         strokePx: PTL_STROKE_PX,
       });
     }
@@ -274,7 +276,7 @@ export function collectDatablockProtectedGeometry(
     const shown = displayAircraft(ac, view.tracks.get(ac.id));
     if (!shown) continue;
     const pts = tpaRingPoints(shown.xNm, shown.yNm, radiusNm).map((q) =>
-      nmToScreen(q.eastNm, q.northNm, view.camera, size),
+      proj.toScreen(q.eastNm, q.northNm),
     );
     out.push({ kind: "polyline", aircraftId: ac.id, points: pts, strokePx: TPA_STROKE_PX });
   }
@@ -292,7 +294,7 @@ export function collectDatablockProtectedGeometry(
       shown.headingDeg,
       lengthNm,
       world.navigation.magVarDeg,
-    ).map((q) => nmToScreen(q.eastNm, q.northNm, view.camera, size));
+    ).map((q) => proj.toScreen(q.eastNm, q.northNm));
     out.push({ kind: "polygon", aircraftId: ac.id, points: pts, strokePx: TPA_STROKE_PX });
   }
   const byCallsign = new Map(world.aircraft.map((ac) => [ac.callsign, ac]));
@@ -306,7 +308,7 @@ export function collectDatablockProtectedGeometry(
       b = displayAircraft(leading, view.tracks.get(leading.id));
     if (!a || !b) continue;
     const pts = atpaConePoints(a.xNm, a.yNm, b.xNm, b.yNm, pair.requiredNm).map((q) =>
-      nmToScreen(q.eastNm, q.northNm, view.camera, size),
+      proj.toScreen(q.eastNm, q.northNm),
     );
     out.push({
       kind: "polygon",
@@ -319,10 +321,10 @@ export function collectDatablockProtectedGeometry(
   const minResolved = resolveActiveMinSep(view.minSep, view.tracks, world.navigation.magVarDeg);
   if (minResolved) {
     const { trackA, trackB, prediction, pair } = minResolved;
-    const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
-    const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
-    const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
-    const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+    const ptA = proj.toScreen(trackA.xNm, trackA.yNm);
+    const ptB = proj.toScreen(trackB.xNm, trackB.yNm);
+    const cpaA = proj.toScreen(prediction.posANm.xNm, prediction.posANm.yNm);
+    const cpaB = proj.toScreen(prediction.posBNm.xNm, prediction.posBNm.yNm);
     // Projection lines
     out.push({
       kind: "segment",
@@ -400,57 +402,206 @@ export function tracePolyline(
   }
 }
 
+export function drawFmaLayers(
+  ctx: CanvasRenderingContext2D,
+  view: ScopeView,
+  size?: ScopeViewSize,
+): void {
+  if (!view.fmaSurveillance.enabled) {
+    return;
+  }
+  const amz = view.fmaAmzs?.find((a) => a.id === view.fmaSurveillance.selectedAmzId);
+  if (!amz) {
+    return;
+  }
+  const viewSize: ScopeViewSize = size ?? {
+    widthPx: ctx.canvas.width,
+    heightPx: ctx.canvas.height,
+  };
+  const proj = scopeProjectionFromView(view, viewSize);
+
+  // 1. Reference lines: spaced 200 ft in world coords, show iff rangeNm / MAG <= 16 NM.
+  // BRITE: ref (0 suppresses paint)
+  const refBrite = view.brite.ref ?? 100;
+  const mag = view.fmaMag ?? 1;
+  const showReferenceLines = view.camera.rangeNm / mag <= 16;
+  if (showReferenceLines && refBrite > 0 && amz.referenceLines.length > 0) {
+    ctx.save();
+    ctx.strokeStyle = applyBrite("#FFFFFF", refBrite);
+    ctx.lineWidth = 1;
+    for (const [p1, p2] of amz.referenceLines) {
+      const s1 = proj.toScreen(p1.xNm, p1.yNm);
+      const s2 = proj.toScreen(p2.xNm, p2.yNm);
+      ctx.beginPath();
+      ctx.moveTo(s1.x, s1.y);
+      ctx.lineTo(s2.x, s2.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 2. AMZ outline: light blue RGB 173,216,230 (#ADD8E6).
+  // BRITE: amz (0 suppresses paint)
+  const amzBrite = view.brite.amz ?? 100;
+  if (amzBrite > 0 && amz.boundary.points.length >= 2) {
+    ctx.save();
+    ctx.strokeStyle = applyBrite("#ADD8E6", amzBrite);
+    ctx.lineWidth = 1;
+    const pts = amz.boundary.points.map((p) => proj.toScreen(p.xNm, p.yNm));
+    tracePolyline(ctx, pts, true);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 3. NTZ boundaries: normal white (#FFFFFF), caution yellow (#FFFF00), warning red (#FF0000).
+  // Disabled NTZs draw no boundary. Outline severity from view.fmaAlertOutlines.
+  // BRITE: ntz (0 suppresses paint)
+  const ntzBrite = view.brite.ntz ?? 100;
+  if (ntzBrite > 0 && amz.ntzs.length > 0) {
+    ctx.save();
+    ctx.lineWidth = 1;
+    const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+    for (const ntz of amz.ntzs) {
+      if (disabledNtzs.has(ntz.id)) {
+        continue;
+      }
+      const sev = view.fmaAlertOutlines.get(ntz.id);
+      const strokeColor = sev === "RED" ? "#FF0000" : sev === "YELLOW" ? "#FFFF00" : "#FFFFFF";
+      ctx.strokeStyle = applyBrite(strokeColor, ntzBrite);
+      const pts = ntz.polygon.points.map((p) => proj.toScreen(p.xNm, p.yNm));
+      tracePolyline(ctx, pts, true);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 4. Runway graphics, course lines, fix bars:
+  // BRITE: rwy (0 suppresses paint)
+  const rwyBrite = view.brite.rwy ?? 100;
+  if (rwyBrite > 0) {
+    ctx.save();
+    // Runway: gray (#808080), stroke width 2
+    if (amz.runwayGraphics.length > 0) {
+      ctx.strokeStyle = applyBrite("#808080", rwyBrite);
+      ctx.lineWidth = 2;
+      for (const rwy of amz.runwayGraphics) {
+        const s1 = proj.toScreen(rwy.threshold.xNm, rwy.threshold.yNm);
+        const s2 = proj.toScreen(rwy.departureEnd.xNm, rwy.departureEnd.yNm);
+        ctx.beginPath();
+        ctx.moveTo(s1.x, s1.y);
+        ctx.lineTo(s2.x, s2.y);
+        ctx.stroke();
+      }
+    }
+
+    // Course lines: white (#FFFFFF), stroke width 1
+    if (amz.courseLines.length > 0) {
+      ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
+      ctx.lineWidth = 1;
+      for (const cl of amz.courseLines) {
+        if (cl.approach) {
+          const s1 = proj.toScreen(cl.approach[0].xNm, cl.approach[0].yNm);
+          const s2 = proj.toScreen(cl.approach[1].xNm, cl.approach[1].yNm);
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+        }
+        if (cl.departure) {
+          const s1 = proj.toScreen(cl.departure[0].xNm, cl.departure[0].yNm);
+          const s2 = proj.toScreen(cl.departure[1].xNm, cl.departure[1].yNm);
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Fix bars: white (#FFFFFF), stroke width 1, 0.2 NM perpendicular tick across course line at FAF
+    if (amz.fixBars && amz.fixBars.length > 0) {
+      ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
+      ctx.lineWidth = 1;
+      const courseRad = (amz.courseTrueDeg * Math.PI) / 180;
+      // Perpendicular vector to course line: dx = cos(course), dy = -sin(course)
+      // Half-length = 0.1 NM (total length = 0.2 NM)
+      const halfLen = 0.1;
+      const dxNm = halfLen * Math.cos(courseRad);
+      const dyNm = -halfLen * Math.sin(courseRad);
+      for (const fb of amz.fixBars) {
+        const p1 = { xNm: fb.point.xNm + dxNm, yNm: fb.point.yNm + dyNm };
+        const p2 = { xNm: fb.point.xNm - dxNm, yNm: fb.point.yNm - dyNm };
+        const s1 = proj.toScreen(p1.xNm, p1.yNm);
+        const s2 = proj.toScreen(p2.xNm, p2.yNm);
+        ctx.beginPath();
+        ctx.moveTo(s1.x, s1.y);
+        ctx.lineTo(s2.x, s2.y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+}
+
 export function drawMapLayers(
   ctx: CanvasRenderingContext2D,
   cache: MapCache,
   view: ScopeView,
+  size?: ScopeViewSize,
 ): void {
-  const mpa = applyBrite(PALETTE.map, view.brite.mpa);
-  const mpb = applyBrite(PALETTE.mapDim, view.brite.mpb);
-  const rr = applyBrite(PALETTE.mapDim, view.brite.rr);
-  ctx.strokeStyle = rr;
-  ctx.lineWidth = RING_STROKE_PX;
-  if (cache.ringsPath) {
-    ctx.stroke(cache.ringsPath);
-  } else {
-    for (const ring of cache.ringCircles) {
+  const fmaActive = view.fmaSurveillance.enabled;
+  const fmaMag = view.fmaMag ?? 1;
+  const suppressRings = fmaActive && fmaMag > 1;
+
+  if (!suppressRings) {
+    const rr = applyBrite(PALETTE.mapDim, view.brite.rr);
+    ctx.strokeStyle = rr;
+    ctx.lineWidth = RING_STROKE_PX;
+    if (cache.ringsPath) {
+      ctx.stroke(cache.ringsPath);
+    } else {
+      for (const ring of cache.ringCircles) {
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.radiusPx, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    const cmp = applyBrite(PALETTE.mapDim, view.brite.cmp);
+    if (cache.compassRosePath) {
+      ctx.strokeStyle = cmp;
+      ctx.lineWidth = RING_STROKE_PX;
+      ctx.stroke(cache.compassRosePath);
+    } else if (cache.compassRose) {
+      ctx.strokeStyle = cmp;
+      ctx.lineWidth = RING_STROKE_PX;
       ctx.beginPath();
-      ctx.arc(ring.x, ring.y, ring.radiusPx, 0, Math.PI * 2);
+      const { minX, minY, maxX, maxY } = cache.compassRose.bounds;
+      ctx.moveTo(minX, minY);
+      ctx.lineTo(maxX, minY);
+      ctx.lineTo(maxX, maxY);
+      ctx.lineTo(minX, maxY);
+      ctx.closePath();
+      for (const tick of cache.compassRose.ticks) {
+        ctx.moveTo(tick.x1, tick.y1);
+        ctx.lineTo(tick.x2, tick.y2);
+      }
       ctx.stroke();
     }
-  }
 
-  const cmp = applyBrite(PALETTE.mapDim, view.brite.cmp);
-  if (cache.compassRosePath) {
-    ctx.strokeStyle = cmp;
-    ctx.lineWidth = RING_STROKE_PX;
-    ctx.stroke(cache.compassRosePath);
-  } else if (cache.compassRose) {
-    ctx.strokeStyle = cmp;
-    ctx.lineWidth = RING_STROKE_PX;
-    ctx.beginPath();
-    const { minX, minY, maxX, maxY } = cache.compassRose.bounds;
-    ctx.moveTo(minX, minY);
-    ctx.lineTo(maxX, minY);
-    ctx.lineTo(maxX, maxY);
-    ctx.lineTo(minX, maxY);
-    ctx.closePath();
-    for (const tick of cache.compassRose.ticks) {
-      ctx.moveTo(tick.x1, tick.y1);
-      ctx.lineTo(tick.x2, tick.y2);
-    }
-    ctx.stroke();
-  }
-
-  if (cache.compassRoseLabels.length > 0) {
-    ctx.font = datablockFontCss(view.charSizes.tools);
-    ctx.fillStyle = cmp;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (const label of cache.compassRoseLabels) {
-      ctx.fillText(label.text, label.x, label.y);
+    if (cache.compassRoseLabels.length > 0) {
+      ctx.font = datablockFontCss(view.charSizes.tools);
+      ctx.fillStyle = cmp;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const label of cache.compassRoseLabels) {
+        ctx.fillText(label.text, label.x, label.y);
+      }
     }
   }
+
+  const mpa = applyBrite(PALETTE.map, view.brite.mpa);
+  const mpb = applyBrite(PALETTE.mapDim, view.brite.mpb);
 
   ctx.lineWidth = MAP_STROKE_PX;
   for (const stroke of cache.videoStrokes) {
@@ -511,6 +662,8 @@ export function drawMapLayers(
     ctx.fillStyle = label.color === "mapDim" ? mpb : mpa;
     drawVideoMapLabel(ctx, label.text, label.x, label.y, mapLineH);
   }
+
+  drawFmaLayers(ctx, view, size);
 }
 
 /** STAR restriction boxes are newline-stacked (`------` / alt / speed / `------`). */
@@ -1077,6 +1230,9 @@ export function datablockRenderSnapshotKey(view: ScopeView, world: World): strin
     ]),
     aircraftIds: world.aircraft.map((aircraft) => aircraft.id),
     handoffs: [...world.handoffs.entries()],
+    fmaMag: view.fmaMag,
+    fmaMode: view.fmaSurveillance.enabled,
+    fmaAmzId: view.fmaSurveillance.selectedAmzId,
   });
 }
 
@@ -1404,12 +1560,8 @@ function resolvePendingRblSegment(view: ScopeView, size: ScopeViewSize) {
   }
   const pose = resolveRblEndpointPose(first, view.tracks);
   if (!pose) return null;
-  return clipRblSegment(
-    nmToScreen(pose.xNm, pose.yNm, view.camera, size),
-    cursor,
-    size.widthPx,
-    size.heightPx,
-  );
+  const proj = scopeProjectionFromView(view, size);
+  return clipRblSegment(proj.toScreen(pose.xNm, pose.yNm), cursor, size.widthPx, size.heightPx);
 }
 
 /** Shared measured layout for both RBL paint and protected datablock geometry. */
@@ -1425,6 +1577,7 @@ function resolveRblScreenLayouts(
   ctx.textBaseline = "top";
   const lineHeight = datablockLineHeightPx(view.charSizes.tools);
   const layouts: RblScreenLayout[] = [];
+  const proj = scopeProjectionFromView(view, size);
   try {
     const entries: { id: number | "pending"; line: RangeBearingLine }[] = Array.from(
       view.rbl.lines.values(),
@@ -1434,7 +1587,7 @@ function resolveRblScreenLayouts(
     const cursor = view.cursorHoverPos;
     const pose = first ? resolveRblEndpointPose(first, view.tracks) : null;
     if (first && pose && cursor && Number.isFinite(cursor.x) && Number.isFinite(cursor.y)) {
-      const end = screenToNm(cursor.x, cursor.y, view.camera, size);
+      const end = proj.toWorld(cursor.x, cursor.y);
       const endpoint2 = { kind: "static" as const, xNm: end.eastNm, yNm: end.northNm };
       entries.push({
         id: "pending",
@@ -1457,8 +1610,8 @@ function resolveRblScreenLayouts(
         view.rbl.radarTilesetBoundaryNm,
       );
       if (!calc) continue;
-      const from = nmToScreen(calc.endpoint1Pose.xNm, calc.endpoint1Pose.yNm, view.camera, size);
-      const to = nmToScreen(calc.endpoint2Pose.xNm, calc.endpoint2Pose.yNm, view.camera, size);
+      const from = proj.toScreen(calc.endpoint1Pose.xNm, calc.endpoint1Pose.yNm);
+      const to = proj.toScreen(calc.endpoint2Pose.xNm, calc.endpoint2Pose.yNm);
       const text = line.id === 0 ? calc.readoutText.replace(/-0$/, "") : calc.readoutText;
       const width = ctx.measureText(text).width;
       const height = lineHeight;
@@ -1521,6 +1674,7 @@ export function drawTracks(
   // A render owns the only valid presentation/layout snapshot. Pickers must
   // never retain results across a world/view render boundary.
   view.datablockRenderSnapshot = undefined;
+  const proj = scopeProjectionFromView(view, size);
   const historyCount = view.historyEnabled ? view.historyDotCount : 0;
   if (historyCount > 0) {
     for (const ac of world.aircraft) {
@@ -1531,7 +1685,7 @@ export function drawTracks(
       const dots = historyDotsToDraw(td.history, historyCount);
       const n = dots.eastNm.length;
       for (let i = 0; i < n; i += 1) {
-        const p = nmToScreen(dots.eastNm[i]!, dots.northNm[i]!, view.camera, size);
+        const p = proj.toScreen(dots.eastNm[i]!, dots.northNm[i]!);
         drawHistoryDot(ctx, p.x, p.y, applyBrite(historyDotColor(i, n), view.brite.hst));
       }
     }
@@ -1555,7 +1709,7 @@ export function drawTracks(
     if (!shown || !report) {
       continue;
     }
-    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const p = proj.toScreen(shown.xNm, shown.yNm);
     const color = trackColor(view, world, ac);
     const isPrimary = isPrimaryTarget(ac, td);
     const ownership: TrackOwnership = td?.ownership ?? "unowned";
@@ -1633,7 +1787,7 @@ export function drawTracks(
     const presentation = buildScopeDatablockPresentation(view, world, ac, visual);
     presentationById.set(ac.id, presentation);
     const { mode, lines } = presentation;
-    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const p = proj.toScreen(shown.xNm, shown.yNm);
     if (!pointInLayoutBounds(p, { x: 0, y: 0, width: size.widthPx, height: size.heightPx })) {
       return [];
     }
@@ -1725,7 +1879,7 @@ export function drawTracks(
     if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
-    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const p = proj.toScreen(shown.xNm, shown.yNm);
     const visual = getDatablockVisualState(view, world, ac);
     if (visual.visible) {
       const briteCh =
@@ -1771,7 +1925,7 @@ export function drawTracks(
     if (!shouldPaintDatablock(view, world, ac, td)) {
       continue;
     }
-    const p = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
+    const p = proj.toScreen(shown.xNm, shown.yNm);
     const layout = layoutById.get(ac.id);
     if (!layout || layout.unplaced) continue;
     drawDatablock(ctx, shown, p.x, p.y, view, world, layout, presentationById.get(ac.id));
@@ -1800,6 +1954,7 @@ export function drawAtpaConeMileage(
   if (pairs.length === 0) {
     return;
   }
+  const proj = scopeProjectionFromView(view, size);
   ctx.font = datablockFontCss(view.charSizes.tools);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1830,7 +1985,7 @@ export function drawAtpaConeMileage(
     if (!placed) {
       continue;
     }
-    const p = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+    const p = proj.toScreen(placed.eastNm, placed.northNm);
     ctx.fillStyle = applyBrite(atpaReadoutColor(placed.status), view.brite.tls);
     ctx.fillText(placed.text, p.x, p.y);
   }
@@ -1850,6 +2005,7 @@ export function drawPredictedTrackLines(
   view: ScopeView,
   size: ScopeViewSize,
 ): void {
+  const proj = scopeProjectionFromView(view, size);
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
     const shown = displayAircraft(ac, td);
@@ -1885,8 +2041,8 @@ export function drawPredictedTrackLines(
       ptlMin,
       world.navigation.magVarDeg,
     );
-    const from = nmToScreen(shown.xNm, shown.yNm, view.camera, size);
-    const to = nmToScreen(end.eastNm, end.northNm, view.camera, size);
+    const from = proj.toScreen(shown.xNm, shown.yNm);
+    const to = proj.toScreen(end.eastNm, end.northNm);
     const capTickPx = Math.max(2, view.charSizes.tools - 8);
     drawPredictedTrackLine(
       ctx,
@@ -1924,6 +2080,7 @@ export function drawTpaRings(
   if (targets.length === 0) {
     return;
   }
+  const proj = scopeProjectionFromView(view, size);
   ctx.strokeStyle = TPA_STROKE_COLOR;
   ctx.lineWidth = TPA_STROKE_PX;
   ctx.fillStyle = TPA_STROKE_COLOR;
@@ -1936,7 +2093,7 @@ export function drawTpaRings(
       continue;
     }
     const worldPts = tpaRingPoints(shown.xNm, shown.yNm, radiusNm);
-    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    const pts = worldPts.map((p) => proj.toScreen(p.eastNm, p.northNm));
     tracePolyline(ctx, pts, false);
     ctx.stroke();
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
@@ -1969,7 +2126,7 @@ export function drawTpaRings(
         datablockDir,
         safeRadiusFrac,
       );
-      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      const p = proj.toScreen(digit.eastNm, digit.northNm);
       ctx.fillText(digit.text, p.x, p.y);
     }
   }
@@ -1990,6 +2147,7 @@ export function drawManualTpaCones(
   if (targets.length === 0) {
     return;
   }
+  const proj = scopeProjectionFromView(view, size);
   ctx.strokeStyle = TPA_STROKE_COLOR;
   ctx.lineWidth = TPA_STROKE_PX;
   ctx.fillStyle = TPA_STROKE_COLOR;
@@ -2011,7 +2169,7 @@ export function drawManualTpaCones(
     if (worldPts.length < 2) {
       continue;
     }
-    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    const pts = worldPts.map((p) => proj.toScreen(p.eastNm, p.northNm));
     if (tpaSizeReadoutEnabled(view.tracks.get(ac.id))) {
       const digit = tpaConeDigitPlacement(
         shown.xNm,
@@ -2020,7 +2178,7 @@ export function drawManualTpaCones(
         lengthNm,
         world.navigation.magVarDeg,
       );
-      const p = nmToScreen(digit.eastNm, digit.northNm, view.camera, size);
+      const p = proj.toScreen(digit.eastNm, digit.northNm);
       const gap = coneDigitGapBox(
         ctx,
         digit.text,
@@ -2126,6 +2284,7 @@ export function drawAtpaCones(
   }
   ctx.lineWidth = TPA_STROKE_PX;
   ctx.font = datablockFontCss(view.charSizes.tools);
+  const proj = scopeProjectionFromView(view, size);
   for (const pair of selectAtpaConesToPaint(pairs)) {
     const trailing = byCallsign.get(pair.trailingCallsign);
     const leading = byCallsign.get(pair.leadingCallsign);
@@ -2151,7 +2310,7 @@ export function drawAtpaCones(
     if (worldPts.length < 2) {
       continue;
     }
-    const pts = worldPts.map((p) => nmToScreen(p.eastNm, p.northNm, view.camera, size));
+    const pts = worldPts.map((p) => proj.toScreen(p.eastNm, p.northNm));
     ctx.strokeStyle = atpaConeColor(pair.status);
     let gap: ScreenBox | null = null;
     if (view.atpa.coneMileage && td?.atpaConeMileageEnabled !== false) {
@@ -2162,7 +2321,7 @@ export function drawAtpaCones(
         status: pair.status,
       });
       if (placed) {
-        const digit = nmToScreen(placed.eastNm, placed.northNm, view.camera, size);
+        const digit = proj.toScreen(placed.eastNm, placed.northNm);
         gap = coneDigitGapBox(
           ctx,
           placed.text,
@@ -2822,10 +2981,11 @@ export function drawMinimumSeparation(
   }
 
   const { trackA, trackB, prediction } = resolved;
-  const ptA = nmToScreen(trackA.xNm, trackA.yNm, view.camera, size);
-  const ptB = nmToScreen(trackB.xNm, trackB.yNm, view.camera, size);
-  const cpaA = nmToScreen(prediction.posANm.xNm, prediction.posANm.yNm, view.camera, size);
-  const cpaB = nmToScreen(prediction.posBNm.xNm, prediction.posBNm.yNm, view.camera, size);
+  const proj = scopeProjectionFromView(view, size);
+  const ptA = proj.toScreen(trackA.xNm, trackA.yNm);
+  const ptB = proj.toScreen(trackB.xNm, trackB.yNm);
+  const cpaA = proj.toScreen(prediction.posANm.xNm, prediction.posANm.yNm);
+  const cpaB = proj.toScreen(prediction.posBNm.xNm, prediction.posBNm.yNm);
 
   const white = applyBrite(PALETTE.ptl, tlsBrite);
   const bg = getBackgroundColor(view.brite?.bkc ?? 100);

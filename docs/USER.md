@@ -989,3 +989,20 @@ Field 0 combines FMA/NOM with existing LA/CA indicators. Field 2 shows solid
 `▼` for inhibited FMA tracks; it takes precedence over MSAW/CA inhibit symbols,
 and hides while every NTZ is inhibited. Frozen presentation clears through
 the configured track, mode, AMZ, inhibition and NTZ-adjacency lifecycle.
+
+### Final Monitor Aid lateral magnification and graphics
+
+In FMA mode, lateral magnification (MAG 1–8) stretches the cross-track dimension
+by the selected factor while keeping along-track coordinates unchanged, centered
+stationary on the current camera center. All operational measurements (aircraft speed,
+physics, separation, RBL range/bearing, and minimum-separation distances) remain true
+geographic ENU measurements; only the display geometry and screen hit-picking are transformed.
+
+Range rings and compass rose are automatically suppressed whenever FMA is active and
+MAG > 1 (restoring their configured visibility at MAG 1 or when FMA is disabled, without
+mutating user preferences). FMA reference lines spaced 200 feet apart in world coordinates
+are displayed if and only if range / MAG <= 16 NM. NTZ boundaries display alert severity
+outlines (white for normal, yellow for caution, red for warning) consuming aggregate alert
+state, with red persisting for warning tracks even after acknowledgment. Disabled NTZs draw
+no boundary. Runway, course line, fix bar, and AMZ boundary graphics are rendered according
+to their respective BRITE channel intensities.

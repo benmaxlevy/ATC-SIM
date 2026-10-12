@@ -596,21 +596,23 @@ introduced. Typed Preview Area holes that include those chords are listed under
 work must preserve the distinct Q current-alert lifetime and V persistent
 per-track lifetime.
 
-### Final Monitor Aid adjustment menus, projection, and control entry (T02-226 / T02-227)
+### Final Monitor Aid adjustment menus, projection, and control entry (T02-226 / T02-227 / T02-228)
 
 T02-225 shipped the authentic Raytheon STARS Figure 6-16 service-mode submenu
 (`EFSL`, `FSL`, `TRNG`, `FMA`, `DSF`, `DONE`), confirmed FMA toggling via `ACCEPT`,
 and per-AMZ preference storage and application with `NO PREF SET FOUND` warning.
-The remaining FMA follow-up work is explicitly partitioned across subsequent tickets:
+T02-226 shipped FMA AUX and BRITE menus, AMZ selection submenu, MAG selection, runway leader controls, NTZ enable/disable toggles, and voice volume controls.
+T02-227 shipped FMA high-update Canvas projection (lateral magnification along/cross track with stationary camera center, unprojection, panning, and target picking), geometry rendering (runway graphics, course lines, reference lines spaced 200 ft displayed when rangeNm/MAG <= 16 NM, fix bars, boundary polygons, NTZ outlines with severity styling), BRITE channel gating (`brite.amz`, `brite.rwy`, `brite.ntz`, `brite.ref`), and suppression of range rings and compass rose during active FMA MAG > 1.
 
-- **T02-226**: FMA AUX and BRITE menus, AMZ selection submenu, MAG selection, runway leader controls, NTZ enable/disable toggles, and voice volume controls.
-- **T02-227**: FMA high-update Canvas projection, geometry rendering (runway graphics, course lines, reference lines, fix bars, boundary polygons), and target picking.
+The remaining FMA follow-up work is explicitly partitioned:
+
 - **T02-228**: FMA end-to-end integration and multi-aircraft scenario acceptance.
 
 Later work must preserve:
 - FMA enablement gating (2K capability, Controller privilege, valid AMZ, compatible service mode; 1K omits FMA);
 - Local AMZ-keyed preferences and atomic application without NAS host claims;
-- Display-local alert evaluation and suppression without modifying World kinematics or intent.
+- Display-local alert evaluation and suppression without modifying World kinematics or intent;
+- Exact ENU NM measurement preservation for ATC tools (distance, speed, physics) despite lateral projection magnification.
 
 ### CRDA Ghost Prediction and Dynamic Runway Configuration Pairing (RPC)
 

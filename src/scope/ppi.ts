@@ -32,7 +32,8 @@ import {
   expireStarsChordEntry,
   rejectStarsChordEntry,
 } from "./starsChord";
-import { applyPanScreenDelta, screenToNm, type ScopeViewSize } from "./camera";
+import { type ScopeViewSize } from "./camera";
+import { applyProjectedPanDelta, scopeProjectionFromView } from "./projection";
 import { DEFAULT_LEADER_DIR, leaderDirFromStarsClock } from "./leader";
 import {
   HIT_RADIUS_CSS_PX,
@@ -450,7 +451,8 @@ export function handlePpiLeftClick(
     }
   }
   const size = viewSize(cssWidth, cssHeight);
-  const nm = screenToNm(cssX, cssY, view.camera, size);
+  const proj = scopeProjectionFromView(view, size);
+  const nm = proj.toWorld(cssX, cssY);
   // FMA function entry owns its target click before last-click, HO, selection,
   // pointout or list routing can observe it.
   const fmaPending = previewTrackingSlew(view.preview);
@@ -786,7 +788,8 @@ export function handlePpiDoubleClick(
   if (hit) {
     return;
   }
-  const nm = screenToNm(cssX, cssY, view.camera, viewSize(cssWidth, cssHeight));
+  const proj = scopeProjectionFromView(view, viewSize(cssWidth, cssHeight));
+  const nm = proj.toWorld(cssX, cssY);
   recordLastClick(view, nm.eastNm, nm.northNm);
   centerOnWorld(view, nm.eastNm, nm.northNm);
 }
@@ -809,7 +812,7 @@ export function handlePpiPanDelta(
   cssWidth: number,
   cssHeight: number,
 ): void {
-  applyPanScreenDelta(view.camera, dxPx, dyPx, viewSize(cssWidth, cssHeight));
+  applyProjectedPanDelta(view, dxPx, dyPx, viewSize(cssWidth, cssHeight));
 }
 
 /**
