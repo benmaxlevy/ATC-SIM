@@ -1,5 +1,25 @@
 # Swarm status
 
+## EIGHTY-NINTH SWARM — EXPLICIT FMA PREFERENCE OWNER (T02-234, 2026-10-12)
+
+Implemented and squash-merged on `feature/fma`:
+
+- T02-234 `9558920` — Explicit PREF owner selector below DEFAULT with local `FSSTARS` and reserved `FMA` namespaces, wheel/drag/type/Enter and `ILL USER` handling, stable 32-slot numbered sets, full AMZ/profile switching on active FMA selection and dormant preparation outside FMA, facility-keyed migration (v1–v4), MAIN DCB applied owner/set identity display, Help and documentation updates.
+
+Pre-merge and post-merge `npm run ci`: **258 files, 3,082 passed, 4 skipped**.
+`git diff --check`: **0 errors**.
+
+Raytheon STARS TI 6191.409 Rev 30 (§§4.1.1–4.1.6, 4.1.9–4.1.10, Figure 4-1, §§6.16.1–6.16.2) verified:
+- Independent subagent STARS manual review: **PASS**.
+- Figure 4-1 layout verified: Row 2 Col 17 user selector below DEFAULT.
+- §4.1.1 Procedure Note 2 verified: select username "FMA" to define/modify/remove AMZ preferences.
+- Single local operator, fixed local owners `FSSTARS`/`FMA`, no PIN/sign-on simulation, and full profile switching verified as documented trainer choices.
+- Temporary naming/capacity error UI handoff to T02-235 recorded in `phases/LATER-IMPLEMENTATION-BACKLOG.md`.
+- Manual leftover: live interactive browser visual check unrun in headless environment; automated integration tests cover DCB layout, key events, and profile application.
+
+**STOPPED AT T02-234 PER USER BOUNDARY INSTRUCTION.**
+T02-235 queued for next swarm captain.
+
 ## EIGHTY-THIRD SWARM — MINIMUM SEPARATION GRAPHICS (T02-204–T02-206, 2026-10-10)
 
 Implemented and squash-merged on `feature/minimum-separation-graphics`:
