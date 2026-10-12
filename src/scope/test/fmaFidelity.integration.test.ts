@@ -816,6 +816,62 @@ test("derived FMA defaults retain 200-foot references and trainer dimensions", (
   ).toEqual([]);
 });
 
+test("charted FAF bars span the paired NOZ envelope at their own stations and match NTZ thickness", () => {
+  const source = catalog([
+    { runway: "A", course: 0, x: -0.5 },
+    { runway: "B", course: 0, x: 0.5 },
+  ]);
+  source.fixes.push(
+    { id: "FAFA", kind: "FAF", xNm: -0.5, yNm: -5 },
+    { id: "FAFB", kind: "FAF", xNm: 0.5, yNm: -6 },
+  );
+  source.approaches[0]!.fafFixId = "FAFA";
+  source.approaches[1]!.fafFixId = "FAFB";
+  const result = deriveFmaAmzs(source);
+  expect(result.diagnostics).toEqual([]);
+  const amz = result.amzs[0]!;
+  expect(amz.fixBars.map((bar) => [bar.runwayId, bar.fixId, bar.segment])).toEqual([
+    [
+      "A",
+      "FAFA",
+      [
+        { xNm: -1, yNm: -5 },
+        { xNm: 1, yNm: -5 },
+      ],
+    ],
+    [
+      "B",
+      "FAFB",
+      [
+        { xNm: -1, yNm: -6 },
+        { xNm: 1, yNm: -6 },
+      ],
+    ],
+  ]);
+
+  const view = createScopeView();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance.enabled = true;
+  view.fmaSurveillance.selectedAmzId = amz.id;
+  view.fmaMag = 4;
+  view.camera.rangeNm = 10;
+  const size = { widthPx: 800, heightPx: 800 };
+  const paint = createMockCtx();
+  drawFmaLayers(paint.ctx, view, size);
+  const barStrokes = paint.pathStrokes.filter(
+    (stroke) =>
+      stroke.strokeStyle === "#FFFFFF" && stroke.lineWidth === 3 && stroke.points.length === 2,
+  );
+  expect(barStrokes).toHaveLength(2);
+  const projection = scopeProjectionFromView(view, size);
+  for (const [index, bar] of amz.fixBars.entries()) {
+    expect(barStrokes[index]!.points).toEqual([
+      projection.toScreen(bar.segment[0].xNm, bar.segment[0].yNm),
+      projection.toScreen(bar.segment[1].xNm, bar.segment[1].yNm),
+    ]);
+  }
+});
+
 test("missing thresholds produce diagnostics without fabricated geometry", () => {
   const missing = catalog([{ runway: "A", course: 0, x: 0 }]);
   delete missing.approaches[0]!.thresholdFixId;

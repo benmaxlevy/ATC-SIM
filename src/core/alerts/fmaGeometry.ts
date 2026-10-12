@@ -46,7 +46,12 @@ export interface FmaAmz {
     departure: [FmaPoint, FmaPoint];
   }>;
   referenceLines: Array<[FmaPoint, FmaPoint]>;
-  fixBars: Array<{ fixId: string; point: FmaPoint }>;
+  fixBars: Array<{
+    fixId: string;
+    runwayId: string;
+    point: FmaPoint;
+    segment: [FmaPoint, FmaPoint];
+  }>;
   referenceSpacingFt: 200;
   monitoring: {
     cautionHorizonS: number;
@@ -98,6 +103,31 @@ const point = (base: FmaPoint, along: number, cross: number, course: number): Fm
     yNm: base.yNm + along * Math.cos(t) - cross * Math.sin(t),
   };
 };
+/** Lateral intervals where a NOZ polygon crosses one along-course station. */
+function nozIntervalsAtAlong(
+  noz: FmaPolygon,
+  along: number,
+  course: number,
+): Array<[number, number]> {
+  const projected = noz.points.map((vertex) => ({
+    along: vertex.xNm * Math.sin(rad(course)) + vertex.yNm * Math.cos(rad(course)),
+    cross: vertex.xNm * Math.cos(rad(course)) - vertex.yNm * Math.sin(rad(course)),
+  }));
+  const crossings: number[] = [];
+  for (let i = 0; i < projected.length; i++) {
+    const a = projected[i]!;
+    const b = projected[(i + 1) % projected.length]!;
+    if ((a.along <= along && b.along > along) || (b.along <= along && a.along > along)) {
+      crossings.push(a.cross + ((along - a.along) / (b.along - a.along)) * (b.cross - a.cross));
+    }
+  }
+  crossings.sort((a, b) => a - b);
+  const intervals: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < crossings.length; i += 2) {
+    intervals.push([crossings[i]!, crossings[i + 1]!]);
+  }
+  return intervals;
+}
 const rect = (
   base: FmaPoint,
   start: number,
@@ -361,9 +391,32 @@ function makeAmz(
       ntz.polygon = { points: authored.polygon };
     }
   }
-  const fixBars = rows.flatMap((r) =>
-    r.faf && r.fafFixId ? [{ fixId: r.fafFixId, point: r.faf }] : [],
-  );
+  const fixBars: FmaAmz["fixBars"] = [];
+  for (const row of rows) {
+    if (!row.faf || !row.fafFixId) continue;
+    const along = row.faf.xNm * Math.sin(rad(course)) + row.faf.yNm * Math.cos(rad(course));
+    const cross = row.faf.xNm * Math.cos(rad(course)) - row.faf.yNm * Math.sin(rad(course));
+    const ownNoz = members.find((member) => member.runwayId === row.runwayId)!.noz;
+    const ownIntervals = nozIntervalsAtAlong(ownNoz, along, course);
+    if (!ownIntervals.some(([low, high]) => cross >= low - 1e-8 && cross <= high + 1e-8)) {
+      return {
+        path: `approaches.${row.approachId}.fafFixId`,
+        message: "FAF lies outside its runway NOZ",
+      };
+    }
+    const intervals = members.flatMap((member) => nozIntervalsAtAlong(member.noz, along, course));
+    const low = Math.min(...intervals.map(([edge]) => edge));
+    const high = Math.max(...intervals.map(([, edge]) => edge));
+    fixBars.push({
+      fixId: row.fafFixId,
+      runwayId: row.runwayId,
+      point: row.faf,
+      segment: [
+        point({ xNm: 0, yNm: 0 }, along, low, course),
+        point({ xNm: 0, yNm: 0 }, along, high, course),
+      ],
+    });
+  }
   const runwayGraphics = rows.map((r) => ({
     runwayId: r.runwayId,
     threshold: r.threshold,

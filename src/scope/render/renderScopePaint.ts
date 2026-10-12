@@ -450,6 +450,8 @@ function visibleContourParts(start: FmaPointLike, end: FmaPointLike, hiddenEdges
   return visible;
 }
 
+const FMA_NTZ_STROKE_PX = 3;
+
 export function drawFmaLayers(
   ctx: CanvasRenderingContext2D,
   view: ScopeView,
@@ -598,22 +600,14 @@ export function drawFmaLayers(
       }
     }
 
-    // Fix bars: solid white, 0.2 NM perpendicular tick across course line at FAF.
+    // Fix bars: span the NOZ group at each charted FAF station.
     if (amz.fixBars && amz.fixBars.length > 0) {
       ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
-      ctx.lineWidth = 1;
+      ctx.lineWidth = FMA_NTZ_STROKE_PX;
       ctx.setLineDash([]);
-      const courseRad = (amz.courseTrueDeg * Math.PI) / 180;
-      // Perpendicular vector to course line: dx = cos(course), dy = -sin(course)
-      // Half-length = 0.1 NM (total length = 0.2 NM)
-      const halfLen = 0.1;
-      const dxNm = halfLen * Math.cos(courseRad);
-      const dyNm = -halfLen * Math.sin(courseRad);
       for (const fb of amz.fixBars) {
-        const p1 = { xNm: fb.point.xNm + dxNm, yNm: fb.point.yNm + dyNm };
-        const p2 = { xNm: fb.point.xNm - dxNm, yNm: fb.point.yNm - dyNm };
-        const s1 = proj.toScreen(p1.xNm, p1.yNm);
-        const s2 = proj.toScreen(p2.xNm, p2.yNm);
+        const s1 = proj.toScreen(fb.segment[0].xNm, fb.segment[0].yNm);
+        const s2 = proj.toScreen(fb.segment[1].xNm, fb.segment[1].yNm);
         ctx.beginPath();
         ctx.moveTo(s1.x, s1.y);
         ctx.lineTo(s2.x, s2.y);
@@ -629,7 +623,7 @@ export function drawFmaLayers(
   const ntzBrite = view.brite.ntz ?? 100;
   if (ntzBrite > 0 && amz.ntzs.length > 0) {
     ctx.save();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = FMA_NTZ_STROKE_PX;
     ctx.setLineDash([]);
     for (const ntz of amz.ntzs) {
       if (disabledNtzs.has(ntz.id)) continue;
