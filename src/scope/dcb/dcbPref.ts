@@ -63,6 +63,7 @@ import { resolveSurveillancePref, type SurveillanceMode } from "../surveillance"
 import { cloneWxLevels, type WxLevels } from "../wx";
 import { canonicalSystemListId, ensureSystemListPlacement } from "../systemLists";
 import type { FmaAmz } from "../../core/alerts/fmaGeometry";
+import { cancelPreviewArea } from "../previewArea";
 
 export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
@@ -95,8 +96,14 @@ export const DCB_PREF_SLOT_COUNT = 32;
 /** MAIN PREF second-line budget. CRC analog is a short set name (e.g. 22/27). */
 export const DCB_PREF_READOUT_MAX_CHARS = 6;
 
-/** SAVE AS type-in budget. Stored exact; MAIN still clips to the readout cap. */
-export const DCB_PREF_NAME_MAX_CHARS = 8;
+/** SAVE AS type-in budget. Raytheon STARS TI 6191.409 §4.1.4: 1 to 7 alphanumeric characters. */
+export const DCB_PREF_NEW_NAME_MAX_CHARS = 7;
+
+/** Legacy 8-character ceiling preserved for pre-existing or migrated FSSTARS sets. */
+export const DCB_PREF_LEGACY_NAME_MAX_CHARS = 8;
+
+/** Stored ceiling across all schema versions. New creation strictly enforces DCB_PREF_NEW_NAME_MAX_CHARS. */
+export const DCB_PREF_NAME_MAX_CHARS = DCB_PREF_LEGACY_NAME_MAX_CHARS;
 
 /**
  * Body schema version. Writes always emit this. `parseDcbPrefJson` also
@@ -194,6 +201,10 @@ export interface DcbPrefRuntime {
   restore: DcbPrefBody | null;
   /** FMA-specific part of the in-menu RESTORE snapshot; never persisted. */
   restoreAmzProfile: FmaAmzPreference | null;
+  /** Pre-menu lastApplied identity to restore on RESTORE; never persisted. */
+  restoreLastApplied: { owner: DcbPrefOwner; index: number; name: string } | null;
+  /** Pre-menu FMA mode and active AMZ to restore on RESTORE; never persisted. */
+  restoreFmaSurveillance: { enabled: boolean; selectedAmzId: string | null } | null;
   /** Last successfully selected or saved normal display profile, independent of FMA edits. */
   normalProfile: DcbPrefBody | null;
   /** True while SAVE AS waits for a preview-area name. Not persisted. */
@@ -221,6 +232,8 @@ export function emptyDcbPrefRuntime(icao: string = ""): DcbPrefRuntime {
     activeIndex: -1,
     restore: null,
     restoreAmzProfile: null,
+    restoreLastApplied: null,
+    restoreFmaSurveillance: null,
     normalProfile: null,
     pendingSaveAs: false,
     menuOwner: "FSSTARS",
@@ -251,6 +264,9 @@ export function selectDcbPrefOwner(view: ScopeView, owner: DcbPrefOwner, confirm
       : null;
   view.dcbPref.activeIndex = applied && appliedSlot?.name === applied.name ? applied.index : -1;
   view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
 }
 
 export function endDcbPrefSession(host: Pick<ScopeView, "dcbPref">): void {
@@ -263,6 +279,9 @@ export function endDcbPrefSession(host: Pick<ScopeView, "dcbPref">): void {
 export function stageDcbPrefOwner(view: ScopeView, owner: DcbPrefOwner): void {
   view.dcbPref.ownerCandidate = owner;
   view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
 }
 
 export function commitDcbPrefOwner(view: ScopeView): boolean {
@@ -282,13 +301,19 @@ export function parseDcbPrefOwner(raw: string): DcbPrefOwner | null {
 }
 
 export type DcbPrefNameParse =
-  { ok: true; name: string } | { ok: false; reason: "empty" | "non-alnum" | "digit-only" };
+  | { ok: true; name: string }
+  | { ok: false; reason: "empty" | "non-alnum" | "too-long" | "digit-only" };
 
 /**
- * Non-empty alphanumeric only. Digit-only is reserved for FIL-style input.
- * Exact stored spelling; display clips/uppercases separately.
+ * Validates preference set name.
+ * Raytheon STARS TI 6191.409 §4.1.4: 1 to 7 alphanumeric characters (including numeric-only).
+ * Digit-only names are valid in PREF name entry because they are not slot numbers.
+ * Legacy 8-character names are allowed when allowLegacy8 is true.
  */
-export function parseDcbPrefName(raw: string): DcbPrefNameParse {
+export function parseDcbPrefName(
+  raw: string,
+  options: { allowLegacy8?: boolean } = {},
+): DcbPrefNameParse {
   const name = raw.trim();
   if (name.length === 0) {
     return { ok: false, reason: "empty" };
@@ -296,8 +321,11 @@ export function parseDcbPrefName(raw: string): DcbPrefNameParse {
   if (!/^[A-Za-z0-9]+$/.test(name)) {
     return { ok: false, reason: "non-alnum" };
   }
-  if (/^\d+$/.test(name)) {
-    return { ok: false, reason: "digit-only" };
+  const maxLen = options.allowLegacy8
+    ? DCB_PREF_LEGACY_NAME_MAX_CHARS
+    : DCB_PREF_NEW_NAME_MAX_CHARS;
+  if (name.length > maxLen) {
+    return { ok: false, reason: "too-long" };
   }
   return { ok: true, name };
 }
@@ -656,6 +684,10 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
 
 /** Factory display defaults. Does not wipe tracks / aircraft. */
 export function applyDcbPrefDefaults(view: ScopeView): void {
+  view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
   if (view.fmaSurveillance.enabled) {
     const amzId = view.fmaSurveillance.selectedAmzId;
     const applied = amzId ? applyFmaAmzPreference(view, amzId) : false;
@@ -664,6 +696,9 @@ export function applyDcbPrefDefaults(view: ScopeView): void {
   }
   applyDcbPref(view, factoryDisplayProfile(view));
   view.dcbPref.normalProfile = completeDisplayProfile(view);
+  view.dcbPref.lastApplied = null;
+  view.dcbPref.activeIndex = -1;
+  view.lastWarning = null;
 }
 
 function factoryDisplayProfile(view: ScopeView): DcbPrefBody {
@@ -695,13 +730,50 @@ export function beginDcbPrefSession(view: ScopeView): void {
   const amzId = view.fmaSurveillance.enabled ? view.fmaSurveillance.selectedAmzId : null;
   const amz = view.fmaAmzs.find((candidate) => candidate.id === amzId);
   view.dcbPref.restoreAmzProfile = amz ? captureFmaAmzPreference(view, amz) : null;
+  view.dcbPref.restoreLastApplied = view.dcbPref.lastApplied
+    ? { ...view.dcbPref.lastApplied }
+    : null;
+  view.dcbPref.restoreFmaSurveillance = {
+    enabled: view.fmaSurveillance.enabled,
+    selectedAmzId: view.fmaSurveillance.selectedAmzId,
+  };
 }
 
 export function restoreDcbPrefSession(view: ScopeView): void {
+  view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
   if (view.dcbPref.restore) {
     applyDcbPref(view, view.dcbPref.restore);
     const amzProfile = view.dcbPref.restoreAmzProfile;
     if (amzProfile) applyFmaAmzPreferenceValue(view, amzProfile.amzId, amzProfile);
+    if (view.dcbPref.restoreFmaSurveillance) {
+      if (
+        view.fmaSurveillance.enabled !== view.dcbPref.restoreFmaSurveillance.enabled ||
+        view.fmaSurveillance.selectedAmzId !== view.dcbPref.restoreFmaSurveillance.selectedAmzId
+      ) {
+        if (
+          view.dcbPref.restoreFmaSurveillance.enabled &&
+          view.dcbPref.restoreFmaSurveillance.selectedAmzId
+        ) {
+          configureFmaSurveillanceView(
+            view,
+            true,
+            view.dcbPref.restoreFmaSurveillance.selectedAmzId,
+          );
+        } else if (!view.dcbPref.restoreFmaSurveillance.enabled && view.fmaSurveillance.enabled) {
+          clearFmaSurveillanceView(view);
+        }
+      }
+    }
+    view.dcbPref.lastApplied = view.dcbPref.restoreLastApplied ?? null;
+    const applied = view.dcbPref.lastApplied;
+    const appliedSlot =
+      applied && applied.owner === view.dcbPref.menuOwner
+        ? dcbPrefSlots(view)[applied.index]
+        : null;
+    view.dcbPref.activeIndex = applied && appliedSlot?.name === applied.name ? applied.index : -1;
   }
 }
 
@@ -775,6 +847,10 @@ function isCompleteDisplayProfile(value: unknown): value is DcbPrefBody {
 }
 
 export function selectDcbPrefSlot(view: ScopeView, index: number): void {
+  view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
   if (index < 0 || index >= DCB_PREF_SLOT_COUNT) {
     return;
   }
@@ -849,13 +925,20 @@ function persistRuntime(view: ScopeView, storage: DcbPrefStorage | undefined): v
 }
 
 export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
+  view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
   const owner = view.dcbPref.menuOwner;
   const slots = dcbPrefSlots(view);
   const index = view.dcbPref.activeIndex;
+  if (index < 0 || index >= DCB_PREF_SLOT_COUNT) return;
   const selected = slots[index] ?? null;
   if (!selected) return;
   if (owner === "FMA") {
-    const amz = view.fmaAmzs.find((candidate) => candidate.id === selected.name);
+    const amz = view.fmaAmzs.find(
+      (candidate) => candidate.id.toUpperCase() === selected.name.toUpperCase(),
+    );
     if (!amz) {
       view.lastWarning = "ILL PREFSET";
       return;
@@ -890,8 +973,13 @@ export function isDcbPrefSaveAsPending(view: Pick<ScopeView, "dcbPref">): boolea
 }
 
 /**
- * Commit a parsed name to the first empty slot, or the last slot when full.
- * Invalid names return null and leave pending SAVE AS armed.
+ * Commit a parsed name to the first empty slot.
+ * Enforces Raytheon STARS TI 6191.409 §4.1.4:
+ * - 1 to 7 alphanumeric characters (including digit-only)
+ * - Case-insensitive duplicate check against existing sets -> ILL PREFSET
+ * - FMA set name must resolve an authored AMZ ID -> FORMAT
+ * - Capacity limit: maximum 32 preference sets -> ILL PREFSET without overwriting
+ * Invalid names leave pending SAVE AS armed and buffer pending with visible rejection.
  */
 export function commitDcbPrefSaveAs(
   view: ScopeView,
@@ -901,42 +989,79 @@ export function commitDcbPrefSaveAs(
   if (!view.dcbPref.pendingSaveAs) {
     return null;
   }
-  const parsed = parseDcbPrefName(rawName);
+  const trimmed = rawName.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const parsed = parseDcbPrefName(trimmed);
   if (!parsed.ok) {
+    view.preview.rejection = "FORMAT";
+    view.preview.lastKeyAtMs = Date.now();
+    view.lastWarning = "FORMAT";
     return null;
   }
   const owner = view.dcbPref.menuOwner;
-  const index = dcbPrefSlots(view).findIndex((slot) => slot === null);
-  if (index < 0) return null;
+  const slots = dcbPrefSlots(view);
+  const emptyIndex = slots.findIndex((slot) => slot === null);
+  if (emptyIndex < 0) {
+    view.preview.rejection = "ILL PREFSET";
+    view.preview.lastKeyAtMs = Date.now();
+    view.lastWarning = "ILL PREFSET";
+    return null;
+  }
+  const candidateUpper = parsed.name.toUpperCase();
+  const duplicate = slots.some((s) => s !== null && s.name.toUpperCase() === candidateUpper);
+  if (duplicate) {
+    view.preview.rejection = "ILL PREFSET";
+    view.preview.lastKeyAtMs = Date.now();
+    view.lastWarning = "ILL PREFSET";
+    return null;
+  }
   if (owner === "FMA") {
-    const amz = view.fmaAmzs.find((candidate) => candidate.id === parsed.name);
-    if (!amz) return null;
-    saveFmaAmzPreference(view, amz.id, captureFmaAmzPreference(view, amz));
-    view.dcbPref.fmaSlots[index] = { name: parsed.name, body: slotDisplayBody(view) };
+    const amz = view.fmaAmzs.find((c) => c.id.toUpperCase() === candidateUpper);
+    if (!amz) {
+      view.preview.rejection = "FORMAT";
+      view.preview.lastKeyAtMs = Date.now();
+      view.lastWarning = "FORMAT";
+      return null;
+    }
+    const targetName = amz.id;
+    saveFmaAmzPreference(view, targetName, captureFmaAmzPreference(view, amz));
+    view.dcbPref.fmaSlots[emptyIndex] = { name: targetName, body: slotDisplayBody(view) };
     view.dcbPref.pendingSaveAs = false;
+    if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+    view.lastWarning = null;
     if (view.dcbPref.lastApplied) {
       setLastAppliedPref(view, view.dcbPref.lastApplied);
     } else {
       view.dcbPref.activeIndex = -1;
     }
     persistRuntime(view, storage);
-    return index;
+    return emptyIndex;
   }
-  view.dcbPref.slots[index] = { name: parsed.name, body: slotDisplayBody(view) };
+  view.dcbPref.slots[emptyIndex] = { name: candidateUpper, body: slotDisplayBody(view) };
   view.dcbPref.normalProfile = completeDisplayProfile(view);
   view.dcbPref.pendingSaveAs = false;
-  setLastAppliedPref(view, { owner, index, name: parsed.name });
-  view.dcbPref.lastNormal = { index, name: parsed.name };
+  if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+  view.lastWarning = null;
+  setLastAppliedPref(view, { owner, index: emptyIndex, name: candidateUpper });
+  view.dcbPref.lastNormal = { index: emptyIndex, name: candidateUpper };
   persistRuntime(view, storage);
-  return index;
+  return emptyIndex;
 }
 
 export function deleteDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
+  view.dcbPref.pendingSaveAs = false;
+  if (view.preview.armed?.type === "saveAsPref") {
+    cancelPreviewArea(view.preview);
+  }
   const owner = view.dcbPref.menuOwner;
   const slots = dcbPrefSlots(view);
-  const slot = slots[view.dcbPref.activeIndex];
+  const index = view.dcbPref.activeIndex;
+  if (index < 0 || index >= DCB_PREF_SLOT_COUNT) return;
+  const slot = slots[index];
   if (!slot) return;
-  slots[view.dcbPref.activeIndex] = null;
+  slots[index] = null;
   view.dcbPref.activeIndex = -1;
   if (owner === "FMA") view.amzPreferences.delete(slot.name);
   persistRuntime(view, storage);

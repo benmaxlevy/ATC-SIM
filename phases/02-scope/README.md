@@ -1100,20 +1100,41 @@ When FMA surveillance is enabled via `MODE -> FMA -> ACCEPT`:
 - **Inherited VOL**: The trainer reuses its pre-FMA 0–5 workstation volume scale for the CA alert tone. FMA VOICE remains the separate 1–10 SpeechSynthesis level.
 - **PREF**: `SAVE` / `SAVE AS` writes the selected AMZ's complete supported display profile into its own local preference record. Normal slots and other AMZ profiles remain independent. `DELETE` removes only the active AMZ preference; the selected AMZ remains available, and a later DEFAULT warns if its profile is missing. AMZ profiles are unavailable from normal-mode PREF controls.
 
-### Current FMA profile contract (T02-232–233)
+### Current FMA profile contract (T02-232–235)
 
 Normal `FSSTARS` and reserved `FMA` owners keep separate numbered sets and
 complete supported workstation display preferences. The Figure 4-1 USER cell
-stages the owner by wheel/drag or accepts exact typed `FSSTARS` / `FMA`; commit
-changes only which set names are shown. SAVE, SAVE AS, and DELETE route through
-that explicit owner and selected set. Selecting an FMA set while FMA is active
-switches the AMZ and applies its complete profile; outside FMA it prepares the
-AMZ and dormant settings without enabling FMA. FMA DEFAULT applies the active
-AMZ profile. If it is missing, the trainer shows `NO PREF SET FOUND`, preserves
-current display settings, and still paints the adapted AMZ; it does not apply
-defaults or substitute maps. Exiting FMA applies the last-used normal preference,
-not an entry snapshot or factory reset. Reload starts in normal mode and loads
-the normal profile while retaining both owners' sets.
+stages the owner by wheel/drag or accepts exact typed `FSSTARS` / `FMA` (single
+operator, no PIN or authentication accounts); commit changes only which set names
+are shown. SAVE, SAVE AS, and DELETE route strictly through that explicit owner
+and selected set:
+- **SAVE**: Overwrites the highlighted existing set under the selected owner.
+  Unavailable/disabled without a selected set.
+- **SAVE AS**: Creates the next vacant slot (up to 32 slots per owner; disabled
+  when full). Enforces Raytheon STARS TI 6191.409 §4.1.4: 1–7 alphanumeric
+  characters (including digit-only names; legacy 8-character FSSTARS names are
+  preserved on load and SAVE). Case-insensitive duplicates reject with `ILL PREFSET`.
+  In FMA mode, names must resolve authored AMZ IDs (not constrained to the
+  currently active AMZ; unknown AMZ or malformed syntax rejects with `FORMAT`).
+  Failed names remain pending in the preview buffer with visible error readout
+  (`FORMAT` or `ILL PREFSET`) until corrected or canceled via `Esc`, `Clear`,
+  owner switch, `DONE`, or starting another function.
+- **DELETE**: Removes only the highlighted set of the selected owner, preserving
+  current display and MAIN applied identity. Deleting the last FMA set leaves
+  the FMA owner valid.
+- **DEFAULT**: Owner-independent. In FMA mode it reapplies the active AMZ profile
+  (or warns `NO PREF SET FOUND` while preserving display); outside FMA mode it
+  applies factory display defaults and clears the applied identity and selection.
+- **RESTORE**: Captures complete pre-menu display/context (including FMA mode,
+  active AMZ, and applied identity) and safely restores it without reviving obsolete
+  alert tracks, acknowledgments, or speech queues; saved records on disk are not
+  rolled back.
+
+Selecting an FMA set while FMA is active switches the AMZ and applies its
+complete profile; outside FMA it prepares the AMZ and dormant settings without
+enabling FMA. Exiting FMA applies the last-used normal preference, not an entry
+snapshot or factory reset. Reload starts in normal mode and loads the normal
+profile while retaining both owners' sets.
 
 The supported profile payload includes dock and camera; rings; MAPS visibility,
 category/list mode, group and toggles; DCB visibility; Mode C and altitude

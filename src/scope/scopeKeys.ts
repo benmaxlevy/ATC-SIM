@@ -1706,7 +1706,7 @@ export function handleScopeKeyDown(
     return true;
   }
 
-  if (event.key === "Escape") {
+  if (event.key === "Escape" || event.key === "Clear") {
     view.f1DropArmed = false;
     view.stagedListAnchor = null;
     cancelRblPending(view.rbl);

@@ -14,7 +14,7 @@
 
 import { flightPlanForAircraft, isFlightPlanOperational, type World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
-import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName, parseDcbPrefOwner } from "./dcb/dcbPref";
+import { parseDcbPrefName, parseDcbPrefOwner } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
@@ -464,10 +464,6 @@ export function beginPrefNameEntry(state: PreviewAreaState, nowMs: number): void
   state.lastKeyAtMs = nowMs;
 }
 
-function prefNameInvalidReadout(buffer: string): string {
-  return buffer.length > 0 ? `PREF ${buffer} INV` : "PREF INV";
-}
-
 function handlePrefNameKey(
   state: PreviewAreaState,
   key: string,
@@ -500,19 +496,23 @@ function handlePrefNameKey(
       state.lastKeyAtMs = nowMs;
       return { consumed: true, action: null };
     }
-    const parsed = parseDcbPrefName(state.buffer);
-    if (parsed.ok) {
-      cancelPreviewArea(state);
-      return { consumed: true, action: { type: "saveAsPref", name: parsed.name } };
+    const trimmed = state.buffer.trim();
+    if (trimmed.length === 0) {
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
     }
-    state.rejection = prefNameInvalidReadout(state.buffer);
-    state.lastKeyAtMs = nowMs;
-    return { consumed: true, action: null };
+    const parsed = parseDcbPrefName(trimmed);
+    if (!parsed.ok) {
+      state.rejection = "FORMAT";
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
+    }
+    return { consumed: true, action: { type: "saveAsPref", name: parsed.name } };
   }
   const ch = previewBufferCharFromKey(key, code);
   const rawInputChar = ch ?? key;
   if (
-    isPrefUserEntry(state) &&
+    (isPrefUserEntry(state) || isPrefNameEntry(state)) &&
     rawInputChar.length === 1 &&
     rawInputChar >= " " &&
     rawInputChar <= "~"
@@ -524,7 +524,7 @@ function handlePrefNameKey(
   }
   if (ch !== null && /^[A-Z0-9]$/.test(ch)) {
     state.rejection = null;
-    if (state.buffer.length < (isPrefUserEntry(state) ? 7 : DCB_PREF_NAME_MAX_CHARS)) {
+    if (state.buffer.length < 32) {
       state.buffer += ch;
     }
     state.lastKeyAtMs = nowMs;

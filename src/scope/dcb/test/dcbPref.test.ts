@@ -51,11 +51,16 @@ test("SAVE then reload restores range, a toggled map, and dock", () => {
   expect(isVideoMapOn(boot, "DEM1_27")).toBe(false);
 });
 
-test("parseDcbPrefName rejects empty, non-alnum, and digit-only text", () => {
+test("parseDcbPrefName validates 1–7 alphanumeric names including digit-only and rejects empty, non-alnum, and overlength", () => {
   expect(parseDcbPrefName("NIGHT")).toEqual({ ok: true, name: "NIGHT" });
+  expect(parseDcbPrefName("123")).toEqual({ ok: true, name: "123" });
   expect(parseDcbPrefName("")).toEqual({ ok: false, reason: "empty" });
   expect(parseDcbPrefName("22/27")).toEqual({ ok: false, reason: "non-alnum" });
-  expect(parseDcbPrefName("123")).toEqual({ ok: false, reason: "digit-only" });
+  expect(parseDcbPrefName("TOOLONGNAME")).toEqual({ ok: false, reason: "too-long" });
+  expect(parseDcbPrefName("DAYLIGHT", { allowLegacy8: true })).toEqual({
+    ok: true,
+    name: "DAYLIGHT",
+  });
 });
 
 test("SAVE then reload restores historyRateSec, dwellMode, cursorHome, cursorSpeed", () => {

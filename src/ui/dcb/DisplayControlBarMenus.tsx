@@ -2801,7 +2801,11 @@ export function prefStore() {
 }
 
 export function renderPref(view: ScopeView, onChange: () => void) {
-  const selectedSlot = dcbPrefSlots(view)[view.dcbPref.activeIndex] ?? null;
+  const currentSlots = dcbPrefSlots(view);
+  const selectedSlot = currentSlots[view.dcbPref.activeIndex] ?? null;
+  const isTableFull = currentSlots.every((slot) => slot !== null);
+  const saveAsDisabled =
+    isTableFull || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed);
   return (
     <div className="dcb-main-grid" data-dcb-layout="PREF">
       {Array.from({ length: 16 }, (_, colIdx) => {
@@ -3004,18 +3008,16 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 19, gridRow: "2 / span 1" }}
       >
         <DcbCell
-          kind={
-            view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed
-              ? "action"
-              : "disabled"
-          }
+          kind={saveAsDisabled ? "disabled" : "action"}
           ariaLabel={
-            view.dcbPref.menuOwner === "FMA"
-              ? "Save as desired authored AMZ ID"
-              : "Save as normal preference"
+            isTableFull
+              ? "Save as unavailable: maximum 32 preference sets reached"
+              : view.dcbPref.menuOwner === "FMA"
+                ? "Save as desired authored AMZ ID"
+                : "Save as normal preference"
           }
           dataDcb="pref-save-as"
-          disabled={view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed}
+          disabled={saveAsDisabled}
           onClick={() => {
             cancelFilterIfEntering(view);
             beginDcbPrefSaveAs(view);

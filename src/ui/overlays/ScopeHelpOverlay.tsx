@@ -229,15 +229,28 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
                       selectable. MAPS only changes map visibility/category; NTZ inhibition only
                       changes alert and boundary behavior. PREF USER selects the reserved local
                       FSSTARS or FMA owner by staged roll/drag and click, or exact typed owner plus
-                      Enter. Browsing only changes the shown numbered sets; SAVE, SAVE AS, and
-                      DELETE route to the explicit owner and selected set. Selecting an FMA set
-                      while FMA is active fully switches AMZ/profile; outside FMA it prepares that
-                      AMZ without enabling FMA. FMA DEFAULT applies that AMZ profile and preserves
-                      current display settings if none exists. FMA exit restores the last-used
-                      normal profile; reload starts normal. Live tracks, alerts, ownership, frozen
-                      poses, speech queues and pending commands are not saved. FMA PTL is in whole
-                      seconds (0 removes PTL and SSA readout); caution horizon remains independent.
-                      BRITE includes AMZ, RWY, REF (0 or 5–100) and NTZ (50–100, no off).
+                      Enter (single operator, no PIN or authentication accounts). Browsing changes
+                      only the shown numbered sets; SAVE, SAVE AS, and DELETE route strictly to the
+                      explicitly selected owner. SAVE overwrites a highlighted set. SAVE AS creates
+                      the first vacant slot (up to 32 per owner; disabled when full). New names are
+                      1–7 alphanumerics (including digit-only names; legacy 8-char FSSTARS names are
+                      preserved on load and SAVE). Case-insensitive duplicate names reject with ILL
+                      PREFSET. In FMA mode, names must resolve authored AMZ IDs (unknown AMZ or
+                      syntax error rejects with FORMAT). Failed names stay pending in the preview
+                      buffer with visible error readout (FORMAT or ILL PREFSET) until edited or
+                      canceled via Esc, Clear, owner switch, DONE, or new function. DELETE removes
+                      only the highlighted set, leaving current display and MAIN applied identity
+                      intact. DEFAULT is owner-independent: in FMA mode it reapplies the active AMZ
+                      profile (or reports NO PREF SET FOUND while preserving display); outside FMA
+                      it applies factory display defaults and clears applied identity. RESTORE
+                      recovers exact pre-menu display and FMA context without reviving obsolete
+                      alert tracks or speech. Selecting an FMA set while FMA is active fully
+                      switches AMZ/profile; outside FMA it prepares that AMZ without enabling FMA.
+                      FMA exit restores the last-used normal profile; reload starts normal. Live
+                      tracks, alerts, ownership, frozen poses, speech queues and pending commands
+                      are not saved. FMA PTL is in whole seconds (0 removes PTL and SSA readout);
+                      caution horizon remains independent. BRITE includes AMZ, RWY, REF (0 or 5–100)
+                      and NTZ (50–100, no off).
                     </p>
                   ) : null}
                 </details>

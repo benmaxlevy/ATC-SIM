@@ -11,6 +11,10 @@ import {
   applyFmaAmzPreference,
   beginDcbPrefSaveAs,
   commitDcbPrefSaveAs,
+  deleteDcbPref,
+  beginDcbPrefSession,
+  restoreDcbPrefSession,
+  closeDcbMenu,
   dcbPrefStorageKey,
   enterFmaConfirmation,
   commitFmaConfirmation,
@@ -23,6 +27,11 @@ import {
   serializeDcbPref,
   beginPrefUserEntry,
   beginPrefNameEntry,
+  formatPreviewReadout,
+  handlePreviewBufferKey,
+  handlePreviewEscape,
+  appliedDcbPrefIdentity,
+  DCB_PREF_SLOT_COUNT,
   type DcbPrefStorage,
 } from "@scope";
 
@@ -631,5 +640,326 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     expect(Array.isArray(view.amzPreferences.get("AMZ-BAD")?.displayProfile?.mapVisibility)).toBe(
       false,
     );
+  });
+});
+
+describe("T02-235 user-directed PREF actions and acceptance", () => {
+  test("AC1: owner-directed SAVE / DELETE, create-only SAVE AS with inactive AMZ naming, and slot protection", () => {
+    const storage = memoryStorage();
+    const view = createScopeView();
+    view.dcbPref.icao = "KDEM";
+    view.fmaAmzs = [amz("SOUTH"), amz("NORTH26")];
+    view.fmaSurveillance.enabled = true;
+    view.fmaSurveillance.selectedAmzId = "SOUTH";
+
+    // 1. Inactive AMZ naming in FMA mode: SAVE AS NORTH26 while SOUTH is active
+    selectDcbPrefOwner(view, "FMA");
+    beginDcbPrefSaveAs(view);
+    setDisplay(view, 2);
+    view.camera.rangeNm = 30;
+    const fmaIndex = commitDcbPrefSaveAs(view, "NORTH26", storage);
+    expect(fmaIndex).toBe(0);
+    // Active AMZ stays SOUTH; geometry/mode unchanged
+    expect(view.fmaSurveillance.selectedAmzId).toBe("SOUTH");
+    expect(view.fmaSurveillance.enabled).toBe(true);
+    expect(view.dcbPref.fmaSlots[0]?.name).toBe("NORTH26");
+    const northPref = view.amzPreferences.get("NORTH26");
+    expect(northPref).toBeDefined();
+    expect(northPref?.displayProfile?.rangeNm).toBe(30);
+    // Normal slots untouched
+    expect(view.dcbPref.slots.every((s) => s === null)).toBe(true);
+
+    // 2. SAVE highlighted existing set under selected owner
+    // Highlight NORTH26, alter display, and SAVE
+    view.dcbPref.activeIndex = 0;
+    view.camera.rangeNm = 40;
+    saveDcbPref(view, storage);
+    expect(view.dcbPref.fmaSlots[0]?.body.rangeNm).toBe(40);
+    const northPrefUpdated = view.amzPreferences.get("NORTH26");
+    expect(northPrefUpdated?.displayProfile?.rangeNm).toBe(40);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("SOUTH");
+
+    // SAVE unavailable without highlighted slot
+    view.dcbPref.activeIndex = -1;
+    view.camera.rangeNm = 50;
+    saveDcbPref(view, storage);
+    expect(view.dcbPref.fmaSlots[0]?.body.rangeNm).toBe(40); // unchanged
+
+    // 3. Normal owner write while FMA is active
+    selectDcbPrefOwner(view, "FSSTARS");
+    beginDcbPrefSaveAs(view);
+    const normalIndex = commitDcbPrefSaveAs(view, "DAY1", storage);
+    expect(normalIndex).toBe(0);
+    expect(view.dcbPref.slots[0]?.name).toBe("DAY1");
+    // FMA sets untouched
+    expect(view.dcbPref.fmaSlots[0]?.name).toBe("NORTH26");
+
+    // 4. DELETE targets highlighted selected-owner record, leaving display & applied identity intact
+    selectDcbPrefOwner(view, "FMA");
+    view.dcbPref.activeIndex = 0;
+    view.dcbPref.lastApplied = { owner: "FMA", index: 0, name: "NORTH26" };
+    deleteDcbPref(view, storage);
+    expect(view.dcbPref.fmaSlots[0]).toBeNull();
+    expect(view.dcbPref.activeIndex).toBe(-1);
+    expect(view.amzPreferences.has("NORTH26")).toBe(false);
+    // Display preserved
+    expect(view.camera.rangeNm).toBe(50);
+    // Applied identity preserved on MAIN DCB
+    expect(view.dcbPref.lastApplied).toEqual({ owner: "FMA", index: 0, name: "NORTH26" });
+    expect(appliedDcbPrefIdentity(view)).toBe("FMA NORTH26");
+
+    // Deleting last FMA record leaves FMA owner valid
+    expect(view.dcbPref.menuOwner).toBe("FMA");
+  });
+
+  test("AC2: valid alpha/numeric 1–7 bounds, digit-only names, duplicate matching, unknown AMZ, full capacity, and legacy 8-char preservation", () => {
+    const storage = memoryStorage();
+    const view = createScopeView();
+    view.dcbPref.icao = "KDEM";
+    view.fmaAmzs = [amz("SOUTH"), amz("123")];
+
+    selectDcbPrefOwner(view, "FSSTARS");
+
+    // Digit-only name is valid (1-7 alphanumerics per TI 6191.409 §4.1.4)
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "123", storage)).toBe(0);
+    expect(view.dcbPref.slots[0]?.name).toBe("123");
+
+    // Duplicate case-insensitive check -> ILL PREFSET
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "123", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("ILL PREFSET");
+    expect(view.lastWarning).toBe("ILL PREFSET");
+
+    // Case-insensitive duplicate check with letters
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "DAY", storage)).toBe(1);
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "day", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("ILL PREFSET");
+
+    // 8 new characters (>7) rejected as FORMAT
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "DAYLIGHT", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("FORMAT");
+
+    // Non-alphanumeric rejected as FORMAT
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "22/27", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("FORMAT");
+
+    // FMA owner: unknown AMZ rejected as FORMAT
+    selectDcbPrefOwner(view, "FMA");
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "UNKNOWN", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("FORMAT");
+    // FMA owner: authored AMZ 123 is accepted
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "123", storage)).toBe(0);
+    expect(view.dcbPref.fmaSlots[0]?.name).toBe("123");
+
+    // Full capacity (32 records) disables SAVE AS in DCB and rejects commit
+    selectDcbPrefOwner(view, "FSSTARS");
+    for (let i = 2; i < DCB_PREF_SLOT_COUNT; i++) {
+      view.dcbPref.slots[i] = { name: `S${i}`, body: serializeDcbPref(view) };
+    }
+    expect(view.dcbPref.slots.every((s) => s !== null)).toBe(true);
+
+    const cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-save-as",
+    );
+    expect(cell).toBeDefined();
+    expect(cell?.props?.disabled).toBe(true);
+    expect(cell?.props?.kind).toBe("disabled");
+
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "OVER", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("ILL PREFSET");
+    // Slot 31 is not overwritten
+    expect(view.dcbPref.slots[31]?.name).toBe("S31");
+
+    // Legacy 8-character FSSTARS names preserved on load and SAVE
+    const legacyFile = {
+      v: 4,
+      icao: "KDEM",
+      activeIndex: 0,
+      slots: [{ name: "DAYLIGHT", body: serializeDcbPref(view) }, ...Array(31).fill(null)],
+    };
+    storage.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(legacyFile));
+    const loadedView = createScopeView();
+    loadDcbPrefFromStorage(loadedView, "KDEM", storage);
+    expect(loadedView.dcbPref.slots[0]?.name).toBe("DAYLIGHT");
+    loadedView.dcbPref.activeIndex = 0;
+    loadedView.camera.rangeNm = 60;
+    saveDcbPref(loadedView, storage);
+    expect(loadedView.dcbPref.slots[0]?.name).toBe("DAYLIGHT");
+    expect(loadedView.dcbPref.slots[0]?.body.rangeNm).toBe(60);
+  });
+
+  test("AC3: failed naming remains pending with error readout; cancel via Esc/Clear/owner switch/DONE; modifier & input independence", () => {
+    const storage = memoryStorage();
+    const view = createScopeView();
+    view.dcbPref.icao = "KDEM";
+    view.fmaAmzs = [amz("SOUTH")];
+
+    // 1. Failed name stays pending in preview buffer with error readout
+    selectDcbPrefOwner(view, "FSSTARS");
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 100);
+
+    // Type 8 characters: TOOLONGS
+    for (const char of "TOOLONGS") {
+      handlePreviewBufferKey(view.preview, char, 100);
+    }
+    expect(view.preview.buffer).toBe("TOOLONGS");
+    expect(formatPreviewReadout(view.preview)).toBe("PREF TOOLONGS");
+
+    // Press Enter -> FORMAT error; buffer remains pending!
+    const enterOutcome = handlePreviewBufferKey(view.preview, "Enter", 100);
+    expect(enterOutcome.consumed).toBe(true);
+    expect(view.preview.phase).toBe("entry");
+    expect(view.preview.buffer).toBe("TOOLONGS");
+    expect(formatPreviewReadout(view.preview)).toBe("FORMAT");
+
+    // Press Backspace -> clears error readout, drops last char
+    handlePreviewBufferKey(view.preview, "Backspace", 101);
+    expect(view.preview.buffer).toBe("TOOLONG");
+    expect(formatPreviewReadout(view.preview)).toBe("PREF TOOLONG");
+
+    // Now 7 chars: press Enter -> succeeds
+    const enterOutcome2 = handlePreviewBufferKey(view.preview, "Enter", 102);
+    expect(enterOutcome2.consumed).toBe(true);
+    expect(enterOutcome2.action?.type).toBe("saveAsPref");
+    if (enterOutcome2.action?.type === "saveAsPref" && enterOutcome2.action.name) {
+      commitDcbPrefSaveAs(view, enterOutcome2.action.name, storage);
+    }
+    expect(view.preview.phase).toBe("idle");
+    expect(view.dcbPref.slots[0]?.name).toBe("TOOLONG");
+
+    // Duplicate commit error stays pending
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 110);
+    for (const char of "TOOLONG") {
+      handlePreviewBufferKey(view.preview, char, 110);
+    }
+    const dupOutcome = handlePreviewBufferKey(view.preview, "Enter", 110);
+    expect(dupOutcome.action?.type).toBe("saveAsPref");
+    if (dupOutcome.action?.type === "saveAsPref" && dupOutcome.action.name) {
+      commitDcbPrefSaveAs(view, dupOutcome.action.name, storage);
+    }
+    expect(view.preview.phase).toBe("entry");
+    expect(view.preview.buffer).toBe("TOOLONG");
+    expect(formatPreviewReadout(view.preview)).toBe("ILL PREFSET");
+
+    // 2. Cancellation via Escape
+    handlePreviewEscape(view.preview);
+    expect(view.preview.phase).toBe("idle");
+    expect(view.preview.buffer).toBe("");
+
+    // 3. Cancellation via owner switch
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 120);
+    handlePreviewBufferKey(view.preview, "A", 120);
+    selectDcbPrefOwner(view, "FMA");
+    expect(view.preview.phase).toBe("idle");
+    expect(view.dcbPref.pendingSaveAs).toBe(false);
+
+    // 4. Cancellation via DONE
+    selectDcbPrefOwner(view, "FSSTARS");
+    view.dcbMenu = "PREF";
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 130);
+    handlePreviewBufferKey(view.preview, "B", 130);
+    closeDcbMenu(view);
+    expect(view.preview.phase).toBe("idle");
+
+    // 5. Modifiers and Help overlay do not corrupt pending buffer
+    view.dcbMenu = "PREF";
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 140);
+    handlePreviewBufferKey(view.preview, "C", 140);
+    // Shift key does not add text or cancel
+    handlePreviewBufferKey(view.preview, "Shift", 140);
+    expect(view.preview.buffer).toBe("C");
+    // Help open does not steal
+    view.helpOpen = true;
+    handlePreviewBufferKey(view.preview, "D", 140);
+    expect(view.preview.buffer).toBe("CD");
+  });
+
+  test("AC4: DEFAULT owner independence, RESTORE context parity without runtime revival, and dormant FMA selection", () => {
+    const storage = memoryStorage();
+    const view = createScopeView();
+    view.dcbPref.icao = "KDEM";
+    view.fmaAmzs = [amz("SOUTH")];
+
+    // Setup valid SOUTH preference via SAVE AS
+    selectDcbPrefOwner(view, "FMA");
+    beginDcbPrefSaveAs(view);
+    view.camera.rangeNm = 30;
+    commitDcbPrefSaveAs(view, "SOUTH", storage);
+    view.camera.rangeNm = 40;
+
+    // 1. Dormant FMA selection outside FMA mode
+    expect(view.fmaSurveillance.enabled).toBe(false);
+    selectDcbPrefOwner(view, "FMA");
+    selectDcbPrefSlot(view, 0);
+    expect(view.fmaDefaultAmzId).toBe("SOUTH");
+    expect(view.camera.rangeNm).toBe(30);
+    expect(view.fmaSurveillance.enabled).toBe(false); // mode not enabled
+
+    // 2. DEFAULT owner independence
+    // In FMA mode with active AMZ SOUTH, browsing FSSTARS: DEFAULT reapplies active AMZ
+    view.fmaSurveillance.enabled = true;
+    view.fmaSurveillance.selectedAmzId = "SOUTH";
+    view.camera.rangeNm = 40;
+    selectDcbPrefOwner(view, "FSSTARS");
+    applyDcbPrefDefaults(view);
+    expect(view.camera.rangeNm).toBe(30); // reapplied active AMZ profile
+
+    // Missing active AMZ profile warns NO PREF SET FOUND and preserves display
+    view.fmaSurveillance.selectedAmzId = "MISSING";
+    view.camera.rangeNm = 40;
+    applyDcbPrefDefaults(view);
+    expect(view.lastWarning).toBe("NO PREF SET FOUND");
+    expect(view.camera.rangeNm).toBe(40); // display preserved!
+
+    // In normal mode, browsing FMA: DEFAULT restores factory defaults and clears lastApplied
+    view.fmaSurveillance.enabled = false;
+    view.dcbPref.lastApplied = { owner: "FMA", index: 0, name: "SOUTH" };
+    view.dcbPref.activeIndex = 0;
+    applyDcbPrefDefaults(view);
+    expect(view.dcbPref.lastApplied).toBeNull();
+    expect(view.dcbPref.activeIndex).toBe(-1);
+    expect(appliedDcbPrefIdentity(view)).toBe("");
+
+    // 3. RESTORE captures pre-menu display/context and restores it safely
+    view.fmaSurveillance.enabled = true;
+    view.fmaSurveillance.selectedAmzId = "SOUTH";
+    view.camera.rangeNm = 30;
+    view.dcbPref.lastApplied = { owner: "FMA", index: 0, name: "SOUTH" };
+
+    beginDcbPrefSession(view);
+
+    // Make edits and save a new normal record
+    view.camera.rangeNm = 80;
+    view.dcbDock = "LEFT";
+    selectDcbPrefOwner(view, "FSSTARS");
+    beginDcbPrefSaveAs(view);
+    commitDcbPrefSaveAs(view, "SAVESET", storage);
+
+    // Call RESTORE
+    restoreDcbPrefSession(view);
+
+    // Pre-menu display and FMA context restored
+    expect(view.camera.rangeNm).toBe(30);
+    expect(view.dcbDock).toBe("TOP");
+    expect(view.fmaSurveillance.enabled).toBe(true);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("SOUTH");
+    expect(view.dcbPref.lastApplied).toEqual({ owner: "FMA", index: 0, name: "SOUTH" });
+
+    // Saved record in storage was NOT rolled back
+    expect(view.dcbPref.slots[0]?.name).toBe("SAVESET");
   });
 });
