@@ -32,7 +32,7 @@ export function formatFmaAlertDiagnostic(
   if (scenarioMessages.some((message) => message.includes("initial AMZ"))) {
     return "FMA: INITIAL AMZ OVERRIDE IGNORED";
   }
-  return scenarioMessages.length > 0 ? "FMA: AMZ ADAPTATION DIAGNOSTIC" : null;
+  return null;
 }
 
 function usableReport(report: SurveillanceReport, nowSimMs: number): boolean {

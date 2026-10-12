@@ -1620,6 +1620,12 @@ test("FMA assignment is explicit, exact and independent of observed course", () 
   expect(result.tracks.get("conflict")?.diagnostic).toContain("Multiple explicit");
   expect(formatFmaAlertDiagnostic(result.diagnostics)).toBe("FMA: CONFLICTING RUNWAY ASSIGNMENT");
   expect(formatFmaAlertDiagnostic([])).toBeNull();
+  expect(
+    formatFmaAlertDiagnostic(
+      [],
+      ["approaches.I08L/I08R: adjacent spacing outside trainer interval"],
+    ),
+  ).toBeNull();
 });
 
 test("FMA requires explicit arrival evidence and an unambiguous observed runway", () => {
