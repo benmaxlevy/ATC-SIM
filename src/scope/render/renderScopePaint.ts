@@ -600,7 +600,7 @@ export function drawFmaLayers(
       }
     }
 
-    // Fix bars: span the NOZ group at each charted FAF station.
+    // Fix bars: span only their runway's NOZ at each charted FAF station.
     if (amz.fixBars && amz.fixBars.length > 0) {
       ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
       ctx.lineWidth = FMA_NTZ_STROKE_PX;

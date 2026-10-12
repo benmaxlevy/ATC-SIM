@@ -816,7 +816,7 @@ test("derived FMA defaults retain 200-foot references and trainer dimensions", (
   ).toEqual([]);
 });
 
-test("charted FAF bars span the paired NOZ envelope at their own stations and match NTZ thickness", () => {
+test("staggered FAF bars stop at their own NOZ edges and match NTZ thickness", () => {
   const source = catalog([
     { runway: "A", course: 0, x: -0.5 },
     { runway: "B", course: 0, x: 0.5 },
@@ -830,24 +830,17 @@ test("charted FAF bars span the paired NOZ envelope at their own stations and ma
   const result = deriveFmaAmzs(source);
   expect(result.diagnostics).toEqual([]);
   const amz = result.amzs[0]!;
-  expect(amz.fixBars.map((bar) => [bar.runwayId, bar.fixId, bar.segment])).toEqual([
-    [
-      "A",
-      "FAFA",
-      [
-        { xNm: -1, yNm: -5 },
-        { xNm: 1, yNm: -5 },
-      ],
-    ],
-    [
-      "B",
-      "FAFB",
-      [
-        { xNm: -1, yNm: -6 },
-        { xNm: 1, yNm: -6 },
-      ],
-    ],
+  expect(amz.fixBars.map((bar) => [bar.runwayId, bar.fixId])).toEqual([
+    ["A", "FAFA"],
+    ["B", "FAFB"],
   ]);
+  const ntzHalfWidthNm = 1000 / 6076.12;
+  expect(amz.fixBars[0]?.segment[0]).toEqual({ xNm: -1, yNm: -5 });
+  expect(amz.fixBars[0]?.segment[1].xNm).toBeCloseTo(-ntzHalfWidthNm);
+  expect(amz.fixBars[0]?.segment[1].yNm).toBe(-5);
+  expect(amz.fixBars[1]?.segment[0].xNm).toBeCloseTo(ntzHalfWidthNm);
+  expect(amz.fixBars[1]?.segment[0].yNm).toBe(-6);
+  expect(amz.fixBars[1]?.segment[1]).toEqual({ xNm: 1, yNm: -6 });
 
   const view = createScopeView();
   view.fmaAmzs = [amz];

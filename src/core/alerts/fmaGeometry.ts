@@ -397,16 +397,16 @@ function makeAmz(
     const along = row.faf.xNm * Math.sin(rad(course)) + row.faf.yNm * Math.cos(rad(course));
     const cross = row.faf.xNm * Math.cos(rad(course)) - row.faf.yNm * Math.sin(rad(course));
     const ownNoz = members.find((member) => member.runwayId === row.runwayId)!.noz;
-    const ownIntervals = nozIntervalsAtAlong(ownNoz, along, course);
-    if (!ownIntervals.some(([low, high]) => cross >= low - 1e-8 && cross <= high + 1e-8)) {
+    const ownInterval = nozIntervalsAtAlong(ownNoz, along, course).find(
+      ([low, high]) => cross >= low - 1e-8 && cross <= high + 1e-8,
+    );
+    if (!ownInterval) {
       return {
         path: `approaches.${row.approachId}.fafFixId`,
         message: "FAF lies outside its runway NOZ",
       };
     }
-    const intervals = members.flatMap((member) => nozIntervalsAtAlong(member.noz, along, course));
-    const low = Math.min(...intervals.map(([edge]) => edge));
-    const high = Math.max(...intervals.map(([, edge]) => edge));
+    const [low, high] = ownInterval;
     fixBars.push({
       fixId: row.fafFixId,
       runwayId: row.runwayId,
