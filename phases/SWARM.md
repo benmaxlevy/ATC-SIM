@@ -6634,3 +6634,12 @@ Current scope parser does not implement MULTI FUNC K. T02-232 corrects DEFAULT
 through its existing DCB pointer/focused keyboard activation only. The manual
 keyboard command remains an inherited unsupported trainer surface; no new parser
 grammar or scopeKeys ownership is authorized. All other configuration unchanged.
+
+### Eighty-eighth ownership clarification — legacy PREF assertions
+
+Existing fidelity acceptance assertions require FMA SAVE/SAVE AS to mutate normal
+slots, contradicting the approved disjoint-profile contract. T02-232 may update
+only those legacy T02-225/T02-228 PREF assertions in the shared fidelity test;
+T02-231 retains earlier schema/flow/geometry sections. Workers coordinate shared
+imports. This narrow disjoint-hunk exception permits each ticket's CI gate; any
+merge conflict still stops execution without force. Other ownership unchanged.
