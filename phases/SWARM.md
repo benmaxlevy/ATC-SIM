@@ -6651,3 +6651,12 @@ acceptance assertion that expected storage loading to preserve active FMA.
 Storage loading now explicitly enters normal mode, matching the approved reload
 contract. The remaining authored-availability/binder cleanup assertions remain.
 T02-231 is already merged; there is no concurrent writer for this test block.
+
+### Eighty-eighth acceptance correction — scenario profile context
+
+Primary inspection found session replacement applying next-facility preferences
+before binding its digital-map context. T02-233 may narrowly correct the actual
+Shell replacement lifecycle and extract a generic tested binder if needed, so map,
+group and SITE validation uses the new facility before profile application.
+This is required by the approved profile replacement contract; no facility switch,
+new radio grammar or unrelated session redesign is authorized.
