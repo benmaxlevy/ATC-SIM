@@ -930,9 +930,18 @@ and never carries duplicate polygons.
 Without an override, the geometry uses one preferred approach per runway
 (ILS, LOC, then RNAV), true courses converted from magnetic once, a wrapped
 one-degree alignment tolerance, adjacent runway spacing from 2,500 through
-9,000 feet, 18 NM capture, a 2,000-foot NTZ, 0.5 NM outer margin, and a
-reciprocal threshold departure endpoint when catalog geometry resolves it
-(otherwise a 1 NM extension). Reference spacing is 200 feet. Monitoring
+9,000 feet, 18 NM capture, a 2,000-foot NTZ, and a 0.5 NM outer margin.
+Catalog reciprocal thresholds define physical runway ends when available;
+otherwise no physical runway length is inferred. The derived departure course
+extends up to 1 NM past the known physical end, or from the threshold when the
+opposite end is unavailable. For authored AMZ polygons, that trainer extension
+stops at the first positive exit from the boundary; geometry with no positive
+inside segment is diagnosed. This is a trainer extension, not a runway dimension. Reference
+strokes use exact 200-foot lateral offsets, omit the course centerline, and are
+clipped to each approach-side NOZ. Rendering uses thin NOZ contours, bold NTZ
+outlines, thick gray runway marks, and dashed course lines; pixel widths and
+dash lengths are trainer styling. An unresolved runway length appears as a
+short screen-space threshold marker only. Monitoring
 defaults are 10 seconds caution, 10 seconds surveillance loss, 30 seconds
 coast-out, 10 seconds stabilization, 3 degrees course tolerance, 0.15 NM
 alignment half-width, and 30 seconds maximum displayed PTL. These are trainer
@@ -1004,5 +1013,9 @@ mutating user preferences). FMA reference lines spaced 200 feet apart in world c
 are displayed if and only if range / MAG <= 16 NM. NTZ boundaries display alert severity
 outlines (white for normal, yellow for caution, red for warning) consuming aggregate alert
 state, with red persisting for warning tracks even after acknowledgment. Disabled NTZs draw
-no boundary. Runway, course line, fix bar, and AMZ boundary graphics are rendered according
-to their respective BRITE channel intensities.
+no boundary. Map styling uses thin NOZ contours, bold NTZ outlines, thick gray physical
+runway segments, and dashed white approach/departure courses. Reference strokes use exact
+200-foot offsets, skip the dashed course centerline, and clip to approach-side NOZs. These
+pixel widths and dash lengths are trainer styling. The NOZ shares RWY brightness because
+Table 4-1 defines no separate NOZ channel; runway, course, fix bar, AMZ boundary, and
+reference brightness follow their documented BRITE channels.

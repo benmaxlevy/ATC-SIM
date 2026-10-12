@@ -38,6 +38,7 @@ export interface FmaAmz {
     outerMarginNm: number;
     departureExtensionsNm: Record<string, number>;
   };
+  /** Physical runway segment; departureEnd is the reciprocal threshold when resolved. */
   runwayGraphics: Array<{ runwayId: string; threshold: FmaPoint; departureEnd: FmaPoint }>;
   courseLines: Array<{
     runwayId: string;
@@ -120,6 +121,61 @@ function validPolygon(poly: readonly FmaPoint[]) {
   }, 0);
   return Math.abs(twiceArea) > 1e-9;
 }
+function containsPoint(point: FmaPoint, polygon: readonly FmaPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    if (
+      a.yNm > point.yNm !== b.yNm > point.yNm &&
+      point.xNm < ((b.xNm - a.xNm) * (point.yNm - a.yNm)) / (b.yNm - a.yNm) + a.xNm
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** First positive exit of an authored AMZ ray along the common course axis. */
+function firstCourseBoundaryExit(
+  start: FmaPoint,
+  course: number,
+  boundary: readonly FmaPoint[],
+): number | undefined {
+  const sin = Math.sin(rad(course));
+  const cos = Math.cos(rad(course));
+  const startAlong = start.xNm * sin + start.yNm * cos;
+  const startCross = start.xNm * cos - start.yNm * sin;
+  const probeDistance = 1e-7;
+  if (
+    !containsPoint(
+      { xNm: start.xNm + sin * probeDistance, yNm: start.yNm + cos * probeDistance },
+      boundary,
+    )
+  ) {
+    return undefined;
+  }
+  const projected = boundary.map((p) => ({
+    along: p.xNm * sin + p.yNm * cos,
+    cross: p.xNm * cos - p.yNm * sin,
+  }));
+  const intersections: number[] = [];
+  for (let i = 0; i < projected.length; i++) {
+    const a = projected[i]!;
+    const b = projected[(i + 1) % projected.length]!;
+    if (
+      (a.cross <= startCross && b.cross > startCross) ||
+      (b.cross <= startCross && a.cross > startCross)
+    ) {
+      const ratio = (startCross - a.cross) / (b.cross - a.cross);
+      intersections.push(a.along + ratio * (b.along - a.along));
+    }
+  }
+  const exitAlong = intersections
+    .filter((along) => along > startAlong + 1e-8)
+    .sort((a, b) => a - b)[0];
+  return exitAlong === undefined ? undefined : exitAlong - startAlong;
+}
 
 function makeAmz(
   catalog: ProcedureCatalog,
@@ -154,7 +210,11 @@ function makeAmz(
   const ntzWidth = (adaptation?.ntzWidthFt ?? FMA_GEOMETRY_DEFAULTS.ntzWidthFt) / 6076.12;
   const capture = adaptation?.captureLengthNm ?? FMA_GEOMETRY_DEFAULTS.captureLengthNm;
   const outer = adaptation?.outerMarginNm ?? FMA_GEOMETRY_DEFAULTS.outerMarginNm;
-  const departures = rows.map((r) => adaptation?.departureExtensionNm ?? r.departureNm ?? 1);
+  // The catalog reciprocal threshold is the physical runway end. The visible
+  // departure course continues beyond it; absent an authored override this
+  // trainer extension is 1 NM and carries no claim about runway dimensions.
+  const departures = rows.map(() => adaptation?.departureExtensionNm ?? 1);
+  const physicalRunwayLengths = rows.map((r) => r.departureNm ?? 0);
   if (
     [ntzWidth, capture, ...departures].some((n) => !Number.isFinite(n) || n <= 0) ||
     !Number.isFinite(outer) ||
@@ -196,6 +256,7 @@ function makeAmz(
         (r, j) =>
           r.threshold.xNm * Math.sin(rad(course)) +
           r.threshold.yNm * Math.cos(rad(course)) +
+          physicalRunwayLengths[j]! +
           departures[j]!,
       ),
     );
@@ -228,7 +289,14 @@ function makeAmz(
       approachId: r.approachId,
       threshold: r.threshold,
       courseTrueDeg: course,
-      noz: rect({ xNm: 0, yNm: 0 }, along - capture, along + departures[i]!, low, high, course),
+      noz: rect(
+        { xNm: 0, yNm: 0 },
+        along - capture,
+        along + physicalRunwayLengths[i]! + departures[i]!,
+        low,
+        high,
+        course,
+      ),
     };
   });
   const left = centers[0]! - outer,
@@ -245,6 +313,7 @@ function makeAmz(
       (r, j) =>
         r.threshold.xNm * Math.sin(rad(course)) +
         r.threshold.yNm * Math.cos(rad(course)) +
+        physicalRunwayLengths[j]! +
         departures[j]!,
     ),
   );
@@ -294,32 +363,80 @@ function makeAmz(
   const fixBars = rows.flatMap((r) =>
     r.faf && r.fafFixId ? [{ fixId: r.fafFixId, point: r.faf }] : [],
   );
-  const runwayGraphics = rows.map((r, i) => ({
+  const runwayGraphics = rows.map((r) => ({
     runwayId: r.runwayId,
     threshold: r.threshold,
     departureEnd:
       geometry?.runways.find((runway) => runway.runwayId === r.runwayId)?.departureEnd ??
-      (adaptation?.departureExtensionNm !== undefined
-        ? point(r.threshold, adaptation.departureExtensionNm, 0, course)
-        : (r.reciprocalThreshold ?? point(r.threshold, departures[i]!, 0, course))),
+      r.reciprocalThreshold ??
+      r.threshold,
   }));
+  const derivedDepartureEnds = rows.map((_, i) => {
+    const start = runwayGraphics[i]!.departureEnd;
+    const boundaryExit =
+      geometry && !geometry.courseLines
+        ? firstCourseBoundaryExit(start, course, geometry.amzBoundary)
+        : undefined;
+    if (geometry && !geometry.courseLines && boundaryExit === undefined) return undefined;
+    const extension = Math.min(departures[i]!, boundaryExit ?? departures[i]!);
+    if (extension <= 1e-6) return undefined;
+    return point(start, extension, 0, course);
+  });
+  if (geometry && !geometry.courseLines && derivedDepartureEnds.some((end) => !end)) {
+    return {
+      path,
+      message: "derived departure course has no positive segment inside the authored AMZ boundary",
+    };
+  }
   const courseLines =
     geometry?.courseLines ??
     rows.map((r, i) => ({
       runwayId: r.runwayId,
       approach: [point(r.threshold, -capture, 0, course), r.threshold] as [FmaPoint, FmaPoint],
-      departure: [r.threshold, runwayGraphics[i]!.departureEnd] as [FmaPoint, FmaPoint],
+      departure: [runwayGraphics[i]!.departureEnd, derivedDepartureEnds[i]!] as [
+        FmaPoint,
+        FmaPoint,
+      ],
     }));
   const referenceLines: Array<[FmaPoint, FmaPoint]> = [];
-  const lateralSpan = right - left;
-  if (lateralSpan > 0) {
-    const steps = Math.floor((lateralSpan * 6076.12) / 200);
-    for (let i = 0; i <= steps; i++) {
-      const c = left + (i * 200) / 6076.12;
-      referenceLines.push([
-        point({ xNm: 0, yNm: 0 }, minAlong, c, course),
-        point({ xNm: 0, yNm: 0 }, maxAlong, c, course),
-      ]);
+  const feetToNm = 1 / 6076.12;
+  // Reference strokes follow each course at exact 200 ft offsets and are
+  // clipped to that runway's approach-side NOZ. Do not overlay a solid stroke
+  // on the dashed zero-offset course line or fill NTZ/departure areas.
+  for (const member of members) {
+    const originAlong =
+      member.threshold.xNm * Math.sin(rad(course)) + member.threshold.yNm * Math.cos(rad(course));
+    const originCross =
+      member.threshold.xNm * Math.cos(rad(course)) - member.threshold.yNm * Math.sin(rad(course));
+    const projected = member.noz.points.map((p) => ({
+      along: p.xNm * Math.sin(rad(course)) + p.yNm * Math.cos(rad(course)),
+      cross: p.xNm * Math.cos(rad(course)) - p.yNm * Math.sin(rad(course)),
+    }));
+    const maxOffset = Math.max(...projected.map((p) => Math.abs(p.cross - originCross)));
+    for (let step = 1; step * 200 * feetToNm <= maxOffset; step++) {
+      for (const sign of [-1, 1]) {
+        const cross = originCross + sign * step * 200 * feetToNm;
+        const crossings: number[] = [];
+        for (let edge = 0; edge < projected.length; edge++) {
+          const a = projected[edge]!;
+          const b = projected[(edge + 1) % projected.length]!;
+          if ((a.cross <= cross && b.cross > cross) || (b.cross <= cross && a.cross > cross)) {
+            const ratio = (cross - a.cross) / (b.cross - a.cross);
+            crossings.push(a.along + ratio * (b.along - a.along));
+          }
+        }
+        crossings.sort((a, b) => a - b);
+        for (let interval = 0; interval + 1 < crossings.length; interval += 2) {
+          const approachStart = Math.max(crossings[interval]!, originAlong - capture);
+          const approachEnd = Math.min(crossings[interval + 1]!, originAlong);
+          if (approachEnd > approachStart) {
+            referenceLines.push([
+              point({ xNm: 0, yNm: 0 }, approachStart, cross, course),
+              point({ xNm: 0, yNm: 0 }, approachEnd, cross, course),
+            ]);
+          }
+        }
+      }
     }
   }
   const monitoring = { ...FMA_MONITORING_DEFAULTS, ...adaptation?.monitoring };
@@ -344,18 +461,7 @@ function makeAmz(
       captureLengthNm: capture,
       ntzWidthFt: adaptation?.ntzWidthFt ?? FMA_GEOMETRY_DEFAULTS.ntzWidthFt,
       outerMarginNm: outer,
-      departureExtensionsNm: Object.fromEntries(
-        rows.map((r, i) => {
-          const authoredEnd = geometry?.runways.find(
-            (runway) => runway.runwayId === r.runwayId,
-          )?.departureEnd;
-          const distance = authoredEnd
-            ? (authoredEnd.xNm - r.threshold.xNm) * Math.sin(rad(course)) +
-              (authoredEnd.yNm - r.threshold.yNm) * Math.cos(rad(course))
-            : departures[i]!;
-          return [r.runwayId, distance];
-        }),
-      ),
+      departureExtensionsNm: Object.fromEntries(rows.map((r, i) => [r.runwayId, departures[i]!])),
     },
     runwayGraphics,
     courseLines,

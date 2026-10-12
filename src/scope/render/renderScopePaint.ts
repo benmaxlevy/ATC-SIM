@@ -402,6 +402,54 @@ export function tracePolyline(
   }
 }
 
+type FmaPointLike = { xNm: number; yNm: number };
+type FmaSegment = [FmaPointLike, FmaPointLike];
+
+/** Split a contour edge around collinear portions owned by suppressed boundaries. */
+function visibleContourParts(start: FmaPointLike, end: FmaPointLike, hiddenEdges: FmaSegment[]) {
+  const dx = end.xNm - start.xNm;
+  const dy = end.yNm - start.yNm;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared < 1e-18) return [] as FmaSegment[];
+  const length = Math.sqrt(lengthSquared);
+  const overlaps: Array<[number, number]> = [];
+  for (const [a, b] of hiddenEdges) {
+    if (
+      Math.abs(dx * (a.yNm - start.yNm) - dy * (a.xNm - start.xNm)) > 1e-8 * length ||
+      Math.abs(dx * (b.yNm - start.yNm) - dy * (b.xNm - start.xNm)) > 1e-8 * length
+    ) {
+      continue;
+    }
+    const ta = ((a.xNm - start.xNm) * dx + (a.yNm - start.yNm) * dy) / lengthSquared;
+    const tb = ((b.xNm - start.xNm) * dx + (b.yNm - start.yNm) * dy) / lengthSquared;
+    const low = Math.max(0, Math.min(ta, tb));
+    const high = Math.min(1, Math.max(ta, tb));
+    if (high - low > 1e-9) overlaps.push([low, high]);
+  }
+  overlaps.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const interval of overlaps) {
+    const previous = merged.at(-1);
+    if (previous && interval[0] <= previous[1] + 1e-9) {
+      previous[1] = Math.max(previous[1], interval[1]);
+    } else {
+      merged.push([...interval]);
+    }
+  }
+  const at = (t: number): FmaPointLike => ({
+    xNm: start.xNm + dx * t,
+    yNm: start.yNm + dy * t,
+  });
+  const visible: FmaSegment[] = [];
+  let cursor = 0;
+  for (const [low, high] of merged) {
+    if (low > cursor + 1e-9) visible.push([at(cursor), at(low)]);
+    cursor = Math.max(cursor, high);
+  }
+  if (cursor < 1 - 1e-9) visible.push([at(cursor), end]);
+  return visible;
+}
+
 export function drawFmaLayers(
   ctx: CanvasRenderingContext2D,
   view: ScopeView,
@@ -425,17 +473,28 @@ export function drawFmaLayers(
   const refBrite = view.brite.ref ?? 100;
   const mag = view.fmaMag ?? 1;
   const showReferenceLines = view.camera.rangeNm / mag <= 16;
+  const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+  const hiddenNozEdges: FmaSegment[] = amz.ntzs
+    .filter((ntz) => disabledNtzs.has(ntz.id))
+    .flatMap((ntz) =>
+      ntz.polygon.points.map(
+        (point, i, points) => [point, points[(i + 1) % points.length]!] as FmaSegment,
+      ),
+    );
   if (showReferenceLines && refBrite > 0 && amz.referenceLines.length > 0) {
     ctx.save();
     ctx.strokeStyle = applyBrite("#FFFFFF", refBrite);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 0.65;
+    ctx.setLineDash([]);
     for (const [p1, p2] of amz.referenceLines) {
-      const s1 = proj.toScreen(p1.xNm, p1.yNm);
-      const s2 = proj.toScreen(p2.xNm, p2.yNm);
-      ctx.beginPath();
-      ctx.moveTo(s1.x, s1.y);
-      ctx.lineTo(s2.x, s2.y);
-      ctx.stroke();
+      for (const [visibleStart, visibleEnd] of visibleContourParts(p1, p2, hiddenNozEdges)) {
+        const s1 = proj.toScreen(visibleStart.xNm, visibleStart.yNm);
+        const s2 = proj.toScreen(visibleEnd.xNm, visibleEnd.yNm);
+        ctx.beginPath();
+        ctx.moveTo(s1.x, s1.y);
+        ctx.lineTo(s2.x, s2.y);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -453,51 +512,72 @@ export function drawFmaLayers(
     ctx.restore();
   }
 
-  // 3. NTZ boundaries: normal white (#FFFFFF), caution yellow (#FFFF00), warning red (#FF0000).
-  // Disabled NTZs draw no boundary. Outline severity from view.fmaAlertOutlines.
-  // BRITE: ntz (0 suppresses paint)
-  const ntzBrite = view.brite.ntz ?? 100;
-  if (ntzBrite > 0 && amz.ntzs.length > 0) {
+  // 3. NOZ contours use RWY brightness as the manual's available trainer grouping.
+  // BRITE: rwy (0 suppresses paint)
+  const rwyBrite = view.brite.rwy ?? 100;
+  if (rwyBrite > 0) {
     ctx.save();
+    ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
     ctx.lineWidth = 1;
-    const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
-    for (const ntz of amz.ntzs) {
-      if (disabledNtzs.has(ntz.id)) {
-        continue;
+    ctx.setLineDash([]);
+    for (const member of amz.members) {
+      for (let i = 0; i < member.noz.points.length; i++) {
+        const start = member.noz.points[i]!;
+        const end = member.noz.points[(i + 1) % member.noz.points.length]!;
+        for (const [visibleStart, visibleEnd] of visibleContourParts(start, end, hiddenNozEdges)) {
+          const s1 = proj.toScreen(visibleStart.xNm, visibleStart.yNm);
+          const s2 = proj.toScreen(visibleEnd.xNm, visibleEnd.yNm);
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+        }
       }
-      const sev = view.fmaAlertOutlines.get(ntz.id);
-      const strokeColor = sev === "RED" ? "#FF0000" : sev === "YELLOW" ? "#FFFF00" : "#FFFFFF";
-      ctx.strokeStyle = applyBrite(strokeColor, ntzBrite);
-      const pts = ntz.polygon.points.map((p) => proj.toScreen(p.xNm, p.yNm));
-      tracePolyline(ctx, pts, true);
-      ctx.stroke();
     }
     ctx.restore();
   }
 
   // 4. Runway graphics, course lines, fix bars:
   // BRITE: rwy (0 suppresses paint)
-  const rwyBrite = view.brite.rwy ?? 100;
   if (rwyBrite > 0) {
     ctx.save();
-    // Runway: gray (#808080), stroke width 2
+    // Runway: gray (#808080), with dashed white course extensions.
     if (amz.runwayGraphics.length > 0) {
       ctx.strokeStyle = applyBrite("#808080", rwyBrite);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 5;
+      ctx.setLineDash([]);
       for (const rwy of amz.runwayGraphics) {
         const s1 = proj.toScreen(rwy.threshold.xNm, rwy.threshold.yNm);
         const s2 = proj.toScreen(rwy.departureEnd.xNm, rwy.departureEnd.yNm);
         ctx.beginPath();
-        ctx.moveTo(s1.x, s1.y);
-        ctx.lineTo(s2.x, s2.y);
+        if (
+          rwy.threshold.xNm === rwy.departureEnd.xNm &&
+          rwy.threshold.yNm === rwy.departureEnd.yNm
+        ) {
+          // Show an unknown-length runway as a screen-space threshold marker,
+          // not a fabricated geographic segment.
+          const along = proj.toScreen(
+            rwy.threshold.xNm + Math.sin((amz.courseTrueDeg * Math.PI) / 180),
+            rwy.threshold.yNm + Math.cos((amz.courseTrueDeg * Math.PI) / 180),
+          );
+          const dx = along.x - s1.x;
+          const dy = along.y - s1.y;
+          const length = Math.hypot(dx, dy) || 1;
+          ctx.moveTo(s1.x - (dy / length) * 2.5, s1.y + (dx / length) * 2.5);
+          ctx.lineTo(s1.x + (dy / length) * 2.5, s1.y - (dx / length) * 2.5);
+        } else {
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+        }
         ctx.stroke();
       }
     }
 
-    // Course lines: white (#FFFFFF), stroke width 1
+    // Course lines: white (#FFFFFF), dashed and visually thin.
     if (amz.courseLines.length > 0) {
       ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([5, 4]);
       for (const cl of amz.courseLines) {
         if (cl.approach) {
           const s1 = proj.toScreen(cl.approach[0].xNm, cl.approach[0].yNm);
@@ -518,10 +598,11 @@ export function drawFmaLayers(
       }
     }
 
-    // Fix bars: white (#FFFFFF), stroke width 1, 0.2 NM perpendicular tick across course line at FAF
+    // Fix bars: solid white, 0.2 NM perpendicular tick across course line at FAF.
     if (amz.fixBars && amz.fixBars.length > 0) {
       ctx.strokeStyle = applyBrite("#FFFFFF", rwyBrite);
       ctx.lineWidth = 1;
+      ctx.setLineDash([]);
       const courseRad = (amz.courseTrueDeg * Math.PI) / 180;
       // Perpendicular vector to course line: dx = cos(course), dy = -sin(course)
       // Half-length = 0.1 NM (total length = 0.2 NM)
@@ -538,6 +619,26 @@ export function drawFmaLayers(
         ctx.lineTo(s2.x, s2.y);
         ctx.stroke();
       }
+    }
+    ctx.restore();
+  }
+
+  // 5. NTZ outlines are the final FMA stroke layer so runway/course/fix strokes
+  // cannot obscure the alert hierarchy where adapted geometry overlaps.
+  // BRITE: ntz (0 suppresses paint)
+  const ntzBrite = view.brite.ntz ?? 100;
+  if (ntzBrite > 0 && amz.ntzs.length > 0) {
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+    for (const ntz of amz.ntzs) {
+      if (disabledNtzs.has(ntz.id)) continue;
+      const sev = view.fmaAlertOutlines.get(ntz.id);
+      const strokeColor = sev === "RED" ? "#FF0000" : sev === "YELLOW" ? "#FFFF00" : "#FFFFFF";
+      ctx.strokeStyle = applyBrite(strokeColor, ntzBrite);
+      const pts = ntz.polygon.points.map((p) => proj.toScreen(p.xNm, p.yNm));
+      tracePolyline(ctx, pts, true);
+      ctx.stroke();
     }
     ctx.restore();
   }

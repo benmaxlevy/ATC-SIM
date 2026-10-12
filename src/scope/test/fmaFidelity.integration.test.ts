@@ -83,6 +83,7 @@ import {
   applyProjectedPanDelta,
 } from "../projection";
 import { createMockCtx } from "./mockCanvas";
+import { generateCompassRoseGeometry } from "../compassRose";
 import { drawFmaLayers, drawMapLayers } from "../render/renderScopePaint";
 import type { MapCache } from "../mapLayers";
 import { pickAircraftAt } from "../pick";
@@ -399,6 +400,40 @@ test("derived FMA defaults retain 200-foot references and trainer dimensions", (
   expect(result.amzs[0]).toMatchObject({ referenceSpacingFt: 200, provenance: "DERIVED_TRAINER" });
   expect(result.amzs[0]?.boundary.points).toHaveLength(4);
   expect(result.amzs[0]?.fixBars).toEqual([]);
+  expect(result.amzs[0]?.runwayGraphics[0]?.departureEnd).toEqual({ xNm: -0.5, yNm: 0 });
+  expect(result.amzs[0]?.courseLines[0]?.departure).toEqual([
+    { xNm: -0.5, yNm: 0 },
+    { xNm: -0.5, yNm: 1 },
+  ]);
+  const view = createScopeView();
+  view.fmaAmzs = result.amzs;
+  view.fmaSurveillance.enabled = true;
+  view.fmaSurveillance.selectedAmzId = result.amzs[0]!.id;
+  const paint = createMockCtx();
+  drawFmaLayers(paint.ctx, view, { widthPx: 800, heightPx: 800 });
+  const thresholdMarker = paint.pathStrokes.find(
+    (stroke) => stroke.strokeStyle === "#808080" && stroke.lineWidth === 5,
+  );
+  expect(thresholdMarker).toBeDefined();
+  expect(
+    Math.hypot(
+      thresholdMarker!.points[1]!.x - thresholdMarker!.points[0]!.x,
+      thresholdMarker!.points[1]!.y - thresholdMarker!.points[0]!.y,
+    ),
+  ).toBeCloseTo(5);
+  expect(
+    result.amzs[0]?.referenceLines.every(([start, end]) => {
+      const lateralOffsetFt =
+        Math.min(Math.abs(start.xNm + 0.5), Math.abs(start.xNm - 0.5)) * 6076.12;
+      return (
+        start.yNm < 0 &&
+        end.yNm <= 0 &&
+        Math.abs(start.xNm - end.xNm) < 1e-9 &&
+        Math.abs(lateralOffsetFt / 200 - Math.round(lateralOffsetFt / 200)) < 1e-8 &&
+        lateralOffsetFt > 0
+      );
+    }),
+  ).toBe(true);
   const translated = deriveFmaAmzs(
     catalog([
       { runway: "A", course: 0, x: 101.5, y: 90 },
@@ -428,6 +463,119 @@ test("missing thresholds produce diagnostics without fabricated geometry", () =>
   const result = deriveFmaAmzs(missing);
   expect(result.amzs).toEqual([]);
   expect(result.diagnostics[0]).toMatchObject({ path: "approaches.APP0.thresholdFixId" });
+});
+
+test("inhibited NTZ shared edges preserve partial NOZ contours and active NTZ paint dominates overlap", () => {
+  const view = createScopeView();
+  const amz = syntheticAmz();
+  amz.members[0]!.noz.points = [
+    { xNm: -0.75, yNm: -2 },
+    { xNm: -0.1, yNm: -2 },
+    { xNm: -0.1, yNm: 2 },
+    { xNm: -0.75, yNm: 2 },
+  ];
+  amz.members[1]!.noz.points = [
+    { xNm: 0.1, yNm: -2 },
+    { xNm: 0.75, yNm: -2 },
+    { xNm: 0.75, yNm: 2 },
+    { xNm: 0.1, yNm: 2 },
+  ];
+  amz.runwayGraphics = [
+    { runwayId: "08L", threshold: { xNm: -0.1, yNm: -0.5 }, departureEnd: { xNm: -0.1, yNm: 0.5 } },
+  ];
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance.enabled = true;
+  view.fmaSurveillance.selectedAmzId = amz.id;
+  view.fmaAlertInhibit.ntzIds = new Set(["NTZ-08"]);
+  const projection = scopeProjectionFromView(view, { widthPx: 800, heightPx: 800 });
+  const hiddenTrace = createMockCtx();
+  drawFmaLayers(hiddenTrace.ctx, view, { widthPx: 800, heightPx: 800 });
+  const px = projection.toScreen(-0.1, 0);
+  const sharedVertical = hiddenTrace.pathStrokes.filter(
+    (stroke) =>
+      stroke.strokeStyle === "#FFFFFF" &&
+      stroke.lineWidth === 1 &&
+      stroke.points.length === 2 &&
+      stroke.points.every((point) => Math.abs(point.x - px.x) < 1e-6),
+  );
+  expect(sharedVertical).toHaveLength(2);
+  const residualIntervals = sharedVertical
+    .map((stroke) =>
+      stroke.points
+        .map((point) => projection.toWorld(point.x, point.y).northNm)
+        .sort((a, b) => a - b),
+    )
+    .sort((a, b) => a[0]! - b[0]!);
+  expect(residualIntervals[0]![0]).toBeCloseTo(-2);
+  expect(residualIntervals[0]![1]).toBeCloseTo(-1);
+  expect(residualIntervals[1]![0]).toBeCloseTo(1);
+  expect(residualIntervals[1]![1]).toBeCloseTo(2);
+  expect(
+    hiddenTrace.pathStrokes.some(
+      (stroke) => stroke.strokeStyle === "#FFFFFF" && stroke.lineWidth === 3,
+    ),
+  ).toBe(false);
+
+  view.fmaAlertInhibit.ntzIds = new Set();
+  view.fmaAlertOutlines = new Map([["NTZ-08", "RED"]]);
+  const activeTrace = createMockCtx();
+  drawFmaLayers(activeTrace.ctx, view, { widthPx: 800, heightPx: 800 });
+  const grayIndex = activeTrace.pathStrokes.findIndex(
+    (stroke) =>
+      stroke.strokeStyle === "#808080" &&
+      stroke.lineWidth === 5 &&
+      stroke.points.every((point) => Math.abs(point.x - px.x) < 1e-6),
+  );
+  const redIndex = activeTrace.pathStrokes.findIndex(
+    (stroke) =>
+      stroke.strokeStyle === "#FF0000" &&
+      stroke.lineWidth === 3 &&
+      stroke.points.length >= 4 &&
+      stroke.points.some((point) => Math.abs(point.x - px.x) < 1e-6),
+  );
+  expect(grayIndex).toBeGreaterThanOrEqual(0);
+  expect(redIndex).toBeGreaterThan(grayIndex);
+});
+
+test("inhibited NTZ boundaries hide coincident 200-foot reference strokes at narrow derived spacing", () => {
+  const result = deriveFmaAmzs(
+    catalog([
+      { runway: "A", course: 0, x: -1400 / 6076.12 },
+      { runway: "B", course: 0, x: 1400 / 6076.12 },
+    ]),
+  );
+  const amz = result.amzs[0]!;
+  expect(amz.dimensions.ntzWidthFt).toBe(2000);
+  expect(
+    amz.referenceLines.some(
+      ([start, end]) =>
+        Math.abs(start.xNm - end.xNm) < 1e-9 &&
+        Math.abs(Math.abs(start.xNm) - 1000 / 6076.12) < 1e-8,
+    ),
+  ).toBe(true);
+  const ntz = amz.ntzs[0]!;
+  const inhibitedEdgeX = ntz.polygon.points.find((point) => Math.abs(point.xNm) > 0.1)!.xNm;
+  const view = createScopeView();
+  view.fmaAmzs = [amz];
+  view.fmaSurveillance.enabled = true;
+  view.fmaSurveillance.selectedAmzId = amz.id;
+  view.camera.rangeNm = 15;
+  view.fmaAlertInhibit.ntzIds = new Set([ntz.id]);
+  const trace = createMockCtx();
+  drawFmaLayers(trace.ctx, view, { widthPx: 800, heightPx: 800 });
+  const edgeScreenX = scopeProjectionFromView(view, { widthPx: 800, heightPx: 800 }).toScreen(
+    inhibitedEdgeX,
+    0,
+  ).x;
+  expect(
+    trace.pathStrokes.some(
+      (stroke) =>
+        stroke.lineWidth === 0.65 &&
+        stroke.points.length === 2 &&
+        stroke.points.every((point) => Math.abs(point.x - edgeScreenX) < 1e-6),
+    ),
+  ).toBe(false);
+  expect(trace.pathStrokes.some((stroke) => stroke.lineWidth === 0.65)).toBe(true);
 });
 
 test("FMA adaptation diagnoses unknown references, duplicate IDs and unsupported capacity", () => {
@@ -479,7 +627,13 @@ test("FMA parallel eligibility measures ENU cross-track and preserves true depar
   const result = deriveFmaAmzs(source);
   const northbound = result.amzs.find((a) => a.courseTrueDeg === 0)!;
   expect(northbound.runwayGraphics[0]?.departureEnd).toEqual({ xNm: -0.5, yNm: 1 });
-  expect(northbound.courseLines[0]?.departure[1]).toEqual({ xNm: -0.5, yNm: 1 });
+  expect(northbound.courseLines[0]?.departure[0]).toEqual({ xNm: -0.5, yNm: 1 });
+  expect(northbound.courseLines[0]?.departure[1]).toEqual({ xNm: -0.5, yNm: 2 });
+  expect(northbound.runwayGraphics[0]?.departureEnd).toEqual({ xNm: -0.5, yNm: 1 });
+  expect(northbound.referenceLines.length).toBeGreaterThan(0);
+  expect(northbound.referenceLines.every(([start, end]) => start.yNm < 0 && end.yNm <= 0)).toBe(
+    true,
+  );
   expect(northbound.courseLines[0]?.approach[0].yNm).toBe(-18);
   const diagonal = catalog([
     { runway: "A", course: 45, x: 0, y: 0 },
@@ -487,6 +641,155 @@ test("FMA parallel eligibility measures ENU cross-track and preserves true depar
   ]);
   expect(deriveFmaAmzs(diagonal).amzs).toHaveLength(0);
   expect(deriveFmaAmzs(diagonal).diagnostics[0]?.message).toMatch(/spacing/);
+});
+
+test("derived departure courses stop at the first authored AMZ exit and reject no-room geometry", () => {
+  const source = catalog([
+    { runway: "A", course: 0, x: -0.5 },
+    { runway: "B", course: 0, x: 0.5 },
+  ]);
+  source.fmaOverrides = {
+    groups: [
+      {
+        id: "CLIPPED",
+        approachIds: ["APP0", "APP1"],
+        geometry: {
+          amzBoundary: [
+            { xNm: -2, yNm: -20 },
+            { xNm: 2, yNm: -20 },
+            { xNm: 2, yNm: 1 },
+            { xNm: -2, yNm: 0 },
+          ],
+          runways: [
+            {
+              runwayId: "A",
+              departureEnd: { xNm: -0.5, yNm: 0.2 },
+              noz: [
+                { xNm: -0.8, yNm: -2 },
+                { xNm: -0.2, yNm: -2 },
+                { xNm: -0.2, yNm: 0 },
+                { xNm: -0.8, yNm: 0 },
+              ],
+            },
+            {
+              runwayId: "B",
+              departureEnd: { xNm: 0.5, yNm: 0.2 },
+              noz: [
+                { xNm: 0.2, yNm: -2 },
+                { xNm: 0.8, yNm: -2 },
+                { xNm: 0.8, yNm: 0 },
+                { xNm: 0.2, yNm: 0 },
+              ],
+            },
+          ],
+          ntzs: [
+            {
+              id: "CLIPPED-NTZ",
+              leftRunwayId: "A",
+              rightRunwayId: "B",
+              polygon: [
+                { xNm: -0.1, yNm: -2 },
+                { xNm: 0.1, yNm: -2 },
+                { xNm: 0.1, yNm: 0 },
+                { xNm: -0.1, yNm: 0 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const clipped = deriveFmaAmzs(source);
+  expect(clipped.diagnostics).toEqual([]);
+  const amz = clipped.amzs[0]!;
+  for (const line of amz.courseLines) {
+    expect(line.departure[1]!.yNm).toBeLessThanOrEqual(1);
+    expect(line.departure[1]!.yNm).toBeCloseTo(
+      line.departure[0]!.yNm + (line.runwayId === "A" ? 0.175 : 0.425),
+    );
+  }
+
+  source.fmaOverrides.groups![0]!.geometry!.runways[0]!.departureEnd = { xNm: -0.5, yNm: 0.8 };
+  const noRoom = deriveFmaAmzs(source);
+  expect(noRoom.amzs).toEqual([]);
+  expect(
+    noRoom.diagnostics.some((item) =>
+      item.message.includes("no positive segment inside the authored AMZ boundary"),
+    ),
+  ).toBe(true);
+});
+
+test("FMA references preserve separate approach intervals in a concave authored NOZ", () => {
+  const source = catalog([
+    { runway: "A", course: 0, x: -0.5 },
+    { runway: "B", course: 0, x: 0.5 },
+  ]);
+  source.fmaOverrides = {
+    groups: [
+      {
+        id: "CONCAVE",
+        approachIds: ["APP0", "APP1"],
+        geometry: {
+          amzBoundary: [
+            { xNm: -2, yNm: -20 },
+            { xNm: 2, yNm: -20 },
+            { xNm: 2, yNm: 5 },
+            { xNm: -2, yNm: 5 },
+          ],
+          runways: [
+            {
+              runwayId: "A",
+              noz: [
+                { xNm: -1, yNm: -18 },
+                { xNm: -0.3, yNm: -18 },
+                { xNm: -0.3, yNm: -12 },
+                { xNm: -0.6, yNm: -12 },
+                { xNm: -0.6, yNm: -6 },
+                { xNm: -0.3, yNm: -6 },
+                { xNm: -0.3, yNm: 2 },
+                { xNm: -1, yNm: 2 },
+              ],
+            },
+            {
+              runwayId: "B",
+              noz: [
+                { xNm: 0.3, yNm: -18 },
+                { xNm: 1, yNm: -18 },
+                { xNm: 1, yNm: 2 },
+                { xNm: 0.3, yNm: 2 },
+              ],
+            },
+          ],
+          ntzs: [
+            {
+              id: "CONCAVE-NTZ",
+              leftRunwayId: "A",
+              rightRunwayId: "B",
+              polygon: [
+                { xNm: -0.1, yNm: -18 },
+                { xNm: 0.1, yNm: -18 },
+                { xNm: 0.1, yNm: 2 },
+                { xNm: -0.1, yNm: 2 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const result = deriveFmaAmzs(source);
+  expect(result.diagnostics).toEqual([]);
+  const lateral = -0.5 + 200 / 6076.12;
+  const intervals = result.amzs[0]!.referenceLines.filter(
+    ([start, end]) => Math.abs(start.xNm - lateral) < 1e-8 && Math.abs(end.xNm - lateral) < 1e-8,
+  )
+    .map(([start, end]) => [start.yNm, end.yNm])
+    .sort((a, b) => a[0]! - b[0]!);
+  expect(intervals).toHaveLength(2);
+  expect(intervals[0]![0]).toBeCloseTo(-18);
+  expect(intervals[0]![1]).toBeCloseTo(-12);
+  expect(intervals[1]![0]).toBeCloseTo(-6);
+  expect(intervals[1]![1]).toBeCloseTo(0);
 });
 
 test("FMA separates disjoint eligible runway pairs without duplicating or dropping members", () => {
@@ -2733,6 +3036,26 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
     test("AC3 — reference exact boundary, ring/compass stored preference restoration, zone visibility, brightness and severity aggregation", () => {
       const view = createScopeView();
       const amz = syntheticAmz();
+      amz.runwayGraphics = [
+        {
+          runwayId: "08L",
+          threshold: { xNm: -0.5, yNm: 0 },
+          departureEnd: { xNm: -0.5, yNm: 0.75 },
+        },
+      ];
+      amz.courseLines = [
+        {
+          runwayId: "08L",
+          approach: [
+            { xNm: -0.5, yNm: -5 },
+            { xNm: -0.5, yNm: 0 },
+          ],
+          departure: [
+            { xNm: -0.5, yNm: 0.75 },
+            { xNm: -0.5, yNm: 1.5 },
+          ],
+        },
+      ];
       amz.referenceLines = [
         [
           { xNm: -1, yNm: -5 },
@@ -2744,6 +3067,21 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
       view.fmaSurveillance.selectedAmzId = amz.id;
       view.fmaMag = 2;
 
+      const hierarchyCanvas = createMockCtx();
+      hierarchyCanvas.ctx.lineWidth = 7;
+      hierarchyCanvas.ctx.strokeStyle = "#123456";
+      hierarchyCanvas.ctx.setLineDash([2, 3]);
+      drawFmaLayers(hierarchyCanvas.ctx, view, { widthPx: 800, heightPx: 800 });
+      expect(hierarchyCanvas.pathStrokes.some((stroke) => stroke.lineWidth === 3)).toBe(true);
+      expect(hierarchyCanvas.pathStrokes.some((stroke) => stroke.lineWidth === 5)).toBe(true);
+      expect(hierarchyCanvas.pathStrokes.some((stroke) => stroke.lineWidth === 1.25)).toBe(true);
+      expect(
+        hierarchyCanvas.pathStrokes.some((stroke) => stroke.lineDash.join(",") === "5,4"),
+      ).toBe(true);
+      expect(hierarchyCanvas.ctx.lineWidth).toBe(7);
+      expect(hierarchyCanvas.ctx.strokeStyle).toBe("#123456");
+      expect(hierarchyCanvas.ctx.getLineDash()).toEqual([2, 3]);
+
       // 1. Reference lines show iff rangeNm / MAG <= 16 NM
       // Case A: rangeNm = 30, mag = 2 -> 30 / 2 = 15 <= 16 -> visible
       view.camera.rangeNm = 30;
@@ -2752,14 +3090,22 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
       // References draw white strokes:
       expect(mockCanvasA.pathStrokes.length).toBeGreaterThan(0);
 
+      // Case A2: rangeNm = 40, mag = 2.5 -> exact 16 NM boundary remains visible.
+      view.camera.rangeNm = 40;
+      view.fmaMag = 2.5;
+      const mockCanvasA2 = createMockCtx();
+      drawFmaLayers(mockCanvasA2.ctx, view, { widthPx: 800, heightPx: 800 });
+      expect(mockCanvasA2.pathStrokes.some((s) => s.lineWidth === 0.65)).toBe(true);
+
       // Case B: rangeNm = 40, mag = 2 -> 40 / 2 = 20 > 16 -> hidden
+      view.fmaMag = 2;
       view.camera.rangeNm = 40;
       const mockCanvasB = createMockCtx();
       drawFmaLayers(mockCanvasB.ctx, view, { widthPx: 800, heightPx: 800 });
       // Reference lines not drawn; only AMZ/runway/NTZ
       // Verify no stroke with reference line length:
       const refStrokes = mockCanvasB.pathStrokes.filter(
-        (s) => s.strokeStyle === "#FFFFFF" && s.points.length === 2,
+        (s) => s.lineWidth === 0.65 && s.points.length === 2,
       );
       expect(refStrokes.length).toBe(0);
 
@@ -2774,8 +3120,8 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
         ringsPath: null,
         ringCircles: [{ x: 400, y: 400, radiusPx: 100 }],
         compassRosePath: null,
-        compassRose: null,
-        compassRoseLabels: [],
+        compassRose: generateCompassRoseGeometry({ widthPx: 800, heightPx: 800 }),
+        compassRoseLabels: generateCompassRoseGeometry({ widthPx: 800, heightPx: 800 }).labels,
         videoStrokes: [],
         coastlinePath: null,
         coastline: null,
@@ -2788,16 +3134,81 @@ describe("T02-226 FMA AUX, BRITE and Control Entry", () => {
         videoLabels: [],
       };
       drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
-      // Rings were suppressed: view.showRings remains true!
+      expect(mockCanvasC.arcStrokes).toHaveLength(0);
+      expect(mockCanvasC.pathStrokes.some((stroke) => stroke.strokeStyle === PALETTE.mapDim)).toBe(
+        false,
+      );
       expect(view.showRings).toBe(true);
       expect(view.showCompassRose).toBe(true);
-      // When MAG returns to 1, rings paint again without changing preference
+      // MAG 1 restores real ring arcs and compass tick strokes.
       view.fmaMag = 1;
       drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      expect(mockCanvasC.arcStrokes.length).toBeGreaterThan(0);
+      expect(mockCanvasC.pathStrokes.some((stroke) => stroke.strokeStyle === PALETTE.mapDim)).toBe(
+        true,
+      );
+      // MAG 4 suppresses both overlays again; returning to MAG 1 restores them.
+      view.fmaMag = 4;
+      const priorArcs = mockCanvasC.arcStrokes.length;
+      const priorPaths = mockCanvasC.pathStrokes.filter(
+        (stroke) => stroke.strokeStyle === PALETTE.mapDim,
+      ).length;
+      drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      expect(mockCanvasC.arcStrokes).toHaveLength(priorArcs);
+      expect(
+        mockCanvasC.pathStrokes.filter((stroke) => stroke.strokeStyle === PALETTE.mapDim),
+      ).toHaveLength(priorPaths);
+      view.fmaMag = 1;
+      drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      expect(mockCanvasC.arcStrokes.length).toBeGreaterThan(priorArcs);
+      expect(
+        mockCanvasC.pathStrokes.filter((stroke) => stroke.strokeStyle === PALETTE.mapDim).length,
+      ).toBeGreaterThan(priorPaths);
+      // Exiting FMA restores both overlays while retaining enabled preferences.
+      view.fmaSurveillance.enabled = false;
+      drawMapLayers(mockCanvasC.ctx, mockCache, view, { widthPx: 800, heightPx: 800 });
+      expect(mockCanvasC.arcStrokes.length).toBeGreaterThan(priorArcs);
+      expect(
+        mockCanvasC.pathStrokes.filter((stroke) => stroke.strokeStyle === PALETTE.mapDim).length,
+      ).toBeGreaterThan(priorPaths);
       expect(view.showRings).toBe(true);
+      expect(view.showCompassRose).toBe(true);
+
+      // A user who had both preferences disabled stays disabled across MAG changes and FMA exit.
+      const disabledView = createScopeView();
+      disabledView.fmaSurveillance.enabled = true;
+      disabledView.fmaMag = 1;
+      disabledView.showRings = false;
+      disabledView.showCompassRose = false;
+      const disabledCache = {
+        ...mockCache,
+        ringCircles: [],
+        compassRose: null,
+        compassRoseLabels: [],
+      };
+      const disabledTrace = createMockCtx();
+      drawMapLayers(disabledTrace.ctx, disabledCache, disabledView, {
+        widthPx: 800,
+        heightPx: 800,
+      });
+      disabledView.fmaMag = 4;
+      drawMapLayers(disabledTrace.ctx, disabledCache, disabledView, {
+        widthPx: 800,
+        heightPx: 800,
+      });
+      disabledView.fmaSurveillance.enabled = false;
+      drawMapLayers(disabledTrace.ctx, disabledCache, disabledView, {
+        widthPx: 800,
+        heightPx: 800,
+      });
+      expect(disabledTrace.arcStrokes).toHaveLength(0);
+      expect(disabledTrace.pathStrokes).toHaveLength(0);
+      expect(disabledView.showRings).toBe(false);
+      expect(disabledView.showCompassRose).toBe(false);
 
       // 3. NTZ severity outlines: warning red, caution yellow, normal white.
       // Disabled NTZ draws no boundary.
+      view.fmaSurveillance.enabled = true;
       view.fmaMag = 1;
       const ntz1 = amz.ntzs[0]!;
       view.fmaAlertOutlines = new Map([[ntz1.id, "RED"]]);

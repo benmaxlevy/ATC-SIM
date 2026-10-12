@@ -974,8 +974,20 @@ Automatic geometry deduplicates approach variants by ILS, LOC, RNAV preference,
 applies magnetic variation once, groups same-direction runways within the
 wrapped one-degree trainer tolerance, and constructs only adjacent NTZs for
 2,500–9,000-foot separation. Derived dimensions are 18 NM capture, 2,000-foot
-NTZ, 0.5 NM outer margin, 200-foot reference spacing, and reciprocal threshold
-departure endpoint when catalog geometry resolves it (otherwise 1 NM).
+NTZ, and 0.5 NM outer margin. A catalog reciprocal threshold defines the
+physical runway end when available; otherwise the trainer does not infer a
+physical runway length. The derived dashed departure course extends up to 1 NM
+beyond a known physical end, or from the threshold when the opposite end is
+unavailable. For authored AMZ polygons, the derived extension stops at the first
+positive boundary exit; an endpoint with no positive interior segment is
+rejected diagnostically. Explicit course-line graphics remain authored. This is
+a trainer extension, not a runway dimension. Reference strokes use
+exact 200-foot lateral offsets, omit the course centerline, and clip to each
+approach-side NOZ. NOZ contours use RWY brightness as a trainer grouping.
+When no reciprocal threshold resolves, a short screen-space marker identifies
+the runway threshold without implying a physical runway length.
+Rendering hierarchy and CSS pixel widths/dash lengths are trainer styling;
+the manual does not publish their pixel dimensions.
 Monitoring defaults are 10-second caution, 10-second surveillance loss,
 30-second coast-out, 10-second stabilization, 3-degree course tolerance,
 0.15 NM alignment half-width, and 30-second displayed PTL maximum. These are
@@ -986,7 +998,9 @@ are outside this feature.
 
 Raytheon TI 6191.409 Rev30 §6.16 and Figure 6-15 (printed p. 6-126, PDF 656)
 ground the displayed AMZ boundary, approach/departure course lines, NOZ/NTZ,
-runway, fix bar, and 200-foot reference lines. The figure does not specify the
+runway, fix bar, and 200-foot reference lines. Table 4-1 p. 4-74 defines
+AMZ/RWY/NTZ/REF brightness ownership but has no separate NOZ channel. The
+figure does not specify the
 algorithm used to derive coordinates or runway groups; all dimensions and
 selection rules above are documented trainer choices. Figure 6-15 also says
 reference lines appear only when range/MAG ≤16 NM and range rings/compass are

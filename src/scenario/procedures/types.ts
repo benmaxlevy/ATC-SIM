@@ -213,6 +213,7 @@ export interface FmaGroupAdaptation {
   /** Complete authored boundary and zone polygons replace derived polygons. */
   geometry?: {
     amzBoundary: FmaPoint[];
+    /** Optional physical runway end at the reciprocal threshold, not the course extension endpoint. */
     runways: Array<{ runwayId: string; noz: FmaPoint[]; departureEnd?: FmaPoint }>;
     ntzs: Array<{ id: string; leftRunwayId: string; rightRunwayId: string; polygon: FmaPoint[] }>;
     courseLines?: Array<{

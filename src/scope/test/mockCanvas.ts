@@ -2,6 +2,15 @@ export interface MockPathStroke {
   points: { x: number; y: number }[];
   strokeStyle: string;
   lineWidth: number;
+  lineDash: number[];
+}
+
+export interface MockArcStroke {
+  x: number;
+  y: number;
+  radiusPx: number;
+  strokeStyle: string;
+  lineWidth: number;
 }
 
 export interface MockFillText {
@@ -33,6 +42,7 @@ export interface MockCanvas {
   ctx: CanvasRenderingContext2D;
   fillTexts: MockFillText[];
   pathStrokes: MockPathStroke[];
+  arcStrokes: MockArcStroke[];
   strokeRects: MockStrokeRect[];
   fillRects: MockFillRect[];
   drawImages: unknown[];
@@ -42,38 +52,63 @@ export interface MockCanvas {
 export function createMockCtx(options?: { closePathJoinsStart?: boolean }): MockCanvas {
   const fillTexts: MockFillText[] = [];
   const pathStrokes: MockPathStroke[] = [];
+  const arcStrokes: MockArcStroke[] = [];
   const strokeRects: MockStrokeRect[] = [];
   const fillRects: MockFillRect[] = [];
   const drawImages: unknown[] = [];
   const fills = { count: 0 };
   let currentPath: { x: number; y: number }[] = [];
+  let currentArcs: Array<{ x: number; y: number; radiusPx: number }> = [];
   let currentFillStyle = "#FFFFFF";
   let currentStrokeStyle = "#FFFFFF";
   let currentLineWidth = 1;
+  let currentLineDash: number[] = [];
+  const stateStack: Array<{ strokeStyle: string; lineWidth: number; lineDash: number[] }> = [];
   let currentFont = "12px monospace";
   let currentTextAlign = "start";
   let currentTextBaseline = "alphabetic";
   const closePathJoinsStart = options?.closePathJoinsStart === true;
 
   const ctx = {
-    save() {},
-    restore() {},
+    save() {
+      stateStack.push({
+        strokeStyle: currentStrokeStyle,
+        lineWidth: currentLineWidth,
+        lineDash: [...currentLineDash],
+      });
+    },
+    restore() {
+      const state = stateStack.pop();
+      if (state) {
+        currentStrokeStyle = state.strokeStyle;
+        currentLineWidth = state.lineWidth;
+        currentLineDash = state.lineDash;
+      }
+    },
     beginPath() {
       currentPath = [];
+      currentArcs = [];
     },
     closePath() {
       if (closePathJoinsStart && currentPath[0]) {
         currentPath.push({ ...currentPath[0] });
       }
     },
-    arc() {},
+    arc(x: number, y: number, radiusPx: number) {
+      currentArcs.push({ x, y, radiusPx });
+    },
     clip() {},
     rect() {},
     fillRect(x: number, y: number, w: number, h: number) {
       fillRects.push({ x, y, w, h });
     },
     clearRect() {},
-    setLineDash() {},
+    setLineDash(value: number[]) {
+      currentLineDash = [...value];
+    },
+    getLineDash() {
+      return [...currentLineDash];
+    },
     setTransform() {},
     strokeRect(x: number, y: number, w: number, h: number) {
       strokeRects.push({ x, y, w, h, strokeStyle: currentStrokeStyle });
@@ -93,7 +128,11 @@ export function createMockCtx(options?: { closePathJoinsStart?: boolean }): Mock
           points: currentPath.slice(),
           strokeStyle: currentStrokeStyle,
           lineWidth: currentLineWidth,
+          lineDash: [...currentLineDash],
         });
+      }
+      for (const arc of currentArcs) {
+        arcStrokes.push({ ...arc, strokeStyle: currentStrokeStyle, lineWidth: currentLineWidth });
       }
     },
     fill() {
@@ -155,6 +194,7 @@ export function createMockCtx(options?: { closePathJoinsStart?: boolean }): Mock
     ctx: ctx as unknown as CanvasRenderingContext2D,
     fillTexts,
     pathStrokes,
+    arcStrokes,
     strokeRects,
     fillRects,
     drawImages,
