@@ -1044,7 +1044,7 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         >
           <span className="dcb-cell-line">MAG</span>
           <span className="dcb-cell-line">
-            {formatSpinnerCellReadout(view, "MAG", `MAG ${view.fmaMag}`)}
+            {formatSpinnerCellReadout(view, "MAG", view.fmaMag)}
           </span>
         </DcbCell>
       </div>

@@ -17,6 +17,10 @@ import {
   dcbActionCapPressed,
   dcbLeaderDirReadout,
   DCB_ACTION_FLASH_MS,
+  FMA_RUNWAY_KEYPAD_TO_DIR,
+  formatFmaRunwayLeaderReadout,
+  LEADER_DIR_LABELS,
+  type LeaderDir,
   SSA_FILTER_FIELDS,
   activeDcbPrefName,
   formatDcbBriteReadout,
@@ -161,7 +165,22 @@ export function formatSpinnerCellReadout(
   defaultReadout: string | number,
 ): string | number {
   const buf = armedSpinnerBuffer(view, cell);
-  return buf !== null ? buf : defaultReadout;
+  if (buf === null) {
+    return defaultReadout;
+  }
+  if (cell === "LDR_DIR") {
+    const num = Number(buf);
+    if (Number.isInteger(num) && num in LEADER_DIR_LABELS && num !== 5) {
+      return LEADER_DIR_LABELS[num as LeaderDir];
+    }
+  } else if (cell.startsWith("FMA_LDR_")) {
+    const num = Number(buf);
+    if (Number.isInteger(num) && num in FMA_RUNWAY_KEYPAD_TO_DIR) {
+      const dir = FMA_RUNWAY_KEYPAD_TO_DIR[num];
+      return formatFmaRunwayLeaderReadout(dir);
+    }
+  }
+  return buf;
 }
 
 export function toggleSpinner(

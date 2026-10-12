@@ -104,6 +104,28 @@ describe("T02-201: DCB spinner live digit rendering and integration acceptance",
       view.dcbSpinner.buffer = "3";
       expect(formatSpinnerCellReadout(view, "LDR_LEN", "2")).toBe("3");
     });
+
+    it("formats LDR_DIR and FMA_LDR_* live buffer as compass direction labels", () => {
+      const view = createScopeView();
+      armDcbSpinner(view, "LDR_DIR");
+      view.dcbSpinner.buffer = "8";
+      expect(formatSpinnerCellReadout(view, "LDR_DIR", "S")).toBe("N");
+      view.dcbSpinner.buffer = "6";
+      expect(formatSpinnerCellReadout(view, "LDR_DIR", "S")).toBe("E");
+      view.dcbSpinner.buffer = "1";
+      expect(formatSpinnerCellReadout(view, "LDR_DIR", "S")).toBe("SW");
+
+      const rwyCell = "FMA_LDR_08L" as const;
+      armDcbSpinner(view, rwyCell);
+      view.dcbSpinner.buffer = "2"; // Keypad 2 -> North (8)
+      expect(formatSpinnerCellReadout(view, rwyCell, "NONE")).toBe("N");
+      view.dcbSpinner.buffer = "5"; // Keypad 5 -> NONE (null)
+      expect(formatSpinnerCellReadout(view, rwyCell, "N")).toBe("NONE");
+      view.dcbSpinner.buffer = "8"; // Keypad 8 -> South (2)
+      expect(formatSpinnerCellReadout(view, rwyCell, "NONE")).toBe("S");
+      view.dcbSpinner.buffer = "1"; // Keypad 1 -> Northwest (7)
+      expect(formatSpinnerCellReadout(view, rwyCell, "NONE")).toBe("NW");
+    });
   });
 
   describe("RANGE spinner: live rendering, validation, and layout preservation", () => {

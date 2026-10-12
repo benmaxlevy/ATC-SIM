@@ -212,6 +212,12 @@ test("FMA AUX uses 22 full-width columns with only paired controls at half heigh
   for (const id of ["fma-ntz-1", "fma-ntz-2", "fma-rwy-1", "fma-rwy-2"]) {
     expect(FMA_AUX_DCB_LAYOUT.find((cell) => cell.id === id)?.rowSpan).toBe(1);
   }
+  expect(html).toMatch(
+    /data-dcb-layout-id="fma-mag"[\s\S]*?<span class="dcb-cell-line">MAG<\/span>\s*<span class="dcb-cell-line">1<\/span>/,
+  );
+  expect(html).not.toMatch(
+    /data-dcb-layout-id="fma-mag"[\s\S]*?<span class="dcb-cell-line">MAG 1<\/span>/,
+  );
   const css = cssSource();
   expect(css).toMatch(
     /\.dcb-vertical \.dcb-main-grid\[data-dcb-layout="FMA_AUX"\][\s\S]*?grid-template-rows:\s*repeat\(22,\s*minmax\(0,\s*1fr\)\)/,
