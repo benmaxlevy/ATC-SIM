@@ -6643,3 +6643,11 @@ only those legacy T02-225/T02-228 PREF assertions in the shared fidelity test;
 T02-231 retains earlier schema/flow/geometry sections. Workers coordinate shared
 imports. This narrow disjoint-hunk exception permits each ticket's CI gate; any
 merge conflict still stops execution without force. Other ownership unchanged.
+
+### Eighty-eighth review correction — reload lifecycle assertion
+
+T02-232's narrow pre-merge correction may update the existing T02-230 binder
+acceptance assertion that expected storage loading to preserve active FMA.
+Storage loading now explicitly enters normal mode, matching the approved reload
+contract. The remaining authored-availability/binder cleanup assertions remain.
+T02-231 is already merged; there is no concurrent writer for this test block.
