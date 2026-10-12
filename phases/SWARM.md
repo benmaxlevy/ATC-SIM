@@ -6660,3 +6660,65 @@ Shell replacement lifecycle and extract a generic tested binder if needed, so ma
 group and SITE validation uses the new facility before profile application.
 This is required by the approved profile replacement contract; no facility switch,
 new radio grammar or unrelated session redesign is authorized.
+
+## Eighty-ninth swarm started — Explicit FMA preference owner (2026-10-12)
+
+The user approved the researched PREF-user plan and invoked atc-sim-plan-tickets,
+run-swarm and check-stars-manual. The final clarification requires selecting an
+FMA preference to switch fully to its matching AMZ and complete display profile.
+This supersedes mode-selected preference ownership and active-AMZ-only CRUD from
+T02-232–233, while preserving authored geometry, complete disjoint profiles,
+normal-mode reload and return to the last-used normal preference on FMA exit.
+
+- Include T02-234 explicit preference owner/numbered namespaces and T02-235
+  user-directed actions, validation and acceptance. Merge target `feature/fma`.
+- Wave A T02-234, Wave B T02-235 after predecessor merge/CI/manual gates.
+  Shared PREF/spinner/Preview ownership makes implementation sequential; use one
+  isolated `gpt-6-luna` worker at medium reasoning. Independent reviewers use Luna
+  medium; captain owns merge lock and squash merges. No master merge or push.
+- One operator only: fixed local preference owners `FSSTARS` and reserved `FMA`.
+  No PINs, sign-on, account creation, authentication or NAS preference host.
+- Existing Figure 4-1 username cell below DEFAULT becomes a real owner selector.
+  Wheel/drag and typed username+Enter commit through existing DCB entry guards;
+  selecting owner only changes visible numbered slots, never display or FMA mode.
+  DONE/end of PREF resets temporary menu owner to FSSTARS; last-applied user/set
+  identity and last-used normal preference remain independently tracked.
+- Both owners have up to 32 stable numbered slots. FMA sets are named by authored
+  AMZ ID, not automatically created for every AMZ. Selecting FMA set in FMA mode
+  selects its AMZ, clears old local runtime and applies the complete profile.
+  Outside FMA it prepares that AMZ and applies saved display/dormant FMA settings
+  without enabling FMA or alerts. This full-switch coupling is user-approved
+  trainer policy; manual §4.1.3 does not explicitly define that slot-click coupling.
+- SAVE/DELETE target the selected owner's highlighted existing set, never inferred
+  solely from mode. Explicit FSSTARS selection can intentionally apply/save normal
+  preferences even in FMA; incidental FMA edits never overwrite normal records.
+  SAVE AS names the desired authored AMZ for FMA (not restricted to current AMZ),
+  captures current settings without switching geometry, and creates rather than
+  overwrites. New names are 1–7 alphanumeric, including digit-only; preserve legacy
+  eight-character normal names on migration. Duplicate names use ILL PREFSET;
+  malformed/unknown adapted AMZ names use FORMAT; unknown owner uses ILL USER.
+  Full namespace disables SAVE AS, never overwrites slot32. No selected existing
+  set disables SAVE/DELETE. DELETE keeps current display and applied identity.
+- DEFAULT follows actual FMA mode and active AMZ, independent of browsing owner;
+  missing set warns NO PREF SET FOUND without display substitution. RESTORE resets
+  the pre-PREF display/context through safe cleanup, not saved records or old alert
+  runtime. Pointer and inherited Insert opener must take identical snapshots.
+- Legacy normal slots and AMZ map migrate without data loss; no runtime/owner
+  selector/pending entry is persisted. Storage remains facility-keyed. Preserve
+  unknown legacy records for deletion, reject applying stale AMZ geometry.
+- T02-234 may retain inherited naming/capacity trainer behavior temporarily while
+  providing functional owner-routed actions; document that precise remaining
+  T02-235 work in the existing PREF backlog. T02-235 resolves it before final exit.
+- Ready tickets receive primary plus independent supplied-manual review before
+  merge; after each merge captain npm run ci and manual recheck are required.
+  Manual `/home/ben/Documents/stars refs/full_manual.pdf`, §§4.1.1–6,4.1.9–10,
+  Figure4-1 and §§6.16.1–2. FAIL stops new waves and permits one narrow correction.
+- Paths/branches: phases/02-scope/tickets/T02-234-fma-pref-user-and-namespaces.md,
+  ticket/T02-234-fma-pref-user-and-namespaces; and
+  phases/02-scope/tickets/T02-235-user-directed-pref-actions-and-acceptance.md,
+  ticket/T02-235-user-directed-pref-actions-and-acceptance.
+- Skip unrelated services, TSAS, radio/Command IR/Path C, new speech backends,
+  proprietary facility data, full PREF SET/MULTI FUNC K grammar and later phases.
+- Stop after T02-235, final feature CI/manual gates and STATUS with actual browser
+  evidence or explicit UNRUN leftovers. Workers return READY TO MERGE or BLOCKED;
+  captain returns PHASE EXIT GREEN or PHASE EXIT BLOCKED with commits/evidence.
