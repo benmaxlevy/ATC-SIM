@@ -2512,3 +2512,78 @@ All workers are terminal. The original unfinished T02-209 worktree, unrelated
 No push, master merge, reset, cleanup, or further swarm is authorized/performed.
 
 **PHASE EXIT GREEN**
+
+## Eighty-sixth and eighty-seventh swarms exit — STARS-like FMA (2026-10-12)
+
+The approved FMA feature and screenshot-driven fidelity/flow corrections are complete on `feature/fma`. The invoking captain used isolated `gpt-6-luna` workers at medium reasoning and independent read-only supplied-manual verification. The final correction configuration ran T02-229, T02-230, then T02-228 reconciliation sequentially; earlier FMA ticket history and unrelated work remain preserved.
+
+| Ticket | Completed behavior | Feature commit | Manual gate |
+| --- | --- | --- | --- |
+| T02-220 | AMZ derivation and adaptation | `e893e6e` | Final audit PASS |
+| T02-221 | Report retention, coast and recovery | `0fa456f` | Final audit PASS |
+| T02-222 | Alert qualification and precedence | `15b3e8b` | Final audit PASS |
+| T02-223 | F8, track actions and datablock badges | `ca43a7c` | Final audit PASS |
+| T02-224 | FMA SpeechSynthesis queue | `285d3ce` | Final audit PASS; availability repaired in T02-228 |
+| T02-225 | MODE submenu and AMZ preferences | `f4f67e3` | Final audit PASS; persistence/lifecycle repaired in T02-228 |
+| T02-226 | FMA AUX and BRITE controls | `300a12d` | Final audit PASS; actual entry/cancel/adaptation repaired in T02-228 |
+| T02-227 | Projection, picking and graphics | `0d746a0` | Final audit PASS; graphics corrected in T02-229 |
+| T02-229 | Graphic hierarchy and reference/departure geometry | `a193df0` | Corrected pre-merge PASS; captain CI and post-merge PASS |
+| T02-230 | Active flow and boot/session binding | `b253bcf` | Corrected pre-merge PASS; captain CI and post-merge PASS |
+| T02-228 | Final acceptance, documentation and named repairs | `5ec42c1` | Corrected pre-merge PASS; captain CI and post-merge PASS |
+
+The original T02-228 unfinished worktree at `/tmp/atc-fma-228` was read as a reference and preserved unchanged. Final acceptance used a fresh isolated reconciliation branch from the current feature target. A T02-230 worker briefly edited the feature checkout through a relative tool path; its exact owned patch and new file were backed up, transferred and verified in the assigned worktree, and only its confirmed edits were restored in the feature checkout before continuation. No unrelated edits or artifacts were discarded.
+
+### Validation
+
+Captain CI after each correction merge passed:
+
+- T02-229: 257 test files, 3,040 passed, 4 skipped.
+- T02-230: 257 test files, 3,045 passed, 4 skipped.
+- T02-228: 257 test files, 3,057 passed, 4 skipped.
+
+Final whole-feature CI on `feature/fma`: **PASS — 257 files, 3,057 passed, 4 skipped, 0 failures**. This includes typecheck, lint, formatting and tests. Focused final validation passed 99 checks: 72 in the shared FMA fidelity suite, 22 spinner-keyboard checks and 5 inherited-control checks. `git diff --check` passed. Speech API, Command IR, parser and radio backends were untouched; their additional speech-api gate is not applicable.
+
+Automated acceptance exercises production rendered DCB callbacks, installed key routing and the PPI canvas wrapper, report-backed geometry/alerts/loss/recovery, projection/picking, preference capture and validation, warning paint and injected speech/status updates. These are automated application-path checks, not a live browser walkthrough.
+
+### Manual gates and corrected findings
+
+Authority: user-supplied Raytheon TI 6191.409 Rev. 30, `/home/ben/Documents/stars refs/full_manual.pdf`. Primary and independent reviews passed before and after the correction merges. Final T02-228 AC1–4 and AC6 pass; AC5 uses its explicitly allowed, fully recorded UNRUN fallback.
+
+Relevant manual evidence includes §2.6 (DCB description, pp. 2-21–23, PDF77–79), Figure 2-20 (p. 2-66, PDF122), §2.14 and Appendix D Table D-1 (PDF141–142 and PDF942), §2.16.4/Table 2-27 (pp. 2-107–108, PDF163–164), §4.1 (pp. 4-4–6, PDF214–216), Table 4-1 (p. 4-74, PDF284), §6.16/Figure 6-15 (p. 6-126, PDF656), §§6.16.1–9 (PDF657–669), §7.3 (p. 7-7, PDF793), and Appendix B Table B-1 (PDF932). Figures 6-17 and 6-18 are both on p. 6-129/PDF659; PDF660 is §6.16.2 text.
+
+Named unintended divergences were repaired and rechecked:
+
+- Authored AMZ departure containment, disabled NTZ shared edges through NOZ/reference paint, and NTZ outline dominance; real ring/compass draw traces prove suppression and preference restoration.
+- Flow filtering that incorrectly removed authored offset/SOIA adaptation; selected source approach membership now preserves explicit adaptation while excluding reciprocal flow.
+- Non-English local voice fallback and absent user-visible audio availability; English-local-only discovery, subscription cleanup and a separate FMA trainer status now work.
+- Premature AMZ pointer commits, ambiguous label first-hit selection, armed-wheel rollback loss, inconsistent runway keypad commits and malformed-input mutation.
+- Hidden standalone warnings and warnings suppressed by trainer diagnostics; exact existing responses are now painted.
+- Unused adapted PTL maximum and loss/coast intervals; selected-AMZ values now drive actual controls and report retention.
+- PREF SAVE/SAVE AS missing live AMZ capture, stale stored ranges/references, lost last-AMZ choice, old inhibition across context changes, and saved NONE runway overrides failing to clear an unsaved direction.
+
+Reviewer misstatements about a raster locator, committed keypad observations and missing duplicate-label coverage were explicitly reconciled and withdrawn from the source evidence. No unresolved functional manual findings remain. Verification claims manual alignment of this trainer feature, not STARS/NAS compatibility or operational certification.
+
+### Approved trainer policies
+
+Automatic geometry is a straight-parallel approximation, not an operational PRM eligibility decision. Offset/SOIA requires authored adaptation; no automatic SOIA flight behavior is included. Catalog geometry, dimensions, source-membership flow filtering, default 30-second PTL maximum, 5-second pointer steps, report-loss/coast defaults and pixel styling remain documented trainer policies. Reference spacing remains exactly 200 feet; references appear only at range/MAG <=16 NM; MAG1–8 is lateral-only and MAG>1 suppresses range rings/compass without changing their stored preferences.
+
+The user's caution resolution permits speech silence only, with unchanged yellow visuals. SpeechSynthesis is the sole FMA audio backend under the FMA-only exception, using an installed local English voice. Inherited workstation VOL remains 0–5; FMA VOICE is separately 1–10. Optional selected-AMZ preference context uses the existing local v3 host, validates against eligible flow and does not persist FMA enablement, track IDs, episodes, frozen poses or speech.
+
+### Browser/audio leftovers — UNRUN
+
+A fresh final inventory returned `apps: []` and `browsers: []`; opening the in-app browser returned `Browser is not available: iab`. No actual visual, listening, offline or browser-driven sensor-loss/recovery pass is claimed.
+
+| Operator check | Expected observation | Status |
+| --- | --- | --- |
+| MODE → FMA → ACCEPT; SHIFT; BRITE | Authentic service-mode confirmation and FMA AUX/BRITE; missing preferences warn while entry succeeds | UNRUN |
+| AMZ pointer/label entry; Escape; PREF SAVE/SAVE AS/reload | Candidate stages without rebind; commit applies validated settings; cancel does not write; eligible choice/NONE restore | UNRUN |
+| MAG1/4/8; pan and pick | Cross-track-only stretch, stationary center, correct target/datablock picking and world tool measurements | UNRUN |
+| Range30/MAG2 vs Range40/MAG2; MAG1 and FMA exit | 200-ft references follow threshold; rings/compass restore stored visibility | UNRUN |
+| PTL adapted maximum; runway keypad; VOICE controls | Bounded integer entry, rollback, exact keypad directions and committed Test | UNRUN |
+| Warning acknowledgment and caution silence | Warning becomes steady red, outline stays red until clear; caution remains steady yellow | UNRUN |
+| Reports interrupted/recovered; NOM; coast/freeze; track/zone/ALL inhibit | Adapted simulation timing, retained/frozen cleanup, no stale revival, NOM silent | UNRUN |
+| Local English voice, all four alert phrases, Test, volume and offline state | Correct phrases, selective cancellation and availability status; no alternate backend | UNRUN |
+
+All implementation workers and independent reviewers are terminal. The original unfinished T02-228 worktree, ticket worktrees/branches, unrelated `.worktrees/`, `:memory:.ses` and `speech-api/:memory:.ses` remain preserved. `master` remains `e733d27`; no master merge, push, reset, clean or force occurred. The configured stop boundary is reached; no later phase or swarm was started.
+
+**PHASE EXIT GREEN**
