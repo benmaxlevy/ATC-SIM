@@ -6730,3 +6730,13 @@ another agent can take over. Complete T02-234 pre-merge CI/manual review,
 squash merge into `feature/fma`, post-merge CI/manual recheck and STATUS handoff.
 Do not launch T02-235. Its approved ticket remains queued for the next captain;
 the temporary validation gaps documented for that ticket remain explicit.
+
+### Eighty-ninth swarm resumed — T02-235 execution (2026-10-12)
+
+User explicitly authorized finishing the swarm (`ok finish the swarm`).
+The captain resumes Wave B: T02-235 user-directed PREF actions and acceptance.
+Execute T02-235 with 1 isolated worker on branch `ticket/T02-235-user-directed-pref-actions-and-acceptance`.
+Run focused tests, npm run ci, independent check-stars-manual review, squash merge into `feature/fma`,
+post-merge CI, manual recheck, and final SWARM-STATUS handoff.
+Stop after T02-235; no master merge or push.
+
