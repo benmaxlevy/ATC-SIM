@@ -6722,3 +6722,11 @@ normal-mode reload and return to the last-used normal preference on FMA exit.
 - Stop after T02-235, final feature CI/manual gates and STATUS with actual browser
   evidence or explicit UNRUN leftovers. Workers return READY TO MERGE or BLOCKED;
   captain returns PHASE EXIT GREEN or PHASE EXIT BLOCKED with commits/evidence.
+
+### Eighty-ninth stop-boundary adjustment (2026-10-12)
+
+The user instructed the captain to continue through T02-234 merge and stop so
+another agent can take over. Complete T02-234 pre-merge CI/manual review,
+squash merge into `feature/fma`, post-merge CI/manual recheck and STATUS handoff.
+Do not launch T02-235. Its approved ticket remains queued for the next captain;
+the temporary validation gaps documented for that ticket remain explicit.
