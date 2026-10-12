@@ -731,7 +731,7 @@ test("FMA adaptation uses explicit catalog geometry, defaults, provenance and ve
     id: "CUSTOM",
     approachIds: ["APP0", "B-LOC"],
     provenance: "CATALOG_ADAPTED",
-    dimensions: { captureLengthNm: 18, ntzWidthFt: 2000, outerMarginNm: 0.5 },
+    dimensions: { captureLengthNm: 20, ntzWidthFt: 2000, outerMarginNm: 0.5 },
     verticalLimits: { floorFt: 1000, ceilingFt: 5000 },
     referenceSpacingFt: 200,
   });
@@ -751,7 +751,7 @@ test("FMA adaptation uses explicit catalog geometry, defaults, provenance and ve
   expect(deriveFmaAmzs(base).diagnostics[0]?.message).toMatch(/invalid polygons/);
 });
 
-test("derived FMA defaults retain 200-foot references and trainer dimensions", () => {
+test("derived FMA defaults use a buffered 20 NM trapezoid and 200-foot references", () => {
   const result = deriveFmaAmzs(
     catalog([
       { runway: "A", course: 0, x: -0.5 },
@@ -759,7 +759,29 @@ test("derived FMA defaults retain 200-foot references and trainer dimensions", (
     ]),
   );
   expect(result.amzs[0]).toMatchObject({ referenceSpacingFt: 200, provenance: "DERIVED_TRAINER" });
-  expect(result.amzs[0]?.boundary.points).toHaveLength(4);
+  const derived = result.amzs[0]!;
+  expect(derived.dimensions.captureLengthNm).toBe(20);
+  expect(derived.boundary.points).toHaveLength(4);
+  const [farLeft, farRight, nearRight, nearLeft] = derived.boundary.points;
+  expect(farLeft?.yNm).toBeCloseTo(-20);
+  expect(farRight?.yNm).toBeCloseTo(-20);
+  expect(nearLeft?.yNm).toBeCloseTo(1);
+  expect(nearRight?.yNm).toBeCloseTo(1);
+  expect(farRight!.xNm - farLeft!.xNm).toBeGreaterThan(nearRight!.xNm - nearLeft!.xNm);
+  for (const zone of [
+    ...derived.members.map((member) => member.noz),
+    ...derived.ntzs.map((ntz) => ntz.polygon),
+  ]) {
+    for (const vertex of zone.points) {
+      expect(vertex.yNm).toBeGreaterThanOrEqual(-19.5);
+      expect(vertex.yNm).toBeLessThanOrEqual(0.5);
+      expect(vertex.xNm).toBeGreaterThan(farLeft!.xNm);
+      expect(vertex.xNm).toBeLessThan(farRight!.xNm);
+    }
+  }
+  expect(derived.members[0]?.noz.points[0]?.xNm).toBeCloseTo(-1);
+  expect(farLeft!.xNm).toBeCloseTo(-1.75);
+  expect(nearLeft!.xNm).toBeCloseTo(-1.25);
   expect(result.amzs[0]?.fixBars).toEqual([]);
   expect(result.amzs[0]?.runwayGraphics[0]?.departureEnd).toEqual({ xNm: -0.5, yNm: 0 });
   expect(result.amzs[0]?.courseLines[0]?.departure).toEqual([
@@ -803,10 +825,10 @@ test("derived FMA defaults retain 200-foot references and trainer dimensions", (
   );
   const translatedAmz = translated.amzs[0]!;
   expect(translatedAmz.members[0]?.threshold.yNm).toBe(90);
-  expect(translatedAmz.courseLines[0]?.approach[0].yNm).toBe(72);
-  expect(Math.min(...translatedAmz.boundary.points.map((p) => p.yNm))).toBe(72);
+  expect(translatedAmz.courseLines[0]?.approach[0].yNm).toBe(70);
+  expect(Math.min(...translatedAmz.boundary.points.map((p) => p.yNm))).toBe(70);
   expect(Math.max(...translatedAmz.boundary.points.map((p) => p.yNm))).toBe(109);
-  expect(translatedAmz.ntzs[0]?.polygon.points.some((p) => p.yNm >= 72 && p.yNm <= 109)).toBe(true);
+  expect(translatedAmz.ntzs[0]?.polygon.points.some((p) => p.yNm >= 70 && p.yNm <= 109)).toBe(true);
   expect(
     deriveFmaAmzs(
       catalog([
@@ -1044,7 +1066,7 @@ test("FMA parallel eligibility measures ENU cross-track and preserves true depar
   expect(northbound.referenceLines.every(([start, end]) => start.yNm < 0 && end.yNm <= 0)).toBe(
     true,
   );
-  expect(northbound.courseLines[0]?.approach[0].yNm).toBe(-18);
+  expect(northbound.courseLines[0]?.approach[0].yNm).toBe(-20);
   const diagonal = catalog([
     { runway: "A", course: 45, x: 0, y: 0 },
     { runway: "B", course: 45, x: 0.75, y: 0.75 },

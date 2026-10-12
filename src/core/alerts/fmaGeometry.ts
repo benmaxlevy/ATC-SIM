@@ -75,9 +75,15 @@ export const FMA_MONITORING_DEFAULTS = {
   maximumPtlS: 30,
 } as const;
 export const FMA_GEOMETRY_DEFAULTS = {
-  captureLengthNm: 18,
+  captureLengthNm: 20,
   ntzWidthFt: 2000,
   outerMarginNm: 0.5,
+  /** Derived AMZ clearance outside the outer NOZ at the runway end. */
+  boundaryNearBufferNm: 0.25,
+  /** Wider approach-end clearance makes the derived boundary trapezoidal. */
+  boundaryFarBufferNm: 0.75,
+  /** Keep derived NOZ/NTZ polygons inside the AMZ end bars. */
+  zoneEndInsetNm: 0.5,
   referenceSpacingFt: 200,
   minSpacingFt: 2500,
   maxSpacingFt: 9000,
@@ -245,6 +251,11 @@ function makeAmz(
   // departure course continues beyond it; absent an authored override this
   // trainer extension is 1 NM and carries no claim about runway dimensions.
   const departures = rows.map(() => adaptation?.departureExtensionNm ?? 1);
+  const zoneInset = Math.min(
+    FMA_GEOMETRY_DEFAULTS.zoneEndInsetNm,
+    capture / 4,
+    Math.min(...departures) / 2,
+  );
   const physicalRunwayLengths = rows.map((r) => r.departureNm ?? 0);
   if (
     [ntzWidth, capture, ...departures].some((n) => !Number.isFinite(n) || n <= 0) ||
@@ -291,7 +302,14 @@ function makeAmz(
           departures[j]!,
       ),
     );
-    const poly = rect(base, minAlong, maxAlong, -ntzWidth / 2, ntzWidth / 2, course);
+    const poly = rect(
+      base,
+      minAlong + zoneInset,
+      maxAlong - zoneInset,
+      -ntzWidth / 2,
+      ntzWidth / 2,
+      course,
+    );
     ntzs.push({
       id: `${id}-NTZ-${left.runwayId}-${right.runwayId}`,
       leftRunwayId: left.runwayId,
@@ -322,8 +340,8 @@ function makeAmz(
       courseTrueDeg: course,
       noz: rect(
         { xNm: 0, yNm: 0 },
-        along - capture,
-        along + physicalRunwayLengths[i]! + departures[i]!,
+        along - capture + zoneInset,
+        along + physicalRunwayLengths[i]! + departures[i]! - zoneInset,
         low,
         high,
         course,
@@ -332,7 +350,6 @@ function makeAmz(
   });
   const left = centers[0]! - outer,
     right = centers[centers.length - 1]! + outer;
-  const origin = point({ xNm: 0, yNm: 0 }, 0, (left + right) / 2, course);
   const minAlong =
     Math.min(
       ...rows.map(
@@ -348,7 +365,32 @@ function makeAmz(
         departures[j]!,
     ),
   );
-  const boundary = rect(origin, minAlong, maxAlong, (left - right) / 2, (right - left) / 2, course);
+  // Figure 6-15 shows a wider approach end around inset NOZ/NTZ polygons.
+  // These trainer buffers are inferred from the figure; explicit adaptation
+  // geometry, when present, remains authoritative.
+  const boundary: FmaPolygon = {
+    points: [
+      point({ xNm: 0, yNm: 0 }, minAlong, left - FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm, course),
+      point(
+        { xNm: 0, yNm: 0 },
+        minAlong,
+        right + FMA_GEOMETRY_DEFAULTS.boundaryFarBufferNm,
+        course,
+      ),
+      point(
+        { xNm: 0, yNm: 0 },
+        maxAlong,
+        right + FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
+        course,
+      ),
+      point(
+        { xNm: 0, yNm: 0 },
+        maxAlong,
+        left - FMA_GEOMETRY_DEFAULTS.boundaryNearBufferNm,
+        course,
+      ),
+    ],
+  };
   const geometry = adaptation?.geometry;
   if (geometry) {
     if (
