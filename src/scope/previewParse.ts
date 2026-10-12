@@ -185,6 +185,8 @@ export type PreviewArmedAction =
       readonly targetSlew?: boolean;
     }
   | { readonly type: "saveAsPref"; readonly name?: string }
+  | { readonly type: "prefUserEntry" }
+  | { readonly type: "prefUser"; readonly user: "FSSTARS" | "FMA" }
   /** STARS §6.8: *T [ID] Enter removes line ID or all lines when ID omitted. */
   | { readonly type: "rblDelete"; readonly id?: number }
   /** STARS §6.7: *T first endpoint entry (raw typed operand). */

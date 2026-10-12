@@ -288,6 +288,8 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     const icao = "KDEM";
     const view1 = createScopeView(0, 0, { digitalMap: KDEM_DIGITAL_MAP });
     view1.dcbPref.icao = icao;
+    view1.dcbPref.slots[0] = { name: "BASE", body: serializeDcbPref(view1) };
+    view1.dcbPref.activeIndex = 0;
 
     // Mutate state away from defaults
     view1.showCompassRose = false;
@@ -318,6 +320,7 @@ describe("T02-89 Compass Rose Integration and Acceptance Suite", () => {
     // Mutate view2 to showCompassRose=true, brite.cmp=80, save to slot 1
     view2.showCompassRose = true;
     view2.brite.cmp = 80;
+    view2.dcbPref.slots[1] = { name: "ALT", body: serializeDcbPref(view2) };
     view2.dcbPref.activeIndex = 1;
     saveDcbPref(view2, storage);
 

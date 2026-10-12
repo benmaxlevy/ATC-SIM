@@ -74,6 +74,25 @@ pairwise minimum-separation graphics, and dynamic range-bearing lines.
 
 ## Scope and display
 
+### PREF command validation and exact context restoration (T02-235)
+
+T02-234 ships the Figure 4-1 USER selector, separate FSSTARS/FMA numbered
+namespaces, functional selected-owner SAVE/SAVE AS/DELETE routing, and complete
+FMA set application. Remaining inherited command gaps belong to T02-235:
+SAVE AS must enforce the manual's 1–7 alphanumeric name length (including
+digit-only names), reject case-insensitive duplicates with `ILL PREFSET`, and
+report invalid names with `FORMAT` while retaining pending entry. At 32 occupied
+sets, SAVE AS must be disabled or return a capacity error without overwriting.
+The current implementation refuses a full-table write but lacks the final UI
+error/disabled state and duplicate-name validation. RESTORE still needs the
+full pre-PREF display/context snapshot, including safe FMA AMZ/runtime context
+restoration; current persistence intentionally keeps saved records outside that
+snapshot. Normal DEFAULT must clear visible applied identity/selection as
+required by §4.1.10. Preserve separate applied identity, temporary browsing
+owner, canonical AMZ projection, and no implicit normal-slot write while doing
+this work. Supplied-manual browser verification remains unrun until independently
+checked by the captain.
+
 ### Authored radar sites — live SITE/SSA chrome, no live sensors (T04-45 / T02-75 / T02-76 / T02-77)
 
 Visible now: scenario JSON may declare trainer-authored `radarSites` (`id`,

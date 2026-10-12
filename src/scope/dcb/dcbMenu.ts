@@ -10,7 +10,8 @@
 
 import { CHAR_SIZE_STEPS_PX, DCB_CHAR_SIZE_STEPS_PX, POS_SIZE_STEPS_PX } from "../fonts";
 import { FMA_RUNWAY_DIR_TO_KEYPAD, FMA_RUNWAY_KEYPAD_TO_DIR } from "./dcbFunctions";
-import { getFmaMaximumPtlSeconds } from "./dcbPref";
+import { endDcbPrefSession, getFmaMaximumPtlSeconds } from "./dcbPref";
+import { cancelPreviewArea } from "../previewArea";
 
 function charSpinnerValues(cell: string): readonly number[] {
   return cell === "CHAR_DCB"
@@ -715,6 +716,15 @@ export function applyDcbShift(host: DcbMenuHost): void {
 
 export function openDcbMenu(host: DcbMenuHost, menu: DcbMenu): void {
   cancelDcbSpinner(host);
+  if (host.dcbMenu === "PREF" && menu !== "PREF" && "dcbPref" in host) {
+    endDcbPrefSession(
+      host as DcbMenuHost & { dcbPref: Parameters<typeof endDcbPrefSession>[0]["dcbPref"] },
+    );
+    const preview = (host as DcbMenuHost & { preview?: { armed?: { type?: string } } }).preview;
+    if (preview?.armed?.type === "prefUserEntry" || preview?.armed?.type === "saveAsPref") {
+      cancelPreviewArea(preview as Parameters<typeof cancelPreviewArea>[0]);
+    }
+  }
   if (host.dcbMenu === "MAIN" || host.dcbMenu === "AUX") {
     host.dcbMenuParent = host.dcbMenu;
   }
@@ -733,6 +743,15 @@ export function toggleDcbMenu(host: DcbMenuHost, menu: "MAPS" | "LDR"): void {
 /** DONE returns a submenu to its opening menu; AUX returns to MAIN. */
 export function closeDcbMenu(host: DcbMenuHost): void {
   cancelDcbSpinner(host);
+  if (host.dcbMenu === "PREF" && "dcbPref" in host) {
+    endDcbPrefSession(
+      host as DcbMenuHost & { dcbPref: Parameters<typeof endDcbPrefSession>[0]["dcbPref"] },
+    );
+    const preview = (host as DcbMenuHost & { preview?: { armed?: { type?: string } } }).preview;
+    if (preview?.armed?.type === "prefUserEntry" || preview?.armed?.type === "saveAsPref") {
+      cancelPreviewArea(preview as Parameters<typeof cancelPreviewArea>[0]);
+    }
+  }
   if ("fmaCandidateMode" in host) {
     (host as unknown as { fmaCandidateMode: boolean }).fmaCandidateMode = false;
   }

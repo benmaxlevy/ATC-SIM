@@ -108,7 +108,15 @@ import {
   resolveRblSecondEndpoint,
 } from "./rangeBearingLines";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
-import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
+import {
+  beginDcbPrefSession,
+  browserDcbPrefStorage,
+  cancelDcbPrefOwner,
+  cancelDcbPrefSaveAs,
+  commitDcbPrefOwner,
+  commitDcbPrefSaveAs,
+  selectDcbPrefOwner,
+} from "./dcb/dcbPref";
 import {
   applyDcbShift,
   armDcbSpinner,
@@ -1006,6 +1014,9 @@ function applyPreviewArmedAction(
         commitDcbPrefSaveAs(view, action.name, browserDcbPrefStorage() ?? undefined);
       }
       return;
+    case "prefUser":
+      selectDcbPrefOwner(view, action.user);
+      return;
     case "rblDelete": {
       if (action.id !== undefined) {
         const removed = removeRangeBearingLine(view.rbl, action.id);
@@ -1251,6 +1262,28 @@ export function handleScopeKeyDown(
   if (eventOwnedByNativeModal(event.target) && !spinnerOwnsRadioInput && !radioPreviewKey) {
     cancelRblOnFocusTakeover(view, "radio");
     return false;
+  }
+  const helpOwnsKey =
+    view.dcbPref.ownerCandidate !== null &&
+    (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target));
+  const hasNoModifiers = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+  if (view.dcbPref.ownerCandidate && !helpOwnsKey && hasNoModifiers) {
+    if (event.key === "Escape" || event.key === "Clear") {
+      cancelDcbPrefOwner(view);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      commitDcbPrefOwner(view);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    // Any new key function cancels a staged owner before it can affect input.
+    cancelDcbPrefOwner(view);
+  } else if (view.dcbPref.ownerCandidate && !helpOwnsKey) {
+    cancelDcbPrefOwner(view);
   }
   if (
     event.key === "F7" &&
@@ -1553,6 +1586,7 @@ export function handleScopeKeyDown(
   // STARS Table 18: Ins / Insert -> <PREF SET>
   if (event.key === "Insert" || event.key === "Ins") {
     consume(event);
+    beginDcbPrefSession(view);
     openDcbMenu(view, "PREF");
     ui?.onHandled?.();
     return true;

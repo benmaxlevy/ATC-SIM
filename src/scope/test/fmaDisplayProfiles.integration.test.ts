@@ -15,9 +15,14 @@ import {
   enterFmaConfirmation,
   commitFmaConfirmation,
   loadDcbPrefFromStorage,
+  persistDcbPref,
   saveDcbPref,
   saveFmaAmzPreference,
+  selectDcbPrefOwner,
+  selectDcbPrefSlot,
   serializeDcbPref,
+  beginPrefUserEntry,
+  beginPrefNameEntry,
   type DcbPrefStorage,
 } from "@scope";
 
@@ -102,13 +107,172 @@ function findDcbCell(
 
 const amz = (id: string): FmaAmz => ({ id, members: [], ntzs: [] }) as unknown as FmaAmz;
 
+function prepareNormalSet(view: ReturnType<typeof createScopeView>): void {
+  view.dcbPref.slots[0] = { name: "NORMAL", body: serializeDcbPref(view) };
+  view.dcbPref.activeIndex = 0;
+  view.dcbPref.lastApplied = { owner: "FSSTARS", index: 0, name: "NORMAL" };
+  view.dcbPref.lastNormal = { index: 0, name: "NORMAL" };
+  view.dcbPref.ownerConfirmed = true;
+}
+
+function saveAsFmaSet(
+  view: ReturnType<typeof createScopeView>,
+  name: string,
+  storage: DcbPrefStorage,
+): number {
+  selectDcbPrefOwner(view, "FMA");
+  beginDcbPrefSaveAs(view);
+  const index = commitDcbPrefSaveAs(view, name, storage);
+  if (index === null) throw new Error(`Could not create FMA PREF ${name}`);
+  return index;
+}
+
 describe("T02-232 complete disjoint FMA display profiles", () => {
+  test("USER roll stages without applying, and pointer commit cancels typed entry", () => {
+    const view = createScopeView();
+    const initial = displaySnapshot(view);
+    beginPrefUserEntry(view.preview, 1);
+    view.preview.buffer = "FM";
+    const cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    const onWheel = cell?.props?.onWheel as (event: {
+      deltaY: number;
+      preventDefault(): void;
+      stopPropagation(): void;
+    }) => void;
+    onWheel({ deltaY: -1, preventDefault() {}, stopPropagation() {} });
+    expect(view.dcbPref.ownerCandidate).toBe("FMA");
+    expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+    expect(view.preview.phase).toBe("idle");
+    expect(displaySnapshot(view)).toEqual(initial);
+    const rerenderedCell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    (rerenderedCell?.props?.onClick as () => void)();
+    expect(view.dcbPref.menuOwner).toBe("FMA");
+    expect(view.dcbPref.ownerCandidate).toBeNull();
+  });
+
+  test("v3 and owners-only storage preserve normal records and migrate FMA names", () => {
+    const legacyStorage = memoryStorage();
+    const legacyBody = serializeDcbPref(createScopeView());
+    const legacyAmzPreference = {
+      amzId: "LEGACY2",
+      mag: 4,
+      displayProfile: { ...legacyBody, rangeNm: 30 },
+    };
+    legacyStorage.setItem(
+      dcbPrefStorageKey("KXYZ"),
+      JSON.stringify({
+        v: 3,
+        icao: "KXYZ",
+        activeIndex: 0,
+        slots: [
+          {
+            name: "NORMAL1",
+            body: {
+              ...legacyBody,
+              amzPreferences: {
+                LEGACY1: { amzId: "LEGACY1", rangeNm: 20 },
+                LEGACY2: legacyAmzPreference,
+              },
+            },
+          },
+        ],
+        amzPreferences: { LEGACY1: { amzId: "LEGACY1", rangeNm: 40, centerEastNm: 25 } },
+        normalProfile: legacyBody,
+      }),
+    );
+    const migrated = createScopeView();
+    loadDcbPrefFromStorage(migrated, "KXYZ", legacyStorage);
+    expect(migrated.dcbPref.slots[0]?.name).toBe("NORMAL1");
+    expect(migrated.dcbPref.fmaSlots.slice(0, 2).map((slot) => slot?.name)).toEqual([
+      "LEGACY1",
+      "LEGACY2",
+    ]);
+    expect(migrated.dcbPref.fmaSlots[0]?.body).toMatchObject({
+      rangeNm: 40,
+      centerEastNm: 25,
+    });
+    expect(migrated.amzPreferences.get("LEGACY1")?.rangeNm).toBe(40);
+    expect(migrated.amzPreferences.get("LEGACY2")?.displayProfile?.rangeNm).toBe(30);
+
+    const ownerOnlyStorage = memoryStorage();
+    ownerOnlyStorage.setItem(
+      dcbPrefStorageKey("KXYZ"),
+      JSON.stringify({
+        v: 4,
+        icao: "KXYZ",
+        normalActiveIndex: 0,
+        owners: {
+          FSSTARS: [{ name: "OWNER1", body: legacyBody }],
+          FMA: [],
+        },
+      }),
+    );
+    const ownerOnly = createScopeView();
+    loadDcbPrefFromStorage(ownerOnly, "KXYZ", ownerOnlyStorage);
+    expect(ownerOnly.dcbPref.slots[0]?.name).toBe("OWNER1");
+
+    ownerOnlyStorage.setItem(
+      dcbPrefStorageKey("KXYZ"),
+      JSON.stringify({
+        v: 4,
+        icao: "KXYZ",
+        slots: [{ name: "ROOT1", body: legacyBody }],
+        owners: { FMA: [] },
+      }),
+    );
+    const rootOnly = createScopeView();
+    loadDcbPrefFromStorage(rootOnly, "KXYZ", ownerOnlyStorage);
+    expect(rootOnly.dcbPref.slots[0]?.name).toBe("ROOT1");
+  });
+
+  test("explicit FSSTARS SAVE AS while FMA is active does not write FMA records", () => {
+    const view = createScopeView();
+    view.dcbPref.icao = "KXYZ";
+    view.fmaAmzs = [amz("AMZ1")];
+    view.fmaSurveillance.enabled = true;
+    view.fmaSurveillance.selectedAmzId = "AMZ1";
+    saveFmaAmzPreference(view, "AMZ1");
+    view.dcbPref.fmaSlots[0] = { name: "AMZ1", body: serializeDcbPref(view) };
+    const originalFmaSlots = structuredClone(view.dcbPref.fmaSlots);
+    const originalAmzPreferences = structuredClone(view.amzPreferences);
+
+    selectDcbPrefOwner(view, "FSSTARS");
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "DAY", memoryStorage())).toBe(0);
+    expect(view.dcbPref.fmaSlots).toEqual(originalFmaSlots);
+    expect(view.amzPreferences).toEqual(originalAmzPreferences);
+  });
+
+  test("AMZ helper updates project through the same numbered FMA record on reload", () => {
+    const storage = memoryStorage();
+    const view = createScopeView();
+    view.dcbPref.icao = "KXYZ";
+    view.fmaAmzs = [amz("AMZ1")];
+    saveFmaAmzPreference(view, "AMZ1");
+    view.camera.rangeNm = 40;
+    saveFmaAmzPreference(view, "AMZ1", { rangeNm: 40 });
+    persistDcbPref(view, storage);
+
+    const reloaded = createScopeView();
+    loadDcbPrefFromStorage(reloaded, "KXYZ", storage);
+    expect(reloaded.dcbPref.fmaSlots[0]?.name).toBe("AMZ1");
+    expect(reloaded.dcbPref.fmaSlots[0]?.body.rangeNm).toBe(40);
+    expect(reloaded.amzPreferences.get("AMZ1")?.displayProfile?.rangeNm).toBe(40);
+  });
+
   test("normal, AMZ A, and AMZ B retain complete independent bodies through exit and reload", () => {
     const storage = memoryStorage();
     const view = createScopeView();
     installGroups(view);
     view.dcbPref.icao = "KXYZ";
     setDisplay(view, 1);
+    prepareNormalSet(view);
     saveDcbPref(view, storage);
     const normal = structuredClone(view.dcbPref.normalProfile!);
     expect(normal).toMatchObject({
@@ -120,41 +284,52 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
       beaconSelectCodes: ["4510"],
     });
 
-    view.fmaAmzs = [amz("AMZ-A"), amz("AMZ-B")];
-    view.fmaSurveillance.selectedAmzId = "AMZ-A";
+    view.fmaAmzs = [amz("AMZA"), amz("AMZB")];
+    view.fmaSurveillance.selectedAmzId = "AMZA";
     view.fmaSurveillance.enabled = true;
     setDisplay(view, 2);
-    saveFmaAmzPreference(view, "AMZ-A");
-    expect(view.amzPreferences.get("AMZ-A")?.displayProfile?.systemLists?.FL?.x).toBe(0.2);
+    const amzAIndex = saveAsFmaSet(view, "AMZA", storage);
+    expect(view.amzPreferences.get("AMZA")?.displayProfile?.systemLists?.FL?.x).toBe(0.2);
     const normalSlots = structuredClone(view.dcbPref.slots);
     const normalBeforeSaveAs = structuredClone(view.dcbPref.normalProfile!);
 
-    view.fmaSurveillance.selectedAmzId = "AMZ-B";
+    view.fmaSurveillance.selectedAmzId = "AMZB";
     setDisplay(view, 3);
-    saveFmaAmzPreference(view, "AMZ-B");
-    expect(view.amzPreferences.get("AMZ-A")?.displayProfile?.rangeNm).toBe(30);
-    expect(view.amzPreferences.get("AMZ-B")?.displayProfile?.rangeNm).toBe(40);
+    const amzBIndex = saveAsFmaSet(view, "AMZB", storage);
+    expect(view.amzPreferences.get("AMZA")?.displayProfile?.rangeNm).toBe(30);
+    expect(view.amzPreferences.get("AMZB")?.displayProfile?.rangeNm).toBe(40);
     expect(view.dcbPref.slots).toEqual(normalSlots);
     expect(view.dcbPref.normalProfile).toEqual(normalBeforeSaveAs);
 
-    view.fmaSurveillance.selectedAmzId = "AMZ-A";
-    expect(applyFmaAmzPreference(view, "AMZ-A")).toBe(true);
+    view.fmaSurveillance.selectedAmzId = "AMZA";
+    expect(applyFmaAmzPreference(view, "AMZA")).toBe(true);
     expect(view.camera.rangeNm).toBe(30);
     expect(view.mapListMode).toBe("CURRENT");
     expect(view.systemLists.FL?.x).toBe(0.2);
     expect(view.fmaMag).toBe(3);
     setDisplay(view, 3);
     view.dcbPref.icao = "KXYZ";
+    selectDcbPrefSlot(view, amzAIndex);
+    setDisplay(view, 3);
     saveDcbPref(view, storage);
     applyDcbPrefDefaults(view);
     expect(view.brite.fdb).toBe(43);
     expect(view.charSizes.dataBlocks).toBe(13);
     expect(view.systemLists.FL?.maxLines).toBe(13);
-    view.fmaSurveillance.selectedAmzId = "AMZ-B";
-    expect(applyFmaAmzPreference(view, "AMZ-B")).toBe(true);
+    view.fmaSurveillance.tracks = new Map([["STALE", {} as never]]);
+    selectDcbPrefSlot(view, amzBIndex);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("AMZB");
+    expect(view.fmaSurveillance.tracks.size).toBe(0);
     expect(view.camera.rangeNm).toBe(40);
     expect(view.mapListMode).toBe("GEO");
     expect(view.fmaMag).toBe(4);
+
+    // Explicit normal-owner selection applies normal settings without disabling FMA.
+    selectDcbPrefOwner(view, "FSSTARS");
+    selectDcbPrefSlot(view, 0);
+    expect(view.fmaSurveillance.enabled).toBe(true);
+    expect(view.fmaSurveillance.selectedAmzId).toBe("AMZB");
+    expect(view.camera.rangeNm).toBe(15);
 
     // Unsaved normal edits must not become the exit target.
     setDisplay(view, 3);
@@ -165,7 +340,10 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
 
     // A later FMA SAVE persists the AMZ namespace while boot restores normal.
     view.fmaSurveillance.enabled = true;
-    view.fmaSurveillance.selectedAmzId = "AMZ-B";
+    view.fmaSurveillance.selectedAmzId = "AMZB";
+    selectDcbPrefOwner(view, "FMA");
+    selectDcbPrefSlot(view, amzBIndex);
+    setDisplay(view, 3);
     setDisplay(view, 3);
     saveDcbPref(view, storage);
     const reloaded = createScopeView();
@@ -173,8 +351,8 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     loadDcbPrefFromStorage(reloaded, "KXYZ", storage);
     expect(reloaded.fmaSurveillance.enabled).toBe(false);
     expect(serializeDcbPref(reloaded)).toMatchObject(normal);
-    expect(reloaded.amzPreferences.get("AMZ-A")?.displayProfile?.rangeNm).toBe(40);
-    expect(reloaded.amzPreferences.get("AMZ-B")?.displayProfile?.rangeNm).toBe(40);
+    expect(reloaded.amzPreferences.get("AMZA")?.displayProfile?.rangeNm).toBe(40);
+    expect(reloaded.amzPreferences.get("AMZB")?.displayProfile?.rangeNm).toBe(40);
     expect(storage.data.has(dcbPrefStorageKey("KXYZ"))).toBe(true);
   });
 
@@ -200,6 +378,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     view.mapVisibility = new Map([["old-facility-map", true]]);
     view.mapCache = {} as never;
     view.dcbPref.icao = target.icao;
+    prepareNormalSet(view);
     view.mapVisibility = new Map([[targetMap.id, false]]);
     view.mapListMode = "CURRENT";
     view.selectedMapGroupId = targetGroup.id;
@@ -226,14 +405,35 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     expect(view.dcbPref.normalProfile?.centerNorthNm).toBe(target.arpNm.yNm);
   });
 
+  test("scenario replacement cancels staged USER and SAVE AS entry state", () => {
+    const view = createScopeView();
+    const target = loadPlayableScenario("katl");
+    view.dcbPref.menuOwner = "FMA";
+    view.dcbPref.ownerCandidate = "FMA";
+    beginPrefUserEntry(view.preview, 1);
+    bindScenarioDisplayContext(view, target, null);
+    expect(view.dcbPref.ownerCandidate).toBeNull();
+    expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+    expect(view.preview.phase).toBe("idle");
+
+    view.dcbPref.menuOwner = "FMA";
+    view.dcbPref.ownerConfirmed = true;
+    beginDcbPrefSaveAs(view);
+    beginPrefNameEntry(view.preview, 2);
+    bindScenarioDisplayContext(view, target, null);
+    expect(view.dcbPref.pendingSaveAs).toBe(false);
+    expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+    expect(view.preview.phase).toBe("idle");
+  });
+
   test("FMA DEFAULT reapplies its complete profile and missing preference preserves display", () => {
     const view = createScopeView();
     installGroups(view);
-    view.fmaAmzs = [amz("AMZ-A")];
+    view.fmaAmzs = [amz("AMZA")];
     view.fmaSurveillance.enabled = true;
-    view.fmaSurveillance.selectedAmzId = "AMZ-A";
+    view.fmaSurveillance.selectedAmzId = "AMZA";
     setDisplay(view, 2);
-    saveFmaAmzPreference(view, "AMZ-A");
+    saveFmaAmzPreference(view, "AMZA");
     setDisplay(view, 3);
     applyDcbPrefDefaults(view);
     expect(view.camera.rangeNm).toBe(30);
@@ -248,11 +448,11 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
 
   test("rendered DEFAULT exposes its native button and callback targets the active AMZ", () => {
     const view = createScopeView();
-    view.fmaAmzs = [amz("AMZ-A")];
+    view.fmaAmzs = [amz("AMZA")];
     view.fmaSurveillance.enabled = true;
-    view.fmaSurveillance.selectedAmzId = "AMZ-A";
+    view.fmaSurveillance.selectedAmzId = "AMZA";
     setDisplay(view, 2);
-    saveFmaAmzPreference(view, "AMZ-A");
+    saveFmaAmzPreference(view, "AMZA");
     setDisplay(view, 3);
     const tree = renderPref(view, () => undefined);
     const html = renderToStaticMarkup(createElement(() => tree));
@@ -297,9 +497,9 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     const storage = memoryStorage();
     const view = createScopeView();
     view.dcbPref.icao = "KXYZ";
-    view.fmaAmzs = [amz("AMZ-A")];
+    view.fmaAmzs = [amz("AMZA")];
     view.fmaSurveillance.enabled = true;
-    view.fmaSurveillance.selectedAmzId = "AMZ-A";
+    view.fmaSurveillance.selectedAmzId = "AMZA";
     view.fmaSurveillance = {
       ...view.fmaSurveillance,
       tracks: new Map([["AC1", {} as never]]),
@@ -311,6 +511,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     view.fmaAcknowledgedEpisodeIds.add("episode-1");
     view.fmaSilencedEpisodeIds.add("episode-2");
     view.fmaAlertInhibit = { aircraftIds: new Set(["AC1"]) };
+    saveAsFmaSet(view, "AMZA", storage);
     saveDcbPref(view, storage);
     const persisted = storage.getItem(dcbPrefStorageKey("KXYZ"))!;
     for (const runtimeKey of [
@@ -378,10 +579,12 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     view.fmaSurveillance.selectedAmzId = "AMZA";
     const slots = structuredClone(view.dcbPref.slots);
     const normal = view.dcbPref.normalProfile;
+    selectDcbPrefOwner(view, "FMA");
     beginDcbPrefSaveAs(view);
     expect(commitDcbPrefSaveAs(view, "OTHER", storage)).toBeNull();
     expect(view.dcbPref.pendingSaveAs).toBe(true);
-    expect(commitDcbPrefSaveAs(view, "AMZA", storage)).toBe(view.dcbPref.activeIndex);
+    expect(commitDcbPrefSaveAs(view, "AMZA", storage)).toBe(0);
+    expect(view.dcbPref.activeIndex).toBe(-1);
     expect(view.dcbPref.pendingSaveAs).toBe(false);
     expect(view.amzPreferences.get("AMZA")?.displayProfile).toBeDefined();
     expect(view.dcbPref.slots).toEqual(slots);

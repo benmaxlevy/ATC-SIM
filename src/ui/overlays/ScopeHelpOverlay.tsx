@@ -227,13 +227,14 @@ export function ScopeHelpOverlay({ open }: ScopeHelpOverlayProps) {
                       errors show FORMAT for malformed inputs, ILL VALUE for out-of-range integers,
                       and NO PREF SET FOUND when an AMZ lacks a saved profile. Every authored AMZ is
                       selectable. MAPS only changes map visibility/category; NTZ inhibition only
-                      changes alert and boundary behavior. PREF SAVE / SAVE AS stores complete
-                      supported display settings per AMZ, isolated from normal slots and other AMZs;
-                      SAVE AS must exactly match an authored ID. FMA DEFAULT applies that AMZ
-                      profile and preserves current display settings if none exists. FMA exit
-                      restores the last-used normal profile; reload starts normal. AMZ profiles
-                      cannot be loaded in normal mode; DELETE removes the active AMZ preference
-                      while the adaptation stays available. Live tracks, alerts, ownership, frozen
+                      changes alert and boundary behavior. PREF USER selects the reserved local
+                      FSSTARS or FMA owner by staged roll/drag and click, or exact typed owner plus
+                      Enter. Browsing only changes the shown numbered sets; SAVE, SAVE AS, and
+                      DELETE route to the explicit owner and selected set. Selecting an FMA set
+                      while FMA is active fully switches AMZ/profile; outside FMA it prepares that
+                      AMZ without enabling FMA. FMA DEFAULT applies that AMZ profile and preserves
+                      current display settings if none exists. FMA exit restores the last-used
+                      normal profile; reload starts normal. Live tracks, alerts, ownership, frozen
                       poses, speech queues and pending commands are not saved. FMA PTL is in whole
                       seconds (0 removes PTL and SSA readout); caution horizon remains independent.
                       BRITE includes AMZ, RWY, REF (0 or 5–100) and NTZ (50–100, no off).

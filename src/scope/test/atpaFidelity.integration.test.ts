@@ -457,7 +457,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
     });
   });
 
-  describe("AC4: DCB cells, PREF v3, and no Command IR", () => {
+  describe("AC4: DCB cells, PREF v4, and no Command IR", () => {
     test("four cells each gate only their piece; PREF round-trips; v1 migrates", () => {
       expect(DEFAULT_ATPA_STATE).toEqual({
         on: false,
@@ -540,13 +540,15 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       view.atpa.coneMileage = false;
       view.atpa.alertCones = false;
       view.atpa.monitorCones = true;
+      view.dcbPref.slots[0] = { name: "BASE", body: serializeDcbPref(view) };
+      view.dcbPref.activeIndex = 0;
       saveDcbPref(view, store);
       const saved = JSON.parse(store.getItem(dcbPrefStorageKey("KDEM"))!) as {
         v: number;
         slots: Array<{ body: { atpa: unknown } } | null>;
       };
       expect(saved.v).toBe(DCB_PREF_SCHEMA_VERSION);
-      expect(DCB_PREF_SCHEMA_VERSION).toBe(3);
+      expect(DCB_PREF_SCHEMA_VERSION).toBe(4);
       expect(saved.slots[0]?.body.atpa).toEqual({
         on: true,
         inTrailDistance: false,
@@ -566,6 +568,8 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
       });
 
       saved.v = 1;
+      delete (saved as { normalProfile?: unknown }).normalProfile;
+      delete (saved as { owners?: unknown }).owners;
       saved.slots[0]!.body.atpa = { on: true };
       store.setItem(dcbPrefStorageKey("KDEM"), JSON.stringify(saved));
       const migrated = createScopeView();
@@ -577,7 +581,7 @@ describe("TPA / ATPA integration and acceptance (T02-50)", () => {
         alertCones: true,
         monitorCones: true,
       });
-      expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(3);
+      expect(parseDcbPrefJson(store.getItem(dcbPrefStorageKey("KDEM")), "KDEM").v).toBe(4);
       expect(serializeDcbPref(migrated).atpa).toEqual(migrated.atpa);
     });
 

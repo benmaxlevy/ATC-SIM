@@ -22,7 +22,7 @@ import {
   LEADER_DIR_LABELS,
   type LeaderDir,
   SSA_FILTER_FIELDS,
-  activeDcbPrefName,
+  appliedDcbPrefIdentity,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -31,7 +31,6 @@ import {
   formatDcbCursorSpeedReadout,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
-  formatDcbPrefReadout,
   formatDcbPtlMinutesReadout,
   formatDcbRrReadout,
   formatDcbSiteLabel,
@@ -501,6 +500,7 @@ export interface DcbCellProps {
     | "site-multi"
     | "site-choice"
     | "pref"
+    | "pref-user"
     | "mode"
     | "mode-efsl"
     | "mode-fsl"
@@ -725,12 +725,11 @@ export function renderMapSlot(view: ScopeView, onChange: () => void, slot: numbe
 }
 
 export function renderPrefOpener(view: ScopeView, onChange: () => void) {
-  const name = activeDcbPrefName(view);
-  const readout = formatDcbPrefReadout(name);
+  const identity = appliedDcbPrefIdentity(view);
   return (
     <DcbCell
       kind="submenu"
-      ariaLabel={name ? `Pref ${name}` : "Pref"}
+      ariaLabel={identity ? `Pref, last applied ${identity}` : "Pref"}
       dataDcb="pref"
       pressed={view.dcbMenu === "PREF"}
       onClick={() => {
@@ -741,7 +740,8 @@ export function renderPrefOpener(view: ScopeView, onChange: () => void) {
       }}
     >
       <span className="dcb-cell-line">PREF</span>
-      <span className="dcb-cell-line">{readout}</span>
+      <span className="dcb-cell-line">{view.dcbPref.lastApplied?.owner ?? "—"}</span>
+      <span className="dcb-cell-line">{view.dcbPref.lastApplied?.name ?? "—"}</span>
     </DcbCell>
   );
 }

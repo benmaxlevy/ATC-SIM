@@ -105,10 +105,10 @@ export const DCB_PREF_NAME_MAX_CHARS = 8;
  * `v: 2` loads with all six WX levels off when `wxLevels` is absent.
  * The storage key's `v1` is the T02-29 namespace, not this body version.
  */
-export const DCB_PREF_SCHEMA_VERSION = 3 as const;
+export const DCB_PREF_SCHEMA_VERSION = 4 as const;
 
 /** Readable PREF body versions. A mere v1 or v2 file is not corrupt. */
-export const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2, 3];
+export const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2, 3, 4];
 
 export type DcbPrefStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -175,12 +175,16 @@ export interface DcbPrefFile {
   v: typeof DCB_PREF_SCHEMA_VERSION;
   icao: string;
   activeIndex?: number;
+  normalActiveIndex?: number;
   slots: Array<DcbPrefSlot | null>;
   /** Last successfully selected or saved normal display profile. */
   normalProfile?: DcbPrefBody;
   amzPreferences?: Record<string, FmaAmzPreference>;
   selectedFmaAmzId?: string;
+  owners?: { FSSTARS: Array<DcbPrefSlot | null>; FMA: Array<DcbPrefSlot | null> };
 }
+
+export type DcbPrefOwner = "FSSTARS" | "FMA";
 
 /** Live PREF machine on ScopeView. Slots are the trainer 32-set table. */
 export interface DcbPrefRuntime {
@@ -194,6 +198,14 @@ export interface DcbPrefRuntime {
   normalProfile: DcbPrefBody | null;
   /** True while SAVE AS waits for a preview-area name. Not persisted. */
   pendingSaveAs: boolean;
+  /** Temporary Figure 4-1 owner selection. Never persisted. */
+  menuOwner: DcbPrefOwner;
+  ownerCandidate: DcbPrefOwner | null;
+  ownerConfirmed: boolean;
+  /** Stable reserved FMA namespace. `slots` remains the normal namespace for compatibility. */
+  fmaSlots: Array<DcbPrefSlot | null>;
+  lastApplied: { owner: DcbPrefOwner; index: number; name: string } | null;
+  lastNormal: { index: number; name: string } | null;
 }
 
 const DOCKS: readonly DcbDock[] = ["TOP", "LEFT", "RIGHT", "BOTTOM"];
@@ -206,12 +218,67 @@ export function emptyDcbPrefRuntime(icao: string = ""): DcbPrefRuntime {
   return {
     icao,
     slots: emptyDcbPrefSlots(),
-    activeIndex: 0,
+    activeIndex: -1,
     restore: null,
     restoreAmzProfile: null,
     normalProfile: null,
     pendingSaveAs: false,
+    menuOwner: "FSSTARS",
+    ownerCandidate: null,
+    ownerConfirmed: false,
+    fmaSlots: emptyDcbPrefSlots(),
+    lastApplied: null,
+    lastNormal: null,
   };
+}
+
+export function dcbPrefSlots(view: Pick<ScopeView, "dcbPref">): Array<DcbPrefSlot | null> {
+  return view.dcbPref.menuOwner === "FMA" ? view.dcbPref.fmaSlots : view.dcbPref.slots;
+}
+
+export function activeDcbPrefSlot(view: Pick<ScopeView, "dcbPref">): DcbPrefSlot | null {
+  return dcbPrefSlots(view)[view.dcbPref.activeIndex] ?? null;
+}
+
+export function selectDcbPrefOwner(view: ScopeView, owner: DcbPrefOwner, confirmed = true): void {
+  view.dcbPref.menuOwner = owner;
+  view.dcbPref.ownerCandidate = null;
+  view.dcbPref.ownerConfirmed = confirmed;
+  const applied = view.dcbPref.lastApplied;
+  const appliedSlot =
+    applied?.owner === owner
+      ? (owner === "FMA" ? view.dcbPref.fmaSlots : view.dcbPref.slots)[applied.index]
+      : null;
+  view.dcbPref.activeIndex = applied && appliedSlot?.name === applied.name ? applied.index : -1;
+  view.dcbPref.pendingSaveAs = false;
+}
+
+export function endDcbPrefSession(host: Pick<ScopeView, "dcbPref">): void {
+  host.dcbPref.menuOwner = "FSSTARS";
+  host.dcbPref.ownerCandidate = null;
+  host.dcbPref.ownerConfirmed = false;
+  host.dcbPref.pendingSaveAs = false;
+}
+
+export function stageDcbPrefOwner(view: ScopeView, owner: DcbPrefOwner): void {
+  view.dcbPref.ownerCandidate = owner;
+  view.dcbPref.pendingSaveAs = false;
+}
+
+export function commitDcbPrefOwner(view: ScopeView): boolean {
+  const owner = view.dcbPref.ownerCandidate;
+  if (!owner) return false;
+  selectDcbPrefOwner(view, owner);
+  return true;
+}
+
+export function cancelDcbPrefOwner(view: ScopeView): void {
+  view.dcbPref.ownerCandidate = null;
+}
+
+export function parseDcbPrefOwner(raw: string): DcbPrefOwner | null {
+  const normalized = raw.toUpperCase();
+  return normalized === "FSSTARS" || normalized === "FMA" ? normalized : null;
 }
 
 export type DcbPrefNameParse =
@@ -246,7 +313,25 @@ export function nextDcbPrefSaveAsIndex(view: Pick<ScopeView, "dcbPref">): number
 
 /** Stored name of the active filled slot; empty string when the slot is vacant. */
 export function activeDcbPrefName(view: Pick<ScopeView, "dcbPref">): string {
-  return view.dcbPref.slots[view.dcbPref.activeIndex]?.name?.trim() ?? "";
+  return activeDcbPrefSlot(view)?.name?.trim() ?? "";
+}
+
+export function appliedDcbPrefIdentity(view: Pick<ScopeView, "dcbPref">): string {
+  const applied = view.dcbPref.lastApplied;
+  return applied ? `${applied.owner} ${applied.name}` : "";
+}
+
+function setLastAppliedPref(
+  view: ScopeView,
+  identity: { owner: DcbPrefOwner; index: number; name: string },
+): void {
+  view.dcbPref.lastApplied = identity;
+  const visibleSlots = dcbPrefSlots(view);
+  view.dcbPref.activeIndex =
+    view.dcbPref.menuOwner === identity.owner &&
+    visibleSlots[identity.index]?.name === identity.name
+      ? identity.index
+      : -1;
 }
 
 /** DCB MAIN second line: uppercase, clipped to the cap budget. */
@@ -596,12 +681,16 @@ function factoryDisplayProfile(view: ScopeView): DcbPrefBody {
 export function applyLastNormalDcbPref(view: ScopeView): void {
   if (view.dcbPref.normalProfile) {
     applyDcbPref(view, view.dcbPref.normalProfile);
+    if (view.dcbPref.lastNormal) {
+      setLastAppliedPref(view, { owner: "FSSTARS", ...view.dcbPref.lastNormal });
+    }
   } else {
     applyDcbPrefDefaults(view);
   }
 }
 
 export function beginDcbPrefSession(view: ScopeView): void {
+  selectDcbPrefOwner(view, "FSSTARS", false);
   view.dcbPref.restore = serializeDcbPref(view);
   const amzId = view.fmaSurveillance.enabled ? view.fmaSurveillance.selectedAmzId : null;
   const amz = view.fmaAmzs.find((candidate) => candidate.id === amzId);
@@ -686,16 +775,49 @@ function isCompleteDisplayProfile(value: unknown): value is DcbPrefBody {
 }
 
 export function selectDcbPrefSlot(view: ScopeView, index: number): void {
-  if (view.fmaSurveillance.enabled) return;
   if (index < 0 || index >= DCB_PREF_SLOT_COUNT) {
     return;
   }
-  view.dcbPref.activeIndex = index;
-  const slot = view.dcbPref.slots[index];
-  if (slot) {
-    applyDcbPref(view, slot.body);
-    view.dcbPref.normalProfile = completeDisplayProfile(view);
+  const owner = view.dcbPref.menuOwner;
+  const slots = dcbPrefSlots(view);
+  const slot = slots[index];
+  if (!slot) return;
+  if (owner === "FMA") {
+    const amz = view.fmaAmzs.find((candidate) => candidate.id === slot.name);
+    const pref = view.amzPreferences.get(slot.name);
+    if (
+      !amz ||
+      !pref ||
+      pref.amzId !== slot.name ||
+      !isCompleteDisplayProfile(pref.displayProfile)
+    ) {
+      view.lastWarning = "ILL PREFSET";
+      return;
+    }
+    // Validate the complete target before switching any runtime context.
+    if (view.fmaSurveillance.enabled) {
+      if (view.fmaSurveillance.selectedAmzId !== slot.name) {
+        configureFmaSurveillanceView(view, true, slot.name);
+      }
+    } else {
+      view.fmaDefaultAmzId = slot.name;
+    }
+    if (!applyFmaAmzPreference(view, slot.name)) {
+      view.lastWarning = "ILL PREFSET";
+      return;
+    }
+    view.fmaDefaultAmzId = slot.name;
+    view.lastWarning = null;
+    view.dcbPref.ownerConfirmed = true;
+    setLastAppliedPref(view, { owner, index, name: slot.name });
+    return;
   }
+  view.dcbPref.activeIndex = index;
+  view.dcbPref.ownerConfirmed = true;
+  applyDcbPref(view, slot.body);
+  view.dcbPref.normalProfile = completeDisplayProfile(view);
+  setLastAppliedPref(view, { owner, index, name: slot.name });
+  view.dcbPref.lastNormal = { index, name: slot.name };
 }
 
 export function persistDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
@@ -714,27 +836,40 @@ function persistRuntime(view: ScopeView, storage: DcbPrefStorage | undefined): v
   const file: DcbPrefFile = {
     v: DCB_PREF_SCHEMA_VERSION,
     icao,
-    activeIndex: view.dcbPref.activeIndex,
+    activeIndex: view.dcbPref.lastNormal?.index ?? 0,
+    normalActiveIndex: view.dcbPref.lastNormal?.index ?? 0,
     slots: view.dcbPref.slots,
     normalProfile: view.dcbPref.normalProfile ?? undefined,
     amzPreferences:
       view.amzPreferences.size > 0 ? Object.fromEntries(view.amzPreferences.entries()) : undefined,
     selectedFmaAmzId: view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId ?? undefined,
+    owners: { FSSTARS: view.dcbPref.slots, FMA: view.dcbPref.fmaSlots },
   };
   storage.setItem(dcbPrefStorageKey(icao), JSON.stringify(file));
 }
 
 export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
-  if (view.fmaSurveillance.enabled) {
-    captureSelectedFmaAmzPreference(view);
+  const owner = view.dcbPref.menuOwner;
+  const slots = dcbPrefSlots(view);
+  const index = view.dcbPref.activeIndex;
+  const selected = slots[index] ?? null;
+  if (!selected) return;
+  if (owner === "FMA") {
+    const amz = view.fmaAmzs.find((candidate) => candidate.id === selected.name);
+    if (!amz) {
+      view.lastWarning = "ILL PREFSET";
+      return;
+    }
+    saveFmaAmzPreference(view, amz.id, captureFmaAmzPreference(view, amz));
+    slots[index] = { name: selected.name, body: slotDisplayBody(view) };
+    setLastAppliedPref(view, { owner, index, name: selected.name });
     persistRuntime(view, storage);
     return;
   }
-  const index = view.dcbPref.activeIndex;
-  const name = view.dcbPref.slots[index]?.name ?? `PREF ${index + 1}`;
-  captureSelectedFmaAmzPreference(view);
-  view.dcbPref.slots[index] = { name, body: slotDisplayBody(view) };
+  slots[index] = { name: selected.name, body: slotDisplayBody(view) };
   view.dcbPref.normalProfile = completeDisplayProfile(view);
+  setLastAppliedPref(view, { owner, index, name: selected.name });
+  view.dcbPref.lastNormal = { index, name: selected.name };
   persistRuntime(view, storage);
 }
 
@@ -743,7 +878,7 @@ export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
  * clears this before any persist.
  */
 export function beginDcbPrefSaveAs(view: ScopeView): void {
-  view.dcbPref.pendingSaveAs = true;
+  view.dcbPref.pendingSaveAs = view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed;
 }
 
 export function cancelDcbPrefSaveAs(view: ScopeView): void {
@@ -770,32 +905,40 @@ export function commitDcbPrefSaveAs(
   if (!parsed.ok) {
     return null;
   }
-  if (view.fmaSurveillance.enabled) {
-    const amzId = view.fmaSurveillance.selectedAmzId;
-    if (!amzId || parsed.name !== amzId) return null;
-    captureSelectedFmaAmzPreference(view);
+  const owner = view.dcbPref.menuOwner;
+  const index = dcbPrefSlots(view).findIndex((slot) => slot === null);
+  if (index < 0) return null;
+  if (owner === "FMA") {
+    const amz = view.fmaAmzs.find((candidate) => candidate.id === parsed.name);
+    if (!amz) return null;
+    saveFmaAmzPreference(view, amz.id, captureFmaAmzPreference(view, amz));
+    view.dcbPref.fmaSlots[index] = { name: parsed.name, body: slotDisplayBody(view) };
     view.dcbPref.pendingSaveAs = false;
+    if (view.dcbPref.lastApplied) {
+      setLastAppliedPref(view, view.dcbPref.lastApplied);
+    } else {
+      view.dcbPref.activeIndex = -1;
+    }
     persistRuntime(view, storage);
-    return view.dcbPref.activeIndex;
+    return index;
   }
-  const index = nextDcbPrefSaveAsIndex(view);
-  captureSelectedFmaAmzPreference(view);
   view.dcbPref.slots[index] = { name: parsed.name, body: slotDisplayBody(view) };
   view.dcbPref.normalProfile = completeDisplayProfile(view);
-  view.dcbPref.activeIndex = index;
   view.dcbPref.pendingSaveAs = false;
+  setLastAppliedPref(view, { owner, index, name: parsed.name });
+  view.dcbPref.lastNormal = { index, name: parsed.name };
   persistRuntime(view, storage);
   return index;
 }
 
 export function deleteDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
-  if (view.fmaSurveillance.enabled) {
-    const amzId = view.fmaSurveillance.selectedAmzId;
-    if (amzId) view.amzPreferences.delete(amzId);
-    persistRuntime(view, storage);
-    return;
-  }
-  view.dcbPref.slots[view.dcbPref.activeIndex] = null;
+  const owner = view.dcbPref.menuOwner;
+  const slots = dcbPrefSlots(view);
+  const slot = slots[view.dcbPref.activeIndex];
+  if (!slot) return;
+  slots[view.dcbPref.activeIndex] = null;
+  view.dcbPref.activeIndex = -1;
+  if (owner === "FMA") view.amzPreferences.delete(slot.name);
   persistRuntime(view, storage);
 }
 
@@ -834,14 +977,21 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       icao?: unknown;
       slots?: unknown;
       activeIndex?: unknown;
+      normalActiveIndex?: unknown;
       normalProfile?: unknown;
       amzPreferences?: unknown;
       selectedFmaAmzId?: unknown;
+      owners?: unknown;
     };
     if (!isReadablePrefSchemaVersion(file.v) || typeof file.icao !== "string") {
       return fallback;
     }
-    if (!Array.isArray(file.slots)) {
+    const ownerRecord =
+      file.owners && typeof file.owners === "object"
+        ? (file.owners as { FSSTARS?: unknown })
+        : null;
+    const rootSlots = Array.isArray(file.slots) ? file.slots : ownerRecord?.FSSTARS;
+    if (!Array.isArray(rootSlots)) {
       return fallback;
     }
     const activeIndex =
@@ -850,7 +1000,7 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       file.activeIndex < DCB_PREF_SLOT_COUNT
         ? file.activeIndex
         : 0;
-    const parsedSlots = file.slots.slice(0, DCB_PREF_SLOT_COUNT).map((slot) => parseSlot(slot));
+    const parsedSlots = rootSlots.slice(0, DCB_PREF_SLOT_COUNT).map((slot) => parseSlot(slot));
     while (parsedSlots.length < DCB_PREF_SLOT_COUNT) {
       parsedSlots.push(null);
     }
@@ -858,8 +1008,14 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       v: DCB_PREF_SCHEMA_VERSION,
       icao: file.icao,
       activeIndex,
+      normalActiveIndex:
+        typeof file.normalActiveIndex === "number" &&
+        file.normalActiveIndex >= 0 &&
+        file.normalActiveIndex < DCB_PREF_SLOT_COUNT
+          ? file.normalActiveIndex
+          : activeIndex,
       slots: parsedSlots,
-      ...(file.v === DCB_PREF_SCHEMA_VERSION && isCompleteDisplayProfile(file.normalProfile)
+      ...(typeof file.v === "number" && file.v >= 3 && isCompleteDisplayProfile(file.normalProfile)
         ? { normalProfile: file.normalProfile }
         : {}),
       ...(file.amzPreferences && typeof file.amzPreferences === "object"
@@ -868,9 +1024,46 @@ export function parseDcbPrefJson(raw: string | null, icao: string): DcbPrefFile 
       ...(typeof file.selectedFmaAmzId === "string"
         ? { selectedFmaAmzId: file.selectedFmaAmzId }
         : {}),
+      ...(file.owners && typeof file.owners === "object"
+        ? { owners: parseOwnerSlots(file.owners, parsedSlots) }
+        : {}),
     };
   } catch {
     return fallback;
+  }
+}
+
+function parseOwnerSlots(
+  value: unknown,
+  legacyNormalSlots: Array<DcbPrefSlot | null>,
+): DcbPrefFile["owners"] {
+  const owners = value as { FSSTARS?: unknown; FMA?: unknown };
+  const parse = (
+    slots: unknown,
+    fallback: Array<DcbPrefSlot | null> = emptyDcbPrefSlots(),
+  ): Array<DcbPrefSlot | null> => {
+    const parsed = Array.isArray(slots)
+      ? slots.slice(0, DCB_PREF_SLOT_COUNT).map(parseSlot)
+      : [...fallback];
+    while (parsed.length < DCB_PREF_SLOT_COUNT) parsed.push(null);
+    return parsed;
+  };
+  return { FSSTARS: parse(owners.FSSTARS, legacyNormalSlots), FMA: parse(owners.FMA) };
+}
+
+function syncFmaPrefProjection(view: ScopeView): void {
+  for (const slot of view.dcbPref.fmaSlots) {
+    if (!slot) continue;
+    const existing = view.amzPreferences.get(slot.name);
+    view.amzPreferences.set(slot.name, {
+      ...(existing && existing.amzId === slot.name ? existing : { amzId: slot.name }),
+      amzId: slot.name,
+      displayProfile: slot.body,
+      rangeNm: slot.body.rangeNm,
+      centerEastNm: slot.body.centerEastNm,
+      centerNorthNm: slot.body.centerNorthNm,
+      mapVisibility: slot.body.mapVisibility,
+    });
   }
 }
 
@@ -880,6 +1073,24 @@ export function loadDcbPrefFromStorage(
   icao: string,
   storage: DcbPrefStorage,
 ): void {
+  endDcbPrefSession(view);
+  view.dcbPref.restore = null;
+  view.dcbPref.restoreAmzProfile = null;
+  if (
+    view.preview.phase === "entry" &&
+    (view.preview.armed?.type === "prefUserEntry" || view.preview.armed?.type === "saveAsPref")
+  ) {
+    view.preview.phase = "idle";
+    view.preview.buffer = "";
+    view.preview.entryOrigin = null;
+    view.preview.mnemonic = "";
+    view.preview.flid = null;
+    view.preview.lastKeyAtMs = 0;
+    view.preview.rejection = null;
+    view.preview.armed = null;
+    view.preview.slewAction = null;
+    delete view.preview.creationMode;
+  }
   view.dcbPref.icao = icao;
   view.amzPreferences.clear();
   if (view.fmaSurveillance.enabled) {
@@ -894,7 +1105,12 @@ export function loadDcbPrefFromStorage(
       ? parsedFile
       : parseDcbPrefJson(null, icao);
   view.dcbPref.slots = file.slots;
-  view.dcbPref.activeIndex = file.activeIndex ?? 0;
+  view.dcbPref.fmaSlots = file.owners?.FMA ?? [];
+  if (view.dcbPref.fmaSlots.length !== DCB_PREF_SLOT_COUNT) {
+    view.dcbPref.fmaSlots = emptyDcbPrefSlots();
+  }
+  if (file.owners) view.dcbPref.slots = file.owners.FSSTARS;
+  view.dcbPref.activeIndex = file.normalActiveIndex ?? file.activeIndex ?? 0;
   if (file.selectedFmaAmzId) view.fmaDefaultAmzId = file.selectedFmaAmzId;
   view.dcbPref.normalProfile = file.normalProfile ?? null;
   if (file.amzPreferences) {
@@ -902,6 +1118,15 @@ export function loadDcbPrefFromStorage(
       if (pref && typeof pref === "object" && pref.amzId === id) view.amzPreferences.set(id, pref);
     }
   }
+  view.dcbPref.menuOwner = "FSSTARS";
+  const normalIndex = file.normalActiveIndex ?? file.activeIndex ?? 0;
+  const activeNormalSlot = view.dcbPref.slots[normalIndex];
+  view.dcbPref.lastApplied = activeNormalSlot
+    ? { owner: "FSSTARS", index: normalIndex, name: activeNormalSlot.name }
+    : null;
+  view.dcbPref.lastNormal = activeNormalSlot
+    ? { index: normalIndex, name: activeNormalSlot.name }
+    : null;
   // Older v1–v3 files stored AMZ preferences inside a normal slot body.
   for (const slot of view.dcbPref.slots) {
     if (slot?.body?.amzPreferences && typeof slot.body.amzPreferences === "object") {
@@ -912,6 +1137,42 @@ export function loadDcbPrefFromStorage(
       }
     }
   }
+  // Legacy maps and slot-embedded copies migrate after every source has been
+  // collected. FMA numbered slots are canonical; AMZ helpers receive a coherent
+  // projection of those records on load.
+  const existingFmaNames = new Set(
+    view.dcbPref.fmaSlots.flatMap((slot) => (slot ? [slot.name] : [])),
+  );
+  const legacyOnlyIds = [...view.amzPreferences.keys()]
+    .filter((id) => !existingFmaNames.has(id))
+    .sort((a, b) => a.localeCompare(b));
+  for (const id of legacyOnlyIds) {
+    const emptyIndex = view.dcbPref.fmaSlots.findIndex((slot) => slot === null);
+    if (emptyIndex < 0) break;
+    const pref = view.amzPreferences.get(id);
+    const existingBody = isCompleteDisplayProfile(pref?.displayProfile)
+      ? pref.displayProfile
+      : (file.normalProfile ?? factoryDisplayProfile(view));
+    const mapVisibility =
+      pref?.mapVisibility && typeof pref.mapVisibility === "object"
+        ? { ...existingBody.mapVisibility, ...pref.mapVisibility }
+        : existingBody.mapVisibility;
+    view.dcbPref.fmaSlots[emptyIndex] = {
+      name: id,
+      body: {
+        ...existingBody,
+        rangeNm: isRangeNm(pref?.rangeNm) ? pref.rangeNm : existingBody.rangeNm,
+        centerEastNm: Number.isFinite(pref?.centerEastNm)
+          ? pref!.centerEastNm!
+          : existingBody.centerEastNm,
+        centerNorthNm: Number.isFinite(pref?.centerNorthNm)
+          ? pref!.centerNorthNm!
+          : existingBody.centerNorthNm,
+        mapVisibility,
+      },
+    };
+  }
+  syncFmaPrefProjection(view);
   const slot = view.dcbPref.slots[view.dcbPref.activeIndex];
   if (file.normalProfile) {
     applyDcbPref(view, file.normalProfile);
@@ -924,13 +1185,7 @@ export function loadDcbPrefFromStorage(
     applyDcbPrefDefaults(view);
     view.dcbPref.normalProfile = completeDisplayProfile(view);
   }
-  // Root namespace wins over legacy slot-embedded copies.
-  if (file.amzPreferences) {
-    view.amzPreferences.clear();
-    for (const [id, pref] of Object.entries(file.amzPreferences)) {
-      if (pref && typeof pref === "object" && pref.amzId === id) view.amzPreferences.set(id, pref);
-    }
-  }
+  syncFmaPrefProjection(view);
 }
 
 export function browserDcbPrefStorage(): DcbPrefStorage | null {
@@ -964,7 +1219,12 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
   if (!pref || pref.amzId !== amzId) {
     return false;
   }
-  return applyFmaAmzPreferenceValue(view, amzId, pref);
+  const applied = applyFmaAmzPreferenceValue(view, amzId, pref);
+  if (applied) {
+    const index = view.dcbPref.fmaSlots.findIndex((slot) => slot?.name === amzId);
+    if (index >= 0) setLastAppliedPref(view, { owner: "FMA", index, name: amzId });
+  }
+  return applied;
 }
 
 function applyFmaAmzPreferenceValue(
@@ -1072,37 +1332,6 @@ function applyFmaAmzPreferenceValue(
   return true;
 }
 
-/** Capture current selected-AMZ display state only on explicit PREF SAVE. */
-function captureSelectedFmaAmzPreference(view: ScopeView): void {
-  const amzId = view.fmaSurveillance.enabled ? view.fmaSurveillance.selectedAmzId : null;
-  const amz = view.fmaAmzs.find((candidate) => candidate.id === amzId);
-  if (!amz) return;
-  const runwayLeaders: Record<string, number> = {};
-  const activeRunways = new Set(amz.members.map((member) => member.runwayId));
-  for (const [rwy, dir] of view.fmaRunwayLeaders) {
-    if (activeRunways.has(rwy) && dir !== null && isLeaderDir(dir)) runwayLeaders[rwy] = dir;
-  }
-  const disabled = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
-  saveFmaAmzPreference(view, amz.id, {
-    mag: view.fmaMag,
-    ptlSeconds: view.fmaPtlSeconds,
-    voiceLevel: view.fmaVoiceLevel,
-    fmaBrite: {
-      amz: view.brite.amz,
-      ntz: view.brite.ntz,
-      rwy: view.brite.rwy,
-      ref: view.brite.ref,
-    },
-    runwayLeaders,
-    enabledNtzIds: amz.ntzs.filter((ntz) => !disabled.has(ntz.id)).map((ntz) => ntz.id),
-    rangeNm: view.camera.rangeNm,
-    centerEastNm: view.camera.centerEastNm,
-    centerNorthNm: view.camera.centerNorthNm,
-    mapVisibility: mapToRecord(view.mapVisibility),
-    displayProfile: completeDisplayProfile(view),
-  });
-}
-
 /**
  * Save AMZ-keyed FMA display settings to local preference store.
  */
@@ -1153,5 +1382,14 @@ export function saveFmaAmzPreference(
     displayProfile,
   };
   view.amzPreferences.set(amzId, updated);
+  const existingSlotIndex = view.dcbPref.fmaSlots.findIndex((slot) => slot?.name === amzId);
+  const slotIndex =
+    existingSlotIndex >= 0
+      ? existingSlotIndex
+      : view.dcbPref.fmaSlots.findIndex((slot) => slot === null);
+  if (slotIndex >= 0) {
+    view.dcbPref.fmaSlots[slotIndex] = { name: amzId, body: displayProfile };
+    if (view.dcbPref.lastApplied) setLastAppliedPref(view, view.dcbPref.lastApplied);
+  }
   return updated;
 }

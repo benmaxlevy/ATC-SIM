@@ -67,7 +67,8 @@ import {
   applyDcbPref,
   dcbPrefStorageKey,
   loadDcbPrefFromStorage,
-  saveDcbPref,
+  persistDcbPref,
+  selectDcbPrefOwner,
   saveFmaAmzPreference,
   applyFmaAmzPreference,
   commitDcbPrefSaveAs,
@@ -452,7 +453,7 @@ test("T02-230 shared scenario binder rebinds session AMZ, rolls back spinner, an
     getItem: (key: string) => storedPreferences.get(key) ?? null,
     setItem: (key: string, value: string) => storedPreferences.set(key, value),
   };
-  saveDcbPref(view, preferenceStorage);
+  persistDcbPref(view, preferenceStorage);
   view.fmaMag = 2;
   view.tracks.set("track-a", createTrackDisplay());
   advanceFmaSurveillanceView(view, {
@@ -2741,11 +2742,15 @@ test("T02-228 — rendered FMA PREF SAVE updates only the active AMZ profile", (
   const amz = syntheticAmz();
   view.fmaAmzs = [amz];
   view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  selectDcbPrefOwner(view, "FMA");
   view.fmaDefaultAmzId = amz.id;
   view.fmaMag = 6;
   view.fmaPtlSeconds = 15;
   view.fmaVoiceLevel = 8;
   view.fmaRunwayLeaders.set("08L", null);
+  saveFmaAmzPreference(view, amz.id);
+  view.dcbPref.fmaSlots[0] = { name: amz.id, body: serializeDcbPref(view) };
+  view.dcbPref.activeIndex = 0;
   const normalSlots = structuredClone(view.dcbPref.slots);
   const normalProfile = structuredClone(view.dcbPref.normalProfile);
   const props = findRenderedDcbCell(
@@ -2844,6 +2849,7 @@ test("T02-228 — rendered SAVE AS cancellation writes no FMA preference", () =>
   const amz = syntheticAmz();
   view.fmaAmzs = [amz];
   view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  selectDcbPrefOwner(view, "FMA");
   view.fmaMag = 7;
   const before = view.dcbPref.slots.map((slot) => slot && structuredClone(slot));
   const props = findRenderedDcbCell(
@@ -2864,6 +2870,7 @@ test("T02-228 — rendered SAVE AS commits to the selected AMZ without a normal 
   const amz = { ...syntheticAmz(), id: "AMZSYN" };
   view.fmaAmzs = [amz];
   view.fmaSurveillance = configureFmaSurveillance(view.fmaSurveillance, true, amz.id);
+  selectDcbPrefOwner(view, "FMA");
   view.fmaMag = 3;
   view.fmaVoiceLevel = 9;
   const normalSlots = structuredClone(view.dcbPref.slots);
@@ -2876,7 +2883,8 @@ test("T02-228 — rendered SAVE AS commits to the selected AMZ without a normal 
   expect(commitDcbPrefSaveAs(view, "FMALOCAL")).toBeNull();
   expect(view.dcbPref.pendingSaveAs).toBe(true);
   const index = commitDcbPrefSaveAs(view, amz.id);
-  expect(index).toBe(view.dcbPref.activeIndex);
+  expect(index).toBe(0);
+  expect(view.dcbPref.activeIndex).toBe(-1);
   expect(view.dcbPref.pendingSaveAs).toBe(false);
   expect(view.dcbPref.slots).toEqual(normalSlots);
   expect(view.dcbPref.normalProfile).toEqual(normalProfile);

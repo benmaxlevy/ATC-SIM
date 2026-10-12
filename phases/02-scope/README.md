@@ -1102,14 +1102,18 @@ When FMA surveillance is enabled via `MODE -> FMA -> ACCEPT`:
 
 ### Current FMA profile contract (T02-232–233)
 
-Normal and each authored AMZ keep separate complete supported workstation
-display preferences. A SAVE AS name must exactly match an authored AMZ ID; the
-normal numbered slots remain available only in normal mode. FMA DEFAULT applies
-the selected AMZ profile. If it is missing, the trainer shows `NO PREF SET
-FOUND`, preserves current display settings, and still paints the adapted AMZ;
-it does not apply defaults or substitute maps. Exiting FMA applies the
-last-used normal preference, not an entry snapshot or factory reset. Reload
-starts in normal mode and loads the normal profile while retaining AMZ profiles.
+Normal `FSSTARS` and reserved `FMA` owners keep separate numbered sets and
+complete supported workstation display preferences. The Figure 4-1 USER cell
+stages the owner by wheel/drag or accepts exact typed `FSSTARS` / `FMA`; commit
+changes only which set names are shown. SAVE, SAVE AS, and DELETE route through
+that explicit owner and selected set. Selecting an FMA set while FMA is active
+switches the AMZ and applies its complete profile; outside FMA it prepares the
+AMZ and dormant settings without enabling FMA. FMA DEFAULT applies the active
+AMZ profile. If it is missing, the trainer shows `NO PREF SET FOUND`, preserves
+current display settings, and still paints the adapted AMZ; it does not apply
+defaults or substitute maps. Exiting FMA applies the last-used normal preference,
+not an entry snapshot or factory reset. Reload starts in normal mode and loads
+the normal profile while retaining both owners' sets.
 
 The supported profile payload includes dock and camera; rings; MAPS visibility,
 category/list mode, group and toggles; DCB visibility; Mode C and altitude

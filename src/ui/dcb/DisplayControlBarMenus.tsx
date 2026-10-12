@@ -21,6 +21,10 @@ import {
   dcbLeaderDirReadout,
   dcbMapsPageSlotNumbers,
   deleteDcbPref,
+  dcbPrefSlots,
+  cancelPreviewArea,
+  stageDcbPrefOwner,
+  commitDcbPrefOwner,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -34,6 +38,7 @@ import {
   restoreDcbPrefSession,
   beginDcbPrefSaveAs,
   beginPrefNameEntry,
+  beginPrefUserEntry,
   saveDcbPref,
   selectDcbPrefSlot,
   setDcbDock,
@@ -2796,14 +2801,16 @@ export function prefStore() {
 }
 
 export function renderPref(view: ScopeView, onChange: () => void) {
+  const selectedSlot = dcbPrefSlots(view)[view.dcbPref.activeIndex] ?? null;
   return (
     <div className="dcb-main-grid" data-dcb-layout="PREF">
       {Array.from({ length: 16 }, (_, colIdx) => {
         const col = colIdx + 1;
         const slot1 = colIdx * 2 + 1;
         const slot2 = colIdx * 2 + 2;
-        const name1 = view.dcbPref.slots[slot1 - 1]?.name ?? "";
-        const name2 = view.dcbPref.slots[slot2 - 1]?.name ?? "";
+        const ownerSlots = dcbPrefSlots(view);
+        const name1 = ownerSlots[slot1 - 1]?.name ?? "";
+        const name2 = ownerSlots[slot2 - 1]?.name ?? "";
         return [
           <div
             key={slot1}
@@ -2815,15 +2822,10 @@ export function renderPref(view: ScopeView, onChange: () => void) {
             style={{ gridColumn: col, gridRow: "1 / span 1" }}
           >
             <DcbCell
-              kind={view.fmaSurveillance.enabled ? "disabled" : "toggle"}
-              ariaLabel={
-                view.fmaSurveillance.enabled
-                  ? `Normal Pref ${slot1} unavailable in FMA`
-                  : `Pref ${slot1}`
-              }
+              kind="toggle"
+              ariaLabel={`${view.dcbPref.menuOwner} Pref ${slot1}${name1 ? ` ${name1}` : " empty"}`}
               dataDcb={`pref-${slot1}` as NonNullable<DcbCellProps["dataDcb"]>}
-              pressed={!view.fmaSurveillance.enabled && view.dcbPref.activeIndex === slot1 - 1}
-              disabled={view.fmaSurveillance.enabled}
+              pressed={view.dcbPref.activeIndex === slot1 - 1}
               onClick={() => {
                 cancelFilterIfEntering(view);
                 selectDcbPrefSlot(view, slot1 - 1);
@@ -2845,15 +2847,10 @@ export function renderPref(view: ScopeView, onChange: () => void) {
             style={{ gridColumn: col, gridRow: "2 / span 1" }}
           >
             <DcbCell
-              kind={view.fmaSurveillance.enabled ? "disabled" : "toggle"}
-              ariaLabel={
-                view.fmaSurveillance.enabled
-                  ? `Normal Pref ${slot2} unavailable in FMA`
-                  : `Pref ${slot2}`
-              }
+              kind="toggle"
+              ariaLabel={`${view.dcbPref.menuOwner} Pref ${slot2}${name2 ? ` ${name2}` : " empty"}`}
               dataDcb={`pref-${slot2}` as NonNullable<DcbCellProps["dataDcb"]>}
-              pressed={!view.fmaSurveillance.enabled && view.dcbPref.activeIndex === slot2 - 1}
-              disabled={view.fmaSurveillance.enabled}
+              pressed={view.dcbPref.activeIndex === slot2 - 1}
               onClick={() => {
                 cancelFilterIfEntering(view);
                 selectDcbPrefSlot(view, slot2 - 1);
@@ -2897,8 +2894,40 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={1}
         style={{ gridColumn: 17, gridRow: "2 / span 1" }}
       >
-        <DcbCell kind="disabled" ariaLabel="FSSTARS" disabled onClick={() => undefined}>
-          <span className="dcb-cell-line">FSSTARS</span>
+        <DcbCell
+          kind="spinner"
+          ariaLabel={`Preference user ${view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}; roll to choose and click to commit`}
+          dataDcb="pref-user"
+          onDragDelta={(delta) => {
+            if (delta === 0) return;
+            if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+            stageDcbPrefOwner(view, delta > 0 ? "FMA" : "FSSTARS");
+            afterCell(onChange);
+          }}
+          onWheel={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.deltaY === 0) return;
+            if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+            stageDcbPrefOwner(view, event.deltaY < 0 ? "FMA" : "FSSTARS");
+            afterCell(onChange);
+          }}
+          onClick={() => {
+            if (view.dcbPref.ownerCandidate) {
+              if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+              commitDcbPrefOwner(view);
+              persistDcbPref(view, prefStore());
+              afterCell(onChange);
+            } else {
+              beginPrefUserEntry(view.preview, Date.now());
+              afterCell(onChange);
+            }
+          }}
+        >
+          <span className="dcb-cell-line">USER</span>
+          <span className="dcb-cell-line">
+            {view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}
+          </span>
         </DcbCell>
       </div>
       <div
@@ -2931,9 +2960,20 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 18, gridRow: "2 / span 1" }}
       >
         <DcbCell
-          kind="action"
-          ariaLabel="Save"
+          kind={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? "action"
+              : "disabled"
+          }
+          ariaLabel={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? `Save ${view.dcbPref.menuOwner} ${selectedSlot.name}`
+              : "Save unavailable without a selected preference set"
+          }
           dataDcb="pref-save"
+          disabled={
+            !selectedSlot || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed)
+          }
           onClick={() => {
             cancelFilterIfEntering(view);
             saveDcbPref(view, prefStore());
@@ -2964,11 +3004,18 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 19, gridRow: "2 / span 1" }}
       >
         <DcbCell
-          kind="action"
+          kind={
+            view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed
+              ? "action"
+              : "disabled"
+          }
           ariaLabel={
-            view.fmaSurveillance.enabled ? "Save active AMZ preference as its exact ID" : "Save as"
+            view.dcbPref.menuOwner === "FMA"
+              ? "Save as desired authored AMZ ID"
+              : "Save as normal preference"
           }
           dataDcb="pref-save-as"
+          disabled={view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed}
           onClick={() => {
             cancelFilterIfEntering(view);
             beginDcbPrefSaveAs(view);
@@ -2977,7 +3024,9 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           }}
         >
           <span className="dcb-cell-line">SAVE</span>
-          <span className="dcb-cell-line">{view.fmaSurveillance.enabled ? "AS AMZ ID" : "AS"}</span>
+          <span className="dcb-cell-line">
+            {view.dcbPref.menuOwner === "FMA" ? "AS AMZ ID" : "AS"}
+          </span>
         </DcbCell>
       </div>
       <div
@@ -2989,9 +3038,20 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 20, gridRow: "1 / span 1" }}
       >
         <DcbCell
-          kind="action"
-          ariaLabel="Delete"
+          kind={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? "action"
+              : "disabled"
+          }
+          ariaLabel={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? `Delete ${view.dcbPref.menuOwner} ${selectedSlot.name}`
+              : "Delete unavailable without a selected preference set"
+          }
           dataDcb="pref-delete"
+          disabled={
+            !selectedSlot || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed)
+          }
           onClick={() => {
             cancelFilterIfEntering(view);
             deleteDcbPref(view, prefStore());

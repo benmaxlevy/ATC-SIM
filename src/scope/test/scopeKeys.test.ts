@@ -7,17 +7,62 @@ import {
   isAlwaysOnScopeKey,
 } from "../scopeKeys";
 import { createScopeView } from "../scopeView";
+import { beginPrefUserEntry } from "../previewArea";
 
-function keyEvent(key: string, opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean }) {
+function keyEvent(
+  key: string,
+  opts?: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean },
+) {
   return {
     key,
     ctrlKey: opts?.ctrlKey,
     shiftKey: opts?.shiftKey,
     altKey: opts?.altKey,
+    metaKey: opts?.metaKey,
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
   };
 }
+
+test("staged PREF USER does not capture modified Enter or Help-owned input", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  for (const modifier of ["ctrlKey", "altKey", "metaKey"] as const) {
+    view.dcbPref.ownerCandidate = "FMA";
+    handleScopeKeyDown(keyEvent("Enter", { [modifier]: true }), view, "scope", world, 1);
+    expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+    expect(view.dcbPref.ownerCandidate).toBeNull();
+  }
+  view.dcbPref.ownerCandidate = "FMA";
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 2, {
+    helpOverlayHasFocus: true,
+  });
+  expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+  expect(view.dcbPref.ownerCandidate).toBe("FMA");
+});
+
+test("PREF USER accepts exact owners and rejects typed prefixes without namespace changes", () => {
+  const view = createScopeView();
+  const world = createWorld();
+  beginPrefUserEntry(view.preview, 1);
+  for (const key of "FSSTARSX") handleScopeKeyDown(keyEvent(key), view, "scope", world, 2);
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 3);
+  expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+  expect(view.preview.rejection).toBe("ILL USER");
+  expect(view.camera.rangeNm).toBe(20);
+
+  beginPrefUserEntry(view.preview, 4);
+  for (const key of "F-MA") handleScopeKeyDown(keyEvent(key), view, "scope", world, 5);
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 6);
+  expect(view.dcbPref.menuOwner).toBe("FSSTARS");
+  expect(view.preview.rejection).toBe("ILL USER");
+
+  beginPrefUserEntry(view.preview, 7);
+  for (const key of "fma") handleScopeKeyDown(keyEvent(key), view, "scope", world, 8);
+  handleScopeKeyDown(keyEvent("Enter"), view, "scope", world, 9);
+  expect(view.dcbPref.menuOwner).toBe("FMA");
+  expect(view.preview.phase).toBe("idle");
+});
 
 test("T02-171 routes *FP from radio focus to the UI callback, not radio", () => {
   const view = createScopeView();
