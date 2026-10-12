@@ -53,12 +53,12 @@ return empty availability. Scenario replacement must not depend on flow courses.
 
 ## Acceptance criteria and tests
 
-- [ ] AC1 Automated: loader roundtrip preserves authored geometry and rejects absent, malformed, duplicate and unresolved required fields; minimal synthetic fixtures.
-- [ ] AC2 Automated: production binding never invokes heuristic fallback, empty/disabled/dimension-only adaptation unavailable; pure fixture derivation clearly separated.
-- [ ] AC3 Automated: all authored reciprocal/offset groups offered; unknown active runway/course does not hide valid authored AMZs; valid selection/fallback ordering tested.
-- [ ] AC4 Automated: KDEM/KATL authored data load through generic path; source label is trainer-authored; facility data contract isolated from generic units.
+- [x] AC1 Automated: loader roundtrip preserves authored geometry and rejects absent, malformed, duplicate and unresolved required fields; minimal synthetic fixtures.
+- [x] AC2 Automated: production binding never invokes heuristic fallback, empty/disabled/dimension-only adaptation unavailable; pure fixture derivation clearly separated.
+- [x] AC3 Automated: all authored reciprocal/offset groups offered; unknown active runway/course does not hide valid authored AMZs; valid selection/fallback ordering tested.
+- [x] AC4 Automated: KDEM/KATL authored data load through generic path; source label is trainer-authored; facility data contract isolated from generic units.
 - [ ] AC5 Manual: inspect authored graphics against Figure 6-15's feature inventory without claiming facility coordinate fidelity. Browser drawing may be UNRUN only if explicitly recorded.
-- [ ] AC6 Gate: focused tests, npm run ci, git diff --check and supplied-manual review pass.
+- [x] AC6 Gate: focused tests, npm run ci, git diff --check and supplied-manual review pass.
 
 ## Non-goals / user surfaces
 
@@ -120,3 +120,13 @@ routing, effects, negative case, tests and help/docs. Report commits, paths, AC
 status, CI and actual Manual/UNRUN checks with READY TO MERGE or BLOCKED.
 Captain performs independent supplied-manual review before merge and captain CI
 plus manual recheck after merge. No broad STARS/NAS compatibility claim.
+
+## Captain completion evidence (2026-10-12)
+
+Implemented and squash-merged onto `feature/fma` in the eighty-eighth swarm.
+Automated gates and independent pre/post-merge supplied-manual reviews passed.
+See `phases/SWARM-STATUS.md` for commits, corrections, CI counts and citations.
+The visual/browser acceptance criterion remains unchecked: browser inventory was
+empty, so actual UI/keyboard/audio interaction is UNRUN, as explicitly permitted
+by this swarm stop configuration. Native-button routing and mockCanvas coverage
+are automated/inspection evidence only, not actual browser execution.

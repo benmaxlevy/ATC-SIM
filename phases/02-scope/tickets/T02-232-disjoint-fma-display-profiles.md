@@ -66,13 +66,13 @@ AMZ geometry from another facility. No pre-entry normalDisplaySnapshot payload.
 
 ## Acceptance criteria and tests
 
-- [ ] AC1 Automated: full supported display roundtrip with distinct normal/A/B values; maps/category/camera/fonts/brightness/list layout/PTL/filter/volume and FMA controls covered.
-- [ ] AC2 Automated: normal -> A -> B -> exit yields exact saved normal body; unsaved normal changes do not become entry snapshot; FMA save cannot overwrite normal/B.
-- [ ] AC3 Automated: rendered DEFAULT and existing focused keyboard activation apply active AMZ; no-pref entry/switch/default preserves current settings and warns; cancellation/invalid input unchanged.
-- [ ] AC4 Automated: reload always normal after FMA save; AMZ persistence, legacy partial migration, corrupt references, facility replacement and runtime exclusion pass.
-- [ ] AC5 Automated: loaded video maps not selected in a complete profile become off; cache invalidates; map category and group restore.
+- [x] AC1 Automated: full supported display roundtrip with distinct normal/A/B values; maps/category/camera/fonts/brightness/list layout/PTL/filter/volume and FMA controls covered.
+- [x] AC2 Automated: normal -> A -> B -> exit yields exact saved normal body; unsaved normal changes do not become entry snapshot; FMA save cannot overwrite normal/B.
+- [x] AC3 Automated: rendered DEFAULT and existing focused keyboard activation apply active AMZ; no-pref entry/switch/default preserves current settings and warns; cancellation/invalid input unchanged.
+- [x] AC4 Automated: reload always normal after FMA save; AMZ persistence, legacy partial migration, corrupt references, facility replacement and runtime exclusion pass.
+- [x] AC5 Automated: loaded video maps not selected in a complete profile become off; cache invalidates; map category and group restore.
 - [ ] AC6 Manual: browser enter/select/default/save/exit/reload and full display profile behavior; record actual evidence or UNRUN, never infer from mockCanvas.
-- [ ] AC7 Gate: focused tests, npm run ci, git diff --check and supplied-manual review pass.
+- [x] AC7 Gate: focused tests, npm run ci, git diff --check and supplied-manual review pass.
 
 ## Non-goals / user surfaces
 
@@ -134,3 +134,13 @@ routing, effects, negative case, tests and help/docs. Report commits, paths, AC
 status, CI and actual Manual/UNRUN checks with READY TO MERGE or BLOCKED.
 Captain performs independent supplied-manual review before merge and captain CI
 plus manual recheck after merge. No broad STARS/NAS compatibility claim.
+
+## Captain completion evidence (2026-10-12)
+
+Implemented and squash-merged onto `feature/fma` in the eighty-eighth swarm.
+Automated gates and independent pre/post-merge supplied-manual reviews passed.
+See `phases/SWARM-STATUS.md` for commits, corrections, CI counts and citations.
+The visual/browser acceptance criterion remains unchecked: browser inventory was
+empty, so actual UI/keyboard/audio interaction is UNRUN, as explicitly permitted
+by this swarm stop configuration. Native-button routing and mockCanvas coverage
+are automated/inspection evidence only, not actual browser execution.

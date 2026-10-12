@@ -39,13 +39,13 @@ if exposed required behavior remains incomplete, never add speculative work.
 
 ## Acceptance criteria and tests
 
-- [ ] AC1 Automated: parameterized synthetic 2/3-runway adjacency, NTZ button/map independence in both directions, map category/camera unchanged by buttons.
-- [ ] AC2 Automated: mixed NTZ ALL, active alert/speech cancellation, frozen release, per-runway RWY/CST suppression/re-enable and all-off glyph hiding proven.
-- [ ] AC3 Automated: generic authored scenario end-to-end supports reciprocal selector and independent saved profiles, missing profile behavior, normal exit/reload and no runtime persistence.
-- [ ] AC4 Automated: acceptance tests stay generic; one dedicated profile integration and shared FMA fidelity file, minimal additional pure tests; use mockCanvas helper.
-- [ ] AC5 Docs: Help, docs/USER.md, README/AGENT accurately describe authored-only availability, all-AMZ selector, trainer-authored data and complete disjoint profiles; preserve historical ticket text and identify superseded policies.
+- [x] AC1 Automated: parameterized synthetic 2/3-runway adjacency, NTZ button/map independence in both directions, map category/camera unchanged by buttons.
+- [x] AC2 Automated: mixed NTZ ALL, active alert/speech cancellation, frozen release, per-runway RWY/CST suppression/re-enable and all-off glyph hiding proven.
+- [x] AC3 Automated: generic authored scenario end-to-end supports reciprocal selector and independent saved profiles, missing profile behavior, normal exit/reload and no runtime persistence.
+- [x] AC4 Automated: acceptance tests stay generic; one dedicated profile integration and shared FMA fidelity file, minimal additional pure tests; use mockCanvas helper.
+- [x] AC5 Docs: Help, docs/USER.md, README/AGENT accurately describe authored-only availability, all-AMZ selector, trainer-authored data and complete disjoint profiles; preserve historical ticket text and identify superseded policies.
 - [ ] AC6 Manual: actual browser adaptation/maps/NTZ/default/save/exit/reload verification, supplied manual audit; report UNRUN checks explicitly if browser unavailable.
-- [ ] AC7 Gate: focused tests, npm run ci, git diff --check and independent supplied-manual review pass; stop at this ticket.
+- [x] AC7 Gate: focused tests, npm run ci, git diff --check and independent supplied-manual review pass; stop at this ticket.
 
 ## Non-goals / manual checklist
 
@@ -107,3 +107,13 @@ routing, effects, negative case, tests and help/docs. Report commits, paths, AC
 status, CI and actual Manual/UNRUN checks with READY TO MERGE or BLOCKED.
 Captain performs independent supplied-manual review before merge and captain CI
 plus manual recheck after merge. No broad STARS/NAS compatibility claim.
+
+## Captain completion evidence (2026-10-12)
+
+Implemented and squash-merged onto `feature/fma` in the eighty-eighth swarm.
+Automated gates and independent pre/post-merge supplied-manual reviews passed.
+See `phases/SWARM-STATUS.md` for commits, corrections, CI counts and citations.
+The visual/browser acceptance criterion remains unchecked: browser inventory was
+empty, so actual UI/keyboard/audio interaction is UNRUN, as explicitly permitted
+by this swarm stop configuration. Native-button routing and mockCanvas coverage
+are automated/inspection evidence only, not actual browser execution.

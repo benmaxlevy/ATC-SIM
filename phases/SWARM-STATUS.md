@@ -2587,3 +2587,85 @@ A fresh final inventory returned `apps: []` and `browsers: []`; opening the in-a
 All implementation workers and independent reviewers are terminal. The original unfinished T02-228 worktree, ticket worktrees/branches, unrelated `.worktrees/`, `:memory:.ses` and `speech-api/:memory:.ses` remain preserved. `master` remains `e733d27`; no master merge, push, reset, clean or force occurred. The configured stop boundary is reached; no later phase or swarm was started.
 
 **PHASE EXIT GREEN**
+
+
+## Eighty-eighth swarm exit — Authored FMA and disjoint display profiles (2026-10-12)
+
+The approved correction swarm completed on `feature/fma`, using isolated
+`gpt-6-luna` workers at medium reasoning. Wave A ran T02-231 and T02-232
+concurrently with coordinated disjoint ownership; Wave B ran T02-233 after both
+prerequisite merges and gates. The invoking captain held the merge lock, performed
+primary reviews and delegated independent Luna medium manual checks before each
+merge and after each merge. Historical swarm/ticket records remain preserved.
+
+| Ticket | Feature commit | Completed behavior | Captain CI / manual gate |
+| --- | --- | --- | --- |
+| T02-231 | `b6bf523` | Complete authored adaptation; generic loader validation; trainer-authored KDEM 27/27R and KATL groups; all authored AMZs offered | 257 files, 3,064 passed, 4 skipped; corrected pre-merge and post-merge PASS |
+| T02-232 | `5ff68ba` | Complete disjoint supported normal/AMZ profiles; FMA DEFAULT; exact active-ID SAVE AS and DELETE; normal exit/reload; runtime-free persistence | 258 files, 3,074 passed, 4 skipped; corrected pre-merge and post-merge PASS |
+| T02-233 | `3806fea` | NTZ/MAPS independence; adjacency/frozen/speech cancellation; target facility context before preferences; acceptance and Help/USER/phase docs | 258 files, 3,075 passed, 4 skipped; pre-merge and post-merge PASS |
+
+### Corrections and review reconciliation
+
+- T02-231's initial independent FAIL found duplicate NTZ IDs accepted by the
+  loader but discarded later in runtime binding. The narrow correction added
+  indexed duplicate NTZ/course-line errors, 2–4 capacity and agreement between
+  simultaneous approach/runway references. Separately authored AMZs sharing
+  runways remain available rather than being filtered by fixture deduplication.
+  Primary and independent re-reviews agreed PASS before merge.
+- T02-232 review added actual map/group/cache assertions, native DEFAULT render
+  and callback inspection, fresh/reused-view runtime exclusion, and automatic
+  normal return when adaptation disappears. Primary inspection corrected the
+  reused-view load path: clearing retained reports did not disable FMA, so the
+  loader now explicitly disables mode. A second SAVE now captures current fonts,
+  filters/list placements and other supported fields rather than stale bodies.
+  Narrow legacy PREF/binder assertion edits were explicitly authorized and
+  recorded in SWARM history; no scope disagreement remained.
+- T02-233's valid associated/retained frozen-target fixture verifies adjacent-zone
+  survival, per-runway release and all-off cleanup. Ended episodes now emit speech
+  cancellation. The actual Shell session path uses the tested generic binder to
+  set new map/SITE/ARP context before loading preferences, including missing
+  storage. Generic loader checks no longer assert production AMZ counts/IDs.
+- Complete disjoint profiles, all-authored selection, authored-only availability,
+  trainer fixture geometry and exit/reload policy are approved trainer deltas.
+  Missing AMZ preferences preserve current display settings with
+  `NO PREF SET FOUND`; there is no invented default-video-map fallback.
+
+### Manual authority and automated evidence
+
+Supplied authority: `/home/ben/Documents/stars refs/full_manual.pdf`, Raytheon
+TI 6191.409 Revision 30. Primary and independent reviews consulted §4.1 pp.
+4-4–5, §4.1.1 p.4-6, §§4.1.2/4.1.4 pp.4-8/4-12 (exact names), §4.1.10
+p.4-21, §§6.16.1–2 pp.6-127–130, §6.16.9 pp.6-138–139, §2.16.4
+pp.2-107–108, and Figures 6-15/6-17 pp.6-126/6-129. No full NAS or operational
+facility fidelity claim is made. Every independent reviewer was terminal before
+its merge; no recursive reviewer was required.
+
+Final whole-feature `npm run ci` on `feature/fma` at `3806fea`: **PASS —
+258 test files, 3,075 passed, 4 skipped, 0 failures**, including typecheck,
+lint and format check. Captain baseline was 257 files, 3,062 passed, 4 skipped.
+Workers additionally ran focused acceptance suites and full CI before their
+commits. Documentation-only completion updates may skip runtime CI.
+
+### Actual browser/manual leftovers
+
+Browser/computer inventory returned no available browsers or apps. Actual browser
+interaction and audio checks are **UNRUN**, explicitly allowed by the stop
+configuration. Automated native-button markup/callback and mockCanvas evidence
+must not be described as actual keyboard/browser/audio execution.
+
+| Actual check | Status |
+| --- | --- |
+| KDEM/KATL authored geometry visual comparison and reciprocal AMZ selection | UNRUN |
+| Complete normal/AMZ save, DEFAULT, exit and reload through live controls | UNRUN |
+| Focused native Enter/Space activation and modifier/focus interaction | UNRUN |
+| NTZ/MAPS independence, visible boundary changes and adjacent frozen cleanup | UNRUN |
+| Installed local voice cancellation after NTZ inhibition | UNRUN |
+| Session airport replacement maps/SITE/profile transition in browser | UNRUN |
+
+All implementation workers and independent reviewers are terminal. Final worktree
+has only preserved unrelated untracked `.worktrees/`, `:memory:.ses` and
+`speech-api/:memory:.ses`; ticket worktrees/branches remain for audit. `master`
+remains `e733d27`. No master merge, push, reset, clean, force or later phase was
+performed. The configured stop boundary is reached.
+
+**PHASE EXIT GREEN**
