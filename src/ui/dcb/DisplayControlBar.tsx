@@ -423,7 +423,8 @@ function renderPhysicalMain(
             <span className="dcb-cell-line">FILTER</span>
           </DcbCell>
         );
-      case "mode":
+      case "mode": {
+        const activeMode = view.fmaSurveillance.enabled ? "FMA" : (view.serviceMode ?? "FSL");
         return (
           <DcbCell
             kind="submenu"
@@ -437,8 +438,10 @@ function renderPhysicalMain(
             }}
           >
             <span className="dcb-cell-line">MODE</span>
+            <span className="dcb-cell-line">{activeMode}</span>
           </DcbCell>
         );
+      }
       case "shift":
         return renderShift(view, onChange);
       default:

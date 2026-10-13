@@ -117,7 +117,13 @@ function findDcbCell(
   return null;
 }
 
-const amz = (id: string): FmaAmz => ({ id, members: [], ntzs: [] }) as unknown as FmaAmz;
+const amz = (id: string, runways: string[] = []): FmaAmz =>
+  ({
+    id,
+    label: id,
+    members: runways.map((runwayId) => ({ runwayId }) as unknown as FmaAmz["members"][number]),
+    ntzs: [],
+  }) as unknown as FmaAmz;
 
 function prepareNormalSet(view: ReturnType<typeof createScopeView>): void {
   view.dcbPref.slots[0] = { name: "NORMAL", body: serializeDcbPref(view) };
@@ -776,7 +782,7 @@ describe("T02-235 user-directed PREF actions and acceptance", () => {
     const storage = memoryStorage();
     const view = createScopeView();
     view.dcbPref.icao = "KDEM";
-    view.fmaAmzs = [amz("SOUTH"), amz("123")];
+    view.fmaAmzs = [amz("SOUTH"), amz("123"), amz("27R26L", ["27R", "26L"])];
 
     selectDcbPrefOwner(view, "FSSTARS");
 
@@ -817,6 +823,16 @@ describe("T02-235 user-directed PREF actions and acceptance", () => {
     beginDcbPrefSaveAs(view);
     expect(commitDcbPrefSaveAs(view, "123", storage)).toBe(0);
     expect(view.dcbPref.fmaSlots[0]?.name).toBe("123");
+
+    // FMA owner: runway permutation 26L27R resolves to adapted 27R26L
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "26L27R", storage)).toBe(1);
+    expect(view.dcbPref.fmaSlots[1]?.name).toBe("27R26L");
+
+    // Duplicate check rejects 26R27L as ILL PREFSET since it resolves to existing 27R26L
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "26R27L", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("ILL PREFSET");
 
     // Full capacity (32 records) disables SAVE AS in DCB and rejects commit
     selectDcbPrefOwner(view, "FSSTARS");

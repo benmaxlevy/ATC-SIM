@@ -2605,7 +2605,7 @@ export function drawChordHint(
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(fmaDiagnostic, x, y + occupiedLines * datablockLineHeightPx(view.charSizes.lists));
   }
-  if (view.lastWarning) {
+  if (view.lastWarning && (!preview || !preview.split("\n").includes(view.lastWarning))) {
     ctx.fillStyle = applyBrite(PALETTE.ssa, view.brite.lst);
     ctx.fillText(
       view.lastWarning,

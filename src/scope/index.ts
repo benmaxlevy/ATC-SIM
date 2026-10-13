@@ -501,6 +501,7 @@ export {
   browserDcbPrefStorage,
   cancelDcbPrefSaveAs,
   commitDcbPrefSaveAs,
+  findFmaAmzForPrefName,
   dcbPrefStorageKey,
   dcbPrefSlots,
   endDcbPrefSession,

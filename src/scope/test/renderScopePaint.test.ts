@@ -12,6 +12,7 @@ import {
 import { createMockCtx } from "./mockCanvas";
 import {
   buildScopeDatablockPresentation,
+  drawChordHint,
   drawDatablock,
   getDatablockVisualState,
   isCaAlertAcknowledged,
@@ -859,6 +860,18 @@ describe("Datablock inline alert glyphs", () => {
         const alertRow = mock.fillTexts.find((fill) => fill.text === "CA AAL101*DAL202");
         expect(alertRow?.fillStyle).toBe(applyBrite(PALETTE.ssa, view.brite.lst));
       }
+    });
+
+    test("does not paint duplicate warning line when preview rejection matches lastWarning", () => {
+      const view = createScopeView();
+      view.preview.rejection = "FORMAT";
+      view.lastWarning = "FORMAT";
+
+      const mock = createMockCtx();
+      drawChordHint(mock.ctx, view, 800, 600);
+
+      const formatCalls = mock.fillTexts.filter((fill) => fill.text === "FORMAT");
+      expect(formatCalls).toHaveLength(1);
     });
   });
 });

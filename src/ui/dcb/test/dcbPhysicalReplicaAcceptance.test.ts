@@ -89,6 +89,17 @@ test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE submenu", 
   }
   expect(html).toMatch(/aria-label="Mode"[^>]*data-dcb-kind="submenu"/);
   expect(html).not.toMatch(/aria-label="Mode"[^>]*disabled/);
+  expect(html).toContain(
+    '<span class="dcb-cell-line">MODE</span><span class="dcb-cell-line">FSL</span>',
+  );
+  const fmaView = createScopeView();
+  fmaView.fmaSurveillance.enabled = true;
+  const fmaHtml = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view: fmaView, onChange: () => undefined }),
+  );
+  expect(fmaHtml).toContain(
+    '<span class="dcb-cell-line">MODE</span><span class="dcb-cell-line">FMA</span>',
+  );
   expect(html).toMatch(/aria-label="SITE FUSED"/);
   expect(html).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
   expect(html).toContain('data-dcb-layout="MAIN"');
