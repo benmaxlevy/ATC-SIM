@@ -925,41 +925,14 @@ function persistRuntime(view: ScopeView, storage: DcbPrefStorage | undefined): v
 }
 
 /**
- * Resolves an FMA AMZ from candidate preference name (exact ID, label, member runway pairs, or digits).
+ * Resolves an FMA AMZ from candidate preference name (exact ID or space-stripped label, case-insensitive).
+ * Raytheon STARS TI 6191.409 §4.1.4: "enter a preference set name that is identical to the desired AMZ ID."
  */
 export function findFmaAmzForPrefName(amzs: readonly FmaAmz[], name: string): FmaAmz | undefined {
   const upper = name.toUpperCase().replace(/\s+/g, "");
-  // 1. Exact ID match
-  const exact = amzs.find((c) => c.id.toUpperCase() === upper);
-  if (exact) return exact;
-
-  // 2. Exact label match (spaces stripped)
-  const labelMatch = amzs.find((c) => c.label.toUpperCase().replace(/\s+/g, "") === upper);
-  if (labelMatch) return labelMatch;
-
-  // 3. Member runways concatenation in forward or reverse order
-  const memberMatch = amzs.find((c) => {
-    const rwys = c.members.map((m) => m.runwayId.toUpperCase());
-    if (rwys.join("") === upper) return true;
-    if (rwys.slice().reverse().join("") === upper) return true;
-    return false;
-  });
-  if (memberMatch) return memberMatch;
-
-  // 4. Normalized runway numbers (e.g. 26R27L matching 27R26L, or 8R9L matching 08R09L)
-  const numOnly = (s: string) => s.replace(/\D/g, "");
-  const targetNums = numOnly(upper);
-  if (targetNums.length >= 2) {
-    const fuzzyMatch = amzs.find((c) => {
-      const rwyNums = c.members.map((m) => numOnly(m.runwayId));
-      if (rwyNums.join("") === targetNums) return true;
-      if (rwyNums.slice().reverse().join("") === targetNums) return true;
-      return false;
-    });
-    if (fuzzyMatch) return fuzzyMatch;
-  }
-
-  return undefined;
+  return amzs.find(
+    (c) => c.id.toUpperCase() === upper || c.label.toUpperCase().replace(/\s+/g, "") === upper,
+  );
 }
 
 export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {

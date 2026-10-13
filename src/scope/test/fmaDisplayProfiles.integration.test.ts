@@ -824,14 +824,19 @@ describe("T02-235 user-directed PREF actions and acceptance", () => {
     expect(commitDcbPrefSaveAs(view, "123", storage)).toBe(0);
     expect(view.dcbPref.fmaSlots[0]?.name).toBe("123");
 
-    // FMA owner: runway permutation 26L27R resolves to adapted 27R26L
+    // FMA owner: exact adapted AMZ ID 27R26L is accepted
     beginDcbPrefSaveAs(view);
-    expect(commitDcbPrefSaveAs(view, "26L27R", storage)).toBe(1);
+    expect(commitDcbPrefSaveAs(view, "27R26L", storage)).toBe(1);
     expect(view.dcbPref.fmaSlots[1]?.name).toBe("27R26L");
 
-    // Duplicate check rejects 26R27L as ILL PREFSET since it resolves to existing 27R26L
+    // Non-exact name / mismatched permutation (26R27L) rejected as FORMAT per STARS §4.1.4
     beginDcbPrefSaveAs(view);
     expect(commitDcbPrefSaveAs(view, "26R27L", storage)).toBeNull();
+    expect(view.preview.rejection).toBe("FORMAT");
+
+    // Duplicate exact match rejected as ILL PREFSET
+    beginDcbPrefSaveAs(view);
+    expect(commitDcbPrefSaveAs(view, "27r26l", storage)).toBeNull();
     expect(view.preview.rejection).toBe("ILL PREFSET");
 
     // Full capacity (32 records) disables SAVE AS in DCB and rejects commit
