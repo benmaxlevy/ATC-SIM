@@ -124,7 +124,9 @@ body,
   align-items: stretch;
   gap: 1px;
   padding: 0;
-  overflow: visible;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: #000000;
   color: #00ff00;
   font-size: inherit;

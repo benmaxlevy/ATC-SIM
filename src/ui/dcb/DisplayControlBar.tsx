@@ -757,29 +757,38 @@ export function DisplayControlBar({ view, onChange, world }: DisplayControlBarPr
         ? dcb.querySelector<HTMLElement>(`[data-dcb-cell="${submenuTrigger}"]`)
         : null;
       const anchorLeft = trigger
-        ? trigger.getBoundingClientRect().right - dcbRect.left
+        ? trigger.getBoundingClientRect().right - dcbRect.left + dcb.scrollLeft
         : submenu.offsetLeft;
       const submenuWidth = submenu.offsetWidth;
-      const overflowPx = dcbRect.left + anchorLeft + submenuWidth - 2 - window.innerWidth;
+      const overflowPx =
+        dcbRect.left + anchorLeft - dcb.scrollLeft + submenuWidth - 2 - window.innerWidth;
       if (overflowPx <= 0) {
         setSubmenuLeft(anchorLeft);
         return;
       }
 
-      const maxLeft = window.innerWidth - dcbRect.left - submenuWidth + 2;
+      const maxLeft = window.innerWidth - dcbRect.left + dcb.scrollLeft - submenuWidth + 2;
       const buttonEdges = Array.from(dcb.querySelectorAll<HTMLElement>(".dcb-base .dcb-cell"))
         .flatMap((button) => {
           const rect = button.getBoundingClientRect();
-          return [rect.left - dcbRect.left, rect.right - dcbRect.left];
+          return [
+            rect.left - dcbRect.left + dcb.scrollLeft,
+            rect.right - dcbRect.left + dcb.scrollLeft,
+          ];
         })
         .filter((edge) => edge <= maxLeft);
       const snappedLeft = Math.max(0, ...buttonEdges);
       setSubmenuLeft(snappedLeft);
     };
 
+    const dcbEl = dcbRef.current;
     measureSubmenu();
     window.addEventListener("resize", measureSubmenu);
-    return () => window.removeEventListener("resize", measureSubmenu);
+    dcbEl?.addEventListener("scroll", measureSubmenu);
+    return () => {
+      window.removeEventListener("resize", measureSubmenu);
+      dcbEl?.removeEventListener("scroll", measureSubmenu);
+    };
   }, [showSubmenuOverlay, submenuTrigger, vertical]);
 
   return (
