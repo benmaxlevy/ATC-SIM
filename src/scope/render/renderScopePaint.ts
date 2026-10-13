@@ -1108,14 +1108,23 @@ function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
     for (const [rwy, dir] of view.fmaRunwayLeaders.entries()) {
       if (dir === null || dir === undefined) continue;
       const rUpper = rwy.toUpperCase();
-      if (sp1 === rUpper || sp2 === rUpper) {
+      const rBare = rUpper.replace(/^0+/, "");
+      const matchesSp = (sp: string) =>
+        sp === rUpper ||
+        sp === rBare ||
+        sp === `I${rUpper}` ||
+        sp === `I${rBare}` ||
+        sp === `R${rUpper}` ||
+        sp === `R${rBare}`;
+      if (matchesSp(sp1) || matchesSp(sp2)) {
         return dir;
       }
       const activeAmz = view.fmaAmzs?.find((a) => a.id === view.fmaSurveillance?.selectedAmzId);
       if (activeAmz?.runwayAliases?.[rwy]) {
         for (const alias of activeAmz.runwayAliases[rwy]) {
           const aUpper = alias.toUpperCase();
-          if (sp1 === aUpper || sp2 === aUpper) {
+          const aBare = aUpper.replace(/^0+/, "");
+          if (matchesSp(aUpper) || matchesSp(aBare)) {
             return dir;
           }
         }

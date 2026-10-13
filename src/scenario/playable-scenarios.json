@@ -78,6 +78,17 @@
       "default": false,
       "sessionSetupVisible": true,
       "source": "scenarios/katl-08"
+    },
+    {
+      "id": "katl-fma",
+      "airportIcao": "KATL",
+      "airportName": "Hartsfield-Jackson Atlanta Intl",
+      "label": "Hartsfield-Jackson Atlanta Intl — FMA Alerting Bench",
+      "configLabel": "FMA Test (08R/09L)",
+      "activeRunwayId": "08R",
+      "default": false,
+      "sessionSetupVisible": true,
+      "source": "scenarios/katl-fma"
     }
   ]
 }

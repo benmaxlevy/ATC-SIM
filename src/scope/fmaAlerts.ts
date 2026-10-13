@@ -105,8 +105,8 @@ export function observeFmaAlertRuntime(
     if (!aircraft || !track || !plan) continue;
     const assignment = resolveFmaRunwayAssignment(
       [
-        plan.scratchpads?.[0] || track.manualSp1 || "",
-        plan.scratchpads?.[1] || track.manualSp2 || "",
+        plan.scratchpads?.[0] || track.manualSp1 || track.sp1 || "",
+        plan.scratchpads?.[1] || track.manualSp2 || track.sp2 || "",
       ],
       amz,
       amz.runwayAliases,
@@ -138,8 +138,8 @@ export function observeFmaAlertRuntime(
       tracked: track.tracked === true && track.unassociated !== true,
       arrivalAirportId: getAircraftDestination(world, aircraft),
       scratchpads: [
-        plan.scratchpads?.[0] || track.manualSp1 || "",
-        plan.scratchpads?.[1] || track.manualSp2 || "",
+        plan.scratchpads?.[0] || track.manualSp1 || track.sp1 || "",
+        plan.scratchpads?.[1] || track.manualSp2 || track.sp2 || "",
       ],
       observation: {
         xNm: observed.xNm,

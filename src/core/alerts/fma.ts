@@ -94,11 +94,20 @@ export function resolveFmaRunwayAssignment(
     const value = normalize(raw);
     const matches = new Set<string>();
     for (const member of amz.members) {
-      if (
-        value === normalize(member.runwayId) ||
-        (aliases[member.runwayId] ?? []).some((a) => value === normalize(a))
-      )
-        matches.add(member.runwayId);
+      const mNorm = normalize(member.runwayId);
+      const mBare = mNorm.replace(/^0+/, "");
+      const isMatch =
+        value === mNorm ||
+        value === mBare ||
+        value === `I${mNorm}` ||
+        value === `I${mBare}` ||
+        value === `R${mNorm}` ||
+        value === `R${mBare}` ||
+        (aliases[member.runwayId] ?? []).some((a) => {
+          const aNorm = normalize(a);
+          return value === aNorm || value === aNorm.replace(/^0+/, "");
+        });
+      if (isMatch) matches.add(member.runwayId);
     }
     for (const runwayId of matches) recognized.push(runwayId);
   }

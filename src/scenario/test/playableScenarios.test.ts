@@ -92,6 +92,17 @@ test("T04-24/T04-28/T05-14 AC1/AC2 — shipped inventory lists and loads KDEM sc
       sessionSetupVisible: true,
       source: "scenarios/katl-08",
     },
+    {
+      id: "katl-fma",
+      airportIcao: "KATL",
+      airportName: "Hartsfield-Jackson Atlanta Intl",
+      label: "Hartsfield-Jackson Atlanta Intl — FMA Alerting Bench",
+      configLabel: "FMA Test (08R/09L)",
+      activeRunwayId: "08R",
+      default: false,
+      sessionSetupVisible: true,
+      source: "scenarios/katl-fma",
+    },
   ]);
   expect(loadPlayableScenario("kdem-09").activeRunwayId).toBe("09");
   expect(loadPlayableScenario("kdem-ils09").activeRunwayId).toBe("09");
@@ -125,12 +136,13 @@ test("T05-14 AC2/AC3 — listPlayableAirports and listConfigurationsForAirport r
   ]);
 
   const katlConfigs = listConfigurationsForAirport("KATL");
-  expect(katlConfigs).toHaveLength(2);
+  expect(katlConfigs).toHaveLength(3);
   expect(
     katlConfigs.map((c) => ({ id: c.id, configLabel: c.configLabel, rwy: c.activeRunwayId })),
   ).toEqual([
     { id: "katl", configLabel: "West Flow (RWY 26R)", rwy: "26R" },
     { id: "katl-08", configLabel: "East Flow (RWY 08L)", rwy: "08L" },
+    { id: "katl-fma", configLabel: "FMA Test (08R/09L)", rwy: "08R" },
   ]);
 
   // Case insensitive ICAO lookup
