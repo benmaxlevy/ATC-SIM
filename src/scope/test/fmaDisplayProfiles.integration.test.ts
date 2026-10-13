@@ -25,6 +25,8 @@ import {
   selectDcbPrefOwner,
   selectDcbPrefSlot,
   serializeDcbPref,
+  cancelDcbPrefOwner,
+  cancelPreviewArea,
   beginPrefUserEntry,
   beginPrefNameEntry,
   formatPreviewReadout,
@@ -137,15 +139,28 @@ function saveAsFmaSet(
 }
 
 describe("T02-232 complete disjoint FMA display profiles", () => {
-  test("USER roll stages without applying, and pointer commit cancels typed entry", () => {
+  test("USER click latches depressed, supports typing or rolling while armed, and commits", () => {
     const view = createScopeView();
     const initial = displaySnapshot(view);
-    beginPrefUserEntry(view.preview, 1);
-    view.preview.buffer = "FM";
-    const cell = findDcbCell(
+
+    // 1. Initial state: unlatched / not pressed
+    let cell = findDcbCell(
       renderPref(view, () => undefined),
       "pref-user",
     );
+    expect(cell?.props?.pressed).toBe(false);
+
+    // 2. Click arms / latches USER cell (pressed === true) and begins preview entry
+    (cell?.props?.onClick as () => void)();
+    expect(view.preview.phase).toBe("entry");
+    expect(view.preview.armed).toEqual({ type: "prefUserEntry" });
+    cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    expect(cell?.props?.pressed).toBe(true);
+
+    // 3. Rolling wheel while armed stages candidate and keeps cell pressed
     const onWheel = cell?.props?.onWheel as (event: {
       deltaY: number;
       preventDefault(): void;
@@ -156,13 +171,37 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     expect(view.dcbPref.menuOwner).toBe("FSSTARS");
     expect(view.preview.phase).toBe("idle");
     expect(displaySnapshot(view)).toEqual(initial);
-    const rerenderedCell = findDcbCell(
+    cell = findDcbCell(
       renderPref(view, () => undefined),
       "pref-user",
     );
-    (rerenderedCell?.props?.onClick as () => void)();
+    expect(cell?.props?.pressed).toBe(true);
+
+    // 4. Click again commits candidate and unlatches (pressed === false)
+    (cell?.props?.onClick as () => void)();
     expect(view.dcbPref.menuOwner).toBe("FMA");
     expect(view.dcbPref.ownerCandidate).toBeNull();
+    cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    expect(cell?.props?.pressed).toBe(false);
+
+    // 5. Esc cancels armed/candidate state and unlatches
+    (cell?.props?.onClick as () => void)();
+    expect(view.preview.phase).toBe("entry");
+    cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    expect(cell?.props?.pressed).toBe(true);
+    cancelDcbPrefOwner(view);
+    cancelPreviewArea(view.preview);
+    cell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-user",
+    );
+    expect(cell?.props?.pressed).toBe(false);
   });
 
   test("v3 and owners-only storage preserve normal records and migrate FMA names", () => {

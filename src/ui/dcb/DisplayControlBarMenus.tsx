@@ -39,6 +39,7 @@ import {
   beginDcbPrefSaveAs,
   beginPrefNameEntry,
   beginPrefUserEntry,
+  isPrefUserEntry,
   saveDcbPref,
   selectDcbPrefSlot,
   setDcbDock,
@@ -2902,6 +2903,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           kind="spinner"
           ariaLabel={`Preference user ${view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}; roll to choose and click to commit`}
           dataDcb="pref-user"
+          pressed={isPrefUserEntry(view.preview) || view.dcbPref.ownerCandidate !== null}
           onDragDelta={(delta) => {
             if (delta === 0) return;
             if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
@@ -2921,6 +2923,9 @@ export function renderPref(view: ScopeView, onChange: () => void) {
               if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
               commitDcbPrefOwner(view);
               persistDcbPref(view, prefStore());
+              afterCell(onChange);
+            } else if (isPrefUserEntry(view.preview)) {
+              stageDcbPrefOwner(view, view.dcbPref.menuOwner === "FSSTARS" ? "FMA" : "FSSTARS");
               afterCell(onChange);
             } else {
               beginPrefUserEntry(view.preview, Date.now());
