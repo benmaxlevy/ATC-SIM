@@ -2805,8 +2805,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
   const currentSlots = dcbPrefSlots(view);
   const selectedSlot = currentSlots[view.dcbPref.activeIndex] ?? null;
   const isTableFull = currentSlots.every((slot) => slot !== null);
-  const saveAsDisabled =
-    isTableFull || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed);
+  const saveAsDisabled = isTableFull;
   return (
     <div className="dcb-main-grid" data-dcb-layout="PREF">
       {Array.from({ length: 16 }, (_, colIdx) => {
@@ -2933,7 +2932,6 @@ export function renderPref(view: ScopeView, onChange: () => void) {
             }
           }}
         >
-          <span className="dcb-cell-line">USER</span>
           <span className="dcb-cell-line">
             {view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}
           </span>
@@ -3031,9 +3029,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           }}
         >
           <span className="dcb-cell-line">SAVE</span>
-          <span className="dcb-cell-line">
-            {view.dcbPref.menuOwner === "FMA" ? "AS AMZ ID" : "AS"}
-          </span>
+          <span className="dcb-cell-line">AS</span>
         </DcbCell>
       </div>
       <div

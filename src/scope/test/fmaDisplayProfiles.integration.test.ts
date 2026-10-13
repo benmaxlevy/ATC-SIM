@@ -26,6 +26,7 @@ import {
   selectDcbPrefSlot,
   serializeDcbPref,
   cancelDcbPrefOwner,
+  cancelDcbPrefSaveAs,
   cancelPreviewArea,
   beginPrefUserEntry,
   beginPrefNameEntry,
@@ -143,12 +144,14 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     const view = createScopeView();
     const initial = displaySnapshot(view);
 
-    // 1. Initial state: unlatched / not pressed
+    // 1. Initial state: unlatched / not pressed, renders only the current user
     let cell = findDcbCell(
       renderPref(view, () => undefined),
       "pref-user",
     );
     expect(cell?.props?.pressed).toBe(false);
+    expect(renderToStaticMarkup(createElement(() => cell as never))).toContain("FSSTARS");
+    expect(renderToStaticMarkup(createElement(() => cell as never))).not.toContain("USER");
 
     // 2. Click arms / latches USER cell (pressed === true) and begins preview entry
     (cell?.props?.onClick as () => void)();
@@ -160,7 +163,7 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
     );
     expect(cell?.props?.pressed).toBe(true);
 
-    // 3. Rolling wheel while armed stages candidate and keeps cell pressed
+    // 3. Rolling wheel while armed stages candidate and keeps cell pressed showing candidate
     const onWheel = cell?.props?.onWheel as (event: {
       deltaY: number;
       preventDefault(): void;
@@ -176,6 +179,8 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
       "pref-user",
     );
     expect(cell?.props?.pressed).toBe(true);
+    expect(renderToStaticMarkup(createElement(() => cell as never))).toContain("FMA");
+    expect(renderToStaticMarkup(createElement(() => cell as never))).not.toContain("USER");
 
     // 4. Click again commits candidate and unlatches (pressed === false)
     (cell?.props?.onClick as () => void)();
@@ -186,8 +191,24 @@ describe("T02-232 complete disjoint FMA display profiles", () => {
       "pref-user",
     );
     expect(cell?.props?.pressed).toBe(false);
+    expect(renderToStaticMarkup(createElement(() => cell as never))).toContain("FMA");
 
-    // 5. Esc cancels armed/candidate state and unlatches
+    // 5. SAVE AS is enabled alone regardless of owner/confirmation: click arms naming
+    const saveAsCell = findDcbCell(
+      renderPref(view, () => undefined),
+      "pref-save-as",
+    );
+    expect(saveAsCell?.props?.disabled).toBe(false);
+    const children = saveAsCell?.props?.children as Array<{ props?: { children?: unknown } }>;
+    expect(children?.map((c) => c?.props?.children)).toEqual(["SAVE", "AS"]);
+    (saveAsCell?.props?.onClick as () => void)();
+    expect(view.preview.phase).toBe("entry");
+    expect(view.preview.armed).toEqual({ type: "saveAsPref" });
+    expect(view.dcbPref.pendingSaveAs).toBe(true);
+
+    // 6. Esc cancels armed/candidate state and unlatches
+    cancelDcbPrefSaveAs(view);
+    cancelPreviewArea(view.preview);
     (cell?.props?.onClick as () => void)();
     expect(view.preview.phase).toBe("entry");
     cell = findDcbCell(

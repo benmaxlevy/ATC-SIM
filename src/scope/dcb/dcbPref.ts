@@ -961,7 +961,7 @@ export function saveDcbPref(view: ScopeView, storage?: DcbPrefStorage): void {
  * clears this before any persist.
  */
 export function beginDcbPrefSaveAs(view: ScopeView): void {
-  view.dcbPref.pendingSaveAs = view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed;
+  view.dcbPref.pendingSaveAs = true;
 }
 
 export function cancelDcbPrefSaveAs(view: ScopeView): void {
