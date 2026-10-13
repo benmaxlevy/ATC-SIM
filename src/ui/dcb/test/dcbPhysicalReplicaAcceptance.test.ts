@@ -269,7 +269,8 @@ test("AC7 — DCB follows fixed button widths without horizontal width cap", () 
   const source = readFileSync(new URL("../DisplayControlBar.tsx", import.meta.url), "utf8");
   expect(css).toMatch(/\.dcb\s*\{[^}]*width:\s*max-content;/);
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 80px;/);
-  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow-x:\s*auto;/);
+  expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*visible;/);
+  expect(css).toMatch(/\.dcb-base\s*\{[^}]*overflow-x:\s*auto;/);
   expect(css).toMatch(/\.dcb-submenu\s*\{[^}]*width:\s*max-content;/);
   expect(css).toMatch(/\.dcb-submenu\s*>\s*\.dcb-main-grid,[\s\S]*?width:\s*max-content/);
   expect(source).toContain("buttonEdges");

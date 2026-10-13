@@ -125,8 +125,7 @@ body,
   gap: 1px;
   padding: 0;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   background: #000000;
   color: #00ff00;
   font-size: inherit;
@@ -707,7 +706,28 @@ html[data-dcb-cursor-trap] * {
 }
 
 .dcb-base {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.dcb-base > .dcb-main-grid,
+.dcb-base > .dcb-grid {
+  width: max-content;
+  min-width: max-content;
+  height: 100%;
+}
+
+.dcb-vertical .dcb-base {
   display: contents;
+}
+
+.dcb-base[data-dcb-submenu-open="true"] {
+  overflow: hidden;
 }
 
 .dcb-base[data-dcb-submenu-open="true"] .dcb-cell {
