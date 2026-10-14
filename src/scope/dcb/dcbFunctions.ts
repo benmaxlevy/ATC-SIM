@@ -42,7 +42,7 @@ import {
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
-import { applyFmaAmzPreference, applyLastNormalDcbPref, getFmaMaximumPtlSeconds } from "./dcbPref";
+import { applyFmaAmzWithWarning, applyLastNormalDcbPref, getFmaMaximumPtlSeconds } from "./dcbPref";
 import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
@@ -70,10 +70,10 @@ export const DCB_GROUP_SUBMENU_SLOT_START = DCB_QUICK_MAP_COUNT + 1;
 export const DCB_GROUP_SLOT_COUNT = DCB_QUICK_MAP_COUNT + DCB_MAP_SLOT_COUNT;
 
 /** Optional layout for `*D` / `M` tokens when map groups are loaded. */
-export interface VideoMapTokenLayout {
+export type VideoMapTokenLayout = {
   groups?: VideoMapGroupSet;
   selectedGroupId?: string | null;
-}
+};
 
 export function snapRrInterval(nm: number): RrIntervalNm {
   for (const step of RR_KEYBOARD_INTERVALS_NM) {
@@ -818,18 +818,7 @@ export function commitFmaConfirmation(view: ScopeView): boolean {
           : (view.fmaAmzs[0]?.id ?? null);
     if (amzId) view.fmaDefaultAmzId = amzId;
     configureFmaSurveillanceView(view, true, amzId);
-    const hadPref = amzId ? applyFmaAmzPreference(view, amzId) : false;
-    if (amzId) {
-      view.fmaPtlSeconds = Math.min(
-        view.fmaPtlSeconds,
-        getFmaMaximumPtlSeconds(view.fmaAmzs, amzId),
-      );
-    }
-    if (!hadPref) {
-      view.lastWarning = "NO PREF SET FOUND";
-    } else {
-      view.lastWarning = null;
-    }
+    applyFmaAmzWithWarning(view, amzId);
   } else {
     configureFmaSurveillanceView(view, false, null);
     applyLastNormalDcbPref(view);
@@ -945,10 +934,8 @@ export function toggleFmaNtzAll(view: ScopeView): void {
   const disabled = new Set(view.fmaAlertInhibit.ntzIds ?? []);
   const allEnabled = activeAmz.ntzs.every((n) => !disabled.has(n.id));
   if (allEnabled) {
-    // Disable all
     for (const n of activeAmz.ntzs) disabled.add(n.id);
   } else {
-    // Enable all
     for (const n of activeAmz.ntzs) disabled.delete(n.id);
   }
   view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabled };
@@ -971,15 +958,6 @@ export function commitFmaAmzSwitch(view: ScopeView, targetAmzId: string): boolea
   }
   configureFmaSurveillanceView(view, true, targetAmzId);
   view.fmaDefaultAmzId = targetAmzId;
-  const hadPref = applyFmaAmzPreference(view, targetAmzId);
-  view.fmaPtlSeconds = Math.min(
-    view.fmaPtlSeconds,
-    getFmaMaximumPtlSeconds(view.fmaAmzs, targetAmzId),
-  );
-  if (!hadPref) {
-    view.lastWarning = "NO PREF SET FOUND";
-  } else {
-    view.lastWarning = null;
-  }
+  applyFmaAmzWithWarning(view, targetAmzId);
   return true;
 }

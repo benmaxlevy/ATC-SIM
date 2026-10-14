@@ -23,8 +23,8 @@
  */
 
 import { RANGE_PRESETS_NM, type RangeNm } from "../camera";
-import { defaultSelectedMapGroupId, snapRrInterval, type RrIntervalNm } from "./dcbFunctions";
-import { cloneCharSizes, type CharSizes } from "../fonts";
+import { defaultSelectedMapGroupId, snapRrInterval } from "./dcbFunctions";
+import { cloneCharSizes } from "../fonts";
 import { type HistoryDotCount } from "../history";
 import {
   LEADER_LENGTH_STEPS_PX,
@@ -32,7 +32,7 @@ import {
   type LeaderDir,
   type LeaderLengthPx,
 } from "../leader";
-import { cloneBrite, type BriteLevel, type BriteState } from "../palette";
+import { cloneBrite, type BriteLevel } from "../palette";
 import { PTL_MINUTE_PRESETS, type PtlMinutes } from "../ptl";
 import {
   createScopeView,
@@ -45,27 +45,16 @@ import {
   configureFmaSurveillanceView,
   setDcbDock,
   setSurveillanceMode,
-  type DwellMode,
-  type FmaAmzPreference,
   type ScopeView,
   type VolLevel,
 } from "../scopeView";
 import { GI_SLOT_COUNT, SSA_FILTER_FIELDS, type SsaVisibility } from "../ssa";
-import {
-  DEFAULT_ATPA_STATE,
-  DEFAULT_TPA_STATE,
-  TPA_RADIUS_NM,
-  type AtpaState,
-  type TpaRadiusNm,
-  type TpaState,
-} from "../tpa";
-import { resolveSurveillancePref, type SurveillanceMode } from "../surveillance";
+import { DEFAULT_ATPA_STATE, DEFAULT_TPA_STATE, TPA_RADIUS_NM, type TpaRadiusNm } from "../tpa";
+import { resolveSurveillancePref } from "../surveillance";
 import { cloneWxLevels, type WxLevels } from "../wx";
 import { canonicalSystemListId, ensureSystemListPlacement } from "../systemLists";
 import type { FmaAmz } from "../../core/alerts/fmaGeometry";
 import { cancelPreviewArea } from "../previewArea";
-
-export type DcbDock = "TOP" | "LEFT" | "RIGHT" | "BOTTOM";
 
 /** Same 36 px thickness as the horizontal bar (two text rows + 1 px gutters). */
 export const DCB_THICKNESS_PX = 36;
@@ -117,107 +106,27 @@ export const DCB_PREF_SCHEMA_VERSION = 4 as const;
 /** Readable PREF body versions. A mere v1 or v2 file is not corrupt. */
 export const DCB_PREF_READABLE_VERSIONS: readonly number[] = [1, 2, 3, 4];
 
-export type DcbPrefStorage = Pick<Storage, "getItem" | "setItem">;
+import type {
+  DcbDock,
+  DcbPrefBody,
+  DcbPrefFile,
+  DcbPrefOwner,
+  DcbPrefRuntime,
+  DcbPrefSlot,
+  DcbPrefStorage,
+  FmaAmzPreference,
+} from "./types";
 
-/** Display snapshot body. Not settings/theme. Not NAS PREF. */
-export interface DcbPrefBody {
-  dcbDock: DcbDock;
-  rangeNm: RangeNm;
-  centerEastNm: number;
-  centerNorthNm: number;
-  ringIntervalNm: RrIntervalNm;
-  rangeRingEastNm: number;
-  rangeRingNorthNm: number;
-  mapVisibility: Record<string, boolean>;
-  selectedMapGroupId?: string | null;
-  mapListMode?: "GEO" | "CURRENT";
-  geoMapsListOn?: boolean;
-  currentMapsListOn?: boolean;
-  dcbVisible?: boolean;
-  modeCVisible?: boolean;
-  altitudeFilter?: { minHundreds: number; maxHundreds: number };
-  associatedAltitudeFilter?: { minHundreds: number; maxHundreds: number };
-  mciEnabled?: boolean;
-  beaconSelectCodes?: string[];
-  caControllerOwnedPairsInhibited?: boolean;
-  showRunway: boolean;
-  showLocalizer: boolean;
-  showRings: boolean;
-  showCoastline: boolean;
-  showCompassRose?: boolean;
-  defaultLeaderDir: LeaderDir;
-  leaderLengthPx: LeaderLengthPx;
-  historyDotCount: HistoryDotCount;
-  lastHistoryDotCount: Exclude<HistoryDotCount, 0>;
-  ptlMinutes: PtlMinutes;
-  ptlOwn: boolean;
-  ptlOn: boolean;
-  brite: BriteState;
-  charSizes: CharSizes;
-  ssaFilter: SsaVisibility;
-  giFilterVisible: boolean[];
-  tpa: TpaState;
-  atpa: AtpaState;
-  /** SITE display mode only. Per-track PTL / TPA are not stored. */
-  surveillanceMode: SurveillanceMode;
-  wxLevels: WxLevels;
-  vol?: VolLevel;
-  modeFsl?: unknown;
-  amzPreferences?: Record<string, FmaAmzPreference>;
-  /** Last locally selected AMZ; validated against the scenario flow when rebound. */
-  selectedFmaAmzId?: string;
-  historyRateSec?: number;
-  dwellMode?: DwellMode;
-  cursorHome?: boolean;
-  cursorSpeed?: number;
-  systemLists?: Record<string, { visible: boolean; x: number; y: number; maxLines: number }>;
-}
-
-export interface DcbPrefSlot {
-  name: string;
-  body: DcbPrefBody;
-}
-
-export interface DcbPrefFile {
-  v: typeof DCB_PREF_SCHEMA_VERSION;
-  icao: string;
-  activeIndex?: number;
-  normalActiveIndex?: number;
-  slots: Array<DcbPrefSlot | null>;
-  /** Last successfully selected or saved normal display profile. */
-  normalProfile?: DcbPrefBody;
-  amzPreferences?: Record<string, FmaAmzPreference>;
-  selectedFmaAmzId?: string;
-  owners?: { FSSTARS: Array<DcbPrefSlot | null>; FMA: Array<DcbPrefSlot | null> };
-}
-
-export type DcbPrefOwner = "FSSTARS" | "FMA";
-
-/** Live PREF machine on ScopeView. Slots are the trainer 32-set table. */
-export interface DcbPrefRuntime {
-  icao: string;
-  slots: Array<DcbPrefSlot | null>;
-  activeIndex: number;
-  restore: DcbPrefBody | null;
-  /** FMA-specific part of the in-menu RESTORE snapshot; never persisted. */
-  restoreAmzProfile: FmaAmzPreference | null;
-  /** Pre-menu lastApplied identity to restore on RESTORE; never persisted. */
-  restoreLastApplied: { owner: DcbPrefOwner; index: number; name: string } | null;
-  /** Pre-menu FMA mode and active AMZ to restore on RESTORE; never persisted. */
-  restoreFmaSurveillance: { enabled: boolean; selectedAmzId: string | null } | null;
-  /** Last successfully selected or saved normal display profile, independent of FMA edits. */
-  normalProfile: DcbPrefBody | null;
-  /** True while SAVE AS waits for a preview-area name. Not persisted. */
-  pendingSaveAs: boolean;
-  /** Temporary Figure 4-1 owner selection. Never persisted. */
-  menuOwner: DcbPrefOwner;
-  ownerCandidate: DcbPrefOwner | null;
-  ownerConfirmed: boolean;
-  /** Stable reserved FMA namespace. `slots` remains the normal namespace for compatibility. */
-  fmaSlots: Array<DcbPrefSlot | null>;
-  lastApplied: { owner: DcbPrefOwner; index: number; name: string } | null;
-  lastNormal: { index: number; name: string } | null;
-}
+export type {
+  DcbDock,
+  DcbPrefBody,
+  DcbPrefFile,
+  DcbPrefOwner,
+  DcbPrefRuntime,
+  DcbPrefSlot,
+  DcbPrefStorage,
+  FmaAmzPreference,
+};
 
 const DOCKS: readonly DcbDock[] = ["TOP", "LEFT", "RIGHT", "BOTTOM"];
 
@@ -613,7 +522,7 @@ export function applyDcbPref(view: ScopeView, body: DcbPrefBody): void {
     view.historyDotCount = body.historyDotCount;
     view.historyEnabled = body.historyDotCount > 0;
   }
-  if (isHistoryCount(body.lastHistoryDotCount)) {
+  if (isHistoryCount(body.lastHistoryDotCount) && (body.lastHistoryDotCount as number) !== 0) {
     view.lastHistoryDotCount = body.lastHistoryDotCount;
   }
   if (isPtlMinutes(body.ptlMinutes)) {
@@ -870,7 +779,6 @@ export function selectDcbPrefSlot(view: ScopeView, index: number): void {
       view.lastWarning = "ILL PREFSET";
       return;
     }
-    // Validate the complete target before switching any runtime context.
     if (view.fmaSurveillance.enabled) {
       if (view.fmaSurveillance.selectedAmzId !== slot.name) {
         configureFmaSurveillanceView(view, true, slot.name);
@@ -1368,6 +1276,21 @@ export function applyFmaAmzPreference(view: ScopeView, amzId: string): boolean {
     if (index >= 0) setLastAppliedPref(view, { owner: "FMA", index, name: amzId });
   }
   return applied;
+}
+
+export function applyFmaAmzWithWarning(view: ScopeView, amzId: string | null): boolean {
+  if (!amzId) {
+    view.lastWarning = "NO PREF SET FOUND";
+    return false;
+  }
+  const hadPref = applyFmaAmzPreference(view, amzId);
+  view.fmaPtlSeconds = Math.min(view.fmaPtlSeconds, getFmaMaximumPtlSeconds(view.fmaAmzs, amzId));
+  if (!hadPref) {
+    view.lastWarning = "NO PREF SET FOUND";
+  } else {
+    view.lastWarning = null;
+  }
+  return hadPref;
 }
 
 function applyFmaAmzPreferenceValue(

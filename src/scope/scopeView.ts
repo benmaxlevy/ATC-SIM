@@ -56,8 +56,7 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
-import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcb/dcbPref";
-import type { DcbPrefBody } from "./dcb/dcbPref";
+import type { DcbDock, DcbPrefRuntime, FmaAmzPreference } from "./dcb/types";
 import {
   cancelDcbSpinner,
   idleDcbSpinner,
@@ -130,11 +129,7 @@ import {
   type FmaSurveillanceState,
   type FmaSurveillanceTick,
 } from "./fmaSurveillance";
-import {
-  applyFmaAmzPreference,
-  applyLastNormalDcbPref,
-  getFmaMaximumPtlSeconds,
-} from "./dcb/dcbPref";
+import { applyFmaAmzWithWarning, applyLastNormalDcbPref, emptyDcbPrefRuntime } from "./dcb/dcbPref";
 import type { DatablockRenderSnapshot } from "./datablock";
 import { resolveFmaFlow, type RadarSite, type Scenario } from "@scenario";
 import {
@@ -490,29 +485,7 @@ export type OperatorPrivilege = "controller" | "other";
 export type ServiceMode = "EFSL" | "FSL" | "TRNG" | "FMA" | "DSF";
 export const DEFAULT_SERVICE_MODE: ServiceMode = "FSL";
 
-/**
- * AMZ-keyed FMA display preference snapshot (TI 6191.409 §4.1, §4.1.1, §6.16.2).
- */
-export interface FmaAmzPreference {
-  amzId: string;
-  /** Complete supported workstation display profile; legacy partial fields remain readable. */
-  displayProfile?: DcbPrefBody;
-  mag?: number;
-  ptlSeconds?: number;
-  fmaBrite?: {
-    amz?: number;
-    ntz?: number;
-    rwy?: number;
-    ref?: number;
-  };
-  runwayLeaders?: Record<string, number>;
-  enabledNtzIds?: string[];
-  voiceLevel?: number;
-  rangeNm?: number;
-  centerEastNm?: number;
-  centerNorthNm?: number;
-  mapVisibility?: Record<string, boolean>;
-}
+export type { FmaAmzPreference };
 
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
 export type VolLevel = (typeof VOL_STEPS)[number];
@@ -891,12 +864,7 @@ export function rebindFmaScenarioAmzs(
     const targetAmzId =
       resolvedAmzId === undefined && stillValid ? currentAmzId! : view.fmaDefaultAmzId;
     configureFmaSurveillanceView(view, true, targetAmzId);
-    if (!applyFmaAmzPreference(view, targetAmzId)) view.lastWarning = "NO PREF SET FOUND";
-    else view.lastWarning = null;
-    view.fmaPtlSeconds = Math.min(
-      view.fmaPtlSeconds,
-      getFmaMaximumPtlSeconds(view.fmaAmzs, targetAmzId),
-    );
+    applyFmaAmzWithWarning(view, targetAmzId);
   } else if (wasEnabled) {
     configureFmaSurveillanceView(view, false, null);
     applyLastNormalDcbPref(view);

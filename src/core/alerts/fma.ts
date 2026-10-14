@@ -5,70 +5,38 @@
  */
 import type { FmaAmz, FmaMember } from "./fmaGeometry";
 import type { FmaPoint } from "../../scenario/procedures/types";
+import type {
+  FmaAssignment,
+  FmaPrimaryCondition,
+  FmaAlertTrackInput,
+  FmaAlertInhibit,
+  FmaAlertEpisode,
+  FmaAlertTrackResult,
+  FmaAlertState,
+  FmaAlertEvaluation,
+} from "./fmaTypes";
 
-export type FmaAssignment =
-  | { kind: "RUNWAY"; runwayId: string }
-  | { kind: "NONE" }
-  | { kind: "AMBIGUOUS"; runwayIds: string[] };
-export type FmaPrimaryCondition =
-  "NTZ_WARNING" | "SURVEILLANCE_LOST" | "RUNWAY_ERROR" | "NTZ_CAUTION";
-export interface FmaAlertTrackInput {
-  aircraftId: string;
-  associated: boolean;
-  tracked: boolean;
-  arrivalAirportId?: string | null;
-  scratchpads: readonly (string | undefined)[];
-  /** Ground track, clockwise from true north, from the latest report. */
-  report: {
-    xNm: number;
-    yNm: number;
-    groundTrackDeg: number;
-    speedKt: number;
-    altitudeFt?: number;
-    reportedAtSimMs: number;
-  };
-  /** Last actual sensor report used for stabilization/N OZ qualification. */
-  observation?: FmaAlertTrackInput["report"];
-  /** Expected sensor cadence, used only to identify a real observation gap. */
-  reportPeriodMs?: number;
-  surveillance: "CURRENT" | "NOM" | "CST" | "FROZEN";
+export type {
+  FmaAssignment,
+  FmaPrimaryCondition,
+  FmaAlertTrackInput,
+  FmaAlertInhibit,
+  FmaAlertEpisode,
+  FmaAlertTrackResult,
+  FmaAlertState,
+  FmaAlertEvaluation,
+};
+
+const SECONDS_PER_HOUR = 3600;
+
+function resolveReportGapMs(reportPeriodMs?: number): number {
+  return Math.max(2000, (reportPeriodMs ?? 1000) * 1.5);
 }
-export interface FmaAlertInhibit {
-  aircraftIds?: ReadonlySet<string>;
-  ntzIds?: ReadonlySet<string>;
-}
-export interface FmaAlertEpisode {
-  id: string;
-  condition: FmaPrimaryCondition;
-  onsetSimMs: number;
-  amzId: string;
-  runwayIds: string[];
-  ntzIds: string[];
-  evidence: string[];
-}
-export interface FmaAlertTrackResult {
-  aircraftId: string;
-  assignment: FmaAssignment;
-  observedRunwayId: string | null;
-  primary: FmaPrimaryCondition | null;
-  episode: FmaAlertEpisode | null;
-  onset: boolean;
-  supplementary: { nom: boolean };
-  diagnostic?: string;
-}
-export interface FmaAlertState {
-  amzId: string | null;
-  nextEpisode: number;
-  alignment: Map<string, { runwayId: string; sinceMs: number; lastReportMs: number }>;
-  assignedNozHistory: Map<string, { runwayId: string; seen: boolean }>;
-  episodes: Map<string, FmaAlertEpisode>;
-  lastReportMs: Map<string, number>;
-}
-export interface FmaAlertEvaluation {
-  state: FmaAlertState;
-  tracks: Map<string, FmaAlertTrackResult>;
-  outlines: Map<string, "RED" | "YELLOW">;
-  diagnostics: string[];
+
+function pruneInactiveKeys<V>(map: Map<string, V>, activeIds: ReadonlySet<string>): void {
+  for (const id of [...map.keys()]) {
+    if (!activeIds.has(id)) map.delete(id);
+  }
 }
 
 export function createFmaAlertState(amzId: string | null = null): FmaAlertState {
@@ -262,7 +230,7 @@ export function evaluateFmaAlerts(input: {
       next.lastReportMs.set(track.aircraftId, observation.reportedAtSimMs);
       const observed = altitudeEligible ? runwayObservation(amz, observation) : [];
       const prior = next.alignment.get(track.aircraftId);
-      const reportGapMs = Math.max(2000, (track.reportPeriodMs ?? 1000) * 1.5);
+      const reportGapMs = resolveReportGapMs(track.reportPeriodMs);
       const continuous =
         observed.length === 1 &&
         prior?.runwayId === observed[0]!.runwayId &&
@@ -280,7 +248,7 @@ export function evaluateFmaAlerts(input: {
       } else next.alignment.delete(track.aircraftId);
     } else {
       const prior = next.alignment.get(track.aircraftId);
-      const reportGapMs = Math.max(2000, (track.reportPeriodMs ?? 1000) * 1.5);
+      const reportGapMs = resolveReportGapMs(track.reportPeriodMs);
       if (
         input.invalidReportIds?.has(track.aircraftId) ||
         (prior && input.nowSimMs - prior.lastReportMs > reportGapMs)
@@ -336,11 +304,11 @@ export function evaluateFmaAlerts(input: {
                 {
                   xNm:
                     report.xNm +
-                    ((report.speedKt * amz.monitoring.cautionHorizonS) / 3600) *
+                    ((report.speedKt * amz.monitoring.cautionHorizonS) / SECONDS_PER_HOUR) *
                       Math.sin((report.groundTrackDeg * Math.PI) / 180),
                   yNm:
                     report.yNm +
-                    ((report.speedKt * amz.monitoring.cautionHorizonS) / 3600) *
+                    ((report.speedKt * amz.monitoring.cautionHorizonS) / SECONDS_PER_HOUR) *
                       Math.cos((report.groundTrackDeg * Math.PI) / 180),
                 },
                 n.polygon.points,
@@ -430,11 +398,9 @@ export function evaluateFmaAlerts(input: {
         : {}),
     });
   }
-  for (const id of [...next.alignment.keys()]) if (!activeIds.has(id)) next.alignment.delete(id);
-  for (const id of [...next.assignedNozHistory.keys()])
-    if (!activeIds.has(id)) next.assignedNozHistory.delete(id);
-  for (const id of [...next.episodes.keys()]) if (!activeIds.has(id)) next.episodes.delete(id);
-  for (const id of [...next.lastReportMs.keys()])
-    if (!activeIds.has(id)) next.lastReportMs.delete(id);
+  pruneInactiveKeys(next.alignment, activeIds);
+  pruneInactiveKeys(next.assignedNozHistory, activeIds);
+  pruneInactiveKeys(next.episodes, activeIds);
+  pruneInactiveKeys(next.lastReportMs, activeIds);
   return { state: next, tracks: result, outlines, diagnostics };
 }

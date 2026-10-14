@@ -15,25 +15,34 @@
 import type { FmaAlertEpisode, FmaPrimaryCondition } from "@core";
 import { formatCallsignSpeech } from "../pilot/telephony";
 
-export interface FmaSpeechItem {
+export const FMA_SPEECH_PRIORITY = {
+  WARNING: 0,
+  CAUTION: 1,
+  ACTION: 2,
+} as const;
+
+export type FmaSpeechPriority = (typeof FMA_SPEECH_PRIORITY)[keyof typeof FMA_SPEECH_PRIORITY];
+
+export type FmaSpeechItem = {
   readonly id: string;
+  readonly seq?: number;
   readonly episodeId: string | null;
   readonly aircraftId: string | null;
   readonly kind: "alert" | "action";
-  readonly priority: number; // 0 = warning (highest), 1 = caution, 2 = action (Test)
+  readonly priority: number;
   readonly text: string;
-  readonly volume: number; // 0.1 to 1.0
+  readonly volume: number;
   readonly condition?: FmaPrimaryCondition;
-}
+};
 
-export interface FmaSpeechStatus {
+export type FmaSpeechStatus = {
   readonly supported: boolean;
   readonly voiceAvailable: boolean;
   readonly activeUtteranceText: string | null;
   readonly queueLength: number;
-}
+};
 
-export interface SpeechSynthesisUtteranceLike {
+export type SpeechSynthesisUtteranceLike = {
   text: string;
   volume: number;
   voice: SpeechSynthesisVoiceLike | null;
@@ -41,17 +50,17 @@ export interface SpeechSynthesisUtteranceLike {
   onend: ((ev?: Event | unknown) => void) | null;
   onerror: ((ev?: Event | unknown) => void) | null;
   onstart: ((ev?: Event | unknown) => void) | null;
-}
+};
 
-export interface SpeechSynthesisVoiceLike {
+export type SpeechSynthesisVoiceLike = {
   readonly default: boolean;
   readonly lang: string;
   readonly localService: boolean;
   readonly name: string;
   readonly voiceURI: string;
-}
+};
 
-export interface SpeechSynthesisLike {
+export type SpeechSynthesisLike = {
   readonly speaking: boolean;
   readonly pending: boolean;
   readonly paused: boolean;
@@ -61,16 +70,16 @@ export interface SpeechSynthesisLike {
   cancel(): void;
   addEventListener?(type: string, listener: EventListenerOrEventListenerObject): void;
   removeEventListener?(type: string, listener: EventListenerOrEventListenerObject): void;
-}
+};
 
-export interface FmaSpeechControllerOptions {
+export type FmaSpeechControllerOptions = {
   synthesis?: SpeechSynthesisLike | null;
   createUtterance?: (text: string) => SpeechSynthesisUtteranceLike;
   initialVoiceLevel?: number;
   onStatusChange?: (status: FmaSpeechStatus) => void;
-}
+};
 
-export interface FmaSpeechController {
+export type FmaSpeechController = {
   enqueueEpisode(episode: FmaAlertEpisode, callsign: string, aircraftId?: string | null): void;
   cancelEpisode(episodeId: string): void;
   cancelAircraft(aircraftId: string): void;
@@ -81,7 +90,7 @@ export interface FmaSpeechController {
   subscribeStatus(listener: (status: FmaSpeechStatus) => void): () => void;
   clearQueue(): void;
   dispose(): void;
-}
+};
 
 const SUFFIX_MAP: Record<FmaPrimaryCondition, string> = {
   NTZ_WARNING: "WARNING",
@@ -191,7 +200,7 @@ export function createFmaSpeechController(
 
   function pumpQueue(): void {
     if (disposed || !synth) return;
-    if (activeItem !== null) return; // Currently speaking an item
+    if (activeItem !== null) return;
     if (queue.length === 0) {
       notifyStatus();
       return;
@@ -206,11 +215,9 @@ export function createFmaSpeechController(
       }
     }
 
-    // Sort queue by priority: warnings (0) < cautions (1) < actions (2)
-    // Stable by insertion id
     queue.sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority;
-      return parseInt(a.id, 10) - parseInt(b.id, 10);
+      return (a.seq ?? parseInt(a.id, 10)) - (b.seq ?? parseInt(b.id, 10));
     });
 
     const item = queue.shift()!;
@@ -255,13 +262,46 @@ export function createFmaSpeechController(
     }
   }
 
+  function stopActiveUtterance(): void {
+    const cancelingUtterance = activeUtterance;
+    activeItem = null;
+    activeUtterance = null;
+    if (cancelingUtterance) {
+      cancelingUtterance.onend = null;
+      cancelingUtterance.onerror = null;
+    }
+    if (synth) {
+      try {
+        synth.cancel();
+      } catch {
+        // Non-blocking teardown; browser SpeechSynthesis cancellation must not throw
+      }
+    }
+  }
+
+  function enqueueTestUtterance(): void {
+    const seq = nextItemId++;
+    const item: FmaSpeechItem = {
+      id: String(seq),
+      seq,
+      episodeId: null,
+      aircraftId: null,
+      kind: "action",
+      priority: FMA_SPEECH_PRIORITY.ACTION,
+      text: "Test",
+      volume: voiceLevel / 10,
+    };
+    queue.push(item);
+    notifyStatus();
+    pumpQueue();
+  }
+
   return {
     enqueueEpisode(episode: FmaAlertEpisode, callsign: string, aircraftId?: string | null): void {
       if (disposed) return;
       // NOM is silent
       if (!SUFFIX_MAP[episode.condition]) return;
 
-      // Deduplicate: do not enqueue if already active or pending in queue
       if (activeItem?.episodeId === episode.id) return;
       if (queue.some((item) => item.episodeId === episode.id)) return;
 
@@ -269,12 +309,14 @@ export function createFmaSpeechController(
         episode.condition === "NTZ_WARNING" ||
         episode.condition === "SURVEILLANCE_LOST" ||
         episode.condition === "RUNWAY_ERROR";
-      const priority = isWarning ? 0 : 1; // 0 for warnings, 1 for caution
+      const priority = isWarning ? FMA_SPEECH_PRIORITY.WARNING : FMA_SPEECH_PRIORITY.CAUTION;
       const text = formatFmaAlertUtterance(callsign, episode.condition);
       const volume = voiceLevel / 10;
 
+      const seq = nextItemId++;
       const item: FmaSpeechItem = {
-        id: String(nextItemId++),
+        id: String(seq),
+        seq,
         episodeId: episode.id,
         aircraftId: aircraftId ?? null,
         kind: "alert",
@@ -291,25 +333,10 @@ export function createFmaSpeechController(
 
     cancelEpisode(episodeId: string): void {
       if (disposed) return;
-      // Remove from pending queue
       queue = queue.filter((item) => item.episodeId !== episodeId);
 
-      // If active utterance is for this episode, cancel it in browser
       if (activeItem?.episodeId === episodeId) {
-        const cancelingUtterance = activeUtterance;
-        activeItem = null;
-        activeUtterance = null;
-        if (cancelingUtterance) {
-          cancelingUtterance.onend = null;
-          cancelingUtterance.onerror = null;
-        }
-        if (synth) {
-          try {
-            synth.cancel();
-          } catch {
-            // Browser teardown must not throw
-          }
-        }
+        stopActiveUtterance();
         notifyStatus();
         pumpQueue();
       } else {
@@ -321,20 +348,7 @@ export function createFmaSpeechController(
       if (disposed) return;
       queue = queue.filter((item) => item.aircraftId !== aircraftId);
       if (activeItem?.aircraftId === aircraftId) {
-        const cancelingUtterance = activeUtterance;
-        activeItem = null;
-        activeUtterance = null;
-        if (cancelingUtterance) {
-          cancelingUtterance.onend = null;
-          cancelingUtterance.onerror = null;
-        }
-        if (synth) {
-          try {
-            synth.cancel();
-          } catch {
-            // Ignore
-          }
-        }
+        stopActiveUtterance();
         notifyStatus();
         pumpQueue();
       } else {
@@ -347,35 +361,13 @@ export function createFmaSpeechController(
       if (!Number.isFinite(level) || level < 1 || level > 10) return;
       voiceLevel = Math.round(level);
       if (speakTest) {
-        const item: FmaSpeechItem = {
-          id: String(nextItemId++),
-          episodeId: null,
-          aircraftId: null,
-          kind: "action",
-          priority: 2,
-          text: "Test",
-          volume: voiceLevel / 10,
-        };
-        queue.push(item);
-        notifyStatus();
-        pumpQueue();
+        enqueueTestUtterance();
       }
     },
 
     voiceTest(): void {
       if (disposed) return;
-      const item: FmaSpeechItem = {
-        id: String(nextItemId++),
-        episodeId: null,
-        aircraftId: null,
-        kind: "action",
-        priority: 2,
-        text: "Test",
-        volume: voiceLevel / 10,
-      };
-      queue.push(item);
-      notifyStatus();
-      pumpQueue();
+      enqueueTestUtterance();
     },
 
     getVoiceLevel(): number {
@@ -393,20 +385,7 @@ export function createFmaSpeechController(
       if (disposed) return;
       queue = [];
       if (activeItem) {
-        const cancelingUtterance = activeUtterance;
-        activeItem = null;
-        activeUtterance = null;
-        if (cancelingUtterance) {
-          cancelingUtterance.onend = null;
-          cancelingUtterance.onerror = null;
-        }
-        if (synth) {
-          try {
-            synth.cancel();
-          } catch {
-            // Ignore
-          }
-        }
+        stopActiveUtterance();
       }
       notifyStatus();
     },

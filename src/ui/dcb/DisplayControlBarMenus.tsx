@@ -117,7 +117,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
   const ptlArmed = ptlSpinnerArmed(view);
   return (
     <div className="dcb-main-grid" data-dcb-layout="AUX">
-      {/* Col 1 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="vol"
@@ -157,7 +156,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 2 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="hist"
@@ -235,7 +233,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 3 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="cursor-home"
@@ -250,7 +247,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 4 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="csr-spd"
@@ -265,7 +261,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 5 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="map-uncor"
@@ -280,7 +275,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 6 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="uncor"
@@ -294,7 +288,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 7 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="beacon-mode2"
@@ -309,7 +302,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 8 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="rtqc"
@@ -323,7 +315,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 9 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="mcp"
@@ -337,7 +328,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 10 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-top"
@@ -377,7 +367,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 11 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-right"
@@ -417,7 +406,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 12 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ptl-len"
@@ -457,7 +445,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 13 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ptl-own"
@@ -497,7 +484,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 14 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dwell-on"
@@ -529,7 +515,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 15 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="tpa"
@@ -554,7 +539,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 16 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="tsas"
@@ -581,7 +565,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 17 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="shift"
@@ -633,7 +616,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
 
   return (
     <div className="dcb-main-grid" data-dcb-layout="FMA_AUX">
-      {/* Col 1: VOL (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="vol"
@@ -673,7 +655,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 2: HISTORY (r1) / H_RATE (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="hist"
@@ -849,7 +830,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 10: DCB TOP / DCB LEFT */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-top"
@@ -897,7 +877,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 11: DCB RIGHT / DCB BOTTOM */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-right"
@@ -945,7 +924,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 12: AMZ (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-amz"
@@ -1018,7 +996,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         )}
       </div>
 
-      {/* Col 13: MAG (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-mag"
@@ -1055,7 +1032,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 14: VOICE (r1) / VOICE TEST (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-voice"
@@ -1120,7 +1096,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 15: PTL LNTH (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-ptl-len"
@@ -1157,7 +1132,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 16: NTZ 1 (r1) / NTZ 2 (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-ntz-1"
@@ -1227,7 +1201,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         )}
       </div>
 
-      {/* Col 17: NTZ 3 (r1) / NTZ ALL (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-ntz-3"
@@ -1287,7 +1260,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 18: Runway 1 leader (r1) / Runway 2 leader (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-rwy-1"
@@ -1415,7 +1387,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         )}
       </div>
 
-      {/* Col 19: Runway 3 leader (r1) / Runway 4 leader (r2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="fma-rwy-3"
@@ -1543,7 +1514,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         )}
       </div>
 
-      {/* Col 20: DWELL (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dwell-on"
@@ -1583,7 +1553,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 21: TPA/ATPA (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="tpa"
@@ -1608,7 +1577,6 @@ export function renderFmaAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 22: SHIFT (rowSpan 2) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="shift"
@@ -1787,7 +1755,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
   const allOn = SSA_FILTER_FIELDS.every((f) => view.ssaFilter[f]);
   return (
     <div className="dcb-main-grid" data-dcb-layout="SSA_FILTER">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-all"
@@ -1836,7 +1803,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 2 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-time"
@@ -1882,7 +1848,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 3 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-status"
@@ -1918,7 +1883,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 4 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-radar"
@@ -1944,7 +1908,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 5 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-spc"
@@ -1970,7 +1933,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 6 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-range"
@@ -2016,7 +1978,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 7 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-filter-line"
@@ -2052,7 +2013,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 8 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-airport"
@@ -2078,7 +2038,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 9 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-tt"
@@ -2104,7 +2063,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 10 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-ql"
@@ -2130,7 +2088,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 11 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-con-cpl"
@@ -2156,7 +2113,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 12 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="crda"
@@ -2182,7 +2138,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 13 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
@@ -2224,7 +2179,6 @@ export function renderGiSlotCell(view: ScopeView, onChange: () => void, slot: nu
 export function renderGiFilter(view: ScopeView, onChange: () => void) {
   return (
     <div className="dcb-main-grid" data-dcb-layout="GI_FILTER">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-main"
@@ -2254,7 +2208,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 1)}
       </div>
 
-      {/* Col 2 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-2"
@@ -2276,7 +2229,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 3)}
       </div>
 
-      {/* Col 3 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-4"
@@ -2298,7 +2250,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 5)}
       </div>
 
-      {/* Col 4 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-6"
@@ -2320,7 +2271,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 7)}
       </div>
 
-      {/* Col 5 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-8"
@@ -2342,7 +2292,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 9)}
       </div>
 
-      {/* Col 6 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-10"
@@ -2370,7 +2319,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
 export function renderMaps(view: ScopeView, onChange: () => void) {
   return (
     <div className="dcb-main-grid" data-dcb-layout="MAPS">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
@@ -2423,7 +2371,6 @@ export function renderMaps(view: ScopeView, onChange: () => void) {
         );
       })}
 
-      {/* Col 18 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="geo-maps"
@@ -3224,7 +3171,6 @@ export function renderModeMenu(view: ScopeView, onChange: () => void) {
         </div>
       )}
 
-      {/* DONE button */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"

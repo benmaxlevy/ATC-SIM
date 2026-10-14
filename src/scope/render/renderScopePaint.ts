@@ -1105,6 +1105,7 @@ function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
   if (view.fmaRunwayLeaders && view.fmaRunwayLeaders.size > 0) {
     const sp1 = (td?.manualSp1 || td?.sp1 || "").trim().toUpperCase();
     const sp2 = (td?.manualSp2 || td?.sp2 || "").trim().toUpperCase();
+    const activeAmz = view.fmaAmzs?.find((a) => a.id === view.fmaSurveillance?.selectedAmzId);
     for (const [rwy, dir] of view.fmaRunwayLeaders.entries()) {
       if (dir === null || dir === undefined) continue;
       const rUpper = rwy.toUpperCase();
@@ -1119,7 +1120,6 @@ function trackLeaderDir(view: ScopeView, aircraftId: string): LeaderDir {
       if (matchesSp(sp1) || matchesSp(sp2)) {
         return dir;
       }
-      const activeAmz = view.fmaAmzs?.find((a) => a.id === view.fmaSurveillance?.selectedAmzId);
       if (activeAmz?.runwayAliases?.[rwy]) {
         for (const alias of activeAmz.runwayAliases[rwy]) {
           const aUpper = alias.toUpperCase();
@@ -1224,11 +1224,18 @@ function alertGlyphsForTrack(args: {
   return glyphs;
 }
 
-interface Field0AlertState {
+type Field0AlertState = {
   text: string;
   requiresBlink: boolean;
   color: string;
-}
+};
+
+const FMA_PRIMARY_FIELD0_TEXT: Record<string, string> = {
+  NTZ_WARNING: "NTZ",
+  SURVEILLANCE_LOST: "CST",
+  RUNWAY_ERROR: "RWY",
+  NTZ_CAUTION: "NTZ",
+};
 
 /** Existing renderer alert state projected into physical Field 0. */
 function field0AlertState(
@@ -1260,22 +1267,12 @@ function field0AlertState(
   const fma = view.fmaAlertResults.get(ac.id);
   const episode = fma?.episode;
   const warning = Boolean(episode && episode.condition !== "NTZ_CAUTION");
-  const fmaText = fma?.primary
-    ? fma.primary === "NTZ_WARNING"
-      ? "NTZ"
-      : fma.primary === "SURVEILLANCE_LOST"
-        ? "CST"
-        : fma.primary === "RUNWAY_ERROR"
-          ? "RWY"
-          : fma.primary === "NTZ_CAUTION"
-            ? "NTZ"
-            : null
-    : null;
+  const fmaText = fma?.primary ? (FMA_PRIMARY_FIELD0_TEXT[fma.primary] ?? null) : null;
   const nom = fma?.supplementary.nom ? "NOM" : null;
   const existing = [hasLa ? "LA" : null, hasCa ? "CA" : null].filter(Boolean);
   const isRedAlert = warning || hasLa || caSeverity != null || (mciActive && !mciInhibited);
   return {
-    text: [...[fmaText, nom].filter(Boolean), ...existing].join("/"),
+    text: [fmaText, nom, ...existing].filter(Boolean).join("/"),
     color: isRedAlert
       ? PALETTE.alert
       : fma?.primary === "NTZ_CAUTION" || nom

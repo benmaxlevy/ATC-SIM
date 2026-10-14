@@ -94,11 +94,11 @@ export function liveSiteLabel(view: ScopeView): string {
   return formatDcbSiteLabel(liveSiteMode(view));
 }
 
-export interface DisplayControlBarProps {
+export type DisplayControlBarProps = {
   view: ScopeView;
   onChange: () => void;
   world?: Parameters<typeof applyDcbLeaderDir>[1];
-}
+};
 
 function preventButtonFocus(event: MouseEvent<HTMLButtonElement>): void {
   event.preventDefault();
@@ -398,7 +398,7 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="dwell"]'), spinnerArmed(view, "DWELL"));
 }
 
-export interface DcbCellProps {
+export type DcbCellProps = {
   ariaLabel: string;
   children: ReactNode;
   kind?: DcbCellKind;
@@ -531,7 +531,7 @@ export interface DcbCellProps {
   dataMapSlot?: number;
   dataGiSlot?: number;
   dataSiteId?: string;
-}
+};
 
 export function DcbCell({
   ariaLabel,
@@ -641,7 +641,7 @@ export function DcbCell({
       }}
       onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
         if (isDragging.current && dragStartY.current !== null && onDragDelta) {
-          const dy = dragStartY.current - event.clientY; // Up is positive
+          const dy = dragStartY.current - event.clientY;
           accumulatedDy.current += dy;
           dragStartY.current = event.clientY;
           const STEP_PX = 8;
@@ -664,7 +664,7 @@ export function DcbCell({
             event.currentTarget.releasePointerCapture(event.pointerId);
           }
         } catch {
-          // ignore
+          // Non-blocking pointer capture release
         }
       }}
       onPointerCancel={() => {

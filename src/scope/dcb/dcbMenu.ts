@@ -99,7 +99,7 @@ export type DcbSpinnerCell =
 
 export type SpinnerCommittedValue = string | number | null;
 
-export interface DcbSpinnerState {
+export type DcbSpinnerState = {
   armed: boolean;
   cell: DcbSpinnerCell | null;
   buffer: string;
@@ -110,14 +110,14 @@ export interface DcbSpinnerState {
   initialPtlOn?: boolean;
   onCancel?: () => void;
   onCommit?: (cell: DcbSpinnerCell, value: SpinnerCommittedValue) => void;
-}
+};
 
 /** Structural host so this module stays DOM-free and does not import scopeView. */
-export interface DcbMenuHost {
+export type DcbMenuHost = {
   dcbMenu: DcbMenu;
   dcbMenuParent?: "MAIN" | "AUX";
   dcbSpinner: DcbSpinnerState;
-}
+};
 
 export function idleDcbSpinner(): DcbSpinnerState {
   return { armed: false, cell: null, buffer: "", initialValue: null };
@@ -144,7 +144,7 @@ export function isFmaDcbSpinnerCell(cell: DcbSpinnerCell | null): boolean {
   );
 }
 
-interface SpinnerHostCandidate {
+type SpinnerHostCandidate = {
   camera?: { rangeNm?: number };
   ringIntervalNm?: number;
   rrIntervalNm?: number;
@@ -173,7 +173,7 @@ interface SpinnerHostCandidate {
   fmaSurveillance?: { enabled: boolean; selectedAmzId: string | null };
   fmaAmzs?: Array<{ id: string; label?: string; monitoring?: { maximumPtlS?: number } }>;
   lastWarning?: string | null;
-}
+};
 
 function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | null {
   const h = host as unknown as SpinnerHostCandidate;
@@ -247,10 +247,10 @@ function getSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell): number | 
   }
 }
 
-export interface DcbSpinnerArmOptions {
+export type DcbSpinnerArmOptions = {
   onCancel?: () => void;
   onCommit?: (cell: DcbSpinnerCell, value: SpinnerCommittedValue) => void;
-}
+};
 
 function setSpinnerCellValue(host: DcbMenuHost, cell: DcbSpinnerCell, val: number): void {
   const h = host as unknown as SpinnerHostCandidate;
@@ -578,15 +578,7 @@ export function commitDcbSpinner(host: DcbMenuHost): boolean {
   } else if (buffer.length > 0) {
     const isStrictInteger = /^-?\d+$/.test(buffer);
     const isStrictFloat = /^-?\d+(\.\d+)?$/.test(buffer);
-    const isFma =
-      cell === "MAG" ||
-      cell === "FMA_PTL" ||
-      cell === "FMA_VOICE" ||
-      cell.startsWith("FMA_LDR_") ||
-      cell === "BRITE_NTZ" ||
-      cell === "BRITE_AMZ" ||
-      cell === "BRITE_RWY" ||
-      cell === "BRITE_REF";
+    const isFma = isFmaDcbSpinnerCell(cell);
 
     const isRunwayLeaderMultiChar = cell.startsWith("FMA_LDR_") && buffer.length !== 1;
     if (

@@ -17,13 +17,13 @@
 
 import { nmToScreen, pxPerNm, screenToNm, type ScopeCamera, type ScopeViewSize } from "./camera";
 
-export interface ScopeProjectionOptions {
+export type ScopeProjectionOptions = {
   enabled?: boolean;
   mag?: number;
   courseTrueDeg?: number;
-}
+};
 
-export interface ScopeProjection {
+export type ScopeProjection = {
   readonly enabled: boolean;
   readonly mag: number;
   readonly courseTrueDeg: number;
@@ -40,7 +40,7 @@ export interface ScopeProjection {
 
   /** Unproject magnified display NM coordinate back to true world NM coordinate. */
   unprojectWorld(eastNm: number, northNm: number): { eastNm: number; northNm: number };
-}
+};
 
 /** Pure forward geographic projection from world coordinate to magnified coordinate about camera center. */
 export function projectWorldPoint(
@@ -65,13 +65,11 @@ export function projectWorldPoint(
 
   const u = pEast * alongEast + pNorth * alongNorth;
   const v = pEast * crossEast + pNorth * crossNorth;
-
-  const uProj = u;
   const vProj = v * mag;
 
   return {
-    eastNm: cameraCenterEastNm + uProj * alongEast + vProj * crossEast,
-    northNm: cameraCenterNorthNm + uProj * alongNorth + vProj * crossNorth,
+    eastNm: cameraCenterEastNm + u * alongEast + vProj * crossEast,
+    northNm: cameraCenterNorthNm + u * alongNorth + vProj * crossNorth,
   };
 }
 
@@ -96,10 +94,8 @@ export function unprojectWorldPoint(
   const pEast = projEastNm - cameraCenterEastNm;
   const pNorth = projNorthNm - cameraCenterNorthNm;
 
-  const uProj = pEast * alongEast + pNorth * alongNorth;
+  const u = pEast * alongEast + pNorth * alongNorth;
   const vProj = pEast * crossEast + pNorth * crossNorth;
-
-  const u = uProj;
   const v = vProj / mag;
 
   return {
@@ -255,18 +251,15 @@ export function applyProjectedPanDelta(
   if (scale === 0) {
     return;
   }
-  const fmaOpts: ScopeProjectionOptions | undefined = isView
-    ? {
-        enabled: Boolean(
-          target.fmaSurveillance.enabled &&
-          target.fmaAmzs?.some((a) => a.id === target.fmaSurveillance.selectedAmzId),
-        ),
-        mag: target.fmaMag,
-        courseTrueDeg:
-          target.fmaAmzs?.find((a) => a.id === target.fmaSurveillance.selectedAmzId)
-            ?.courseTrueDeg ?? 0,
-      }
-    : fma;
+  let fmaOpts: ScopeProjectionOptions | undefined = fma;
+  if (isView) {
+    const activeAmz = target.fmaAmzs?.find((a) => a.id === target.fmaSurveillance.selectedAmzId);
+    fmaOpts = {
+      enabled: Boolean(target.fmaSurveillance.enabled && activeAmz),
+      mag: target.fmaMag,
+      courseTrueDeg: activeAmz?.courseTrueDeg ?? 0,
+    };
+  }
 
   const proj = createScopeProjection(camera, viewSize, fmaOpts);
   if (!proj.isMagnified) {

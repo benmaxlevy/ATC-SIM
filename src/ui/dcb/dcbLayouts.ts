@@ -1,6 +1,6 @@
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
-export interface MainDcbLayoutCell {
+export type MainDcbLayoutCell = {
   id: string;
   row: 1 | 2;
   column: number;
@@ -8,7 +8,7 @@ export interface MainDcbLayoutCell {
   kind: DcbCellKind;
   label: string;
   value?: string;
-}
+};
 
 /**
  * Analog: CRC STARS MAIN DCB physical column grammar (R07).

@@ -18,15 +18,15 @@ export type ApproachType = "ILS" | "LOC" | "RNAV" | "VOR" | "NDB";
 export const DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD = 350;
 export const DEFAULT_GS_BEAM_FULL_WIDTH_DEG = 1.4;
 
-export interface GeoPoint {
+export type GeoPoint = {
   xNm: number;
   yNm: number;
   /** Present after a real CIFP/NASR import. Omit on KDEM demo. */
   latDeg?: number;
   lonDeg?: number;
-}
+};
 
-export interface Navaid extends GeoPoint {
+export type Navaid = GeoPoint & {
   /** Uppercase [A-Z0-9]{2,8} (ILS DME ids may be 7 chars, e.g. IDEMDME). */
   id: string;
   kind: NavaidKind;
@@ -45,14 +45,14 @@ export interface Navaid extends GeoPoint {
   tchFt?: number;
   pairedWith?: string;
   note?: string;
-}
+};
 
-export interface NavFix extends GeoPoint {
+export type NavFix = GeoPoint & {
   id: string;
   kind: NavFixKind;
   formedBy?: string;
   note?: string;
-}
+};
 
 export type AltConstraint =
   | { type: "AT"; altitudeFt: number }
@@ -64,69 +64,69 @@ export type SpeedConstraint =
   | { type: "AT_OR_ABOVE"; speedKt: number }
   | { type: "AT_OR_BELOW"; speedKt: number };
 
-export interface StarLeg {
+export type StarLeg = {
   fixId: string;
   altConstraint?: AltConstraint;
   speedConstraint?: SpeedConstraint;
-}
+};
 
-export interface StarTransition {
+export type StarTransition = {
   id: string;
   name: string;
   runwayId?: string;
   runways?: string[];
   legs: StarLeg[];
-}
+};
 
-export interface StarProcedure {
+export type StarProcedure = {
   id: string;
   name: string;
   transitions: StarTransition[];
   common: StarLeg[];
   termination: "VECTORS";
-}
+};
 
-export interface SidLeg {
+export type SidLeg = {
   fixId: string;
   altConstraint?: AltConstraint;
   speedConstraint?: SpeedConstraint;
-}
+};
 
-export interface SidRunwayTransition {
+export type SidRunwayTransition = {
   runwayId: string; // e.g. "27" or "09"
   initialHeadingDeg?: number;
   initialClimbFt?: number;
   legs: SidLeg[];
-}
+};
 
-export interface SidEnrouteTransition {
+export type SidEnrouteTransition = {
   id: string; // e.g. "NORMA", "SNARF", "OCTTA"
   name: string;
   legs?: SidLeg[];
   runwayTransitions?: SidRunwayTransition[];
-}
+};
 
-export interface SidProcedure {
+export type SidProcedure = {
   id: string; // e.g. "DEM1"
   name: string; // e.g. "DEMO ONE DEPARTURE"
   runwayTransitions?: SidRunwayTransition[];
   common: SidLeg[];
   enrouteTransitions?: SidEnrouteTransition[];
   initialClimbFt?: number; // default top altitude before enroute climb (e.g. 5000)
-}
+};
 
-export interface MissedApproach {
+export type MissedApproach = {
   headingDeg: number;
   climbToFt: number;
   directFixId?: string;
-}
+};
 
 /**
  * Published approach. Loc/GS numbers used for flying come from here plus
  * threshold `RW27`. Antenna xy on ILS navaids is documentation / future map;
  * GS origin stays the threshold unless a catalog `originNote` documents a shift.
  */
-export interface ApproachProcedure {
+export type ApproachProcedure = {
   id: string;
   type: ApproachType;
   runway: string;
@@ -151,7 +151,7 @@ export interface ApproachProcedure {
   gsInterceptAltFt?: number;
   daFt?: number;
   missed?: MissedApproach;
-}
+};
 
 /**
  * Adapted ATPA approach volume. Threshold and inbound course come from the
@@ -159,7 +159,7 @@ export interface ApproachProcedure {
  * Minima are per-volume JSON (basic radar only). Always present on the catalog
  * as an array; `[]` when the facility omits `files.atpaVolumes`.
  */
-export interface AtpaVolume {
+export type AtpaVolume = {
   id: string;
   approachId: string;
   enabled: boolean;
@@ -174,34 +174,34 @@ export interface AtpaVolume {
   /** Optional wake adaptation; basic/reduced fields remain valid without it. */
   wakeAdaptation?: AtpaWakeAdaptation;
   note?: string;
-}
+};
 
 export type AtpaWakeMatrix = Readonly<
   Partial<Record<CwtWakeCategory, Readonly<Partial<Record<CwtWakeCategory, number>>>>>
 >;
 
-export interface AtpaWakeAdaptation {
+export type AtpaWakeAdaptation = {
   enabled: boolean;
   /** Separation used when the required category relationship is unavailable. */
   nowgtSeparationNm: number;
   /** FAA leader-row/follower-column values; blank cells are intentionally omitted. */
   matrix: AtpaWakeMatrix;
-}
+};
 
 /** Catalog-owned FMA trainer adaptation. Coordinates are ENU NM. */
-export interface FmaAdaptation {
+export type FmaAdaptation = {
   enabled?: boolean;
   /** Catalog authority for the trainer-authored geometry stored below. */
   source?: "TRAINER_AUTHORED";
   sourceNote?: string;
   groups?: FmaGroupAdaptation[];
-}
+};
 
-export interface FmaPoint {
+export type FmaPoint = {
   xNm: number;
   yNm: number;
-}
-export interface FmaGroupAdaptation {
+};
+export type FmaGroupAdaptation = {
   id: string;
   label?: string;
   approachIds?: string[];
@@ -241,9 +241,9 @@ export interface FmaGroupAdaptation {
     alignmentHalfWidthNm: number;
     maximumPtlS: number;
   }>;
-}
+};
 
-export interface ProcedureCatalog {
+export type ProcedureCatalog = {
   schemaVersion: 1;
   airportId: string;
   name: string;
@@ -260,14 +260,14 @@ export interface ProcedureCatalog {
   sids: SidProcedure[];
   atpaVolumes: AtpaVolume[];
   fmaOverrides?: FmaAdaptation;
-}
+};
 
 /** Parser/voice projection of a catalog airport; separate from fixes/navaids. */
-export interface CatalogAirport {
+export type CatalogAirport = {
   icao: string;
   name: string;
   aliases: string[];
-}
+};
 
 export function catalogAirport(catalog: ProcedureCatalog): CatalogAirport {
   return {

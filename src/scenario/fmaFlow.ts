@@ -2,11 +2,11 @@ import { deriveFmaAmzs } from "../core/alerts/fmaGeometry";
 import type { FmaAmz } from "../core/alerts/fmaGeometry";
 import type { ProcedureCatalog } from "./procedures/types";
 
-export interface FmaFlowResolution {
+export type FmaFlowResolution = {
   amzs: FmaAmz[];
   selectedAmzId: string | null;
   diagnostics: string[];
-}
+};
 
 /**
  * Resolve all authored AMZs independently of the scenario's active runway flow.

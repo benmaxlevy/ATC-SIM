@@ -46,7 +46,7 @@ import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
 import { createEventSounds, type EventSounds } from "./event-sounds";
 import { createFmaSpeechController, type FmaSpeechController } from "./fma-speech";
 
-export interface AppDeps {
+export type AppDeps = {
   speech: SpeechPort;
   /** When omitted, starts empty; boot should pass `createWorldFromScenario`. */
   world?: World;
@@ -74,9 +74,9 @@ export interface AppDeps {
   vfrRequestQueue?: VfrRequestQueue;
   /** Injected in tests. Browser default speaks FMA alarms via SpeechSynthesis. */
   fmaSpeech?: FmaSpeechController;
-}
+};
 
-export interface AppHandles {
+export type AppHandles = {
   speech: SpeechPort;
   setSpeechPort(port: SpeechPort): boolean;
   speechSettings: SpeechSettingsController;
@@ -101,7 +101,7 @@ export interface AppHandles {
   fmaSpeech: FmaSpeechController;
   /** Replace the session world after explicit setup confirmation. */
   replaceWorld(next: World): void;
-}
+};
 
 function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
@@ -416,6 +416,7 @@ export function createApp(deps: AppDeps): AppHandles {
       });
       vfrRequestQueue.scheduleFromWorld(world);
       world.vfrRequestQueue = vfrRequestQueue;
+      fmaSpeech.clearQueue();
     },
   };
 }

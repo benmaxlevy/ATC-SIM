@@ -65,11 +65,11 @@ import { SimControls } from "./controls/sim-controls";
 import { SessionSetup as SessionSetupDialog } from "./controls/session-setup";
 import { FlightPlanModal } from "./controls/FlightPlanModal";
 
-export interface ShellProps {
+export type ShellProps = {
   app: AppHandles;
   scenario: Scenario;
   scopeView: ScopeView;
-}
+};
 
 export function FmaAudioStatus({ enabled, status }: { enabled: boolean; status: FmaSpeechStatus }) {
   if (!enabled || (status.supported && status.voiceAvailable)) return null;
@@ -323,7 +323,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             const cssY = event.clientY - rect.top;
             const relocationActive = previewRelocateListId(scopeView.preview) !== null;
 
-            // Check if pointer is on any visible system list title header
             if (scopeView.activeListRects && scopeView.activeListRects.length > 0) {
               const lineH = 16;
               const hitListId = hitTestSystemListTitle(

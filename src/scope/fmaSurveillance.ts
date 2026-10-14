@@ -9,20 +9,20 @@ import type { SurveillanceReport } from "./surveillance";
 export type FmaSourceStatus = "UNKNOWN" | "SELECTED_FAST_SOURCE_LOST" | "ALL_SOURCES_LOST";
 export type FmaSurveillanceCode = "CURRENT" | "NOM" | "CST" | "FROZEN";
 
-export interface FmaSensorStatus {
+export type FmaSensorStatus = {
   /** null means this TCW has no adapted/known fast-update source. */
   selectedFastSourceId: string | null;
   /** null means other-source health is unknown; [] means none are reporting. */
   reportingSourceIds: readonly string[] | null;
-}
+};
 
-export interface FmaSensorFixture {
+export type FmaSensorFixture = {
   sensorStatus: FmaSensorStatus;
   /** Complete FMA-only reports for this update; [] intentionally means a gap. */
   reports: readonly SurveillanceReport[];
-}
+};
 
-export interface FmaRetainedTrack {
+export type FmaRetainedTrack = {
   aircraftId: string;
   /** Last valid sensor report, never an Aircraft/World pose. */
   report: Readonly<SurveillanceReport>;
@@ -32,9 +32,9 @@ export interface FmaRetainedTrack {
   sourceStatus: FmaSourceStatus;
   code: FmaSurveillanceCode;
   frozen: boolean;
-}
+};
 
-export interface FmaSurveillanceState {
+export type FmaSurveillanceState = {
   enabled: boolean;
   selectedAmzId: string | null;
   sensorStatus: Readonly<FmaSensorStatus> | null;
@@ -44,7 +44,7 @@ export interface FmaSurveillanceState {
   /** Timestamp tombstones prevent a released pose being re-ingested next tick. */
   reportWatermarks: ReadonlyMap<string, number>;
   lastUpdatedSimMs: number | null;
-}
+};
 
 export const FMA_SURVEILLANCE_DEFAULTS = Object.freeze({
   lossS: 10,
@@ -150,10 +150,10 @@ export function setFmaSensorFixture(
   };
 }
 
-function isUsableReport(report: SurveillanceReport, nowSimMs: number): boolean {
+export function isUsableSurveillanceReport(report: SurveillanceReport, nowSimMs: number): boolean {
   return (
     typeof report.aircraftId === "string" &&
-    report.aircraftId.length > 0 &&
+    report.aircraftId.trim().length > 0 &&
     Number.isFinite(report.xNm) &&
     Number.isFinite(report.yNm) &&
     Number.isFinite(report.headingDeg) &&
@@ -170,6 +170,8 @@ function isUsableReport(report: SurveillanceReport, nowSimMs: number): boolean {
     (report.paint === "fused-puck" || report.paint === "multi-rect" || report.paint === "site-rect")
   );
 }
+
+const isUsableReport = isUsableSurveillanceReport;
 
 function sourceStatusFor(
   status: Readonly<FmaSensorStatus> | null,
@@ -193,7 +195,10 @@ function sourceStatusFor(
   return "SELECTED_FAST_SOURCE_LOST";
 }
 
-function coastReport(report: SurveillanceReport, elapsedLossS: number): SurveillanceReport {
+function coastReport(
+  report: Readonly<SurveillanceReport>,
+  elapsedLossS: number,
+): SurveillanceReport {
   const seconds = Math.max(0, elapsedLossS);
   const distanceNm = (report.speedKt * seconds) / 3600;
   const headingRad = (report.headingDeg * Math.PI) / 180;
@@ -204,7 +209,7 @@ function coastReport(report: SurveillanceReport, elapsedLossS: number): Surveill
   };
 }
 
-export interface FmaSurveillanceTick {
+export type FmaSurveillanceTick = {
   nowSimMs: number;
   reports: readonly SurveillanceReport[];
   /** Existing aircraft/track identity only; never supplies a display pose. */
@@ -213,7 +218,7 @@ export interface FmaSurveillanceTick {
   associatedTrackIds?: ReadonlySet<string>;
   lossS?: number;
   coastOutS?: number;
-}
+};
 
 /**
  * Advance retained display state from simulation time and valid reports.
@@ -273,9 +278,7 @@ export function advanceFmaSurveillance(
         : currentSourceStatus === "SELECTED_FAST_SOURCE_LOST"
           ? "NOM"
           : "CURRENT";
-    const coastedReport = Object.freeze(
-      coastReport(previous.report as SurveillanceReport, Math.min(ageS, coastOutS)),
-    );
+    const coastedReport = Object.freeze(coastReport(previous.report, Math.min(ageS, coastOutS)));
     next.set(
       id,
       Object.freeze({

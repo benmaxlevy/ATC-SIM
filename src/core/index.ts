@@ -20,7 +20,8 @@
  * landing stub (`despawnLandedAircraft`, `acceptTowerHandoff`);
  * MSAW lite (`evaluateMsaw`, `MSAW_RED_BELOW_FT`, `msawFloorFt`);
  * seeded PRNG (`mulberry32`);
- * inbound handoff (`TrackHandoff`, `isRadioCommandAllowed`, `acceptInboundHandoff`).
+ * inbound handoff (`TrackHandoff`, `isRadioCommandAllowed`, `acceptInboundHandoff`);
+ * FMA final monitor aid (`evaluateFmaAlerts`, `deriveFmaAmzs`, AMZ/NTZ geometry and monitoring).
  *
  * Import rule: `@core` depends on nothing in `src/*` except itself.
  */
@@ -364,7 +365,6 @@ export {
   FMA_MONITORING_DEFAULTS,
   FMA_PARALLEL_COURSE_TOLERANCE_DEG,
 } from "./alerts/fmaGeometry";
-export type { FmaAmz, FmaDiagnostic, FmaMember, FmaNtz, FmaPolygon } from "./alerts/fmaGeometry";
 export {
   createFmaAlertState,
   evaluateFmaAlerts,
@@ -373,6 +373,11 @@ export {
   resolveFmaRunwayAssignment,
 } from "./alerts/fma";
 export type {
+  FmaAmz,
+  FmaDiagnostic,
+  FmaMember,
+  FmaNtz,
+  FmaPolygon,
   FmaAlertEpisode,
   FmaAlertEvaluation,
   FmaAlertInhibit,
@@ -381,7 +386,7 @@ export type {
   FmaAlertTrackResult,
   FmaAssignment,
   FmaPrimaryCondition,
-} from "./alerts/fma";
+} from "./alerts/fmaTypes";
 
 export type {
   LocAxis,

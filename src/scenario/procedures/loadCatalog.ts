@@ -36,6 +36,12 @@ import {
   DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD,
 } from "./types";
 import { magneticToTrueDeg } from "../../core/nav/headingFrames";
+import {
+  assertArray as assertArrayVal,
+  assertNumber as assertNumberVal,
+  assertString as assertStringVal,
+  isRecord,
+} from "../assertions";
 
 const DATA_JSON = import.meta.glob<unknown>("../data/*/*.json", {
   eager: true,
@@ -156,7 +162,7 @@ const ID_RE = /^[A-Z0-9]{2,10}$/;
 
 const REQUIRED_FILES = ["vors", "ndbs", "ils", "fixes", "procedures", "sids"] as const;
 
-export interface CatalogFileSet {
+export type CatalogFileSet = {
   catalog: unknown;
   vors: unknown;
   ndbs: unknown;
@@ -166,14 +172,7 @@ export interface CatalogFileSet {
   sids: unknown;
   /** Present only when `catalog.files.atpaVolumes` lists a file. */
   atpaVolumes?: unknown;
-}
-
-import {
-  assertArray as assertArrayVal,
-  assertNumber as assertNumberVal,
-  assertString as assertStringVal,
-  isRecord,
-} from "../assertions";
+};
 
 const assertNumber = (value: unknown, path: string): number =>
   assertNumberVal(value, path, "Catalog");

@@ -1,70 +1,13 @@
 import { magneticToTrueDeg } from "../nav/headingFrames";
+import { FT_PER_NM } from "../nav/glidepath";
 import type {
   ProcedureCatalog,
   FmaGroupAdaptation,
   FmaPoint,
 } from "../../scenario/procedures/types";
+import type { FmaDiagnostic, FmaPolygon, FmaMember, FmaNtz, FmaAmz } from "./fmaTypes";
 
-export type FmaDiagnostic = { path: string; message: string };
-export interface FmaPolygon {
-  points: FmaPoint[];
-}
-export interface FmaMember {
-  runwayId: string;
-  approachId: string;
-  threshold: FmaPoint;
-  courseTrueDeg: number;
-  noz: FmaPolygon;
-}
-export interface FmaNtz {
-  id: string;
-  leftRunwayId: string;
-  rightRunwayId: string;
-  polygon: FmaPolygon;
-}
-export interface FmaAmz {
-  id: string;
-  label: string;
-  airportId: string;
-  runwayAliases: Record<string, string[]>;
-  approachIds: string[];
-  courseTrueDeg: number;
-  members: FmaMember[];
-  boundary: FmaPolygon;
-  ntzs: FmaNtz[];
-  dimensions: {
-    captureLengthNm: number;
-    ntzWidthFt: number;
-    outerMarginNm: number;
-    departureExtensionsNm: Record<string, number>;
-  };
-  /** Physical runway segment; departureEnd is the reciprocal threshold when resolved. */
-  runwayGraphics: Array<{ runwayId: string; threshold: FmaPoint; departureEnd: FmaPoint }>;
-  courseLines: Array<{
-    runwayId: string;
-    approach: [FmaPoint, FmaPoint];
-    departure: [FmaPoint, FmaPoint];
-  }>;
-  referenceLines: Array<[FmaPoint, FmaPoint]>;
-  fixBars: Array<{
-    fixId: string;
-    runwayId: string;
-    point: FmaPoint;
-    segment: [FmaPoint, FmaPoint];
-  }>;
-  referenceSpacingFt: 200;
-  monitoring: {
-    cautionHorizonS: number;
-    surveillanceLossS: number;
-    coastOutS: number;
-    stabilizationS: number;
-    courseToleranceDeg: number;
-    alignmentHalfWidthNm: number;
-    maximumPtlS: number;
-  };
-  provenance: "DERIVED_TRAINER" | "CATALOG_ADAPTED";
-  verticalLimits?: { floorFt: number; ceilingFt: number };
-}
+export type { FmaDiagnostic, FmaPolygon, FmaMember, FmaNtz, FmaAmz };
 export const FMA_MONITORING_DEFAULTS = {
   cautionHorizonS: 10,
   surveillanceLossS: 10,
@@ -245,7 +188,7 @@ function makeAmz(
         r.threshold.xNm * Math.cos(rad(course)) - r.threshold.yNm * Math.sin(rad(course));
       return axis(a) - axis(b) || a.runwayId.localeCompare(b.runwayId);
     });
-  const ntzWidth = (adaptation?.ntzWidthFt ?? FMA_GEOMETRY_DEFAULTS.ntzWidthFt) / 6076.12;
+  const ntzWidth = (adaptation?.ntzWidthFt ?? FMA_GEOMETRY_DEFAULTS.ntzWidthFt) / FT_PER_NM;
   const capture = adaptation?.captureLengthNm ?? FMA_GEOMETRY_DEFAULTS.captureLengthNm;
   const outer = adaptation?.outerMarginNm ?? FMA_GEOMETRY_DEFAULTS.outerMarginNm;
   // The catalog reciprocal threshold is the physical runway end. The visible
@@ -273,7 +216,7 @@ function makeAmz(
     : [];
   if (!geometry)
     for (let i = 0; i < rows.length - 1; i++) {
-      const spacing = (centers[i + 1]! - centers[i]!) * 6076.12;
+      const spacing = (centers[i + 1]! - centers[i]!) * FT_PER_NM;
       if (
         !adaptation?.geometry &&
         (spacing < FMA_GEOMETRY_DEFAULTS.minSpacingFt ||
@@ -283,10 +226,10 @@ function makeAmz(
           path,
           message: `adjacent runway spacing ${Math.round(spacing)} ft outside trainer interval`,
         };
-      if (!adaptation?.geometry && ntzWidth * 6076.12 >= spacing)
+      if (!adaptation?.geometry && ntzWidth * FT_PER_NM >= spacing)
         return {
           path,
-          message: `NTZ width ${Math.round(ntzWidth * 6076.12)} ft must be narrower than adjacent course spacing ${Math.round(spacing)} ft`,
+          message: `NTZ width ${Math.round(ntzWidth * FT_PER_NM)} ft must be narrower than adjacent course spacing ${Math.round(spacing)} ft`,
         };
       const left = rows[i]!,
         right = rows[i + 1]!;
@@ -511,7 +454,7 @@ function makeAmz(
   const referenceLines: Array<[FmaPoint, FmaPoint]> = geometry?.referenceLines
     ? [...geometry.referenceLines]
     : [];
-  const feetToNm = 1 / 6076.12;
+  const feetToNm = 1 / FT_PER_NM;
   // Reference strokes follow each course at exact 200 ft offsets and are
   // clipped to that runway's approach-side NOZ. Do not overlay a solid stroke
   // on the dashed zero-offset course line or fill NTZ/departure areas.
@@ -789,8 +732,12 @@ export function deriveFmaFixtureAmzs(
       const prev = selected.at(-1)!;
       const dx = row.threshold.xNm - prev.threshold.xNm,
         dy = row.threshold.yNm - prev.threshold.yNm;
-      const cross = Math.abs(dx * Math.cos(rad(course)) - dy * Math.sin(rad(course))) * 6076.12;
-      if (cross >= 2500 && cross <= 9000) selected.push(row);
+      const cross = Math.abs(dx * Math.cos(rad(course)) - dy * Math.sin(rad(course))) * FT_PER_NM;
+      if (
+        cross >= FMA_GEOMETRY_DEFAULTS.minSpacingFt &&
+        cross <= FMA_GEOMETRY_DEFAULTS.maxSpacingFt
+      )
+        selected.push(row);
       else {
         diagnostics.push({
           path: `approaches.${prev.approachId}/${row.approachId}`,

@@ -46,19 +46,13 @@ import {
   scopeFontAsset,
   applyBrite,
   applyRrCenter,
-  armDcbSpinner,
   armPlaceCenter,
   armPlaceRangeRing,
-  beginAltitudeFilterChord,
   centerOnAirport,
-  closeDcbMenu,
-  commitDcbSpinner,
   dcbLeaderDirReadout,
-  DCB_QUICK_MAP_COUNT,
   formatDcbLdrLengthReadout,
   formatDcbRangeReadout,
   formatDcbRrReadout,
-  formatFilterBand,
   isRangeRingOffViewCenter,
   isVerticalDcbDock,
   isViewOffAirport,
@@ -72,7 +66,6 @@ import {
 import { MAIN_DCB_LAYOUT } from "./dcbLayouts";
 import { useDcbCursorTrap } from "./useDcbCursorTrap";
 import {
-  DCB_FILTER_BAND_ID,
   DCB_HEIGHT_PX,
   DCB_ID,
   DCB_WIDTH_PX,
@@ -476,234 +469,6 @@ function renderPhysicalMain(
         </div>
       ))}
     </div>
-  );
-}
-
-/** Legacy flat projection retained for submenu compatibility snapshots. */
-export function renderMainLegacy(
-  view: ScopeView,
-  onChange: () => void,
-  world: DisplayControlBarProps["world"],
-) {
-  const offCntr = isViewOffAirport(view);
-  return (
-    <>
-      <DcbCell
-        kind="spinner"
-        ariaLabel="Range"
-        dataDcb="range"
-        pressed={spinnerArmed(view, "RANGE")}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          if (spinnerArmed(view, "RANGE")) {
-            commitDcbSpinner(view);
-          } else {
-            armDcbSpinner(view, "RANGE");
-          }
-          afterCell(onChange);
-        }}
-        onWheel={(event) =>
-          onSpinnerWheel(view, "RANGE", event, (step) => stepRange(view.camera, step), onChange)
-        }
-      >
-        <span id={DCB_RANGE_READOUT_ID} className="dcb-cell-line">
-          {formatSpinnerCellReadout(view, "RANGE", formatDcbRangeReadout(view.camera.rangeNm))}
-        </span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Place center"
-        dataDcb="place"
-        pressed={view.placeCenterArmed}
-        onClick={() => runCell(view, onChange, () => armPlaceCenter(view))}
-      >
-        <span className="dcb-cell-line">PLACE</span>
-        <span className="dcb-cell-line">CNTR</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Off center"
-        dataDcb="off-cntr"
-        pressed={offCntr}
-        onClick={() => runCell(view, onChange, () => centerOnAirport(view))}
-      >
-        <span className="dcb-cell-line">OFF</span>
-        <span className="dcb-cell-line">CNTR</span>
-      </DcbCell>
-      <DcbCell
-        kind="submenu"
-        ariaLabel="Maps"
-        dataDcb="maps"
-        pressed={view.dcbMenu === "MAPS"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "MAPS");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">MAPS</span>
-      </DcbCell>
-      {Array.from({ length: DCB_QUICK_MAP_COUNT }, (_, i) => renderMapSlot(view, onChange, i + 1))}
-      {([1, 2, 3, 4, 5, 6] as const).map((n) => renderWxCell(view, onChange, n))}
-      <DcbCell
-        kind="spinner"
-        ariaLabel="Range rings"
-        dataDcb="rr"
-        pressed={spinnerArmed(view, "RR")}
-        onClick={() => toggleSpinner(view, onChange, "RR")}
-        onWheel={(event) =>
-          onSpinnerWheel(view, "RR", event, (step) => stepRrInterval(view, step), onChange)
-        }
-      >
-        <span className="dcb-cell-line">RR</span>
-        <span id={DCB_RR_READOUT_ID} className="dcb-cell-line">
-          {formatSpinnerCellReadout(
-            view,
-            "RR",
-            formatDcbRrReadout(view.ringIntervalNm, view.showRings),
-          )}
-        </span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Place range rings"
-        dataDcb="place-rr"
-        pressed={view.placeRangeRingArmed}
-        onClick={() => runCell(view, onChange, () => armPlaceRangeRing(view))}
-      >
-        <span className="dcb-cell-line">PLACE</span>
-        <span className="dcb-cell-line">RR</span>
-      </DcbCell>
-      <DcbCell
-        kind="toggle"
-        ariaLabel="Range rings center"
-        dataDcb="rr-cntr"
-        pressed={isRangeRingOffViewCenter(view)}
-        onClick={() => runCell(view, onChange, () => applyRrCenter(view))}
-      >
-        <span className="dcb-cell-line">RR</span>
-        <span className="dcb-cell-line">CNTR</span>
-      </DcbCell>
-      <DcbCell
-        kind="spinner"
-        ariaLabel="Leader direction"
-        dataDcb="ldr-dir"
-        pressed={spinnerArmed(view, "LDR_DIR")}
-        onClick={() => toggleSpinner(view, onChange, "LDR_DIR", world)}
-        onWheel={(event) =>
-          onSpinnerWheel(
-            view,
-            "LDR_DIR",
-            event,
-            (step) => stepDcbLeaderDir(view, world, step),
-            onChange,
-          )
-        }
-      >
-        <span className="dcb-cell-line">LDR DIR</span>
-        <span id={DCB_LDR_READOUT_ID} className="dcb-cell-line">
-          {formatSpinnerCellReadout(view, "LDR_DIR", dcbLeaderDirReadout(view, world))}
-        </span>
-      </DcbCell>
-      <DcbCell
-        kind="spinner"
-        ariaLabel="Leader length"
-        dataDcb="ldr-length"
-        pressed={spinnerArmed(view, "LDR_LENGTH")}
-        onClick={() => toggleSpinner(view, onChange, "LDR_LENGTH")}
-        onWheel={(event) =>
-          onSpinnerWheel(
-            view,
-            "LDR_LENGTH",
-            event,
-            (step) => stepDcbLeaderLength(view, step),
-            onChange,
-          )
-        }
-      >
-        <span className="dcb-cell-line">LDR</span>
-        <span id={DCB_LDR_LENGTH_READOUT_ID} className="dcb-cell-line">
-          {formatSpinnerCellReadout(
-            view,
-            "LDR_LENGTH",
-            formatDcbLdrLengthReadout(view.leaderLengthPx),
-          )}
-        </span>
-      </DcbCell>
-      {/* CHAR SIZE / BRITE open CRC-analog submenus (T02-26). Not click-cycle. */}
-      <DcbCell
-        kind="submenu"
-        ariaLabel="Character size"
-        dataDcb="char"
-        pressed={view.dcbMenu === "CHAR_SIZE"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "CHAR_SIZE");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">CHAR</span>
-        <span className="dcb-cell-line">SIZE</span>
-      </DcbCell>
-      <DcbCell
-        kind="submenu"
-        ariaLabel="Brite"
-        dataDcb="brite"
-        pressed={view.dcbMenu === "BRITE"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "BRITE");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">BRITE</span>
-      </DcbCell>
-      <DcbCell
-        kind="action"
-        ariaLabel="Altitude filter"
-        dataDcb="filter"
-        onClick={() => {
-          closeDcbMenu(view);
-          beginAltitudeFilterChord(view);
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">FILTER</span>
-        <span id={DCB_FILTER_BAND_ID} className="dcb-cell-line">
-          {formatFilterBand(view.altitudeFilter, view.filterEntry)}
-        </span>
-      </DcbCell>
-      <DcbCell
-        kind="submenu"
-        ariaLabel="SSA filter"
-        dataDcb="ssa-filter"
-        pressed={view.dcbMenu === "SSA_FILTER"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "SSA_FILTER");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">SSA</span>
-        <span className="dcb-cell-line">FILTER</span>
-      </DcbCell>
-      <DcbCell
-        kind="submenu"
-        ariaLabel="GI text"
-        dataDcb="gi-text"
-        pressed={view.dcbMenu === "GI_FILTER"}
-        onClick={() => {
-          cancelFilterIfEntering(view);
-          openDcbMenu(view, "GI_FILTER");
-          afterCell(onChange);
-        }}
-      >
-        <span className="dcb-cell-line">GI</span>
-        <span className="dcb-cell-line">TEXT</span>
-      </DcbCell>
-      {renderPrefOpener(view, onChange)}
-      {renderShift(view, onChange)}
-    </>
   );
 }
 

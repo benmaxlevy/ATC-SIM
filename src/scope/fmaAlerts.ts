@@ -11,6 +11,7 @@ import { releaseFmaTracksView, type ScopeView } from "./scopeView";
 import type { SurveillanceReport } from "./surveillance";
 import { reportPeriodMs } from "./surveillance";
 import { getAircraftDestination } from "./systemLists";
+import { isUsableSurveillanceReport } from "./fmaSurveillance";
 
 /** Stable operator-facing wording for the existing Preview/status readout. */
 export function formatFmaAlertDiagnostic(
@@ -33,27 +34,6 @@ export function formatFmaAlertDiagnostic(
     return "FMA: INITIAL AMZ OVERRIDE IGNORED";
   }
   return null;
-}
-
-function usableReport(report: SurveillanceReport, nowSimMs: number): boolean {
-  return (
-    typeof report.aircraftId === "string" &&
-    report.aircraftId.trim().length > 0 &&
-    Number.isFinite(report.xNm) &&
-    Number.isFinite(report.yNm) &&
-    Number.isFinite(report.headingDeg) &&
-    report.headingDeg >= 0 &&
-    report.headingDeg < 360 &&
-    Number.isFinite(report.speedKt) &&
-    report.speedKt >= 0 &&
-    Number.isFinite(report.altitudeFt) &&
-    Number.isFinite(report.reportedAtSimMs) &&
-    report.reportedAtSimMs >= 0 &&
-    report.reportedAtSimMs <= nowSimMs &&
-    (report.sourceSiteId == null ||
-      (typeof report.sourceSiteId === "string" && report.sourceSiteId.trim().length > 0)) &&
-    (report.paint === "fused-puck" || report.paint === "multi-rect" || report.paint === "site-rect")
-  );
 }
 
 /**
@@ -172,7 +152,7 @@ export function observeFmaAlertRuntime(
   );
   const invalidReportIds = new Set(
     reportEvents
-      .filter((report) => !usableReport(report, nowSimMs))
+      .filter((report) => !isUsableSurveillanceReport(report, nowSimMs))
       .map((report) => report.aircraftId),
   );
   const previousEpisodes = [...view.fmaAlertState.episodes.entries()];
