@@ -37,6 +37,10 @@
         "captureLengthNm": 20,
         "ntzWidthFt": 2000,
         "outerMarginNm": 0.5,
+        "verticalLimits": {
+          "floorFt": 1000,
+          "ceilingFt": 5000
+        },
         "geometry": {
           "amzBoundary": [
             {
@@ -192,6 +196,10 @@
         "captureLengthNm": 20,
         "ntzWidthFt": 2000,
         "outerMarginNm": 0.5,
+        "verticalLimits": {
+          "floorFt": 1000,
+          "ceilingFt": 5000
+        },
         "geometry": {
           "amzBoundary": [
             {
@@ -347,6 +355,10 @@
         "captureLengthNm": 20,
         "ntzWidthFt": 2000,
         "outerMarginNm": 0.5,
+        "verticalLimits": {
+          "floorFt": 1000,
+          "ceilingFt": 5000
+        },
         "geometry": {
           "amzBoundary": [
             {
@@ -502,6 +514,10 @@
         "captureLengthNm": 20,
         "ntzWidthFt": 2000,
         "outerMarginNm": 0.5,
+        "verticalLimits": {
+          "floorFt": 1000,
+          "ceilingFt": 5000
+        },
         "geometry": {
           "amzBoundary": [
             {
