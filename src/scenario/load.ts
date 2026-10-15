@@ -15,6 +15,7 @@ import type {
   DigitalMapRangeRings,
   DigitalMapRunway,
   Fix,
+  FmaScenarioConfig,
   Runway,
   Scenario,
   ScenarioMaps,
@@ -478,6 +479,24 @@ function parseBeaconPools(value: unknown): BeaconPoolConfig | undefined {
   return result.value;
 }
 
+function parseFmaScenarioConfig(value: unknown): FmaScenarioConfig | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new Error("Scenario fma must be an object");
+  if (value.excludeDerivedGroups !== undefined && typeof value.excludeDerivedGroups !== "boolean") {
+    throw new Error("Scenario fma.excludeDerivedGroups must be boolean");
+  }
+  const initialAmzId =
+    value.initialAmzId === undefined
+      ? undefined
+      : assertString(value.initialAmzId, "fma.initialAmzId", "Scenario", true);
+  return {
+    ...(initialAmzId !== undefined ? { initialAmzId } : {}),
+    ...(value.excludeDerivedGroups !== undefined
+      ? { excludeDerivedGroups: value.excludeDerivedGroups }
+      : {}),
+  };
+}
+
 function validateRandomRoutePools(
   spawnPolicy: SpawnPolicy,
   arrivals: ArrivalSpawn[],
@@ -561,6 +580,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
       : parseAtpaWakeAdaptation(s.atpaWakeAdaptation, "atpaWakeAdaptation", "Scenario");
   const departureConfig = parseDepartureConfig(s.departureConfig);
   const beaconPools = parseBeaconPools(s.beaconPools);
+  const fma = parseFmaScenarioConfig(s.fma);
   const spawnPolicy = parseSpawnPolicy(s.spawnPolicy);
   const arrivals = assertArrivals(s.arrivals, {
     min: options?.arrivalCountMin ?? ARRIVAL_COUNT_MIN,
@@ -638,6 +658,7 @@ export function assertScenario(s: unknown, options?: AssertScenarioOptions): Sce
     })(),
     ...(departureConfig ? { departureConfig } : {}),
     ...(beaconPools ? { beaconPools } : {}),
+    ...(fma ? { fma } : {}),
     ...(atpaWakeAdaptation !== undefined ? { atpaWakeAdaptation } : {}),
     catalog: scenarioCatalog,
     mva: loadMva(icao),

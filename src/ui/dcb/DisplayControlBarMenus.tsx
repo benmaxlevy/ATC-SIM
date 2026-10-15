@@ -14,12 +14,17 @@ import {
   browserDcbPrefStorage,
   closeDcbMenu,
   commitDcbSpinner,
+  cancelDcbSpinner,
   clearAllVideoMaps,
   DCB_LEADER_DIRS,
   LEADER_DIR_LABELS,
   dcbLeaderDirReadout,
   dcbMapsPageSlotNumbers,
   deleteDcbPref,
+  dcbPrefSlots,
+  cancelPreviewArea,
+  stageDcbPrefOwner,
+  commitDcbPrefOwner,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -33,12 +38,15 @@ import {
   restoreDcbPrefSession,
   beginDcbPrefSaveAs,
   beginPrefNameEntry,
+  beginPrefUserEntry,
+  isPrefUserEntry,
   saveDcbPref,
   selectDcbPrefSlot,
   setDcbDock,
   stepBriteChannel,
   stepCharSizeChannel,
   stepDcbVol,
+  stepDcbSpinner,
   stepHistoryDots,
   stepHistoryRate,
   stepDwellMode,
@@ -56,6 +64,20 @@ import {
   togglePtlOwn,
   toggleSsaFilter,
   SSA_FILTER_FIELDS,
+  enterFmaConfirmation,
+  commitFmaConfirmation,
+  isFmaAvailable,
+  stepFmaMag,
+  stepFmaPtl,
+  stepFmaVoice,
+  commitFmaVoice,
+  triggerFmaVoiceTest,
+  stepFmaRunwayLeader,
+  formatFmaRunwayLeaderReadout,
+  toggleFmaNtz,
+  toggleFmaNtzAll,
+  stageFmaAmzSpinnerCandidate,
+  commitFmaAmzSwitch,
   type BriteChannel,
   type CharSizeChannel,
   type CharSizes,
@@ -87,12 +109,14 @@ import {
 } from "./dcbChrome";
 
 export function renderAux(view: ScopeView, onChange: () => void) {
+  if (view.fmaSurveillance.enabled) {
+    return renderFmaAux(view, onChange);
+  }
   const volArmed = spinnerArmed(view, "VOL");
   const historyArmed = historySpinnerArmed(view);
   const ptlArmed = ptlSpinnerArmed(view);
   return (
     <div className="dcb-main-grid" data-dcb-layout="AUX">
-      {/* Col 1 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="vol"
@@ -132,7 +156,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 2 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="hist"
@@ -210,7 +233,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 3 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="cursor-home"
@@ -225,7 +247,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 4 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="csr-spd"
@@ -240,7 +261,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 5 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="map-uncor"
@@ -255,7 +275,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 6 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="uncor"
@@ -269,7 +288,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 7 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="beacon-mode2"
@@ -284,7 +302,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 8 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="rtqc"
@@ -298,7 +315,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 9 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="mcp"
@@ -312,7 +328,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 10 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-top"
@@ -352,7 +367,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 11 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dock-right"
@@ -392,7 +406,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 12 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ptl-len"
@@ -432,7 +445,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 13 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ptl-own"
@@ -472,7 +484,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 14 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="dwell-on"
@@ -504,7 +515,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 15 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="tpa"
@@ -529,7 +539,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 16 (Split) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="tsas"
@@ -556,7 +565,6 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 17 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="shift"
@@ -564,6 +572,1018 @@ export function renderAux(view: ScopeView, onChange: () => void) {
         data-dcb-column={17}
         data-dcb-row-span={2}
         style={{ gridColumn: 17, gridRow: "1 / span 2" }}
+      >
+        {renderShift(view, onChange)}
+      </div>
+    </div>
+  );
+}
+
+export function renderFmaAux(view: ScopeView, onChange: () => void) {
+  const volArmed = spinnerArmed(view, "VOL");
+  const historyArmed = historySpinnerArmed(view);
+  const hRateArmed = spinnerArmed(view, "H_RATE");
+  const dwellArmed = spinnerArmed(view, "DWELL");
+
+  const amzArmed = spinnerArmed(view, "FMA_AMZ");
+  const magArmed = spinnerArmed(view, "MAG");
+  const voiceArmed = spinnerArmed(view, "FMA_VOICE");
+  const ptlArmed = spinnerArmed(view, "FMA_PTL");
+
+  const activeAmz = view.fmaAmzs.find((a) => a.id === view.fmaSurveillance.selectedAmzId);
+  const ntzs = activeAmz?.ntzs ?? [];
+  const runways = activeAmz?.members.map((m) => ({ id: m.runwayId })) ?? [];
+  const disabledNtzs = view.fmaAlertInhibit.ntzIds ?? new Set<string>();
+
+  const allNtzEnabled = ntzs.length > 0 && ntzs.every((n) => !disabledNtzs.has(n.id));
+
+  const applyFmaDrag = (cell: DcbSpinnerCell, steps: number, apply: (delta: -1 | 1) => void) => {
+    if (steps === 0) return;
+    if (!spinnerArmed(view, cell)) armDcbSpinner(view, cell);
+    const delta: -1 | 1 = steps > 0 ? 1 : -1;
+    for (let i = 0; i < Math.abs(steps); i++) stepDcbSpinner(view, delta, apply);
+    afterCell(onChange);
+  };
+
+  const armAmz = () => {
+    if (view.dcbSpinner.armed && view.dcbSpinner.cell !== "FMA_AMZ") cancelDcbSpinner(view);
+    armDcbSpinner(view, "FMA_AMZ", {
+      onCommit: (_cell, targetAmzId) => {
+        if (typeof targetAmzId === "string") commitFmaAmzSwitch(view, targetAmzId);
+      },
+    });
+  };
+
+  return (
+    <div className="dcb-main-grid" data-dcb-layout="FMA_AUX">
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="vol"
+        data-dcb-row={1}
+        data-dcb-column={1}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 1, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="Volume"
+          dataDcb="vol"
+          pressed={volArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (volArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "VOL");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "VOL", event, (step) => stepDcbVol(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepDcbVol(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">VOL</span>
+          <span className="dcb-cell-line">
+            {formatSpinnerCellReadout(view, "VOL", formatDcbVolReadout(view.vol ?? 2))}
+          </span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="hist"
+        data-dcb-row={1}
+        data-dcb-column={2}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 2, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="History"
+          dataDcb="hist"
+          pressed={historyArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (historyArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "HISTORY");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "HISTORY", event, (step) => stepHistoryDots(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepHistoryDots(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">HIST</span>
+          <span id={DCB_HISTORY_READOUT_ID} className="dcb-cell-line">
+            {formatSpinnerCellReadout(
+              view,
+              "HISTORY",
+              formatDcbHistoryReadout(view.historyDotCount),
+            )}
+          </span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="h-rate"
+        data-dcb-row={2}
+        data-dcb-column={2}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 2, gridRow: "2 / span 1" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="History rate"
+          dataDcb="h-rate"
+          pressed={hRateArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (hRateArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "H_RATE");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "H_RATE", event, (step) => stepHistoryRate(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepHistoryRate(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">H RATE</span>
+          <span id={DCB_HISTORY_RATE_READOUT_ID} className="dcb-cell-line">
+            {formatSpinnerCellReadout(
+              view,
+              "H_RATE",
+              formatDcbHistoryRateReadout(view.historyRateSec),
+            )}
+          </span>
+        </DcbCell>
+      </div>
+
+      {/* Cols 3–9: Disabled inherited controls */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="cursor-home"
+        data-dcb-row={1}
+        data-dcb-column={3}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 3, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="Cursor Home" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">CSR</span>
+          <span className="dcb-cell-line">HOME</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="csr-spd"
+        data-dcb-row={1}
+        data-dcb-column={4}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 4, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="Cursor Speed" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">CSR</span>
+          <span className="dcb-cell-line">SPD</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="map-uncor"
+        data-dcb-row={1}
+        data-dcb-column={5}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 5, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="Map Uncor" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">MAP</span>
+          <span className="dcb-cell-line">UNCOR</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="uncor"
+        data-dcb-row={1}
+        data-dcb-column={6}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 6, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="Uncor" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">UNCOR</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="beacon-mode2"
+        data-dcb-row={1}
+        data-dcb-column={7}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 7, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="Beacon Mode 2" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">BCN</span>
+          <span className="dcb-cell-line">MODE-2</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="rtqc"
+        data-dcb-row={1}
+        data-dcb-column={8}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 8, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="RTQC" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">RTQC</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mcp"
+        data-dcb-row={1}
+        data-dcb-column={9}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 9, gridRow: "1 / span 2" }}
+      >
+        <DcbCell kind="disabled" ariaLabel="MCP" disabled onClick={() => undefined}>
+          <span className="dcb-cell-line">MCP</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="dock-top"
+        data-dcb-row={1}
+        data-dcb-column={10}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 10, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="DCB Top"
+          dataDcb="dock-top"
+          pressed={view.dcbDock === "TOP"}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            setDcbDock(view, "TOP");
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">DCB</span>
+          <span className="dcb-cell-line">TOP</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="dock-left"
+        data-dcb-row={2}
+        data-dcb-column={10}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 10, gridRow: "2 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="DCB Left"
+          dataDcb="dock-left"
+          pressed={view.dcbDock === "LEFT"}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            setDcbDock(view, "LEFT");
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">DCB</span>
+          <span className="dcb-cell-line">LEFT</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="dock-right"
+        data-dcb-row={1}
+        data-dcb-column={11}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 11, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="DCB Right"
+          dataDcb="dock-right"
+          pressed={view.dcbDock === "RIGHT"}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            setDcbDock(view, "RIGHT");
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">DCB</span>
+          <span className="dcb-cell-line">RIGHT</span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="dock-bottom"
+        data-dcb-row={2}
+        data-dcb-column={11}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 11, gridRow: "2 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="DCB Bottom"
+          dataDcb="dock-bottom"
+          pressed={view.dcbDock === "BOTTOM"}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            setDcbDock(view, "BOTTOM");
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">DCB</span>
+          <span className="dcb-cell-line">BTM</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-amz"
+        data-dcb-row={1}
+        data-dcb-column={12}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 12, gridRow: "1 / span 2" }}
+      >
+        {view.fmaAmzs.length <= 1 ? (
+          <DcbCell
+            kind="disabled"
+            ariaLabel={`AMZ ${activeAmz?.label ?? activeAmz?.id ?? ""}`}
+            dataDcb="fma-amz"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">AMZ</span>
+            <span className="dcb-cell-line">{activeAmz?.label ?? activeAmz?.id ?? ""}</span>
+          </DcbCell>
+        ) : (
+          <DcbCell
+            kind="spinner"
+            ariaLabel={`AMZ ${activeAmz?.label ?? activeAmz?.id ?? ""}`}
+            dataDcb="fma-amz"
+            pressed={amzArmed}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              if (amzArmed) {
+                commitDcbSpinner(view);
+              } else {
+                armAmz();
+              }
+              afterCell(onChange);
+            }}
+            onWheel={(event) =>
+              onSpinnerWheel(
+                view,
+                "FMA_AMZ",
+                event,
+                (step) => {
+                  if (!spinnerArmed(view, "FMA_AMZ")) armAmz();
+                  stageFmaAmzSpinnerCandidate(
+                    view,
+                    view.fmaAmzs,
+                    view.fmaSurveillance.selectedAmzId,
+                    step,
+                  );
+                },
+                onChange,
+              )
+            }
+            onDragDelta={(step) => {
+              if (!spinnerArmed(view, "FMA_AMZ")) armAmz();
+              for (let i = 0; i < Math.abs(step); i++) {
+                stageFmaAmzSpinnerCandidate(
+                  view,
+                  view.fmaAmzs,
+                  view.fmaSurveillance.selectedAmzId,
+                  step > 0 ? 1 : -1,
+                );
+              }
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">AMZ</span>
+            <span className="dcb-cell-line">
+              {formatSpinnerCellReadout(view, "FMA_AMZ", activeAmz?.label ?? activeAmz?.id ?? "")}
+            </span>
+          </DcbCell>
+        )}
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-mag"
+        data-dcb-row={1}
+        data-dcb-column={13}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 13, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="MAG"
+          dataDcb="fma-mag"
+          pressed={magArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (magArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "MAG");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "MAG", event, (step) => stepFmaMag(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            applyFmaDrag("MAG", step, (delta) => stepFmaMag(view, delta));
+          }}
+        >
+          <span className="dcb-cell-line">MAG</span>
+          <span className="dcb-cell-line">
+            {formatSpinnerCellReadout(view, "MAG", view.fmaMag)}
+          </span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-voice"
+        data-dcb-row={1}
+        data-dcb-column={14}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 14, gridRow: "1 / span 1" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="Voice volume"
+          dataDcb="fma-voice"
+          pressed={voiceArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (voiceArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "FMA_VOICE", {
+                onCommit: (_cell, level) => {
+                  if (typeof level === "number") {
+                    commitFmaVoice(view, level);
+                  }
+                },
+              });
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "FMA_VOICE", event, (step) => stepFmaVoice(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            applyFmaDrag("FMA_VOICE", step, (delta) => stepFmaVoice(view, delta));
+          }}
+        >
+          <span className="dcb-cell-line">VOICE</span>
+          <span className="dcb-cell-line">
+            {formatSpinnerCellReadout(view, "FMA_VOICE", view.fmaVoiceLevel)}
+          </span>
+        </DcbCell>
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-voice-test"
+        data-dcb-row={2}
+        data-dcb-column={14}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 14, gridRow: "2 / span 1" }}
+      >
+        <DcbCell
+          kind="action"
+          ariaLabel="Voice test"
+          dataDcb="fma-voice-test"
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            triggerFmaVoiceTest(view);
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">VOICE</span>
+          <span className="dcb-cell-line">TEST</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-ptl-len"
+        data-dcb-row={1}
+        data-dcb-column={15}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 15, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="PTL LNTH"
+          dataDcb="fma-ptl-len"
+          pressed={ptlArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (ptlArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "FMA_PTL");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "FMA_PTL", event, (step) => stepFmaPtl(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            applyFmaDrag("FMA_PTL", step, (delta) => stepFmaPtl(view, delta));
+          }}
+        >
+          <span className="dcb-cell-line">PTL</span>
+          <span className="dcb-cell-line">
+            {formatSpinnerCellReadout(view, "FMA_PTL", view.fmaPtlSeconds)}
+          </span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-ntz-1"
+        data-dcb-row={1}
+        data-dcb-column={16}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 16, gridRow: "1 / span 1" }}
+      >
+        {ntzs[0] ? (
+          <DcbCell
+            kind="toggle"
+            ariaLabel={`NTZ 1 ${ntzs[0].id}`}
+            dataDcb="fma-ntz-1"
+            pressed={!disabledNtzs.has(ntzs[0].id)}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              toggleFmaNtz(view, ntzs[0]!.id);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">NTZ 1</span>
+          </DcbCell>
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="NTZ 1"
+            dataDcb="fma-ntz-1"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">NTZ 1</span>
+          </DcbCell>
+        )}
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-ntz-2"
+        data-dcb-row={2}
+        data-dcb-column={16}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 16, gridRow: "2 / span 1" }}
+      >
+        {ntzs[1] ? (
+          <DcbCell
+            kind="toggle"
+            ariaLabel={`NTZ 2 ${ntzs[1].id}`}
+            dataDcb="fma-ntz-2"
+            pressed={!disabledNtzs.has(ntzs[1].id)}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              toggleFmaNtz(view, ntzs[1]!.id);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">NTZ 2</span>
+          </DcbCell>
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="NTZ 2"
+            dataDcb="fma-ntz-2"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">NTZ 2</span>
+          </DcbCell>
+        )}
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-ntz-3"
+        data-dcb-row={1}
+        data-dcb-column={17}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 17, gridRow: "1 / span 1" }}
+      >
+        {ntzs[2] ? (
+          <DcbCell
+            kind="toggle"
+            ariaLabel={`NTZ 3 ${ntzs[2].id}`}
+            dataDcb="fma-ntz-3"
+            pressed={!disabledNtzs.has(ntzs[2].id)}
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              toggleFmaNtz(view, ntzs[2]!.id);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">NTZ 3</span>
+          </DcbCell>
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="NTZ 3"
+            dataDcb="fma-ntz-3"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">NTZ 3</span>
+          </DcbCell>
+        )}
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-ntz-all"
+        data-dcb-row={2}
+        data-dcb-column={17}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 17, gridRow: "2 / span 1" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="NTZ ALL"
+          dataDcb="fma-ntz-all"
+          pressed={allNtzEnabled}
+          disabled={ntzs.length === 0}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            toggleFmaNtzAll(view);
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">NTZ</span>
+          <span className="dcb-cell-line">ALL</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-rwy-1"
+        data-dcb-row={1}
+        data-dcb-column={18}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 18, gridRow: "1 / span 1" }}
+      >
+        {runways[0] ? (
+          (() => {
+            const rwyId = runways[0].id;
+            const spinnerKey = `FMA_LDR_${rwyId}` as DcbSpinnerCell;
+            const armed = spinnerArmed(view, spinnerKey);
+            const dir = view.fmaRunwayLeaders.get(rwyId);
+            return (
+              <DcbCell
+                kind="spinner"
+                ariaLabel={`Runway ${rwyId} leader`}
+                dataDcb="fma-rwy-1"
+                pressed={armed}
+                onClick={() => {
+                  cancelFilterIfEntering(view);
+                  if (armed) {
+                    commitDcbSpinner(view);
+                  } else {
+                    armDcbSpinner(view, spinnerKey);
+                  }
+                  afterCell(onChange);
+                }}
+                onWheel={(event) =>
+                  onSpinnerWheel(
+                    view,
+                    spinnerKey,
+                    event,
+                    (step) => stepFmaRunwayLeader(view, rwyId, step),
+                    onChange,
+                  )
+                }
+                onDragDelta={(step) => {
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
+                }}
+              >
+                <span className="dcb-cell-line">{rwyId}</span>
+                <span className="dcb-cell-line">
+                  {formatSpinnerCellReadout(view, spinnerKey, formatFmaRunwayLeaderReadout(dir))}
+                </span>
+              </DcbCell>
+            );
+          })()
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="Runway 1"
+            dataDcb="fma-rwy-1"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">RWY 1</span>
+          </DcbCell>
+        )}
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-rwy-2"
+        data-dcb-row={2}
+        data-dcb-column={18}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 18, gridRow: "2 / span 1" }}
+      >
+        {runways[1] ? (
+          (() => {
+            const rwyId = runways[1].id;
+            const spinnerKey = `FMA_LDR_${rwyId}` as DcbSpinnerCell;
+            const armed = spinnerArmed(view, spinnerKey);
+            const dir = view.fmaRunwayLeaders.get(rwyId);
+            return (
+              <DcbCell
+                kind="spinner"
+                ariaLabel={`Runway ${rwyId} leader`}
+                dataDcb="fma-rwy-2"
+                pressed={armed}
+                onClick={() => {
+                  cancelFilterIfEntering(view);
+                  if (armed) {
+                    commitDcbSpinner(view);
+                  } else {
+                    armDcbSpinner(view, spinnerKey);
+                  }
+                  afterCell(onChange);
+                }}
+                onWheel={(event) =>
+                  onSpinnerWheel(
+                    view,
+                    spinnerKey,
+                    event,
+                    (step) => stepFmaRunwayLeader(view, rwyId, step),
+                    onChange,
+                  )
+                }
+                onDragDelta={(step) => {
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
+                }}
+              >
+                <span className="dcb-cell-line">{rwyId}</span>
+                <span className="dcb-cell-line">
+                  {formatSpinnerCellReadout(view, spinnerKey, formatFmaRunwayLeaderReadout(dir))}
+                </span>
+              </DcbCell>
+            );
+          })()
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="Runway 2"
+            dataDcb="fma-rwy-2"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">RWY 2</span>
+          </DcbCell>
+        )}
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-rwy-3"
+        data-dcb-row={1}
+        data-dcb-column={19}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 19, gridRow: "1 / span 1" }}
+      >
+        {runways[2] ? (
+          (() => {
+            const rwyId = runways[2].id;
+            const spinnerKey = `FMA_LDR_${rwyId}` as DcbSpinnerCell;
+            const armed = spinnerArmed(view, spinnerKey);
+            const dir = view.fmaRunwayLeaders.get(rwyId);
+            return (
+              <DcbCell
+                kind="spinner"
+                ariaLabel={`Runway ${rwyId} leader`}
+                dataDcb="fma-rwy-3"
+                pressed={armed}
+                onClick={() => {
+                  cancelFilterIfEntering(view);
+                  if (armed) {
+                    commitDcbSpinner(view);
+                  } else {
+                    armDcbSpinner(view, spinnerKey);
+                  }
+                  afterCell(onChange);
+                }}
+                onWheel={(event) =>
+                  onSpinnerWheel(
+                    view,
+                    spinnerKey,
+                    event,
+                    (step) => stepFmaRunwayLeader(view, rwyId, step),
+                    onChange,
+                  )
+                }
+                onDragDelta={(step) => {
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
+                }}
+              >
+                <span className="dcb-cell-line">{rwyId}</span>
+                <span className="dcb-cell-line">
+                  {formatSpinnerCellReadout(view, spinnerKey, formatFmaRunwayLeaderReadout(dir))}
+                </span>
+              </DcbCell>
+            );
+          })()
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="Runway 3"
+            dataDcb="fma-rwy-3"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">RWY 3</span>
+          </DcbCell>
+        )}
+      </div>
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="fma-rwy-4"
+        data-dcb-row={2}
+        data-dcb-column={19}
+        data-dcb-row-span={1}
+        style={{ gridColumn: 19, gridRow: "2 / span 1" }}
+      >
+        {runways[3] ? (
+          (() => {
+            const rwyId = runways[3].id;
+            const spinnerKey = `FMA_LDR_${rwyId}` as DcbSpinnerCell;
+            const armed = spinnerArmed(view, spinnerKey);
+            const dir = view.fmaRunwayLeaders.get(rwyId);
+            return (
+              <DcbCell
+                kind="spinner"
+                ariaLabel={`Runway ${rwyId} leader`}
+                dataDcb="fma-rwy-4"
+                pressed={armed}
+                onClick={() => {
+                  cancelFilterIfEntering(view);
+                  if (armed) {
+                    commitDcbSpinner(view);
+                  } else {
+                    armDcbSpinner(view, spinnerKey);
+                  }
+                  afterCell(onChange);
+                }}
+                onWheel={(event) =>
+                  onSpinnerWheel(
+                    view,
+                    spinnerKey,
+                    event,
+                    (step) => stepFmaRunwayLeader(view, rwyId, step),
+                    onChange,
+                  )
+                }
+                onDragDelta={(step) => {
+                  applyFmaDrag(spinnerKey, step, (delta) =>
+                    stepFmaRunwayLeader(view, rwyId, delta),
+                  );
+                }}
+              >
+                <span className="dcb-cell-line">{rwyId}</span>
+                <span className="dcb-cell-line">
+                  {formatSpinnerCellReadout(view, spinnerKey, formatFmaRunwayLeaderReadout(dir))}
+                </span>
+              </DcbCell>
+            );
+          })()
+        ) : (
+          <DcbCell
+            kind="disabled"
+            ariaLabel="Runway 4"
+            dataDcb="fma-rwy-4"
+            disabled
+            onClick={() => undefined}
+          >
+            <span className="dcb-cell-line">RWY 4</span>
+          </DcbCell>
+        )}
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="dwell-on"
+        data-dcb-row={1}
+        data-dcb-column={20}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 20, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="spinner"
+          ariaLabel="Dwell"
+          dataDcb="dwell"
+          pressed={dwellArmed}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            if (dwellArmed) {
+              commitDcbSpinner(view);
+            } else {
+              armDcbSpinner(view, "DWELL");
+            }
+            afterCell(onChange);
+          }}
+          onWheel={(event) =>
+            onSpinnerWheel(view, "DWELL", event, (step) => stepDwellMode(view, step), onChange)
+          }
+          onDragDelta={(step) => {
+            for (let i = 0; i < Math.abs(step); i++) {
+              stepDwellMode(view, step > 0 ? 1 : -1);
+            }
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">DWELL</span>
+          <span id={DCB_DWELL_READOUT_ID} className="dcb-cell-line">
+            {formatDcbDwellReadout(view.dwellMode)}
+          </span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="tpa"
+        data-dcb-row={1}
+        data-dcb-column={21}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 21, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="submenu"
+          ariaLabel="TPA ATPA"
+          dataDcb="tpa"
+          pressed={view.dcbMenu === "TPA_ATPA"}
+          onClick={() => {
+            cancelFilterIfEntering(view);
+            openDcbMenu(view, "TPA_ATPA");
+            afterCell(onChange);
+          }}
+        >
+          <span className="dcb-cell-line">TPA/</span>
+          <span className="dcb-cell-line">ATPA</span>
+        </DcbCell>
+      </div>
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="shift"
+        data-dcb-row={1}
+        data-dcb-column={22}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 22, gridRow: "1 / span 2" }}
       >
         {renderShift(view, onChange)}
       </div>
@@ -735,7 +1755,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
   const allOn = SSA_FILTER_FIELDS.every((f) => view.ssaFilter[f]);
   return (
     <div className="dcb-main-grid" data-dcb-layout="SSA_FILTER">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-all"
@@ -784,7 +1803,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 2 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-time"
@@ -830,7 +1848,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 3 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-status"
@@ -866,7 +1883,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 4 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-radar"
@@ -892,7 +1908,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 5 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-spc"
@@ -918,7 +1933,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 6 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-range"
@@ -964,7 +1978,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 7 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-filter-line"
@@ -1000,7 +2013,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 8 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-airport"
@@ -1026,7 +2038,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 9 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-tt"
@@ -1052,7 +2063,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 10 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-ql"
@@ -1078,7 +2088,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 11 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="ssa-con-cpl"
@@ -1104,7 +2113,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 12 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="crda"
@@ -1130,7 +2138,6 @@ export function renderSsaFilter(view: ScopeView, onChange: () => void) {
         </DcbCell>
       </div>
 
-      {/* Col 13 (Full) */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
@@ -1172,7 +2179,6 @@ export function renderGiSlotCell(view: ScopeView, onChange: () => void, slot: nu
 export function renderGiFilter(view: ScopeView, onChange: () => void) {
   return (
     <div className="dcb-main-grid" data-dcb-layout="GI_FILTER">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-main"
@@ -1202,7 +2208,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 1)}
       </div>
 
-      {/* Col 2 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-2"
@@ -1224,7 +2229,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 3)}
       </div>
 
-      {/* Col 3 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-4"
@@ -1246,7 +2250,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 5)}
       </div>
 
-      {/* Col 4 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-6"
@@ -1268,7 +2271,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 7)}
       </div>
 
-      {/* Col 5 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-8"
@@ -1290,7 +2292,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
         {renderGiSlotCell(view, onChange, 9)}
       </div>
 
-      {/* Col 6 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="gi-slot-10"
@@ -1318,7 +2319,6 @@ export function renderGiFilter(view: ScopeView, onChange: () => void) {
 export function renderMaps(view: ScopeView, onChange: () => void) {
   return (
     <div className="dcb-main-grid" data-dcb-layout="MAPS">
-      {/* Col 1 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="done"
@@ -1371,7 +2371,6 @@ export function renderMaps(view: ScopeView, onChange: () => void) {
         );
       })}
 
-      {/* Col 18 */}
       <div
         className="dcb-main-grid-cell"
         data-dcb-layout-id="geo-maps"
@@ -1614,10 +2613,46 @@ export const BRITE_GRID_LAYOUT: {
   { id: "done", col: 10, row: 1, rowSpan: 2, label: "DONE" },
 ];
 
+export const FMA_BRITE_GRID_LAYOUT: {
+  id: string;
+  col: number;
+  row: 1 | 2;
+  rowSpan: 1 | 2;
+  channel?: BriteChannel;
+  label: string;
+  disabled?: boolean;
+  staticVal?: string;
+}[] = [
+  { id: "dcb", col: 1, row: 1, rowSpan: 1, channel: "dcb", label: "DCB" },
+  { id: "bkc", col: 1, row: 2, rowSpan: 1, channel: "bkc", label: "BKC" },
+  { id: "mpa", col: 2, row: 1, rowSpan: 1, channel: "mpa", label: "MPA" },
+  { id: "mpb", col: 2, row: 2, rowSpan: 1, channel: "mpb", label: "MPB" },
+  { id: "fdb", col: 3, row: 1, rowSpan: 1, channel: "fdb", label: "FDB" },
+  { id: "lst", col: 3, row: 2, rowSpan: 1, channel: "lst", label: "LST" },
+  { id: "pos", col: 4, row: 1, rowSpan: 1, channel: "pos", label: "POS" },
+  { id: "ldb", col: 4, row: 2, rowSpan: 1, channel: "ldb", label: "LDB" },
+  { id: "oth", col: 5, row: 1, rowSpan: 1, channel: "oth", label: "OTH" },
+  { id: "tls", col: 5, row: 2, rowSpan: 1, channel: "tls", label: "TLS" },
+  { id: "rr", col: 6, row: 1, rowSpan: 1, channel: "rr", label: "RR" },
+  { id: "cmp", col: 6, row: 2, rowSpan: 1, channel: "cmp", label: "CMP" },
+  { id: "bcn", col: 7, row: 1, rowSpan: 1, channel: "bcn", label: "BCN" },
+  { id: "pri", col: 7, row: 2, rowSpan: 1, channel: "pri", label: "PRI" },
+  { id: "hst", col: 8, row: 1, rowSpan: 1, channel: "hst", label: "HST" },
+  { id: "wx", col: 8, row: 2, rowSpan: 1, channel: "wx", label: "WX" },
+  { id: "wxc", col: 9, row: 1, rowSpan: 1, channel: "wxc", label: "WXC" },
+  { id: "blank1", col: 9, row: 2, rowSpan: 1, label: "", disabled: true },
+  { id: "amz", col: 10, row: 1, rowSpan: 1, channel: "amz", label: "AMZ" },
+  { id: "rwy", col: 10, row: 2, rowSpan: 1, channel: "rwy", label: "RWY" },
+  { id: "ntz", col: 11, row: 1, rowSpan: 1, channel: "ntz", label: "NTZ" },
+  { id: "ref", col: 11, row: 2, rowSpan: 1, channel: "ref", label: "REF" },
+  { id: "done", col: 12, row: 1, rowSpan: 2, label: "DONE" },
+];
+
 export function renderBrite(view: ScopeView, onChange: () => void) {
+  const layout = view.fmaSurveillance.enabled ? FMA_BRITE_GRID_LAYOUT : BRITE_GRID_LAYOUT;
   return (
     <div className="dcb-main-grid" data-dcb-layout="BRITE">
-      {BRITE_GRID_LAYOUT.map((cell) => {
+      {layout.map((cell) => {
         let node: ReactNode;
         if (cell.id === "done") {
           node = renderDone(view, onChange);
@@ -1642,8 +2677,18 @@ export function renderBrite(view: ScopeView, onChange: () => void) {
                 )
               }
               onDragDelta={(step) => {
-                for (let i = 0; i < Math.abs(step); i++) {
-                  stepBriteChannel(view, cell.channel!, step > 0 ? 1 : -1);
+                const delta: -1 | 1 = step > 0 ? 1 : -1;
+                if (view.fmaSurveillance.enabled && step !== 0) {
+                  if (!spinnerArmed(view, spinnerKey)) armDcbSpinner(view, spinnerKey);
+                  for (let i = 0; i < Math.abs(step); i++) {
+                    stepDcbSpinner(view, delta, (direction) =>
+                      stepBriteChannel(view, cell.channel!, direction),
+                    );
+                  }
+                } else {
+                  for (let i = 0; i < Math.abs(step); i++) {
+                    stepBriteChannel(view, cell.channel!, delta);
+                  }
                 }
                 afterCell(onChange);
               }}
@@ -1704,14 +2749,19 @@ export function prefStore() {
 }
 
 export function renderPref(view: ScopeView, onChange: () => void) {
+  const currentSlots = dcbPrefSlots(view);
+  const selectedSlot = currentSlots[view.dcbPref.activeIndex] ?? null;
+  const isTableFull = currentSlots.every((slot) => slot !== null);
+  const saveAsDisabled = isTableFull;
   return (
     <div className="dcb-main-grid" data-dcb-layout="PREF">
       {Array.from({ length: 16 }, (_, colIdx) => {
         const col = colIdx + 1;
         const slot1 = colIdx * 2 + 1;
         const slot2 = colIdx * 2 + 2;
-        const name1 = view.dcbPref.slots[slot1 - 1]?.name ?? "";
-        const name2 = view.dcbPref.slots[slot2 - 1]?.name ?? "";
+        const ownerSlots = dcbPrefSlots(view);
+        const name1 = ownerSlots[slot1 - 1]?.name ?? "";
+        const name2 = ownerSlots[slot2 - 1]?.name ?? "";
         return [
           <div
             key={slot1}
@@ -1724,7 +2774,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           >
             <DcbCell
               kind="toggle"
-              ariaLabel={`Pref ${slot1}`}
+              ariaLabel={`${view.dcbPref.menuOwner} Pref ${slot1}${name1 ? ` ${name1}` : " empty"}`}
               dataDcb={`pref-${slot1}` as NonNullable<DcbCellProps["dataDcb"]>}
               pressed={view.dcbPref.activeIndex === slot1 - 1}
               onClick={() => {
@@ -1749,7 +2799,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
           >
             <DcbCell
               kind="toggle"
-              ariaLabel={`Pref ${slot2}`}
+              ariaLabel={`${view.dcbPref.menuOwner} Pref ${slot2}${name2 ? ` ${name2}` : " empty"}`}
               dataDcb={`pref-${slot2}` as NonNullable<DcbCellProps["dataDcb"]>}
               pressed={view.dcbPref.activeIndex === slot2 - 1}
               onClick={() => {
@@ -1795,8 +2845,43 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         data-dcb-row-span={1}
         style={{ gridColumn: 17, gridRow: "2 / span 1" }}
       >
-        <DcbCell kind="disabled" ariaLabel="FSSTARS" disabled onClick={() => undefined}>
-          <span className="dcb-cell-line">FSSTARS</span>
+        <DcbCell
+          kind="spinner"
+          ariaLabel={`Preference user ${view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}; roll to choose and click to commit`}
+          dataDcb="pref-user"
+          pressed={isPrefUserEntry(view.preview) || view.dcbPref.ownerCandidate !== null}
+          onDragDelta={(delta) => {
+            if (delta === 0) return;
+            if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+            stageDcbPrefOwner(view, delta > 0 ? "FMA" : "FSSTARS");
+            afterCell(onChange);
+          }}
+          onWheel={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.deltaY === 0) return;
+            if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+            stageDcbPrefOwner(view, event.deltaY < 0 ? "FMA" : "FSSTARS");
+            afterCell(onChange);
+          }}
+          onClick={() => {
+            if (view.dcbPref.ownerCandidate) {
+              if (view.preview.phase === "entry") cancelPreviewArea(view.preview);
+              commitDcbPrefOwner(view);
+              persistDcbPref(view, prefStore());
+              afterCell(onChange);
+            } else if (isPrefUserEntry(view.preview)) {
+              stageDcbPrefOwner(view, view.dcbPref.menuOwner === "FSSTARS" ? "FMA" : "FSSTARS");
+              afterCell(onChange);
+            } else {
+              beginPrefUserEntry(view.preview, Date.now());
+              afterCell(onChange);
+            }
+          }}
+        >
+          <span className="dcb-cell-line">
+            {view.dcbPref.ownerCandidate ?? view.dcbPref.menuOwner}
+          </span>
         </DcbCell>
       </div>
       <div
@@ -1829,9 +2914,20 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 18, gridRow: "2 / span 1" }}
       >
         <DcbCell
-          kind="action"
-          ariaLabel="Save"
+          kind={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? "action"
+              : "disabled"
+          }
+          ariaLabel={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? `Save ${view.dcbPref.menuOwner} ${selectedSlot.name}`
+              : "Save unavailable without a selected preference set"
+          }
           dataDcb="pref-save"
+          disabled={
+            !selectedSlot || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed)
+          }
           onClick={() => {
             cancelFilterIfEntering(view);
             saveDcbPref(view, prefStore());
@@ -1862,9 +2958,16 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 19, gridRow: "2 / span 1" }}
       >
         <DcbCell
-          kind="action"
-          ariaLabel="Save as"
+          kind={saveAsDisabled ? "disabled" : "action"}
+          ariaLabel={
+            isTableFull
+              ? "Save as unavailable: maximum 32 preference sets reached"
+              : view.dcbPref.menuOwner === "FMA"
+                ? "Save as desired authored AMZ ID"
+                : "Save as normal preference"
+          }
           dataDcb="pref-save-as"
+          disabled={saveAsDisabled}
           onClick={() => {
             cancelFilterIfEntering(view);
             beginDcbPrefSaveAs(view);
@@ -1885,9 +2988,20 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         style={{ gridColumn: 20, gridRow: "1 / span 1" }}
       >
         <DcbCell
-          kind="action"
-          ariaLabel="Delete"
+          kind={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? "action"
+              : "disabled"
+          }
+          ariaLabel={
+            selectedSlot && (view.dcbPref.menuOwner === "FSSTARS" || view.dcbPref.ownerConfirmed)
+              ? `Delete ${view.dcbPref.menuOwner} ${selectedSlot.name}`
+              : "Delete unavailable without a selected preference set"
+          }
           dataDcb="pref-delete"
+          disabled={
+            !selectedSlot || (view.dcbPref.menuOwner === "FMA" && !view.dcbPref.ownerConfirmed)
+          }
           onClick={() => {
             cancelFilterIfEntering(view);
             deleteDcbPref(view, prefStore());
@@ -1904,6 +3018,166 @@ export function renderPref(view: ScopeView, onChange: () => void) {
         data-dcb-column={20}
         data-dcb-row-span={1}
         style={{ gridColumn: 20, gridRow: "2 / span 1" }}
+      >
+        {renderDone(view, onChange)}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Figure 6-16 MODE submenu layout:
+ * [EFSL] [FSL] [TRNG] [FMA] [DSF] [DONE]
+ * If fmaCandidateMode is active, an [ACCEPT] button is also rendered for confirmation.
+ */
+export function renderModeMenu(view: ScopeView, onChange: () => void) {
+  const showFma = view.displayCapability !== "1K";
+  const fmaEnabled = view.fmaSurveillance.enabled;
+  const fmaUsable = isFmaAvailable(view);
+
+  return (
+    <div className="dcb-main-grid" data-dcb-layout="MODE">
+      {/* 1. EFSL (Emergency Full Service Level) - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-efsl"
+        data-dcb-row={1}
+        data-dcb-column={1}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 1, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="EFSL"
+          dataDcb="mode-efsl"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">EFSL</span>
+        </DcbCell>
+      </div>
+
+      {/* 2. FSL (Full Service Level) - current supported default service mode */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-fsl"
+        data-dcb-row={1}
+        data-dcb-column={2}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 2, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="toggle"
+          ariaLabel="FSL"
+          dataDcb="mode-fsl"
+          pressed={view.serviceMode === "FSL"}
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">FSL</span>
+        </DcbCell>
+      </div>
+
+      {/* 3. TRNG (Training) - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-trng"
+        data-dcb-row={1}
+        data-dcb-column={3}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 3, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="TRNG"
+          dataDcb="mode-trng"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">TRNG</span>
+        </DcbCell>
+      </div>
+
+      {/* 4. FMA (Final Monitoring Aid) - omitted at 1K; toggled via ACCEPT */}
+      {showFma && (
+        <div
+          className="dcb-main-grid-cell"
+          data-dcb-layout-id="mode-fma"
+          data-dcb-row={1}
+          data-dcb-column={4}
+          data-dcb-row-span={2}
+          style={{ gridColumn: 4, gridRow: "1 / span 2" }}
+        >
+          <DcbCell
+            kind={fmaUsable ? "toggle" : "disabled"}
+            ariaLabel="FMA"
+            dataDcb="mode-fma"
+            pressed={fmaEnabled || view.fmaCandidateMode}
+            disabled={!fmaUsable}
+            onClick={() => {
+              if (fmaUsable) {
+                cancelFilterIfEntering(view);
+                enterFmaConfirmation(view);
+                afterCell(onChange);
+              }
+            }}
+          >
+            <span className="dcb-cell-line">FMA</span>
+          </DcbCell>
+        </div>
+      )}
+
+      {/* 5. DSF - disabled / unsupported */}
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="mode-dsf"
+        data-dcb-row={1}
+        data-dcb-column={5}
+        data-dcb-row-span={2}
+        style={{ gridColumn: 5, gridRow: "1 / span 2" }}
+      >
+        <DcbCell
+          kind="disabled"
+          ariaLabel="DSF"
+          dataDcb="mode-dsf"
+          disabled
+          onClick={() => undefined}
+        >
+          <span className="dcb-cell-line">DSF</span>
+        </DcbCell>
+      </div>
+
+      {/* Confirmation prompt: ACCEPT button appears when fmaCandidateMode is active */}
+      {view.fmaCandidateMode && (
+        <div
+          className="dcb-main-grid-cell"
+          data-dcb-layout-id="mode-accept"
+          data-dcb-row={1}
+          data-dcb-column={6}
+          data-dcb-row-span={2}
+          style={{ gridColumn: 6, gridRow: "1 / span 2" }}
+        >
+          <DcbCell
+            kind="action"
+            ariaLabel="ACCEPT"
+            dataDcb="mode-accept"
+            onClick={() => {
+              cancelFilterIfEntering(view);
+              commitFmaConfirmation(view);
+              afterCell(onChange);
+            }}
+          >
+            <span className="dcb-cell-line">ACCEPT</span>
+          </DcbCell>
+        </div>
+      )}
+
+      <div
+        className="dcb-main-grid-cell"
+        data-dcb-layout-id="done"
+        data-dcb-row={1}
+        data-dcb-column={view.fmaCandidateMode ? 7 : 6}
+        data-dcb-row-span={2}
+        style={{ gridColumn: view.fmaCandidateMode ? 7 : 6, gridRow: "1 / span 2" }}
       >
         {renderDone(view, onChange)}
       </div>

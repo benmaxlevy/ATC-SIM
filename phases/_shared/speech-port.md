@@ -71,3 +71,10 @@ export interface Transcript {
 - Failures (mic deny, timeout, low confidence, speech-api down) surface in the readback/status line, never throw through the sim tick.
 - Measure PTT-up → transcript and PTT-up → audio-start. Log both.
 - Missing speech-api → `null` port + typed commands still work. Do **not** silently fall back to a paid cloud.
+
+## FMA SpeechSynthesis exception (T02-224)
+
+Under explicit user authorization, FMA audible alerts speak exclusively through the
+browser's native `SpeechSynthesis` API with an installed local English voice.
+This exception applies strictly to FMA alarm onsets and test actions; pilot STT/TTS,
+radio FX, and the `speech-api` HTTP contract are untouched.

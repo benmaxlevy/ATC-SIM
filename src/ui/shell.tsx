@@ -40,11 +40,10 @@ import {
   scopeFocusFromDocument,
   focusRadioCommandLine,
   clearMinSepState,
+  cancelDcbSpinner,
   clearPerTrackPtl,
   resetRangeBearingSession,
-  parseDigitalMap,
-  applyRadarSites,
-  applyRadarTilesetBoundary,
+  browserDcbPrefStorage,
   getVisibleFlightPlanEntries,
   type ScopeView,
   type FlightPlanModalRequest,
@@ -52,9 +51,11 @@ import {
 
 import { flightPlanForAircraft, handoffFor, isFlightPlanOperational, type FlightPlan } from "@core";
 import type { AppHandles } from "../app/create-app";
+import type { FmaSpeechStatus } from "../app/fma-speech";
 import { CommandLine, submitCommand } from "./command/command-line";
 import { Disclaimer } from "./overlays/disclaimer";
 import { focusPpi } from "./strips/FlightStrips";
+import { bindScenarioDisplayContext } from "./sessionScenarioBinding";
 import { StripsBoard, selectTrackFromFlightStrip, terminalStripsFromWorld } from "./strips";
 import { FpsDebug, isFpsDebugEnabled } from "./controls/FpsDebug";
 import { ScopeCanvas } from "./canvas/ScopeCanvas";
@@ -64,10 +65,20 @@ import { SimControls } from "./controls/sim-controls";
 import { SessionSetup as SessionSetupDialog } from "./controls/session-setup";
 import { FlightPlanModal } from "./controls/FlightPlanModal";
 
-export interface ShellProps {
+export type ShellProps = {
   app: AppHandles;
   scenario: Scenario;
   scopeView: ScopeView;
+};
+
+export function FmaAudioStatus({ enabled, status }: { enabled: boolean; status: FmaSpeechStatus }) {
+  if (!enabled || (status.supported && status.voiceAvailable)) return null;
+  return (
+    <div className="fma-audio-status" role="status" aria-live="polite">
+      FMA AUDIO UNAVAILABLE —{" "}
+      {!status.supported ? "SpeechSynthesis unsupported" : "local English voice unavailable"}
+    </div>
+  );
 }
 
 export function Shell({ app, scenario, scopeView }: ShellProps) {
@@ -85,6 +96,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
   });
   const [readback, setReadback] = useState("");
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [fmaSpeechStatus, setFmaSpeechStatus] = useState(() => app.fmaSpeech.getStatus());
   const [speechId, setSpeechId] = useState(app.speech.id);
   const [stripsOpen, setStripsOpen] = useState(false);
   const [, setStripsTick] = useState(0);
@@ -229,6 +241,8 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
     });
   }, [app]);
 
+  useEffect(() => app.fmaSpeech.subscribeStatus(setFmaSpeechStatus), [app]);
+
   useEffect(() => {
     return installAlwaysOnScopeKeys(scopeView, app.world, {
       onHandled: () => setScopeUiTick((n) => n + 1),
@@ -309,7 +323,6 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             const cssY = event.clientY - rect.top;
             const relocationActive = previewRelocateListId(scopeView.preview) !== null;
 
-            // Check if pointer is on any visible system list title header
             if (scopeView.activeListRects && scopeView.activeListRects.length > 0) {
               const lineH = 16;
               const hitListId = hitTestSystemListTitle(
@@ -431,30 +444,36 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
           }}
           onCanvasContextMenu={(event) => event.preventDefault()}
           footer={
-            <CommandLine
-              readback={readback}
-              voiceStatus={voiceStatus}
-              selectedCallsign={selectedCallsign}
-              selectionToken={selectionToken}
-              onPttPress={() => app.ptt.pressFromPointer()}
-              onPttRelease={() => app.ptt.releaseFromPointer()}
-              onSubmit={(input) => {
-                setVoiceStatus(null);
-                void submitCommand(app.world, input, app.log, {
-                  pathC: app.speechSettings.pathCActive,
-                }).then((result) => {
-                  setReadback(result.readback);
-                  if (result.readback && (result.accepted || result.command?.callsign)) {
-                    void app.voiceLoop
-                      .playReadback(
-                        result.spokenReadback ?? result.readback,
-                        result.command?.callsign,
-                      )
-                      .finally(() => setReadback(""));
-                  }
-                });
-              }}
-            />
+            <>
+              <FmaAudioStatus
+                enabled={scopeView.fmaSurveillance.enabled}
+                status={fmaSpeechStatus}
+              />
+              <CommandLine
+                readback={readback}
+                voiceStatus={voiceStatus}
+                selectedCallsign={selectedCallsign}
+                selectionToken={selectionToken}
+                onPttPress={() => app.ptt.pressFromPointer()}
+                onPttRelease={() => app.ptt.releaseFromPointer()}
+                onSubmit={(input) => {
+                  setVoiceStatus(null);
+                  void submitCommand(app.world, input, app.log, {
+                    pathC: app.speechSettings.pathCActive,
+                  }).then((result) => {
+                    setReadback(result.readback);
+                    if (result.readback && (result.accepted || result.command?.callsign)) {
+                      void app.voiceLoop
+                        .playReadback(
+                          result.spokenReadback ?? result.readback,
+                          result.command?.callsign,
+                        )
+                        .finally(() => setReadback(""));
+                    }
+                  });
+                }}
+              />
+            </>
           }
         >
           {fpsDebug ? <FpsDebug /> : null}
@@ -517,6 +536,7 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
         onCancel={() => setSetupOpen(false)}
         onApply={(next) => {
           const nextScenario = loadPlayableScenario(next.scenarioId);
+          app.fmaSpeech.clearQueue();
           app.replaceWorld(
             createWorldForSession(
               nextScenario,
@@ -539,17 +559,11 @@ export function Shell({ app, scenario, scopeView }: ShellProps) {
             ),
           );
           scopeView.tracks.clear();
+          cancelDcbSpinner(scopeView);
+          bindScenarioDisplayContext(scopeView, nextScenario, browserDcbPrefStorage());
           clearPerTrackPtl(scopeView);
           clearMinSepState(scopeView.minSep);
           resetRangeBearingSession(scopeView);
-          scopeView.giTextLines = nextScenario.giTextLines;
-          scopeView.digitalMap = parseDigitalMap(nextScenario.maps);
-          // Session apply uses the same generic site bind as boot (T02-77).
-          // CRC R07 SITE analog; R05 FOA display data; R01 radar-identification
-          // wording. Unknown stored SITE id → FUSED. Trainer fixtures; not live
-          // sensors. No airport-id branch.
-          applyRadarSites(scopeView, nextScenario.radarSites);
-          applyRadarTilesetBoundary(scopeView, nextScenario.radarTilesetBoundaryNm);
           if (typeof document !== "undefined") {
             document.title = `ATC-SIM — ${nextScenario.name}`;
           }

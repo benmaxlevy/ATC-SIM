@@ -13,7 +13,8 @@
  */
 
 import { setSelectedAircraft, type Aircraft, type World } from "@core";
-import { nmToScreen, screenToNm, type ScopeCamera } from "./camera";
+import { nmToScreen, type ScopeCamera } from "./camera";
+import { scopeProjectionFromView } from "./projection";
 import { pointInDatablock } from "./datablock";
 import { handleTrackClick, handleTrackMiddleClick, type TrackDisplay } from "./trackDisplay";
 import { datablockRenderSnapshotKey } from "./render/renderScopePaint";
@@ -26,6 +27,7 @@ import {
 } from "./minimumSeparation";
 import { cancelRblPending, insertRangeBearingLine, type RblEndpoint } from "./rangeBearingLines";
 import { cancelPreviewArea, rejectPreviewAreaWithReason } from "./previewArea";
+import { fmaPresentationReport } from "./fmaSurveillance";
 
 /** Frozen hit radius in CSS pixels (T01-11). Pixel-space so range presets stay stable. */
 export const HIT_RADIUS_CSS_PX = 12;
@@ -111,12 +113,19 @@ function pickSymbolAt(
   cssWidth: number,
   cssHeight: number,
   radiusPx: number,
+  scopeView?: ScopeView,
 ): Aircraft | null {
   const view = { widthPx: cssWidth, heightPx: cssHeight };
+  const proj = scopeView ? scopeProjectionFromView(scopeView, view) : null;
   let nearest: Aircraft | null = null;
   let nearestDist = Infinity;
   for (const ac of world.aircraft) {
-    const p = nmToScreen(ac.xNm, ac.yNm, cam, view);
+    const fmaReport = scopeView?.fmaSurveillance.enabled
+      ? fmaPresentationReport(scopeView.fmaSurveillance, ac.id)
+      : undefined;
+    const worldX = fmaReport?.xNm ?? ac.xNm;
+    const worldY = fmaReport?.yNm ?? ac.yNm;
+    const p = proj ? proj.toScreen(worldX, worldY) : nmToScreen(worldX, worldY, cam, view);
     const dist = Math.hypot(p.x - cssX, p.y - cssY);
     if (dist <= radiusPx && dist < nearestDist) {
       nearest = ac;
@@ -146,7 +155,16 @@ export function pickAircraftHitAt(
       return { aircraft: blockHit, region: "datablock" };
     }
   }
-  const symbol = pickSymbolAt(world, cssX, cssY, cam, cssWidth, cssHeight, radiusPx);
+  const symbol = pickSymbolAt(
+    world,
+    cssX,
+    cssY,
+    cam,
+    cssWidth,
+    cssHeight,
+    radiusPx,
+    datablockView as ScopeView | undefined,
+  );
   if (symbol) {
     return { aircraft: symbol, region: "symbol" };
   }
@@ -250,7 +268,7 @@ export function isMinSepTargetEligibleAndDisplayed(
     return false;
   }
   const td = view.tracks.get(aircraftId);
-  const report = td?.lastReport;
+  const report = td?.presentationReport ?? td?.lastReport;
   if (!report || !isValidMinSepTrackInput(minSepInputFromReport(report))) {
     return false;
   }
@@ -258,7 +276,8 @@ export function isMinSepTargetEligibleAndDisplayed(
     return false;
   }
   const size = { widthPx: cssWidth, heightPx: cssHeight };
-  const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+  const proj = scopeProjectionFromView(view, size);
+  const symPt = proj.toScreen(report.xNm, report.yNm);
   if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
     return false;
   }
@@ -346,9 +365,10 @@ export function pickMinSepTargetAt(
 
   // 2. Report-backed symbol hit testing
   const symbolHits: { ac: Aircraft; dist: number }[] = [];
+  const proj = scopeProjectionFromView(view, size);
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    const report = td?.lastReport;
+    const report = td?.presentationReport ?? td?.lastReport;
     if (!report) {
       continue;
     }
@@ -359,7 +379,7 @@ export function pickMinSepTargetAt(
     ) {
       continue;
     }
-    const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+    const symPt = proj.toScreen(report.xNm, report.yNm);
     if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
       continue;
     }
@@ -497,7 +517,7 @@ export function isRblTargetEligibleAndDisplayed(
     return false;
   }
   const td = view.tracks.get(aircraftId);
-  const report = td?.lastReport;
+  const report = td?.presentationReport ?? td?.lastReport;
   if (!report) {
     return false;
   }
@@ -509,7 +529,8 @@ export function isRblTargetEligibleAndDisplayed(
     return false;
   }
   const size = { widthPx: cssWidth, heightPx: cssHeight };
-  const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+  const proj = scopeProjectionFromView(view, size);
+  const symPt = proj.toScreen(report.xNm, report.yNm);
   if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
     return false;
   }
@@ -595,9 +616,10 @@ export function pickRblTargetAt(
 
   // 2. Symbol hit testing
   const symbolHits: { ac: Aircraft; dist: number }[] = [];
+  const proj = scopeProjectionFromView(view, size);
   for (const ac of world.aircraft) {
     const td = view.tracks.get(ac.id);
-    const report = td?.lastReport;
+    const report = td?.presentationReport ?? td?.lastReport;
     if (!report) {
       continue;
     }
@@ -608,7 +630,7 @@ export function pickRblTargetAt(
     ) {
       continue;
     }
-    const symPt = nmToScreen(report.xNm, report.yNm, view.camera, size);
+    const symPt = proj.toScreen(report.xNm, report.yNm);
     if (!Number.isFinite(symPt.x) || !Number.isFinite(symPt.y)) {
       continue;
     }
@@ -635,7 +657,7 @@ export function pickRblTargetAt(
   }
 
   // 3. Empty on-PPI click becomes static ENU coordinate
-  const nm = screenToNm(cssX, cssY, view.camera, size);
+  const nm = proj.toWorld(cssX, cssY);
   return { kind: "static", xNm: nm.eastNm, yNm: nm.northNm };
 }
 
@@ -694,7 +716,8 @@ export function handleRblClick(
   const firstEndpoint = view.rbl.pendingFirstEndpoint;
   // If first endpoint was a track, revalidate that it is still alive and has a report
   if (firstEndpoint.kind === "track") {
-    const report = view.tracks.get(firstEndpoint.aircraftId)?.lastReport;
+    const track = view.tracks.get(firstEndpoint.aircraftId);
+    const report = track?.presentationReport ?? track?.lastReport;
     if (
       !world.aircraft.some((aircraft) => aircraft.id === firstEndpoint.aircraftId) ||
       !report ||

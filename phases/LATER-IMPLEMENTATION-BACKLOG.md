@@ -523,8 +523,8 @@ additional duration presets and richer prediction geometry.
 
 The trainer DCB includes live MAIN WX1–6 latches, live BRITE WX/WXC spinners,
 live SITE (FUSED / MULTI / adapted sites), live DCB VOL spinner (modulating
-workstation CA alert tone gain linearly 0–5 with 0 = mute), live MAIN MODE FSL
-toggle (3-way latch cycling Full/Semi/Limited datablock presentation), live
+workstation CA alert tone gain linearly 0–5 with 0 = mute), live Figure 6-16
+MODE service-level submenu (EFSL, FSL, TRNG, FMA, DSF), live
 BRITE BKC spinner (adjusting background canvas contrast/clear color 0–100), and
 live SSA WX / WX HIST radar mosaic status & staleness telemetry (with DCB SSA
 FILTER WX toggle). All settings are persisted in PREF v3.

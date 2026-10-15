@@ -14,6 +14,8 @@ import type {
   AtpaWakeAdaptation,
   AtpaWakeMatrix,
   AtpaVolume,
+  FmaAdaptation,
+  FmaGroupAdaptation,
   MissedApproach,
   Navaid,
   NavaidKind,
@@ -33,6 +35,13 @@ import {
   DEFAULT_GS_BEAM_FULL_WIDTH_DEG,
   DEFAULT_LOC_FULL_SCALE_HALF_WIDTH_FT_AT_THRESHOLD,
 } from "./types";
+import { magneticToTrueDeg } from "../../core/nav/headingFrames";
+import {
+  assertArray as assertArrayVal,
+  assertNumber as assertNumberVal,
+  assertString as assertStringVal,
+  isRecord,
+} from "../assertions";
 
 const DATA_JSON = import.meta.glob<unknown>("../data/*/*.json", {
   eager: true,
@@ -58,13 +67,102 @@ const APPROACH_TYPES = new Set<ApproachType>(["ILS", "LOC", "RNAV", "VOR", "NDB"
 const ALT_TYPES = new Set(["AT", "AT_OR_ABOVE", "AT_OR_BELOW"]);
 
 const NAVAID_CLASSES = new Set(["T", "L", "H"]);
+const FMA_GROUP_ID_RE = /^[A-Z0-9]{1,7}$/;
+
+function isSimpleFmaPolygon(points: readonly { xNm: number; yNm: number }[]): boolean {
+  if (points.length < 3 || points.some((p) => !Number.isFinite(p.xNm) || !Number.isFinite(p.yNm)))
+    return false;
+  const cross = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    c: (typeof points)[number],
+  ) => (b.xNm - a.xNm) * (c.yNm - a.yNm) - (b.yNm - a.yNm) * (c.xNm - a.xNm);
+  const onSegment = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    p: (typeof points)[number],
+  ) =>
+    Math.abs(cross(a, b, p)) <= 1e-12 &&
+    p.xNm >= Math.min(a.xNm, b.xNm) - 1e-12 &&
+    p.xNm <= Math.max(a.xNm, b.xNm) + 1e-12 &&
+    p.yNm >= Math.min(a.yNm, b.yNm) - 1e-12 &&
+    p.yNm <= Math.max(a.yNm, b.yNm) + 1e-12;
+  const intersects = (
+    a: (typeof points)[number],
+    b: (typeof points)[number],
+    c: (typeof points)[number],
+    d: (typeof points)[number],
+  ) => {
+    const abC = cross(a, b, c),
+      abD = cross(a, b, d),
+      cdA = cross(c, d, a),
+      cdB = cross(c, d, b);
+    if (abC * abD < -1e-12 && cdA * cdB < -1e-12) return true;
+    return (
+      (Math.abs(abC) <= 1e-12 && onSegment(a, b, c)) ||
+      (Math.abs(abD) <= 1e-12 && onSegment(a, b, d)) ||
+      (Math.abs(cdA) <= 1e-12 && onSegment(c, d, a)) ||
+      (Math.abs(cdB) <= 1e-12 && onSegment(c, d, b))
+    );
+  };
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!,
+      b = points[(i + 1) % points.length]!;
+    if (Math.hypot(a.xNm - b.xNm, a.yNm - b.yNm) <= 1e-12) return false;
+  }
+  const area = points.reduce((sum, p, i) => {
+    const q = points[(i + 1) % points.length]!;
+    return sum + p.xNm * q.yNm - q.xNm * p.yNm;
+  }, 0);
+  if (Math.abs(area) <= 1e-9) return false;
+  for (let i = 0; i < points.length; i++)
+    for (let j = i + 1; j < points.length; j++) {
+      if (j === i || j === i + 1 || (i === 0 && j === points.length - 1)) continue;
+      if (
+        intersects(
+          points[i]!,
+          points[(i + 1) % points.length]!,
+          points[j]!,
+          points[(j + 1) % points.length]!,
+        )
+      )
+        return false;
+    }
+  return true;
+}
+
+function containsInPolygon(
+  point: { xNm: number; yNm: number },
+  polygon: readonly { xNm: number; yNm: number }[],
+): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j]!,
+      b = polygon[i]!;
+    const cross = (b.xNm - a.xNm) * (point.yNm - a.yNm) - (b.yNm - a.yNm) * (point.xNm - a.xNm);
+    if (
+      Math.abs(cross) <= 1e-10 &&
+      point.xNm >= Math.min(a.xNm, b.xNm) - 1e-10 &&
+      point.xNm <= Math.max(a.xNm, b.xNm) + 1e-10 &&
+      point.yNm >= Math.min(a.yNm, b.yNm) - 1e-10 &&
+      point.yNm <= Math.max(a.yNm, b.yNm) + 1e-10
+    )
+      return true;
+    if (
+      a.yNm > point.yNm !== b.yNm > point.yNm &&
+      point.xNm < ((b.xNm - a.xNm) * (point.yNm - a.yNm)) / (b.yNm - a.yNm) + a.xNm
+    )
+      inside = !inside;
+  }
+  return inside;
+}
 
 /** ILS DME ids (IDEMDME, IDEMDME09) are up to 9 chars; keep the ceiling at 10. */
 const ID_RE = /^[A-Z0-9]{2,10}$/;
 
 const REQUIRED_FILES = ["vors", "ndbs", "ils", "fixes", "procedures", "sids"] as const;
 
-export interface CatalogFileSet {
+export type CatalogFileSet = {
   catalog: unknown;
   vors: unknown;
   ndbs: unknown;
@@ -74,14 +172,7 @@ export interface CatalogFileSet {
   sids: unknown;
   /** Present only when `catalog.files.atpaVolumes` lists a file. */
   atpaVolumes?: unknown;
-}
-
-import {
-  assertArray as assertArrayVal,
-  assertNumber as assertNumberVal,
-  assertString as assertStringVal,
-  isRecord,
-} from "../assertions";
+};
 
 const assertNumber = (value: unknown, path: string): number =>
   assertNumberVal(value, path, "Catalog");
@@ -102,6 +193,314 @@ function optionalString(value: unknown, path: string): string | undefined {
     return undefined;
   }
   return assertString(value, path);
+}
+
+function parseFmaAdaptation(raw: unknown): FmaAdaptation | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) throw new Error("Catalog fmaOverrides must be an object");
+  const groups =
+    raw.groups === undefined
+      ? undefined
+      : assertArray(raw.groups, "fmaOverrides.groups").map((item, i): FmaGroupAdaptation => {
+          const path = `fmaOverrides.groups[${i}]`;
+          if (!isRecord(item)) throw new Error(`Catalog ${path} must be an object`);
+          const strings = (value: unknown, field: string): string[] | undefined =>
+            value === undefined
+              ? undefined
+              : assertArray(value, `${path}.${field}`).map((v, j) =>
+                  assertString(v, `${path}.${field}[${j}]`).toUpperCase(),
+                );
+          const positive = (value: unknown, field: string): number | undefined => {
+            if (value === undefined) return undefined;
+            const n = assertNumber(value, `${path}.${field}`);
+            if (n <= 0) throw new Error(`Catalog ${path}.${field} must be positive`);
+            return n;
+          };
+          let geometry: FmaGroupAdaptation["geometry"];
+          if (item.geometry !== undefined) {
+            if (!isRecord(item.geometry))
+              throw new Error(`Catalog ${path}.geometry must be an object`);
+            const pointList = (value: unknown, field: string) =>
+              assertArray(value, `${path}.geometry.${field}`).map((p, j) => {
+                if (!isRecord(p))
+                  throw new Error(`Catalog ${path}.geometry.${field}[${j}] must be an object`);
+                return {
+                  xNm: assertNumber(p.xNm, `${path}.geometry.${field}[${j}].xNm`),
+                  yNm: assertNumber(p.yNm, `${path}.geometry.${field}[${j}].yNm`),
+                };
+              });
+            geometry = {
+              amzBoundary: pointList(item.geometry.amzBoundary, "amzBoundary"),
+              runways: assertArray(item.geometry.runways, `${path}.geometry.runways`).map(
+                (r, j) => {
+                  if (!isRecord(r))
+                    throw new Error(`Catalog ${path}.geometry.runways[${j}] must be an object`);
+                  return {
+                    runwayId: assertString(
+                      r.runwayId,
+                      `${path}.geometry.runways[${j}].runwayId`,
+                    ).toUpperCase(),
+                    noz: pointList(r.noz, `runways[${j}].noz`),
+                    ...(r.departureEnd !== undefined
+                      ? {
+                          departureEnd: pointList(
+                            [r.departureEnd],
+                            `runways[${j}].departureEnd`,
+                          )[0]!,
+                        }
+                      : {}),
+                  };
+                },
+              ),
+              ntzs: assertArray(item.geometry.ntzs, `${path}.geometry.ntzs`).map((z, j) => {
+                if (!isRecord(z))
+                  throw new Error(`Catalog ${path}.geometry.ntzs[${j}] must be an object`);
+                return {
+                  id: assertString(z.id, `${path}.geometry.ntzs[${j}].id`),
+                  leftRunwayId: assertString(
+                    z.leftRunwayId,
+                    `${path}.geometry.ntzs[${j}].leftRunwayId`,
+                  ).toUpperCase(),
+                  rightRunwayId: assertString(
+                    z.rightRunwayId,
+                    `${path}.geometry.ntzs[${j}].rightRunwayId`,
+                  ).toUpperCase(),
+                  polygon: pointList(z.polygon, `ntzs[${j}].polygon`),
+                };
+              }),
+              ...(item.geometry.courseLines !== undefined
+                ? {
+                    courseLines: assertArray(
+                      item.geometry.courseLines,
+                      `${path}.geometry.courseLines`,
+                    ).map((line, j) => {
+                      if (!isRecord(line))
+                        throw new Error(
+                          `Catalog ${path}.geometry.courseLines[${j}] must be an object`,
+                        );
+                      const approach = pointList(
+                        [
+                          ...assertArray(
+                            line.approach,
+                            `${path}.geometry.courseLines[${j}].approach`,
+                          ),
+                        ],
+                        `courseLines[${j}].approach`,
+                      );
+                      const departure = pointList(
+                        [
+                          ...assertArray(
+                            line.departure,
+                            `${path}.geometry.courseLines[${j}].departure`,
+                          ),
+                        ],
+                        `courseLines[${j}].departure`,
+                      );
+                      if (approach.length !== 2 || departure.length !== 2)
+                        throw new Error(
+                          `Catalog ${path}.geometry.courseLines[${j}] endpoints must have two points`,
+                        );
+                      return {
+                        runwayId: assertString(
+                          line.runwayId,
+                          `${path}.geometry.courseLines[${j}].runwayId`,
+                        ).toUpperCase(),
+                        approach: [approach[0]!, approach[1]!] as [
+                          (typeof approach)[number],
+                          (typeof approach)[number],
+                        ],
+                        departure: [departure[0]!, departure[1]!] as [
+                          (typeof departure)[number],
+                          (typeof departure)[number],
+                        ],
+                      };
+                    }),
+                  }
+                : {}),
+              ...(item.geometry.referenceLines !== undefined
+                ? {
+                    referenceLines: assertArray(
+                      item.geometry.referenceLines,
+                      `${path}.geometry.referenceLines`,
+                    ).map((line, j) => {
+                      const points = pointList(line, `referenceLines[${j}]`);
+                      if (points.length !== 2)
+                        throw new Error(
+                          `Catalog ${path}.geometry.referenceLines[${j}] must have two endpoints`,
+                        );
+                      return [points[0]!, points[1]!] as [
+                        (typeof points)[number],
+                        (typeof points)[number],
+                      ];
+                    }),
+                  }
+                : {}),
+              ...(item.geometry.fixBars !== undefined
+                ? {
+                    fixBars: assertArray(item.geometry.fixBars, `${path}.geometry.fixBars`).map(
+                      (bar, j) => {
+                        if (!isRecord(bar))
+                          throw new Error(
+                            `Catalog ${path}.geometry.fixBars[${j}] must be an object`,
+                          );
+                        const segment = pointList(bar.segment, `fixBars[${j}].segment`);
+                        if (segment.length !== 2)
+                          throw new Error(
+                            `Catalog ${path}.geometry.fixBars[${j}].segment must have two endpoints`,
+                          );
+                        return {
+                          fixId: assertString(
+                            bar.fixId,
+                            `${path}.geometry.fixBars[${j}].fixId`,
+                          ).toUpperCase(),
+                          runwayId: assertString(
+                            bar.runwayId,
+                            `${path}.geometry.fixBars[${j}].runwayId`,
+                          ).toUpperCase(),
+                          point: pointList([bar.point], `fixBars[${j}].point`)[0]!,
+                          segment: [segment[0]!, segment[1]!] as [
+                            (typeof segment)[number],
+                            (typeof segment)[number],
+                          ],
+                        };
+                      },
+                    ),
+                  }
+                : {}),
+            };
+          }
+          let verticalLimits: FmaGroupAdaptation["verticalLimits"];
+          if (item.verticalLimits !== undefined) {
+            if (!isRecord(item.verticalLimits))
+              throw new Error(`Catalog ${path}.verticalLimits must be an object`);
+            const floorFt = assertNumber(
+              item.verticalLimits.floorFt,
+              `${path}.verticalLimits.floorFt`,
+            );
+            const ceilingFt = assertNumber(
+              item.verticalLimits.ceilingFt,
+              `${path}.verticalLimits.ceilingFt`,
+            );
+            if (floorFt >= ceilingFt)
+              throw new Error(`Catalog ${path}.verticalLimits must be ordered`);
+            verticalLimits = { floorFt, ceilingFt };
+          }
+          let monitoring: FmaGroupAdaptation["monitoring"];
+          if (item.monitoring !== undefined) {
+            if (!isRecord(item.monitoring))
+              throw new Error(`Catalog ${path}.monitoring must be an object`);
+            monitoring = {};
+            for (const field of [
+              "cautionHorizonS",
+              "surveillanceLossS",
+              "coastOutS",
+              "stabilizationS",
+              "courseToleranceDeg",
+              "alignmentHalfWidthNm",
+              "maximumPtlS",
+            ] as const) {
+              if (item.monitoring[field] !== undefined) {
+                const value = assertNumber(item.monitoring[field], `${path}.monitoring.${field}`);
+                if (value <= 0)
+                  throw new Error(`Catalog ${path}.monitoring.${field} must be positive`);
+                monitoring[field] = value;
+              }
+            }
+          }
+          let runwayAliases: FmaGroupAdaptation["runwayAliases"];
+          if (item.runwayAliases !== undefined) {
+            if (!isRecord(item.runwayAliases))
+              throw new Error(`Catalog ${path}.runwayAliases must be an object`);
+            runwayAliases = {};
+            for (const [runwayId, values] of Object.entries(item.runwayAliases)) {
+              runwayAliases[runwayId.toUpperCase()] = assertArray(
+                values,
+                `${path}.runwayAliases.${runwayId}`,
+              ).map((value, j) =>
+                assertString(value, `${path}.runwayAliases.${runwayId}[${j}]`).trim().toUpperCase(),
+              );
+            }
+          }
+          const groupId = assertString(item.id, `${path}.id`);
+          if (!FMA_GROUP_ID_RE.test(groupId.toUpperCase()))
+            throw new Error(`Catalog ${path}.id must match [A-Z0-9]{1,7}`);
+          return {
+            id: groupId.toUpperCase(),
+            ...(item.label !== undefined
+              ? { label: assertString(item.label, `${path}.label`) }
+              : {}),
+            ...(strings(item.approachIds, "approachIds")
+              ? { approachIds: strings(item.approachIds, "approachIds") }
+              : {}),
+            ...(strings(item.runwayIds, "runwayIds")
+              ? { runwayIds: strings(item.runwayIds, "runwayIds") }
+              : {}),
+            ...(runwayAliases ? { runwayAliases } : {}),
+            ...(positive(item.captureLengthNm, "captureLengthNm") !== undefined
+              ? { captureLengthNm: positive(item.captureLengthNm, "captureLengthNm") }
+              : {}),
+            ...(positive(item.ntzWidthFt, "ntzWidthFt") !== undefined
+              ? { ntzWidthFt: positive(item.ntzWidthFt, "ntzWidthFt") }
+              : {}),
+            ...(positive(item.outerMarginNm, "outerMarginNm") !== undefined
+              ? { outerMarginNm: positive(item.outerMarginNm, "outerMarginNm") }
+              : {}),
+            ...(positive(item.departureExtensionNm, "departureExtensionNm") !== undefined
+              ? {
+                  departureExtensionNm: positive(item.departureExtensionNm, "departureExtensionNm"),
+                }
+              : {}),
+            ...(geometry ? { geometry } : {}),
+            ...(verticalLimits ? { verticalLimits } : {}),
+            ...(monitoring ? { monitoring } : {}),
+          };
+        });
+  if (raw.enabled !== undefined && typeof raw.enabled !== "boolean")
+    throw new Error("Catalog fmaOverrides.enabled must be boolean");
+  if (raw.source !== undefined && raw.source !== "TRAINER_AUTHORED")
+    throw new Error("Catalog fmaOverrides.source must be TRAINER_AUTHORED");
+  const sourceNote =
+    raw.sourceNote === undefined
+      ? undefined
+      : assertString(raw.sourceNote, "fmaOverrides.sourceNote").trim();
+  if (raw.source !== undefined && !sourceNote)
+    throw new Error("Catalog fmaOverrides.sourceNote is required for trainer-authored adaptation");
+  if (raw.source === "TRAINER_AUTHORED") {
+    const seen = new Set<string>();
+    for (const [i, group] of (groups ?? []).entries()) {
+      const path = `fmaOverrides.groups[${i}]`;
+      if (seen.has(group.id.toUpperCase()))
+        throw new Error(`Catalog ${path}.id duplicates ${group.id}`);
+      seen.add(group.id.toUpperCase());
+      if (!group.geometry || (!group.approachIds?.length && !group.runwayIds?.length))
+        throw new Error(`Catalog ${path} requires complete geometry and approachIds or runwayIds`);
+      if (!isSimpleFmaPolygon(group.geometry.amzBoundary))
+        throw new Error(
+          `Catalog ${path}.geometry.amzBoundary must be finite, simple and nondegenerate`,
+        );
+      for (const [j, runway] of group.geometry.runways.entries())
+        if (!isSimpleFmaPolygon(runway.noz))
+          throw new Error(
+            `Catalog ${path}.geometry.runways[${j}].noz must be finite, simple and nondegenerate`,
+          );
+      for (const [j, ntz] of group.geometry.ntzs.entries())
+        if (!isSimpleFmaPolygon(ntz.polygon))
+          throw new Error(
+            `Catalog ${path}.geometry.ntzs[${j}].polygon must be finite, simple and nondegenerate`,
+          );
+      const ntzIds = new Set<string>();
+      for (const [j, ntz] of group.geometry.ntzs.entries()) {
+        if (ntzIds.has(ntz.id))
+          throw new Error(`Catalog ${path}.geometry.ntzs[${j}].id duplicates ${ntz.id}`);
+        ntzIds.add(ntz.id);
+      }
+    }
+  }
+  return {
+    ...(raw.enabled !== undefined ? { enabled: raw.enabled } : {}),
+    ...(raw.source !== undefined ? { source: "TRAINER_AUTHORED" as const, sourceNote } : {}),
+    ...(groups ? { groups } : {}),
+  };
 }
 
 function assertId(value: unknown, path: string): string {
@@ -359,7 +758,7 @@ function parseApproach(value: unknown, index: number): ApproachProcedure {
   const approach: ApproachProcedure = {
     id: assertString(value.id, `${path}.id`),
     type: type as ApproachType,
-    runway: assertString(value.runway, `${path}.runway`),
+    runway: assertString(value.runway, `${path}.runway`).toUpperCase(),
     name: assertString(value.name, `${path}.name`),
     locFullScaleHalfWidthFtAtThreshold:
       optionalNumber(
@@ -836,6 +1235,7 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
   if (spokenAliases.length === 0) {
     throw new Error("Catalog spokenAliases must contain at least one alias");
   }
+  const fmaOverrides = parseFmaAdaptation(files.catalog.fmaOverrides);
   const catalog: ProcedureCatalog = {
     schemaVersion: 1,
     airportId,
@@ -851,13 +1251,136 @@ export function parseCatalogFiles(files: CatalogFileSet): ProcedureCatalog {
     approaches,
     sids,
     atpaVolumes,
+    ...(fmaOverrides ? { fmaOverrides } : {}),
   };
   const ids = collectResolveIds(navaids, fixes);
   if (ids.has(airportId)) {
     throw new Error(`Catalog airportId ${airportId} must not also be a fix or navaid`);
   }
   validateRefs(catalog, ids);
+  validateFmaReferences(catalog);
   return catalog;
+}
+
+function validateFmaReferences(catalog: ProcedureCatalog): void {
+  const adaptation = catalog.fmaOverrides;
+  if (adaptation?.source !== "TRAINER_AUTHORED") return;
+  const approaches = new Map(catalog.approaches.map((approach) => [approach.id, approach]));
+  for (const [i, group] of (adaptation.groups ?? []).entries()) {
+    const path = `fmaOverrides.groups[${i}]`;
+    const selected = group.approachIds?.length
+      ? group.approachIds.map((id) => approaches.get(id))
+      : (group.runwayIds ?? []).map((runwayId) =>
+          catalog.approaches.find((approach) => approach.runway.toUpperCase() === runwayId),
+        );
+    if (selected.length < 2 || selected.length > 4)
+      throw new Error(`Catalog ${path} must reference 2–4 runway approaches`);
+    if (
+      selected.length < 2 ||
+      selected.some(
+        (approach) =>
+          !approach?.thresholdFixId ||
+          approach.publishedCourseMagneticDeg === undefined ||
+          !catalog.fixes.some((fix) => fix.id === approach.thresholdFixId),
+      )
+    )
+      throw new Error(`Catalog ${path} has unresolved approach/runway references`);
+    const runwayIds = selected.map((approach) => approach!.runway.toUpperCase());
+    if (
+      group.approachIds?.length &&
+      group.runwayIds?.length &&
+      (new Set(group.runwayIds.map((id) => id.toUpperCase())).size !== runwayIds.length ||
+        runwayIds.some((id) => !group.runwayIds!.some((runwayId) => runwayId.toUpperCase() === id)))
+    )
+      throw new Error(`Catalog ${path}.runwayIds must match its approachIds runway set`);
+    if (new Set(runwayIds).size !== runwayIds.length)
+      throw new Error(`Catalog ${path} references a runway more than once`);
+    const geometry = group.geometry!;
+    if (!isSimpleFmaPolygon(geometry.amzBoundary))
+      throw new Error(
+        `Catalog ${path}.geometry.amzBoundary must be finite, simple and nondegenerate`,
+      );
+    for (const [j, runway] of geometry.runways.entries())
+      if (!isSimpleFmaPolygon(runway.noz))
+        throw new Error(
+          `Catalog ${path}.geometry.runways[${j}].noz must be finite, simple and nondegenerate`,
+        );
+    for (const [j, ntz] of geometry.ntzs.entries())
+      if (!isSimpleFmaPolygon(ntz.polygon))
+        throw new Error(
+          `Catalog ${path}.geometry.ntzs[${j}].polygon must be finite, simple and nondegenerate`,
+        );
+    const geometryRunways = geometry.runways.map((runway) => runway.runwayId.toUpperCase());
+    if (
+      geometryRunways.length !== runwayIds.length ||
+      new Set(geometryRunways).size !== geometryRunways.length ||
+      runwayIds.some((id) => !geometryRunways.includes(id))
+    )
+      throw new Error(`Catalog ${path}.geometry.runways must match referenced runways`);
+    if (geometry.ntzs.length !== runwayIds.length - 1)
+      throw new Error(`Catalog ${path}.geometry.ntzs must define each adjacent runway pair`);
+    const runwayAxis = selected
+      .map((approach) => {
+        const fix = catalog.fixes.find((candidate) => candidate.id === approach!.thresholdFixId)!;
+        const course =
+          magneticToTrueDeg(approach!.publishedCourseMagneticDeg!, catalog.magVarDeg) *
+          (Math.PI / 180);
+        return {
+          id: approach!.runway.toUpperCase(),
+          cross: fix.xNm * Math.cos(course) - fix.yNm * Math.sin(course),
+        };
+      })
+      .sort((a, b) => a.cross - b.cross || a.id.localeCompare(b.id));
+    const expectedPairs = new Set(
+      runwayAxis.slice(0, -1).map((row, j) => `${row.id}/${runwayAxis[j + 1]!.id}`),
+    );
+    const actualPairs = new Set<string>();
+    const ntzIds = new Set<string>();
+    for (const [j, ntz] of geometry.ntzs.entries()) {
+      if (ntzIds.has(ntz.id))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}].id duplicates ${ntz.id}`);
+      ntzIds.add(ntz.id);
+      const left = ntz.leftRunwayId.toUpperCase(),
+        right = ntz.rightRunwayId.toUpperCase();
+      if (left === right || !expectedPairs.has(`${left}/${right}`))
+        throw new Error(
+          `Catalog ${path}.geometry.ntzs[${j}] must reference an adjacent runway pair in lateral order (${left}/${right}; expected ${[...expectedPairs].join(", ")})`,
+        );
+      const key = `${left}/${right}`;
+      if (actualPairs.has(key))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}] duplicates an adjacent pair`);
+      actualPairs.add(key);
+      if (ntz.polygon.some((point) => !containsInPolygon(point, geometry.amzBoundary)))
+        throw new Error(`Catalog ${path}.geometry.ntzs[${j}].polygon extends outside AMZ boundary`);
+    }
+    if (actualPairs.size !== expectedPairs.size)
+      throw new Error(`Catalog ${path}.geometry.ntzs must define every adjacent runway pair`);
+    for (const [j, runway] of geometry.runways.entries())
+      if (runway.noz.some((point) => !containsInPolygon(point, geometry.amzBoundary)))
+        throw new Error(`Catalog ${path}.geometry.runways[${j}].noz extends outside AMZ boundary`);
+    const checkGraphicalRunways = (
+      items: Array<{ runwayId: string }> | undefined,
+      name: string,
+    ) => {
+      for (const [j, item] of (items ?? []).entries())
+        if (!runwayIds.includes(item.runwayId.toUpperCase()))
+          throw new Error(
+            `Catalog ${path}.geometry.${name}[${j}].runwayId is not a referenced runway`,
+          );
+    };
+    checkGraphicalRunways(geometry.courseLines, "courseLines");
+    checkGraphicalRunways(geometry.fixBars, "fixBars");
+    if (
+      geometry.courseLines &&
+      (geometry.courseLines.length !== runwayIds.length ||
+        new Set(geometry.courseLines.map((line) => line.runwayId.toUpperCase())).size !==
+          geometry.courseLines.length)
+    )
+      throw new Error(`Catalog ${path}.geometry.courseLines must include every referenced runway`);
+    for (const [j, bar] of (geometry.fixBars ?? []).entries())
+      if (!catalog.fixes.some((fix) => fix.id === bar.fixId))
+        throw new Error(`Catalog ${path}.geometry.fixBars[${j}].fixId is unresolved`);
+  }
 }
 
 /** Last path segment, so `kdem` and `src/scenario/data/kdem` both work. */

@@ -2,7 +2,6 @@ import { emptyWxMosaic } from "../wx/mosaic";
 import { describe, expect, test } from "vitest";
 import {
   createScopeView,
-  stepModeFsl,
   stepDcbVol,
   stepBriteChannel,
   getBackgroundColor,
@@ -104,44 +103,13 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
     view.tracks.set("ac1", createTrackDisplay("owned"));
     view.tracks.set("ac2", createTrackDisplay("unowned"));
 
-    // MODE F (Full)
-    expect(view.modeFsl).toBe("F");
+    // AC2 datablocks: owned track is full, unowned is partial
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
 
-    // MODE S (Semi) via stepModeFsl
-    stepModeFsl(view, 1);
-    expect(view.modeFsl).toBe("S");
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
-    expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
-
-    // Clicking / selecting an owned track in Mode S expands it to FDB
-    world.selectedAircraftId = "ac1";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
-    world.selectedAircraftId = null;
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
-
-    // MODE L (Limited) via stepModeFsl
-    stepModeFsl(view, 1);
-    expect(view.modeFsl).toBe("L");
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
-    expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("limited");
-
-    // Clicking / selecting an owned track in Mode L expands it to FDB
-    world.selectedAircraftId = "ac1";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
-    world.selectedAircraftId = null;
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
-
-    // Forced FDB override persists in MODE L
+    // Forced FDB override persists
     view.tracks.get("ac2")!.forcedFdb = true;
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("full");
-
-    // Step back to MODE S then MODE F
-    stepModeFsl(view, -1);
-    expect(view.modeFsl).toBe("S");
-    stepModeFsl(view, -1);
-    expect(view.modeFsl).toBe("F");
   });
 
   test("AC3 — BRITE BKC modulates background contrast level linearly and formats OFF to 100", () => {
@@ -222,28 +190,25 @@ describe("T02-83 DCB Controls and SSA Weather Telemetry Acceptance Suite", () =>
     expect(hiddenSsa).not.toContain("(1) 2 3 4 5");
   });
 
-  test("AC5 — PREF saves and restores VOL, MODE FSL, BRITE BKC, and SSA FILTER WX state", () => {
+  test("AC5 — PREF saves and restores VOL, BRITE BKC, and SSA FILTER WX state", () => {
     const view = createScopeView();
     view.vol = 4;
-    view.modeFsl = "L";
     view.brite.bkc = 40;
     view.ssaFilter.WX = false;
 
     const serialized = serializeDcbPref(view);
     expect(serialized.vol).toBe(4);
-    expect(serialized.modeFsl).toBe("L");
+    expect((serialized as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
     expect(serialized.brite.bkc).toBe(40);
     expect(serialized.ssaFilter?.WX).toBe(false);
 
     const freshView = createScopeView();
     expect(freshView.vol).toBe(2);
-    expect(freshView.modeFsl).toBe("F");
     expect(freshView.brite.bkc).toBe(100);
     expect(freshView.ssaFilter.WX).toBe(true);
 
     applyDcbPref(freshView, serialized);
     expect(freshView.vol).toBe(4);
-    expect(freshView.modeFsl).toBe("L");
     expect(freshView.brite.bkc).toBe(40);
     expect(freshView.ssaFilter.WX).toBe(false);
   });

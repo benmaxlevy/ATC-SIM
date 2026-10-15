@@ -218,6 +218,13 @@
       "xNm": -7,
       "yNm": -6,
       "note": "BAY1 South transition left-turn curving waypoint"
+    },
+    {
+      "id": "RW27R",
+      "kind": "THRESHOLD",
+      "xNm": 0,
+      "yNm": 0.5,
+      "note": "Trainer-authored parallel threshold for FMA geometry fixture; not facility data."
     }
   ]
 }

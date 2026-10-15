@@ -1,6 +1,6 @@
 {
   "airportId": "KDEM",
-  "note": "DEMO ONE: north/south transitions merge at MERGE (West Flow), west-north/west-south transitions merge at WMERG (East Flow), then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json.",
+  "note": "DEMO ONE: north/south transitions merge at MERGE (West Flow), west-north/west-south transitions merge at WMERG (East Flow), then VECTORS. Video map 006 is a separate MAPS drawing. SIDs are sids.json. ILS28 is a trainer-only parallel runway fixture for authored FMA geometry; it is not an operational procedure.",
   "stars": [
     {
       "id": "DEM1",
@@ -13,23 +13,47 @@
           "legs": [
             {
               "fixId": "NEMAX",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 250
+              }
             },
             {
               "fixId": "NELBO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 230
+              }
             },
             {
               "fixId": "NJOIN",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             },
             {
               "fixId": "MERGE",
-              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 4000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             }
           ]
         },
@@ -40,23 +64,47 @@
           "legs": [
             {
               "fixId": "SEMAX",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 250
+              }
             },
             {
               "fixId": "SELBO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 230
+              }
             },
             {
               "fixId": "SJOIN",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             },
             {
               "fixId": "MERGE",
-              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 4000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             }
           ]
         },
@@ -67,23 +115,47 @@
           "legs": [
             {
               "fixId": "WEMAX",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 250
+              }
             },
             {
               "fixId": "WELBO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 230
+              }
             },
             {
               "fixId": "WENJO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             },
             {
               "fixId": "WEMER",
-              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 4000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             }
           ]
         },
@@ -94,23 +166,47 @@
           "legs": [
             {
               "fixId": "SAMAX",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 10000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 250 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 10000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 250
+              }
             },
             {
               "fixId": "SALBO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 8000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 230 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 8000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 230
+              }
             },
             {
               "fixId": "SANJO",
-              "altConstraint": { "type": "AT_OR_ABOVE", "altitudeFt": 6000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT_OR_ABOVE",
+                "altitudeFt": 6000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             },
             {
               "fixId": "WEMER",
-              "altConstraint": { "type": "AT", "altitudeFt": 4000 },
-              "speedConstraint": { "type": "AT_OR_BELOW", "speedKt": 210 }
+              "altConstraint": {
+                "type": "AT",
+                "altitudeFt": 4000
+              },
+              "speedConstraint": {
+                "type": "AT_OR_BELOW",
+                "speedKt": 210
+              }
             }
           ]
         }
@@ -169,6 +265,14 @@
         "climbToFt": 3000,
         "directFixId": "MISSE"
       }
+    },
+    {
+      "id": "ILS27R",
+      "type": "ILS",
+      "runway": "27R",
+      "name": "TRAINER PARALLEL APPROACH 27R",
+      "thresholdFixId": "RW27R",
+      "courseDeg": 270
     }
   ]
 }

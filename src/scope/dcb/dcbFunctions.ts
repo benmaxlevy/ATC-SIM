@@ -37,11 +37,12 @@ import { BRITE_STEPS, type BriteChannel, type BriteLevel } from "../palette";
 import {
   snapRangeRingToViewCenter,
   VOL_STEPS,
+  configureFmaSurveillanceView,
   type VolLevel,
-  type ModeFsl,
   type DwellMode,
   type ScopeView,
 } from "../scopeView";
+import { applyFmaAmzWithWarning, applyLastNormalDcbPref, getFmaMaximumPtlSeconds } from "./dcbPref";
 import { cancelPendingMinSepIfArmed } from "../minimumSeparation";
 import { setLeaderDirForSelection } from "../trackDisplay";
 import { cloneWxLevels, type VipLevel } from "../wx";
@@ -69,10 +70,10 @@ export const DCB_GROUP_SUBMENU_SLOT_START = DCB_QUICK_MAP_COUNT + 1;
 export const DCB_GROUP_SLOT_COUNT = DCB_QUICK_MAP_COUNT + DCB_MAP_SLOT_COUNT;
 
 /** Optional layout for `*D` / `M` tokens when map groups are loaded. */
-export interface VideoMapTokenLayout {
+export type VideoMapTokenLayout = {
   groups?: VideoMapGroupSet;
   selectedGroupId?: string | null;
-}
+};
 
 export function snapRrInterval(nm: number): RrIntervalNm {
   for (const step of RR_KEYBOARD_INTERVALS_NM) {
@@ -546,10 +547,23 @@ export function stepCharSizeChannel(
   }
 }
 
-const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr", "cmp"]);
+export const FMA_BRITE_STEPS = [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
+export const FMA_NTZ_BRITE_STEPS = [50, 60, 70, 80, 90, 100] as const;
+
+const MAP_CACHE_BRITE_CHANNELS: ReadonlySet<BriteChannel> = new Set(["mpa", "mpb", "rr"]);
 
 export function stepBriteChannel(view: ScopeView, channel: BriteChannel, delta: number): void {
-  view.brite[channel] = stepFrozen(BRITE_STEPS, view.brite[channel], delta);
+  const steps =
+    channel === "ntz"
+      ? FMA_NTZ_BRITE_STEPS
+      : channel === "amz" || channel === "rwy" || channel === "ref"
+        ? FMA_BRITE_STEPS
+        : BRITE_STEPS;
+  view.brite[channel] = stepFrozen(
+    steps as readonly number[],
+    view.brite[channel],
+    delta,
+  ) as unknown as BriteLevel;
   if (MAP_CACHE_BRITE_CHANNELS.has(channel)) {
     invalidateMapCache(view);
   }
@@ -674,27 +688,6 @@ export function formatDcbVolReadout(vol: VolLevel): string {
   return `${vol}`;
 }
 
-export const MODE_FSL_STEPS: readonly ModeFsl[] = ["F", "S", "L"];
-
-/**
- * Step MODE FSL spinner ("F" <-> "S" <-> "L").
- */
-export function stepModeFsl(view: ScopeView, delta: number): ModeFsl {
-  const next = stepFrozen(MODE_FSL_STEPS, view.modeFsl, delta);
-  view.modeFsl = next;
-  return next;
-}
-
-/**
- * MAIN MODE FSL 3-state toggle latch.
- * Cycles "F" (Full) -> "S" (Semi/Partial) -> "L" (Limited) -> "F".
- */
-export function cycleModeFsl(view: ScopeView): ModeFsl {
-  const next: ModeFsl = view.modeFsl === "F" ? "S" : view.modeFsl === "S" ? "L" : "F";
-  view.modeFsl = next;
-  return next;
-}
-
 export const HISTORY_RATE_STEPS = [1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 6.0, 8.0, 10.0] as const;
 
 /**
@@ -762,4 +755,209 @@ export function stepCursorSpeed(view: ScopeView, delta: number): number {
 
 export function formatDcbCursorSpeedReadout(speed: number): string {
   return `${speed}`;
+}
+
+/**
+ * Gate checks for FMA mode availability (TI 6191.409 §6.16.1):
+ * - 2K display capability (1K omits FMA)
+ * - Controller privilege required
+ * - At least one valid adapted/derived AMZ defined
+ * - Service state compatible with FMA (not DSF/DSA)
+ */
+export function isFmaAvailable(view: ScopeView): boolean {
+  if (view.displayCapability !== "2K") {
+    return false;
+  }
+  if (view.operatorPrivilege !== "controller") {
+    return false;
+  }
+  if (!view.fmaAmzs || view.fmaAmzs.length === 0) {
+    return false;
+  }
+  if (view.serviceMode === "DSF") {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Selecting FMA in the MODE submenu enters candidate confirmation state without toggling (AC1, §6.16.1).
+ */
+export function enterFmaConfirmation(view: ScopeView): boolean {
+  if (!isFmaAvailable(view)) {
+    return false;
+  }
+  view.fmaCandidateMode = true;
+  return true;
+}
+
+/**
+ * Cancel pending FMA confirmation.
+ */
+export function cancelFmaConfirmation(view: ScopeView): void {
+  view.fmaCandidateMode = false;
+}
+
+/**
+ * ACCEPT commits FMA toggle once; exits confirmation state (AC1, §6.16.1).
+ */
+export function commitFmaConfirmation(view: ScopeView): boolean {
+  if (!view.fmaCandidateMode) {
+    return false;
+  }
+  view.fmaCandidateMode = false;
+  view.dcbPref.pendingSaveAs = false;
+  const enabling = !view.fmaSurveillance.enabled;
+  if (enabling) {
+    const amzId =
+      view.fmaSurveillance.selectedAmzId &&
+      view.fmaAmzs.some((a) => a.id === view.fmaSurveillance.selectedAmzId)
+        ? view.fmaSurveillance.selectedAmzId
+        : view.fmaAmzs.some((a) => a.id === view.fmaDefaultAmzId)
+          ? view.fmaDefaultAmzId
+          : (view.fmaAmzs[0]?.id ?? null);
+    if (amzId) view.fmaDefaultAmzId = amzId;
+    configureFmaSurveillanceView(view, true, amzId);
+    applyFmaAmzWithWarning(view, amzId);
+  } else {
+    configureFmaSurveillanceView(view, false, null);
+    applyLastNormalDcbPref(view);
+    view.lastWarning = null;
+  }
+  return true;
+}
+
+export const FMA_MAG_STEPS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+export function stepFmaMag(view: ScopeView, delta: number): number {
+  const next = stepFrozen(FMA_MAG_STEPS, view.fmaMag, delta);
+  view.fmaMag = next;
+  return next;
+}
+
+/** Legacy default-max ladder, retained for consumers; runtime PTL steps use the active AMZ cap. */
+export const FMA_PTL_STEPS = [0, 5, 10, 15, 20, 25, 30] as const;
+
+export function stepFmaPtl(view: ScopeView, delta: number): number {
+  const maximum = getFmaMaximumPtlSeconds(view.fmaAmzs, view.fmaSurveillance.selectedAmzId);
+  const current = Number.isFinite(view.fmaPtlSeconds) ? view.fmaPtlSeconds : 5;
+  const next = Math.max(0, Math.min(maximum, current + Math.trunc(delta) * 5));
+  view.fmaPtlSeconds = next;
+  return next;
+}
+
+export const FMA_VOICE_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+export function stepFmaVoice(view: ScopeView, delta: number): number {
+  const next = stepFrozen(FMA_VOICE_STEPS, view.fmaVoiceLevel, delta);
+  view.fmaVoiceLevel = next;
+  return next;
+}
+
+export function commitFmaVoice(view: ScopeView, level: number): void {
+  view.fmaVoiceLevel = Math.max(1, Math.min(10, Math.round(level)));
+  view.fmaSpeechEvents.push({ type: "test", level: view.fmaVoiceLevel });
+}
+
+export function triggerFmaVoiceTest(view: ScopeView): void {
+  view.fmaSpeechEvents.push({ type: "test", level: view.fmaVoiceLevel });
+}
+
+export const FMA_RUNWAY_LEADER_STEPS: readonly (LeaderDir | null)[] = [
+  null,
+  8,
+  9,
+  6,
+  3,
+  2,
+  1,
+  4,
+  7,
+];
+
+export const FMA_RUNWAY_KEYPAD_TO_DIR: Record<number, LeaderDir | null> = {
+  1: 7, // NW
+  2: 8, // N
+  3: 9, // NE
+  4: 4, // W
+  5: null, // NONE
+  6: 6, // E
+  7: 1, // SW
+  8: 2, // S
+  9: 3, // SE
+};
+
+export const FMA_RUNWAY_DIR_TO_KEYPAD: Record<number, number> = {
+  7: 1,
+  8: 2,
+  9: 3,
+  4: 4,
+  6: 6,
+  1: 7,
+  2: 8,
+  3: 9,
+};
+
+export function formatFmaRunwayLeaderReadout(dir: LeaderDir | null | undefined): string {
+  if (dir === null || dir === undefined) return "NONE";
+  return LEADER_DIR_LABELS[dir] ?? "NONE";
+}
+
+export function stepFmaRunwayLeader(
+  view: ScopeView,
+  runwayId: string,
+  delta: number,
+): LeaderDir | null {
+  const current = view.fmaRunwayLeaders.get(runwayId) ?? null;
+  const next = stepFrozen(FMA_RUNWAY_LEADER_STEPS, current, delta);
+  view.fmaRunwayLeaders.set(runwayId, next);
+  return next;
+}
+
+export function setFmaRunwayLeader(view: ScopeView, runwayId: string, dir: LeaderDir | null): void {
+  view.fmaRunwayLeaders.set(runwayId, dir);
+}
+
+export function toggleFmaNtz(view: ScopeView, ntzId: string): void {
+  const disabled = new Set(view.fmaAlertInhibit.ntzIds ?? []);
+  if (disabled.has(ntzId)) {
+    disabled.delete(ntzId);
+  } else {
+    disabled.add(ntzId);
+  }
+  view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabled };
+}
+
+export function toggleFmaNtzAll(view: ScopeView): void {
+  const activeAmz = view.fmaAmzs.find((a) => a.id === view.fmaSurveillance.selectedAmzId);
+  if (!activeAmz || activeAmz.ntzs.length === 0) return;
+  const disabled = new Set(view.fmaAlertInhibit.ntzIds ?? []);
+  const allEnabled = activeAmz.ntzs.every((n) => !disabled.has(n.id));
+  if (allEnabled) {
+    for (const n of activeAmz.ntzs) disabled.add(n.id);
+  } else {
+    for (const n of activeAmz.ntzs) disabled.delete(n.id);
+  }
+  view.fmaAlertInhibit = { ...view.fmaAlertInhibit, ntzIds: disabled };
+}
+
+export function stepFmaAmz(view: ScopeView, delta: number): string | null {
+  if (view.fmaAmzs.length <= 1) return view.fmaSurveillance.selectedAmzId;
+  const ids = view.fmaAmzs.map((a) => a.id);
+  const current = view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId ?? ids[0]!;
+  const next = stepFrozen(ids, current, delta);
+  return next;
+}
+
+export function commitFmaAmzSwitch(view: ScopeView, targetAmzId: string): boolean {
+  if (!view.fmaAmzs.some((amz) => amz.id === targetAmzId)) return false;
+  if (view.fmaSurveillance.selectedAmzId === targetAmzId) {
+    view.fmaDefaultAmzId = targetAmzId;
+    view.lastWarning = null;
+    return true;
+  }
+  configureFmaSurveillanceView(view, true, targetAmzId);
+  view.fmaDefaultAmzId = targetAmzId;
+  applyFmaAmzWithWarning(view, targetAmzId);
+  return true;
 }

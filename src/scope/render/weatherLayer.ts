@@ -4,8 +4,9 @@
  */
 
 import { latLonToNm, nmToLatLon, type LatLon } from "@core";
-import { nmToScreen, pxPerNm, type ScopeViewSize } from "../camera";
+import { nmToScreen, pxPerNm, screenToNm, type ScopeViewSize } from "../camera";
 import { applyBrite, snapBriteLevel } from "../palette";
+import { scopeProjectionFromView } from "../projection";
 import type { ScopeView } from "../scopeView";
 import type { WxLevels, WxMosaic } from "../wx";
 import { WX_VIP_FILL_HEX } from "./wxStarsFill";
@@ -662,6 +663,30 @@ export function drawWeatherLayer(
   }
   const smoothing = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = false;
+  const projection = scopeProjectionFromView(view, size);
+  if (projection.isMagnified) {
+    // Weather is a cached raster in ordinary screen coordinates. Apply the same
+    // affine geographic projection used by tracks, video maps, and FMA graphics.
+    const centerX = size.widthPx / 2;
+    const centerY = size.heightPx / 2;
+    const east = screenToNm(centerX + 1, centerY, view.camera, size);
+    const south = screenToNm(centerX, centerY + 1, view.camera, size);
+    const xAxis = projection.toScreen(east.eastNm, east.northNm);
+    const yAxis = projection.toScreen(south.eastNm, south.northNm);
+    const a = xAxis.x - centerX;
+    const b = xAxis.y - centerY;
+    const c = yAxis.x - centerX;
+    const d = yAxis.y - centerY;
+    ctx.save();
+    ctx.transform(
+      a,
+      b,
+      c,
+      d,
+      centerX - a * centerX - c * centerY,
+      centerY - b * centerX - d * centerY,
+    );
+  }
   ctx.drawImage(
     cachedViewport.canvas as unknown as CanvasImageSource,
     (padding - (destX - cachedViewport.anchorX)) * resolution,
@@ -673,5 +698,6 @@ export function drawWeatherLayer(
     size.widthPx,
     size.heightPx,
   );
+  if (projection.isMagnified) ctx.restore();
   ctx.imageSmoothingEnabled = smoothing;
 }

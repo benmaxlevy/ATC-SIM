@@ -14,6 +14,7 @@ import { isImplicitFusedSurveillance, loadPlayableScenario, type RadarSite } fro
 import { DisplayControlBar } from "@ui";
 import { applyRadarSites, createScopeView, setSurveillanceMode } from "../scopeView";
 import { renderScope } from "../render/renderScope";
+import { bindScenarioDisplayContext } from "../../ui/sessionScenarioBinding";
 import { buildSsaLines, SSA_NETWORK_HEALTH_STUB } from "../ssa";
 import {
   FUSED_PERIOD_MS,
@@ -113,9 +114,8 @@ function mockRenderCtx(): {
 test("AC1 — playable KDEM and KATL bind authored radarSites with no airport-id branch", () => {
   for (const id of ["kdem", "katl"] as const) {
     const scenario = loadPlayableScenario(id);
-    const view = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
-      radarSites: scenario.radarSites,
-    });
+    const view = createScopeView();
+    bindScenarioDisplayContext(view, scenario, null);
     expect(isImplicitFusedSurveillance(scenario.radarSites)).toBe(false);
     expect(view.radarSites).toHaveLength(scenario.radarSites.length);
     expect(view.radarSites.some((row) => row.kind === "airport")).toBe(true);
@@ -142,7 +142,7 @@ test("AC1 — playable KDEM and KATL bind authored radarSites with no airport-id
   }) as Record<string, string>;
   const live = `${boot["../../main.tsx"]}\n${shell["../../ui/shell.tsx"]}\n${viewSrc["../scopeView.ts"]}`;
   expect(live).toMatch(/radarSites: scenario\.radarSites/);
-  expect(live).toMatch(/applyRadarSites\(scopeView, nextScenario\.radarSites\)/);
+  expect(live).toMatch(/bindScenarioDisplayContext\(scopeView, nextScenario/);
   expect(live).toMatch(/R01/);
   expect(live).toMatch(/R05/);
   expect(live).toMatch(/R07/);

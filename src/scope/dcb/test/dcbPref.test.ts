@@ -5,6 +5,7 @@ import {
   loadDcbPrefFromStorage,
   parseDcbPrefName,
   saveDcbPref,
+  serializeDcbPref,
   type DcbPrefStorage,
 } from "../dcbPref";
 import { parseDigitalMap } from "../../mapLayers";
@@ -27,9 +28,16 @@ function kdemView() {
   return createScopeView(0, 0, { digitalMap: parseDigitalMap(loadKdem().maps) });
 }
 
+function prepareSelectedNormal(view: ReturnType<typeof kdemView>): void {
+  view.dcbPref.slots[0] = { name: "BASE", body: serializeDcbPref(view) };
+  view.dcbPref.activeIndex = 0;
+  view.dcbPref.ownerConfirmed = true;
+}
+
 test("SAVE then reload restores range, a toggled map, and dock", () => {
   const store = memoryStorage();
   const view = kdemView();
+  prepareSelectedNormal(view);
   view.dcbPref.icao = "KDEM";
   view.camera.rangeNm = 40;
   setDcbDock(view, "LEFT");
@@ -43,16 +51,22 @@ test("SAVE then reload restores range, a toggled map, and dock", () => {
   expect(isVideoMapOn(boot, "DEM1_27")).toBe(false);
 });
 
-test("parseDcbPrefName rejects empty, non-alnum, and digit-only text", () => {
+test("parseDcbPrefName validates 1–7 alphanumeric names including digit-only and rejects empty, non-alnum, and overlength", () => {
   expect(parseDcbPrefName("NIGHT")).toEqual({ ok: true, name: "NIGHT" });
+  expect(parseDcbPrefName("123")).toEqual({ ok: true, name: "123" });
   expect(parseDcbPrefName("")).toEqual({ ok: false, reason: "empty" });
   expect(parseDcbPrefName("22/27")).toEqual({ ok: false, reason: "non-alnum" });
-  expect(parseDcbPrefName("123")).toEqual({ ok: false, reason: "digit-only" });
+  expect(parseDcbPrefName("TOOLONGNAME")).toEqual({ ok: false, reason: "too-long" });
+  expect(parseDcbPrefName("DAYLIGHT", { allowLegacy8: true })).toEqual({
+    ok: true,
+    name: "DAYLIGHT",
+  });
 });
 
 test("SAVE then reload restores historyRateSec, dwellMode, cursorHome, cursorSpeed", () => {
   const store = memoryStorage();
   const view = kdemView();
+  prepareSelectedNormal(view);
   view.dcbPref.icao = "KDEM";
   view.historyRateSec = 6.0;
   view.dwellMode = "LOCK";
@@ -76,6 +90,7 @@ test("SAVE then reload restores historyRateSec, dwellMode, cursorHome, cursorSpe
 test("AC4 — SAVE then reload restores showCompassRose", () => {
   const store = memoryStorage();
   const view = kdemView();
+  prepareSelectedNormal(view);
   view.dcbPref.icao = "KDEM";
   expect(view.showCompassRose).toBe(true);
   view.showCompassRose = false;
@@ -88,6 +103,7 @@ test("AC4 — SAVE then reload restores showCompassRose", () => {
 
   // Toggle back to true
   view.showCompassRose = true;
+  prepareSelectedNormal(view);
   saveDcbPref(view, store);
   const boot2 = kdemView();
   loadDcbPrefFromStorage(boot2, "KDEM", store);

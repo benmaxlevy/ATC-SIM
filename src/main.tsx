@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { advanceWorld, createAccumulator } from "@core";
+import { advanceWorld, createAccumulator, flightPlanForAircraft } from "@core";
 import {
   createWorldForSession,
   loadPlayableScenario,
@@ -13,8 +13,12 @@ import {
 } from "@scenario";
 import {
   PpiPlaceholderId,
+  advanceFmaSurveillanceView,
   browserDcbPrefStorage,
   createScopeView,
+  bindFmaScenarioFlow,
+  clearFmaSurveillanceView,
+  fmaReportsForSimulationTick,
   ensureWxMosaic,
   hasActiveUninhibitedConflict,
   hasActiveUninhibitedMsaw,
@@ -22,7 +26,9 @@ import {
   loadScopeFonts,
   paintPpi,
   parseDigitalMap,
+  pruneFmaSurveillanceView,
   startMetarPolling,
+  observeFmaAlertRuntime,
 } from "@scope";
 import {
   FPS_DEBUG_ID,
@@ -35,6 +41,7 @@ import {
   syncDisplayControlBar,
 } from "@ui";
 import { bootSession, createApp } from "./app/create-app";
+import { syncFmaSpeech } from "./app/fma-speech";
 import "./index.css";
 import "./scope/starsFonts.css";
 
@@ -75,6 +82,7 @@ const handles = createApp({
 });
 bootSession(handles, scenario, Date.now(), spawnSeed);
 window.addEventListener("pagehide", () => {
+  clearFmaSurveillanceView(scopeView);
   handles.voiceLoop.dispose();
   try {
     handles.speech.dispose?.();
@@ -84,6 +92,7 @@ window.addEventListener("pagehide", () => {
   handles.ptt.dispose();
   handles.caAlertTone.dispose();
   handles.eventSounds.dispose();
+  handles.fmaSpeech.dispose();
   stopMetarPolling();
 });
 
@@ -101,6 +110,7 @@ const scopeView = createScopeView(scenario.arpNm.xNm, scenario.arpNm.yNm, {
   ssaWeatherAirports: scenario.ssaWeatherAirports,
   towerAirports: scenario.towerAirports ?? scenario.ssaWeatherAirports,
 });
+bindFmaScenarioFlow(scopeView, scenario);
 const stopMetarPolling = startMetarPolling(scopeView, {
   primaryIcao: scenario.icao,
   giSlot: scenario.ssaWeatherGiSlot,
@@ -121,6 +131,8 @@ if (!root) {
 
 const acc = createAccumulator();
 let lastFrameMs = 0;
+let lastFmaSimMs: number | null = null;
+let observedFmaWorld = handles.world;
 const fpsDebugOn = isFpsDebugEnabled(window.location.search);
 
 function paintCurrentPpi(): void {
@@ -136,6 +148,11 @@ function onFrame(nowMs: number): void {
   lastFrameMs = nowMs;
   // Physics: wall Δt feeds the accumulator. Never pass this dt into stepWorld.
   advanceWorld(handles.world, wallDtS, acc);
+  if (observedFmaWorld !== handles.world) {
+    clearFmaSurveillanceView(scopeView);
+    observedFmaWorld = handles.world;
+    lastFmaSimMs = null;
+  }
   handles.caAlertTone.setVolume(scopeView.vol ?? 2);
   handles.afterPhysicsTick(
     hasActiveUninhibitedConflict(handles.world, scopeView),
@@ -143,6 +160,41 @@ function onFrame(nowMs: number): void {
   );
   void ensureWxMosaic(scopeView, { nowMs });
   paintCurrentPpi();
+  // FMA aging runs as a simulation observer after the sampler has published
+  // this frame's reports. Paint-only/paused frames can prune lifecycle state,
+  // but only an advanced sim clock evaluates loss or coast thresholds.
+  const liveTrackIds = new Set(handles.world.aircraft.map((aircraft) => aircraft.id));
+  const associatedTrackIds = new Set(
+    handles.world.aircraft
+      .filter((aircraft) => flightPlanForAircraft(handles.world, aircraft.id) != null)
+      .map((aircraft) => aircraft.id),
+  );
+  pruneFmaSurveillanceView(scopeView, liveTrackIds, associatedTrackIds);
+  if (lastFmaSimMs === null || handles.world.simTimeMs > lastFmaSimMs) {
+    const fmaReports = fmaReportsForSimulationTick(
+      scopeView,
+      [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
+    );
+    advanceFmaSurveillanceView(scopeView, {
+      nowSimMs: handles.world.simTimeMs,
+      reports: fmaReports,
+      liveTrackIds,
+      associatedTrackIds,
+    });
+    lastFmaSimMs = handles.world.simTimeMs;
+  }
+  // Alert lifecycle pruning is clock-independent: pause must not preserve a
+  // deleted/disassociated track's episodes for a later re-association.
+  observeFmaAlertRuntime(
+    scopeView,
+    handles.world,
+    handles.world.simTimeMs,
+    fmaReportsForSimulationTick(
+      scopeView,
+      [...scopeView.tracks.values()].flatMap((td) => (td.lastReport ? [td.lastReport] : [])),
+    ),
+  );
+  syncFmaSpeech(handles.fmaSpeech, scopeView, handles.world);
   const hud = document.getElementById(SIM_HUD_ID);
   if (hud) {
     hud.textContent = formatSimHud(handles.world);

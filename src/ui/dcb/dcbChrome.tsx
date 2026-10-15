@@ -17,8 +17,12 @@ import {
   dcbActionCapPressed,
   dcbLeaderDirReadout,
   DCB_ACTION_FLASH_MS,
+  FMA_RUNWAY_KEYPAD_TO_DIR,
+  formatFmaRunwayLeaderReadout,
+  LEADER_DIR_LABELS,
+  type LeaderDir,
   SSA_FILTER_FIELDS,
-  activeDcbPrefName,
+  appliedDcbPrefIdentity,
   formatDcbBriteReadout,
   formatDcbCharReadout,
   formatDcbHistoryReadout,
@@ -27,7 +31,6 @@ import {
   formatDcbCursorSpeedReadout,
   formatDcbLdrLengthReadout,
   formatDcbMapLabel,
-  formatDcbPrefReadout,
   formatDcbPtlMinutesReadout,
   formatDcbRrReadout,
   formatDcbSiteLabel,
@@ -91,11 +94,11 @@ export function liveSiteLabel(view: ScopeView): string {
   return formatDcbSiteLabel(liveSiteMode(view));
 }
 
-export interface DisplayControlBarProps {
+export type DisplayControlBarProps = {
   view: ScopeView;
   onChange: () => void;
   world?: Parameters<typeof applyDcbLeaderDir>[1];
-}
+};
 
 function preventButtonFocus(event: MouseEvent<HTMLButtonElement>): void {
   event.preventDefault();
@@ -161,7 +164,22 @@ export function formatSpinnerCellReadout(
   defaultReadout: string | number,
 ): string | number {
   const buf = armedSpinnerBuffer(view, cell);
-  return buf !== null ? buf : defaultReadout;
+  if (buf === null) {
+    return defaultReadout;
+  }
+  if (cell === "LDR_DIR") {
+    const num = Number(buf);
+    if (Number.isInteger(num) && num in LEADER_DIR_LABELS && num !== 5) {
+      return LEADER_DIR_LABELS[num as LeaderDir];
+    }
+  } else if (cell.startsWith("FMA_LDR_")) {
+    const num = Number(buf);
+    if (Number.isInteger(num) && num in FMA_RUNWAY_KEYPAD_TO_DIR) {
+      const dir = FMA_RUNWAY_KEYPAD_TO_DIR[num];
+      return formatFmaRunwayLeaderReadout(dir);
+    }
+  }
+  return buf;
 }
 
 export function toggleSpinner(
@@ -380,7 +398,7 @@ export function syncDisplayControlBar(
   setPressed(doc.querySelector('[data-dcb-cell="dwell"]'), spinnerArmed(view, "DWELL"));
 }
 
-export interface DcbCellProps {
+export type DcbCellProps = {
   ariaLabel: string;
   children: ReactNode;
   kind?: DcbCellKind;
@@ -424,6 +442,10 @@ export interface DcbCellProps {
     | "brite-wx"
     | "brite-wxc"
     | "brite-bkc"
+    | "brite-amz"
+    | "brite-ntz"
+    | "brite-rwy"
+    | "brite-ref"
     | "place"
     | "off-cntr"
     | "place-rr"
@@ -478,18 +500,38 @@ export interface DcbCellProps {
     | "site-multi"
     | "site-choice"
     | "pref"
+    | "pref-user"
+    | "mode"
+    | "mode-efsl"
     | "mode-fsl"
+    | "mode-trng"
+    | "mode-fma"
+    | "mode-dsf"
+    | "mode-accept"
     | `pref-${number}`
     | "pref-default"
     | "pref-restore"
     | "pref-save"
     | "pref-save-as"
-    | "pref-delete";
+    | "pref-delete"
+    | "fma-amz"
+    | "fma-mag"
+    | "fma-voice"
+    | "fma-voice-test"
+    | "fma-ptl-len"
+    | "fma-ntz-1"
+    | "fma-ntz-2"
+    | "fma-ntz-3"
+    | "fma-ntz-all"
+    | "fma-rwy-1"
+    | "fma-rwy-2"
+    | "fma-rwy-3"
+    | "fma-rwy-4";
   dataMapId?: string;
   dataMapSlot?: number;
   dataGiSlot?: number;
   dataSiteId?: string;
-}
+};
 
 export function DcbCell({
   ariaLabel,
@@ -599,7 +641,7 @@ export function DcbCell({
       }}
       onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
         if (isDragging.current && dragStartY.current !== null && onDragDelta) {
-          const dy = dragStartY.current - event.clientY; // Up is positive
+          const dy = dragStartY.current - event.clientY;
           accumulatedDy.current += dy;
           dragStartY.current = event.clientY;
           const STEP_PX = 8;
@@ -622,7 +664,7 @@ export function DcbCell({
             event.currentTarget.releasePointerCapture(event.pointerId);
           }
         } catch {
-          // ignore
+          // Non-blocking pointer capture release
         }
       }}
       onPointerCancel={() => {
@@ -683,12 +725,11 @@ export function renderMapSlot(view: ScopeView, onChange: () => void, slot: numbe
 }
 
 export function renderPrefOpener(view: ScopeView, onChange: () => void) {
-  const name = activeDcbPrefName(view);
-  const readout = formatDcbPrefReadout(name);
+  const identity = appliedDcbPrefIdentity(view);
   return (
     <DcbCell
       kind="submenu"
-      ariaLabel={name ? `Pref ${name}` : "Pref"}
+      ariaLabel={identity ? `Pref, last applied ${identity}` : "Pref"}
       dataDcb="pref"
       pressed={view.dcbMenu === "PREF"}
       onClick={() => {
@@ -699,7 +740,8 @@ export function renderPrefOpener(view: ScopeView, onChange: () => void) {
       }}
     >
       <span className="dcb-cell-line">PREF</span>
-      <span className="dcb-cell-line">{readout}</span>
+      <span className="dcb-cell-line">{view.dcbPref.lastApplied?.owner ?? "—"}</span>
+      <span className="dcb-cell-line">{view.dcbPref.lastApplied?.name ?? "—"}</span>
     </DcbCell>
   );
 }

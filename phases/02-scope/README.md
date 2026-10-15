@@ -56,8 +56,8 @@ Lift nothing from `phases/_shared/non-goals.md`. In addition, **do not** build:
 
 | Out | Why |
 | --- | --- |
-| Full NAS DCB / CRDA / FMA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–33** lift a trainer main/aux/submenu subset (SHIFT, PREF local, disabled WX, then a physical two-row MAIN skin). Still not CRDA, FMA, weather paint, or a Raytheon clone. |
-| CRDA, FMA, ARV, timed approaches | Phase 4+. |
+| Full NAS DCB / CRDA / WX mosaic | T02-16/17 are the historical lite grid. **T02-22–33** lift a trainer main/aux/submenu subset (SHIFT, local PREF, disabled WX, then a physical two-row MAIN skin). FMA has a separate approved trainer implementation in T02-220–228. Still not CRDA, weather paint, or a Raytheon clone. |
+| CRDA, ARV, timed approaches | Phase 4+. |
 | Weather mosaic, precipitation, wind barbs | T02-68–72 VIP mosaic shipped (IEM N0Q fills + WXC contours, display only). Wind still later. |
 | Original vendor font provenance or licensed NAS typeface claims | Scope uses fonts converted from Vice’s STARS bitmaps, GPL-3.0-only; no vendor provenance claim. |
 | CRC-compatible full keyboard | Subset below is frozen; document every difference. Local PREF slots are T02-29, not a NAS pref host. |
@@ -101,7 +101,7 @@ One physical keyboard, two foci.
 | Track suspend | `F3` / `TRK SUSP` | Reserved/no-op; the suspend lifecycle is not simulated yet. |
 | Terminate track | `F4` / `TERM CNTL` | Shared trainer implementation: deletes the associated local plan, removes association, clears ownership, and leaves a moving unassociated `*` LDB. |
 | Multi Function | `F7` / `MULTI FUNC` | Starts a distinct Preview Area operand buffer; type `T`, `P1`, `F`, `Q`, etc. without a prefix. |
-| History toggle | `F8` | Global history dots. |
+| FMA/TSAS | `F8` | Starts Preview entry; in FMA, slew-click an associated arrival to toggle its local track inhibit. Outside FMA, target application returns `FORMAT`. |
 | Cycle focus | `Tab` | Command line ↔ PPI. Do not steal Tab from help overlay inputs. |
 
 **Mouse (pointer over PPI), always-on:**
@@ -121,7 +121,7 @@ One physical keyboard, two foci.
 | Full ↔ limited datablock | `T` | Tag/untag analog. Selected track; if none selected, **all** tracks. |
 | Mode C field on/off | `M` | Hide/show reported altitude on **full** blocks. Assigned + GS remain. |
 | Altitude filter | `F`, then 3-digit min, `Enter`, 3-digit max, `Enter` | Hundreds of feet. `Esc` cancels the chord. |
-| History (duplicate of F8) | `H` | Convenience when scope-focused. |
+| History | `H` | Convenience when scope-focused. |
 
 **Hard conflicts — do not bind these letters as always-on:**
 
@@ -131,7 +131,7 @@ One physical keyboard, two foci.
 | `T` | `T20L` turn degrees | Scope focus, datablock toggle |
 | `C` | `C30` climb | **Never** a scope key. Center is `Home`. |
 | `R` | `R180` right heading | **Never** a scope key. Range is PageUp/Down. |
-| `H` | `H270` heading | Scope focus only (history). Always-on history is `F8`. |
+| `H` | `H270` heading | Scope focus only (history). |
 | `A` / `D` / `S` / `I` | altitude / speed / ident | Never scope keys. |
 
 Chord rule: after `L` or `F`, a 1.5 s timer. Invalid digit or timeout → cancel, no mutation, no error readback (optionally a dim status-line hint: `LEADER?`). **Never** forward leftover digits into the parser.
@@ -226,7 +226,7 @@ Field rules:
 
 - **Field 0**: slash-separated special conditions, safety alerts, cautions, and TSAS sequence number.
 - **Field 1**: aircraft identification, normally 2–7 characters.
-- **Field 2**: implemented alert-inhibit indicators: `*` MSAW, `Δ` CA/MCI, `+` both. FMA `▼` and RNP `>` remain out of scope and are not emitted.
+- **Field 2**: implemented alert-inhibit indicators: `*` MSAW, `Δ` CA/MCI, `+` both, and FMA `▼` per the approved FMA trainer feature. RNP `>` remains out of scope.
 - **Field 3**: Mode C altitude, pilot-reported altitude, scratchpad, exit gate, or exit fix. Mode C is three digits in hundreds of feet; `*` marks pilot-reported altitude. Values time-share.
 - **Field 4**: owning TCP, adapted to one or two characters. Adaptation indicators may prefix it (`Δ`, `*`, `+`, or `R`).
 - **Field 5**: ground speed in tens of knots, flight rules/category, aircraft count, aircraft type, or requested altitude (`R###`). Values time-share.
@@ -329,7 +329,7 @@ interface AltitudeFilter {
 
 ### 11. History dots
 
-- Optional, default **on** (radar feel). Toggle F8 / `H` / DCB.
+- Optional, default **on** (radar feel). Toggle `H` / DCB.
 - Sample position every **5.0 s of sim time** (not wall, not every physics frame).
 - Keep **5** dots (plus current symbol = 6 positions visually).
 - Ring buffer per track; clear on spawn.
@@ -535,13 +535,13 @@ Do not call the TCW pass done until:
 - [x] FDB extra line + leader length (T02-19).
 - [x] SSA on PPI; strips not a labeled right dock (T02-20).
 - [ ] T02-21 manual script: cheap STARS trainer, not a web HUD. skip-with-reason: no visual operator; human not watching Chrome. Automated greps/tests prove chrome grammar; do not invent a visual pass.
-- [x] Still no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, STARS font. *(Historical T02-14–21 freeze. T02-22–30 lift SHIFT / local PREF / disabled WX cells; mosaic / CRDA / FMA / OSM / STARS font stay out.)*
+- [x] At the historical T02-14–21 exit there was no WX mosaic, PREF, SHIFT, CSA, CRDA, FMA, OSM, or STARS font. *(T02-22–30 later lifted SHIFT / local PREF / disabled WX cells; T02-220–228 later added the approved FMA trainer feature. WX mosaic / CRDA / OSM / STARS font remain out.)*
 
 ### Post-exit addendum (T02-22–30 trainer DCB)
 
 Historical phase 2 exit (T02-01–13) and polish (T02-14–21) stay green. Do **not** uncheck those boxes. This addendum is new display-chrome work after that exit.
 
-**Plan (within reason):** grow the DCB toward CRC STARS *jobs and grammar* without cloning NAS. Keep discrete range presets (spinner steps them; no continuous zoom). Keep altitude **FILTER** on MAIN (trainer delta — that cell is not SSA FILTER). WX1–4, VOL, MODE, SITE exist as **disabled** cells (hard labels `FSL` / `FUSION` where useful) and never paint weather or touch OS audio. CRDA, FMA, ARV, dual FSL/EFSL, licensed STARS font stay out. TPA is J-rings + mileage; ATPA is a thin toggle/stub, not a pairing engine. PREF is `localStorage`, 8 slots, not 32 NAS sets.
+**Plan (within reason):** grow the DCB toward CRC STARS *jobs and grammar* without cloning NAS. Keep discrete range presets (spinner steps them; no continuous zoom). Keep altitude **FILTER** on MAIN (trainer delta — that cell is not SSA FILTER). WX1–4 remain disabled and do not paint weather. VOL, MODE, and SITE are implemented trainer controls; MODE exposes the Figure 6-16 service-mode submenu and VOL retains the inherited 0–5 workstation gain scale. CRDA, ARV, dual FSL/EFSL runtime, and licensed STARS font stay out. TPA is J-rings + mileage; ATPA is a thin toggle/stub, not a pairing engine. PREF is `localStorage`, 8 slots, not 32 NAS sets. The FMA trainer feature is scoped by T02-220–228.
 
 Implement **T02-22 → T02-30**. Do not skip T02-22 to “just add SHIFT.”
 
@@ -575,7 +575,7 @@ Do not call the DCB addendum done until:
 - [x] Spinners arm on click, step on wheel, commit on second click / Esc (RANGE stays discrete 5–60 NM presets).
 - [x] PLACE CNTR / OFF CNTR and PLACE RR / RR CNTR behave as separate cells.
 - [x] MAPS 1–30 + quick 1–6; empty slots disabled; WX1–4 visible and unpressable.
-- [x] Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL disabled.
+- [x] Historical T02-21 exit Aux: HISTORY count, PTL length / OWN / ALL, DCB TOP/LEFT/RIGHT/BOTTOM; VOL was then disabled. Later DCB/FMA addenda enable the inherited 0–5 workstation CA-tone gain control.
 - [x] BRITE per drawn channel; CHAR SIZE per subsystem; WX/WXC live (T02-72); BKC still disabled / stored no-op.
 - [x] SSA FILTER hides existing SSA lines; GI TEXT has 10 toggleable facility lines.
 - [x] TPA J-rings work; ATPA is a stub/toggle, not a pairing engine.
@@ -783,7 +783,7 @@ shipped without weather paint.
 
 ### Phase 2 addendum (T02-81–83 DCB controls & SSA WX telemetry)
 
-DCB `VOL` audio gain wiring, `MODE FSL` datablock mode latch, `BRITE BKC` canvas background contrast, and live SSA `WX` / `WX HIST` telemetry.
+DCB `VOL` audio gain wiring, historical `MODE FSL` datablock mode latch (superseded by T02-225 authentic Figure 6-16 MODE submenu), `BRITE BKC` canvas background contrast, and live SSA `WX` / `WX HIST` telemetry. Note: T02-225 removed the invented global Full/Semi/Limited F/S/L datablock behavior and restored authentic STARS service-mode submenu semantics (`EFSL`, `FSL`, `TRNG`, `FMA`, `DSF`, `DONE`) with local AMZ preferences.
 
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -956,3 +956,193 @@ tokens remain readable and select authored faces at the configured CSS sizes. Al
 `docs/STARS-FONTS.md` for source/license evidence and exhaustive
 conversion verification. Historical ticket records describe their shipped
 behavior and are not rewritten.
+
+## Final Monitor Aid geometry and availability (current trainer policy)
+
+The earlier FMA derivation and same-flow selector policy is superseded by the
+2026-10-12 authored-adaptation correction. Production FMA is available only
+when the loaded facility contains complete authored AMZ geometry. The selector
+lists every authored AMZ, regardless of scenario flow; valid last-used/manual choice takes priority, followed by a valid scenario
+initial AMZ and stable authored fallback. No production geometry is
+inferred from runway spacing, approach catalogs, or KDEM/KATL identity.
+KDEM/KATL geometry in this trainer is explicitly authored fixture data, not
+verified facility adaptation. Unadapted scenarios leave FMA unavailable.
+
+Catalog AMZ/NOZ/NTZ polygons, course lines, runway membership, and monitoring
+values are trainer-authored adaptation. The manual grounds displayed symbols
+and controls, but does not define these fixture coordinates or geometry
+construction. Monitoring defaults remain 10-second caution, 10-second
+surveillance loss, 30-second coast-out, 10-second stabilization, 3-degree
+course tolerance, 0.15 NM alignment half-width, and a 30-second PTL maximum
+unless adaptation supplies another value. Reference strokes use 200-foot
+lateral spacing, omit the course centerline, and clip to the approach-side NOZ;
+they appear only when range/MAG is at most 16 NM. When a physical reciprocal
+runway endpoint is unavailable, the trainer uses a short screen-space threshold
+marker rather than inventing runway length. These are trainer choices, not
+published adaptation algorithms, operational PRM qualification, or verified
+facility fidelity. Keep facility identity out of runtime branches. T02-220–233
+history below records the corrections; the 2026-10-12 policy supersedes its
+older derived-geometry and same-flow text.
+
+Raytheon TI 6191.409 Rev30 §6.16 and Figure 6-15 (printed p. 6-126, PDF 656)
+ground the displayed AMZ boundary, approach/departure course lines, NOZ/NTZ,
+runway, fix bar, and reference lines. Figure 6-15 does not prescribe how a
+facility's coordinates are created. These fixtures make no operational PRM or
+facility-fidelity claim.
+
+## Final Monitor Aid surveillance lifecycle (T02-221)
+
+FMA retains valid report snapshots per display and track. Its 10-second
+surveillance-loss and 30-second coast-out defaults come from the trainer
+adaptation in T02-220. Coast uses the last report's ground track and speed,
+then freezes at the pose projected at coast-out; it never follows hidden World
+position. These timers use simulation time: pause stops aging, and acceleration
+advances it. A fresh valid report recovers the display state. Track/plan
+removal, FMA exit, AMZ change, inhibition, and session teardown release retained
+poses. Synthetic source-status inputs can distinguish selected-fast-source loss
+with another source reporting (NOM-capable) from all-source loss. Missing or
+incomplete source metadata does not infer NOM from report age.
+
+This behavior applies only while the later FMA mode is active. It is a
+straight-line trainer coast, not a proprietary tracking filter or live sensor
+health service. Outside FMA, the shipped FUSED / MULTI / single-site sampler
+still removes reports immediately when the selected coverage is lost and does
+not coast.
+
+## Final Monitor Aid qualification and precedence (T02-222)
+
+Raytheon TI 6191.409 Rev30 §2.16.4 (pp. 2-107–108, PDF 163–164) states that
+only tracked associated targets in the AMZ are processed. Its primary order is
+NTZ Warning, Surveillance Lost, Runway Error, then NTZ Caution. A warning needs
+prior detection in the NOZ for the assigned runway before an NTZ entry. Runway
+assignment is shown in scratchpad #1 or #2; NOM is supplementary and has no
+aural indication. §6.16.5 (pp. 6-133–134, PDF 663–664) identifies those
+scratchpad locations, and §6.16.9 (pp. 6-138–139, PDF 668–669) describes
+per-zone adjacency inhibition.
+
+Trainer assignment uses only exact case-normalized runway IDs and explicitly
+adapted `fmaOverrides.groups[].runwayAliases`; automatic approach/altitude/
+speed scratchpad derivation is excluded. Conflicting recognized scratchpads
+remain ambiguous and do not guess; they appear in the existing Preview status
+readout as `FMA: CONFLICTING RUNWAY ASSIGNMENT`, below any active command.
+Observed runway alignment is separately
+computed from report ground track and position. The default trainer threshold
+is 10 seconds within 3 degrees and 0.15 NM, with continuous valid reports.
+Reports must have positive inbound ground speed; a stationary report cannot
+establish inbound alignment and resets continuous stabilization. This is a
+qualification input, not an invented minimum speed.
+Continuity allows a report interval up to max(2 seconds, 1.5 times the
+currently authored surveillance cadence); this cadence tolerance is a trainer
+choice so a 4.8-second SITE feed can qualify. A malformed report, alignment
+change, or longer gap resets stabilization. No hidden World pose advances
+qualification. Caution uses a 10-second report-based straight-line path and
+segment/NTZ intersection; this is not a published STARS predictor.
+
+No runway assignment or ambiguous assignment cannot produce an invented
+runway mismatch. A stabilized arrival with no recognized assignment may
+produce RWY. CST requires a recognized assignment and an enabled adjacent
+NTZ; CST adjacency follows the assigned runway, while RWY adjacency follows
+the stabilized observed runway. Disabling all NTZs suppresses primary
+conditions, but NOM remains supplementary because it is a sensor-status
+indicator rather than a zone condition. Track inhibition removes local FMA
+conditions, NOM, and NOZ history. Condition episodes identify their
+qualifying assigned/observed runway so reassignment starts a new episode.
+These conditions, local episodes, diagnostics, and outline severity live on a
+TCW `ScopeView`, never in global World alerts or aircraft/plan/association/
+intent state. F8 owns one visible FMA/TSAS Preview arm. In FMA mode, an
+associated-arrival slew-click toggles local inhibition and consumes the click;
+outside FMA the application returns Preview `FORMAT`. Ordinary eligible
+clicks acknowledge warning episodes and cancel their speech. Caution clicks
+silence speech only; yellow presentation does not change. Field 0 composes
+FMA/NOM with LA/CA; warning flashes red until acknowledged, while caution/NOM
+stay steady yellow. Field 2 uses a solid `▼` for track inhibition, above the
+existing inhibit symbols, and hides it while every NTZ is disabled. Frozen
+presentation follows the configured track, mode, AMZ, inhibition and
+NTZ-adjacency lifecycle. All interactions remain display-local. T02-225 owns
+public mode controls.
+
+### T02-224 FMA Browser Speech Queue (SpeechSynthesis exception)
+
+FMA onset alerts are spoken through the browser's native `SpeechSynthesis` API.
+This is a user-authorized, FMA-only exception that does not alter pilot STT/TTS,
+`speech-api`, or radio FX.
+
+- **Utterances**: Spoken callsign via existing telephony (`formatCallsignSpeech`)
+  followed by exact condition suffixes: `WARNING`, `COAST`, `WRONG RUNWAY`,
+  or `CAUTION`. NOM is silent and never queued.
+- **Voice selection**: Requires an installed English `localService: true` voice.
+  Missing API or local voice reports audio-unavailable status while visual
+  radar monitoring continues without disruption.
+- **Queueing & cancellation**: Application-owned queue deduplicates episodes and
+  prioritizes warnings ahead of queued cautions. Warning acknowledgment and
+  caution silence cancel active/pending speech for that episode without dropping
+  unrelated pending items.
+- **Volume**: VOICE levels 1–10 map linearly to `level / 10`. Changing volume
+  commits a "Test" utterance at the new volume; `voiceTest()` utters "Test" at
+  current volume.
+- **No filter claim**: Standard browser speech synthesis is used directly; no
+  audio formant filters or PCM modeling claims are made.
+
+### T02-226 FMA AUX, BRITE and Control Entry
+
+When FMA surveillance is enabled via `MODE -> FMA -> ACCEPT`:
+
+- **Figure 6-17 AUX**: Specialized 22-column, 2-row layout replaces ordinary AUX on `SHIFT`.
+  Features inherited workstation VOL (0–5), HISTORY/H RATE, AMZ, MAG (1–8), VOICE (1–10) and VOICE TEST,
+  PTL LNTH (0–adapted maximum, default max 30s), NTZ 1/2/3/ALL inhibition toggles, runway leader directions (keypad
+  1=NW, 2=N, 3=NE, 4=W, 5=NONE, 6=E, 7=SW, 8=S, 9=SE), and DCB dock positions.
+- **Error reporting**: FORMAT for malformed typed operands, ILL VALUE for out-of-range integers,
+  and NO PREF SET FOUND when switching to an AMZ without saved preference.
+- **FMA PTL seconds**: Whole seconds from 0 through the selected AMZ's adapted maximum (default maximum 30s; default setting 5s). 0 removes PTL lines and SSA readout.
+  Caution prediction horizon remains independent.
+- **Figure 6-18 BRITE**: Adds AMZ, RWY, REF (0 or 5–100) and NTZ (50–100 only, no off).
+  Wheel steps follow adapted discrete ladders.
+- **Inherited VOL**: The trainer reuses its pre-FMA 0–5 workstation volume scale for the CA alert tone. FMA VOICE remains the separate 1–10 SpeechSynthesis level.
+- **PREF**: `SAVE` / `SAVE AS` writes the selected AMZ's complete supported display profile into its own local preference record. Normal slots and other AMZ profiles remain independent. `DELETE` removes only the active AMZ preference; the selected AMZ remains available, and a later DEFAULT warns if its profile is missing. AMZ profiles are unavailable from normal-mode PREF controls.
+
+### Current FMA profile contract (T02-232–235)
+
+Normal `FSSTARS` and reserved `FMA` owners keep separate numbered sets and
+complete supported workstation display preferences. The Figure 4-1 USER cell
+stages the owner by wheel/drag or accepts exact typed `FSSTARS` / `FMA` (single
+operator, no PIN or authentication accounts); commit changes only which set names
+are shown. SAVE, SAVE AS, and DELETE route strictly through that explicit owner
+and selected set:
+- **SAVE**: Overwrites the highlighted existing set under the selected owner.
+  Unavailable/disabled without a selected set.
+- **SAVE AS**: Creates the next vacant slot (up to 32 slots per owner; disabled
+  when full). Enforces Raytheon STARS TI 6191.409 §4.1.4: 1–7 alphanumeric
+  characters (including digit-only names; legacy 8-character FSSTARS names are
+  preserved on load and SAVE). Case-insensitive duplicates reject with `ILL PREFSET`.
+  In FMA mode, names must resolve authored AMZ IDs (not constrained to the
+  currently active AMZ; unknown AMZ or malformed syntax rejects with `FORMAT`).
+  Failed names remain pending in the preview buffer with visible error readout
+  (`FORMAT` or `ILL PREFSET`) until corrected or canceled via `Esc`, `Clear`,
+  owner switch, `DONE`, or starting another function.
+- **DELETE**: Removes only the highlighted set of the selected owner, preserving
+  current display and MAIN applied identity. Deleting the last FMA set leaves
+  the FMA owner valid.
+- **DEFAULT**: Owner-independent. In FMA mode it reapplies the active AMZ profile
+  (or warns `NO PREF SET FOUND` while preserving display); outside FMA mode it
+  applies factory display defaults and clears the applied identity and selection.
+- **RESTORE**: Captures complete pre-menu display/context (including FMA mode,
+  active AMZ, and applied identity) and safely restores it without reviving obsolete
+  alert tracks, acknowledgments, or speech queues; saved records on disk are not
+  rolled back.
+
+Selecting an FMA set while FMA is active switches the AMZ and applies its
+complete profile; outside FMA it prepares the AMZ and dormant settings without
+enabling FMA. Exiting FMA applies the last-used normal preference, not an entry
+snapshot or factory reset. Reload starts in normal mode and loads the normal
+profile while retaining both owners' sets.
+
+The supported profile payload includes dock and camera; rings; MAPS visibility,
+category/list mode, group and toggles; DCB visibility; Mode C and altitude
+filters; MCI and beacon selection; global CA inhibit; overlay visibility;
+leaders; history and PTL; brightness and character sizes; SSA, GI and TPA/ATPA
+settings; SITE; weather; volume and dwell; cursor and system-list placements.
+AMZ profiles additionally include MAG, FMA PTL, voice level, FMA brightness,
+runway leaders and enabled NTZ IDs. `serviceMode`/FSL, tracks, ownership, alert
+episodes, acknowledgments, frozen poses, speech queues, pending commands and
+other live runtime state are not persisted. This is the trainer's supported
+profile inventory, not a claim that every manual NAS preference is implemented.

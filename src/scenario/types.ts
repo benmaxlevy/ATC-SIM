@@ -25,67 +25,73 @@ export type {
 };
 
 /** One runway. Heading true = magnetic at KDEM (mag var 0). */
-export interface Runway {
+export type Runway = {
   id: string;
   headingTrueDeg: number;
   headingMagDeg: number;
   lengthFt: number;
   thresholdLatLon: LatLon;
-}
+};
 
 /** Approach stub. Geometry (glideslope, intercept) is phase 4. */
-export interface Approach {
+export type Approach = {
   id: string;
   runwayId: string;
   type: string;
-}
+};
 
 /** Named fix stub. Procedure geometry is phase 4. */
-export interface Fix {
+export type Fix = {
   id: string;
-}
+};
 
 /** Catalog id for a video map. Geometry lives in `video-maps/<ICAO>/`. */
-export interface VideoMap {
+export type VideoMap = {
   id: string;
-}
+};
 
 /** Trainer-drawn runway slab in NM east/north of ARP. Not a GIS polygon. */
-export interface DigitalMapRunway {
+export type DigitalMapRunway = {
   id: string;
   thresholdEastNm: number;
   thresholdNorthNm: number;
   lengthNm: number;
   headingTrueDeg: number;
   widthNm: number;
-}
+};
 
 /** Localizer feather authored in scenario JSON. Inbound course is runway heading. */
-export interface DigitalMapLocalizer {
+export type DigitalMapLocalizer = {
   runwayId: string;
   courseTrueDeg: number;
   featherLengthNm: number;
   halfWidthDeg: number;
-}
+};
 
 /** Concentric **range rings**. Runtime origin is ScopeView (airport ref by default). */
-export interface DigitalMapRangeRings {
+export type DigitalMapRangeRings = {
   intervalNm: number;
   maxNm: number;
-}
+};
 
 /**
  * Optional coastline polyline (NM east, NM north).
  * Fictional trainer shoreline — not a real coast and not OSM.
  */
-export interface DigitalMapCoastline {
+export type DigitalMapCoastline = {
   enabled: boolean;
   polyline: [number, number][];
   note?: string;
-}
+};
+
+/** Scenario may pick catalog geometry but never owns or duplicates it. */
+export type FmaScenarioConfig = {
+  initialAmzId?: string;
+  excludeDerivedGroups?: boolean;
+};
 
 /** KDEM digital / video map. Geometry is `video-maps/<ICAO>/` plus optional inline. */
-export interface ScenarioMaps {
+export type ScenarioMaps = {
   videoMapSet?: string;
   videoMaps: VideoMap[];
   loadedVideoMaps: LoadedVideoMap[];
@@ -95,15 +101,15 @@ export interface ScenarioMaps {
   localizer?: DigitalMapLocalizer;
   rangeRings?: DigitalMapRangeRings;
   coastline?: DigitalMapCoastline;
-}
+};
 
 /** Spawn template. Offset is world ENU NM relative to ARP. */
-export interface Spawn {
+export type Spawn = {
   id: string;
   kind: string;
   runwayId: string;
   offsetNm: NmEastNorth;
-}
+};
 
 /** Inclusive arrival count band. Default KDEM JSON has 6. */
 export const ARRIVAL_COUNT_MIN = 4;
@@ -121,7 +127,7 @@ export const GI_TEXT_LINE_COUNT = 10;
  * 100, speedKt [210, 250]) lives on
  * `testdata/scenarios/kdem-downwind.json` (`spawnPolicy: "authored"`).
  */
-export interface ArrivalSpawn {
+export type ArrivalSpawn = {
   xNm: number;
   yNm: number;
   headingDeg: number;
@@ -140,31 +146,31 @@ export interface ArrivalSpawn {
   transitionId?: string;
   /** Required for random scenarios: terminal-visible fix where the route starts. */
   entryFixId?: string;
-}
+};
 
-export interface DepartureSpawn {
+export type DepartureSpawn = {
   sidId: string;
   transitionId: string;
   assignedAltitudeFt: number;
   aircraftType?: string;
   scheduledSimMs?: number;
-}
+};
 
 /** A published SID/transition eligible for scenario random departures. */
-export interface DepartureRoute {
+export type DepartureRoute = {
   sidId: string;
   transitionId: string;
-}
+};
 
 export type DeparturePolicy = "none" | "random" | "authored";
 
-export interface DepartureConfig {
+export type DepartureConfig = {
   policy: DeparturePolicy;
   ratePerHour?: number;
   /** Explicit pool used only when policy is random. */
   routePool?: DepartureRoute[];
   departures?: DepartureSpawn[];
-}
+};
 
 /** How arrivals get pose. Omitted JSON → `authored` (ils27 bit-stable). */
 export type SpawnPolicy = "authored" | "random";
@@ -209,7 +215,7 @@ export type RadarSite = {
  * Facility scenario: spawn rules, active runway, maps, traffic mix.
  * `arpNm` is filled on load via `latLonToNm(arp, arp)`, not stored as sim state.
  */
-export interface Scenario {
+export type Scenario = {
   id: string;
   name: string;
   icao: string;
@@ -226,6 +232,7 @@ export interface Scenario {
   arrivals: ArrivalSpawn[];
   /** Optional scenario-local ATPA wake adaptation for its active volumes. */
   atpaWakeAdaptation?: import("./procedures/types").AtpaWakeAdaptation;
+  fma?: FmaScenarioConfig;
   /** Optional departure traffic configuration. */
   departureConfig?: DepartureConfig;
   /** Optional trainer beacon adaptation; omitted means default policy `none`. */
@@ -277,28 +284,28 @@ export interface Scenario {
   vfrTraffic?: VfrTrafficConfig;
   /** Optional unsolicited airborne VFR pilot request scheduling (T04-72). */
   vfrRequests?: VfrRequestConfig;
-}
+};
 
-export interface VfrAircraftMixRow {
+export type VfrAircraftMixRow = {
   aircraftType: string;
   weight: number;
   callsignPrefix: string;
   performanceSource: "PROFILE_REGISTRY" | "TRAINER_DEFAULT";
-}
+};
 
-export interface VfrAltitudeMixRow {
+export type VfrAltitudeMixRow = {
   minAltitudeFt: number;
   maxAltitudeFt: number;
   weight: number;
-}
+};
 
-export interface VfrMovementMix {
+export type VfrMovementMix = {
   localPercent?: number;
   transitPercent?: number;
   airportBoundPercent?: number;
-}
+};
 
-export interface VfrTrafficConfig {
+export type VfrTrafficConfig = {
   initialCount?: number;
   targetCount?: number;
   entriesPerHour?: number;
@@ -307,11 +314,11 @@ export interface VfrTrafficConfig {
   aircraftMix?: VfrAircraftMixRow[];
   altitudeMix?: VfrAltitudeMixRow[];
   movementMix?: VfrMovementMix;
-}
+};
 
-export interface VfrRequestConfig {
+export type VfrRequestConfig = {
   flightFollowingPercent?: number;
   ifrPickupPercent?: number;
   requestCapPerHour?: number;
   ifrCancellationPercent?: number;
-}
+};

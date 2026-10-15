@@ -1,8 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
   createScopeView,
-  cycleModeFsl,
-  stepModeFsl,
   formatDcbVolReadout,
   formatDcbBriteReadout,
   getBackgroundColor,
@@ -114,37 +112,11 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     tone.dispose();
   });
 
-  test("MODE FSL spinner stepping and cycling between Full (F), Semi (S), and Limited (L)", () => {
+  test("MODE FSL is removed; serviceMode defaults to FSL and datablocks remain normal", () => {
     const view = createScopeView();
-    expect(view.modeFsl).toBe("F");
+    expect(view.serviceMode).toBe("FSL");
+    expect((view as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
 
-    expect(stepModeFsl(view, 1)).toBe("S");
-    expect(view.modeFsl).toBe("S");
-
-    expect(stepModeFsl(view, 1)).toBe("L");
-    expect(view.modeFsl).toBe("L");
-
-    // Clamps at L
-    expect(stepModeFsl(view, 1)).toBe("L");
-    expect(view.modeFsl).toBe("L");
-
-    expect(stepModeFsl(view, -1)).toBe("S");
-    expect(view.modeFsl).toBe("S");
-
-    expect(stepModeFsl(view, -1)).toBe("F");
-    expect(view.modeFsl).toBe("F");
-
-    // Clamps at F
-    expect(stepModeFsl(view, -1)).toBe("F");
-
-    // Cycle helper
-    expect(cycleModeFsl(view)).toBe("S");
-    expect(cycleModeFsl(view)).toBe("L");
-    expect(cycleModeFsl(view)).toBe("F");
-  });
-
-  test("MODE FSL modifies default datablock presentation across unselected tracks", () => {
-    const view = createScopeView();
     const acOwned = makeTestAircraft({
       id: "ac1",
       callsign: "DAL101",
@@ -160,36 +132,9 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     view.tracks.set("ac1", createTrackDisplay("owned"));
     view.tracks.set("ac2", createTrackDisplay("unowned"));
 
-    // Mode F: owned = full, unowned = partial
-    view.modeFsl = "F";
+    // Datablock visual state depends on track ownership/forced state, not global F/S/L
     expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
     expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
-
-    // Mode S: owned unselected = partial, unowned = partial
-    view.modeFsl = "S";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
-    expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("partial");
-
-    // Mode S: selected/clicked owned track expands to Full Data Block (FDB)
-    world.selectedAircraftId = "ac1";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
-    world.selectedAircraftId = null;
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("partial");
-
-    // Mode L: owned unselected = limited, unowned = limited
-    view.modeFsl = "L";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
-    expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("limited");
-
-    // Mode L: selected owned track expands to FDB
-    world.selectedAircraftId = "ac1";
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("full");
-    world.selectedAircraftId = null;
-    expect(getDatablockVisualState(view, world, acOwned).mode).toBe("limited");
-
-    // Forced FDB overrides global Mode FSL
-    view.tracks.get("ac2")!.forcedFdb = true;
-    expect(getDatablockVisualState(view, world, acUnowned).mode).toBe("full");
   });
 
   test("BRITE BKC modulates background contrast color and formats OFF-100", () => {
@@ -210,25 +155,29 @@ describe("T02-81 DCB VOL, MODE FSL, and BRITE BKC Controls", () => {
     expect(formatDcbBriteReadout(view.brite.bkc)).toBe("OFF");
   });
 
-  test("PREF serializes and restores vol, modeFsl, and brite.bkc", () => {
+  test("PREF serializes and restores vol and brite.bkc without modeFsl", () => {
     const view = createScopeView();
     view.vol = 4;
-    view.modeFsl = "S";
     view.brite.bkc = 60;
 
     const saved = serializeDcbPref(view);
     expect(saved.vol).toBe(4);
-    expect(saved.modeFsl).toBe("S");
+    expect((saved as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
     expect(saved.brite.bkc).toBe(60);
 
     const target = createScopeView();
     expect(target.vol).toBe(2);
-    expect(target.modeFsl).toBe("F");
     expect(target.brite.bkc).toBe(100);
 
     applyDcbPref(target, saved);
     expect(target.vol).toBe(4);
-    expect(target.modeFsl).toBe("S");
     expect(target.brite.bkc).toBe(60);
+
+    // Legacy modeFsl in saved PREF is safely ignored
+    const legacyPref = { ...saved, modeFsl: "L" as unknown as undefined };
+    const targetLegacy = createScopeView();
+    applyDcbPref(targetLegacy, legacyPref);
+    expect((targetLegacy as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
+    expect(targetLegacy.serviceMode).toBe("FSL");
   });
 });

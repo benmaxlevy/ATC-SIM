@@ -4,8 +4,8 @@
  * Trainer delta: PageUp/Down + wheel share `stepRange`; DCB RANGE is a spinner
  * that steps the same 17 presets (5–512 NM). Esc closes a DCB submenu / disarms a spinner
  * (`preventDefault` so it does not type into the command line). Home/End instead of
- * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 always-on
- * history toggle; H only when the PPI is focused (radio H270 stays heading).
+ * CENTER-then-click; extra CRC presets 6/8/12/16/24 omitted. F8 enters
+ * FMA/TSAS Preview; H toggles history only when PPI-focused (radio H270 stays heading).
  * Scope-focus `T` toggles full ↔ limited datablock; tap `M` toggles Mode C on
  * full blocks. `M` then a map token (`M DEM1_27`) continues a Preview Area
  * buffer and undoes that Mode C tap. F10 always-on predicted track line (PTL)
@@ -81,6 +81,7 @@ import {
   handlePreviewFlidKey,
   isPreviewBufferStartChar,
   previewAreaIsLive,
+  previewTrackingSlew,
   previewBufferCharFromKey,
   rejectPreviewArea,
   rejectPreviewAreaWithReason,
@@ -107,7 +108,15 @@ import {
   resolveRblSecondEndpoint,
 } from "./rangeBearingLines";
 import { retainFullDatablocksOutsideAltitudeFilter } from "./trackDisplay";
-import { browserDcbPrefStorage, cancelDcbPrefSaveAs, commitDcbPrefSaveAs } from "./dcb/dcbPref";
+import {
+  beginDcbPrefSession,
+  browserDcbPrefStorage,
+  cancelDcbPrefOwner,
+  cancelDcbPrefSaveAs,
+  commitDcbPrefOwner,
+  commitDcbPrefSaveAs,
+  selectDcbPrefOwner,
+} from "./dcb/dcbPref";
 import {
   applyDcbShift,
   armDcbSpinner,
@@ -116,6 +125,7 @@ import {
   commitDcbSpinner,
   handleDcbEscape,
   inputDcbSpinnerKey,
+  isFmaDcbSpinnerCell,
   openDcbMenu,
 } from "./dcb/dcbMenu";
 
@@ -385,7 +395,6 @@ function isCompetingTargetingKey(event: ScopeKeyEvent): boolean {
     event.key === "F5" ||
     event.key === "F6" ||
     event.key === "F7" ||
-    event.key === "F8" ||
     event.key === "F9" ||
     event.key === "F10" ||
     event.key === "F11" ||
@@ -1005,6 +1014,9 @@ function applyPreviewArmedAction(
         commitDcbPrefSaveAs(view, action.name, browserDcbPrefStorage() ?? undefined);
       }
       return;
+    case "prefUser":
+      selectDcbPrefOwner(view, action.user);
+      return;
     case "rblDelete": {
       if (action.id !== undefined) {
         const removed = removeRangeBearingLine(view.rbl, action.id);
@@ -1230,7 +1242,16 @@ export function handleScopeKeyDown(
   const hasNoControlModifiers = !event.ctrlKey && !event.altKey && !event.metaKey;
   const radioPreviewKey =
     commandLineInput &&
-    ((event.key === "F7" && !event.shiftKey && !event.altKey && !event.metaKey) ||
+    (((event.key === "F7" || event.key === "F8") &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.metaKey) ||
+      (previewTrackingSlew(view.preview)?.type === "fmaTrackInhibit" &&
+        hasNoControlModifiers &&
+        (previewBufferCharFromKey(event.key, event.code) !== null ||
+          event.key === "Backspace" ||
+          event.key === "Enter" ||
+          event.key === "Escape")) ||
       (view.preview.phase === "entry" &&
         view.preview.entryOrigin === "multiFunc" &&
         hasNoControlModifiers &&
@@ -1242,8 +1263,37 @@ export function handleScopeKeyDown(
     cancelRblOnFocusTakeover(view, "radio");
     return false;
   }
+  const helpOwnsKey =
+    view.dcbPref.ownerCandidate !== null &&
+    (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target));
+  const hasNoModifiers = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+  if (view.dcbPref.ownerCandidate && !helpOwnsKey && hasNoModifiers) {
+    if (event.key === "Escape" || event.key === "Clear") {
+      cancelDcbPrefOwner(view);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
+      commitDcbPrefOwner(view);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    // Any new key function cancels a staged owner before it can affect input.
+    cancelDcbPrefOwner(view);
+  } else if (view.dcbPref.ownerCandidate && !helpOwnsKey) {
+    cancelDcbPrefOwner(view);
+  }
   if (
     event.key === "F7" &&
+    view.helpOpen &&
+    (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target))
+  ) {
+    return false;
+  }
+  if (
+    event.key === "F8" &&
     view.helpOpen &&
     (ui?.helpOverlayHasFocus || helpOverlayHasKeyboardFocus(event.target))
   ) {
@@ -1455,6 +1505,20 @@ export function handleScopeKeyDown(
       ui?.onHandled?.();
       return true;
     }
+    // Consume printable letter/alphanumeric characters while a DCB spinner is armed
+    // (for AMZ label entry, or to capture malformed alphabetic inputs for numeric format rejection)
+    if (
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      /^[A-Za-z_-]$/.test(event.key) &&
+      isFmaDcbSpinnerCell(view.dcbSpinner.cell)
+    ) {
+      consume(event);
+      inputDcbSpinnerKey(view, event.key);
+      ui?.onHandled?.();
+      return true;
+    }
   }
 
   // STARS Key Mappings (Table 18): Ctrl+F1 to Ctrl+F11
@@ -1517,10 +1581,12 @@ export function handleScopeKeyDown(
   if (event.key === "F7" && (event.shiftKey || event.altKey || event.metaKey)) {
     return false;
   }
+  if (event.key === "F8" && (event.shiftKey || event.altKey || event.metaKey)) return false;
 
   // STARS Table 18: Ins / Insert -> <PREF SET>
   if (event.key === "Insert" || event.key === "Ins") {
     consume(event);
+    beginDcbPrefSession(view);
     openDcbMenu(view, "PREF");
     ui?.onHandled?.();
     return true;
@@ -1574,6 +1640,24 @@ export function handleScopeKeyDown(
     return true;
   }
 
+  // Appendix D Table D-1: FMA/TSAS owns one Preview slew arm, whether enabled or not.
+  if (event.key === "F8" && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+    consume(event);
+    cancelRblPending(view.rbl);
+    cancelPreviewArea(view.preview);
+    cancelStarsChordEntry(view.starsChordEntry);
+    view.starsChordArmed = null;
+    cancelDcbSpinner(view);
+    cancelPendingMinSepIfArmed(view);
+    view.placeCenterArmed = false;
+    view.placeRangeRingArmed = false;
+    view.f1DropArmed = false;
+    view.beaconatorActive = false;
+    armPreviewSlewAction(view.preview, { type: "fmaTrackInhibit" }, nowMs);
+    ui?.onHandled?.();
+    return true;
+  }
+
   // STARS Table 18: F10 -> <PTL>
   if (event.key === "F10" && !event.ctrlKey) {
     consume(event);
@@ -1622,7 +1706,7 @@ export function handleScopeKeyDown(
     return true;
   }
 
-  if (event.key === "Escape") {
+  if (event.key === "Escape" || event.key === "Clear") {
     view.f1DropArmed = false;
     view.stagedListAnchor = null;
     cancelRblPending(view.rbl);
@@ -1642,6 +1726,30 @@ export function handleScopeKeyDown(
     const starsBusy =
       focus === "scope" && (view.starsChordEntry.phase !== "idle" || view.starsChordArmed != null);
     if (!filterBusy && !starsBusy && handleDcbEscape(view)) {
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+  }
+
+  const fmaPending = previewTrackingSlew(view.preview)?.type === "fmaTrackInhibit";
+  if (fmaPending && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if (event.key === "Enter") {
+      if (view.preview.buffer.trim().length > 0)
+        rejectPreviewAreaWithReason(view.preview, nowMs, "FORMAT");
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    if (event.key === "Backspace") {
+      view.preview.buffer = view.preview.buffer.slice(0, -1);
+      consume(event);
+      ui?.onHandled?.();
+      return true;
+    }
+    const ch = previewBufferCharFromKey(event.key, event.code);
+    if (ch !== null) {
+      view.preview.buffer += ch;
       consume(event);
       ui?.onHandled?.();
       return true;
@@ -1889,10 +1997,6 @@ export function handleScopeKeyDown(
     togglePtlOn(view);
     return true;
   }
-  if (event.key === "F8") {
-    toggleHistoryEnabled(view);
-    return true;
-  }
   if (event.key === "PageUp" || event.key === "PageDown") {
     const direction: 1 | -1 = event.key === "PageDown" ? 1 : -1;
     if (focus === "scope") {
@@ -1987,7 +2091,8 @@ export function cancelRblOnFocusTakeover(view: ScopeView, focus: ScopeFocus): vo
     view.preview.phase === "entry" &&
     view.preview.entryOrigin === "literalSplat" &&
     /^\*\s*T/i.test(view.preview.buffer);
-  if (!hasPendingRbl && !hasRblEntry) return;
+  const hasFmaEntry = previewTrackingSlew(view.preview)?.type === "fmaTrackInhibit";
+  if (!hasPendingRbl && !hasRblEntry && !hasFmaEntry) return;
   cancelRblPending(view.rbl);
   cancelPreviewArea(view.preview);
 }

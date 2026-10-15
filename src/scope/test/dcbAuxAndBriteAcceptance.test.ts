@@ -162,6 +162,8 @@ describe("T02-86 DCB AUX and BRITE Controls Acceptance Suite", () => {
     view.cursorSpeed = 8;
     view.brite.cmp = 60;
     view.brite.bcn = 70;
+    view.dcbPref.slots[0] = { name: "BASE", body: serializeDcbPref(view) };
+    view.dcbPref.activeIndex = 0;
 
     const serialized = serializeDcbPref(view);
     expect(serialized.historyRateSec).toBe(6.0);

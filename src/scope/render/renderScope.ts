@@ -68,6 +68,8 @@ export function renderScope(
     return;
   }
 
+  // Ordinary surveillance sampling remains display-local; FMA loss/coast
+  // evaluation is separately dispatched from the simulation update path.
   syncTrackDisplays(
     view.tracks,
     world,
@@ -81,7 +83,7 @@ export function renderScope(
 
   drawWeatherLayer(ctx, view, size);
   view.mapCache = reuseOrBuildMapCache(view.mapCache, toMapCacheInput(view, size));
-  drawMapLayers(ctx, view.mapCache, view);
+  drawMapLayers(ctx, view.mapCache, view, size);
   drawMinimumSeparation(ctx, world, view, size);
   drawRangeBearingLines(ctx, world, view, size);
   drawTracks(ctx, world, view, size);

@@ -12,7 +12,8 @@ import { expect, test } from "vitest";
 // @ts-expect-error tsconfig has no @types/node
 import { readFileSync } from "node:fs";
 import { PALETTE, createScopeView } from "@scope";
-import { DisplayControlBar, MAIN_DCB_LAYOUT } from "../DisplayControlBar";
+import { DisplayControlBar, FMA_AUX_DCB_LAYOUT, MAIN_DCB_LAYOUT } from "../DisplayControlBar";
+import { renderFmaAux } from "../DisplayControlBarMenus";
 
 function dcbHtml() {
   return renderToStaticMarkup(
@@ -50,7 +51,7 @@ test("AC1 — MAIN is the fixed two-row, 22-column physical DCB descriptor", () 
     "ldr-dir",
     "ldr-length",
     "char",
-    "mode-fsl",
+    "mode",
     "pref",
     "site-fused",
     "ssa-filter",
@@ -79,15 +80,26 @@ test("AC1 — MAIN is the fixed two-row, 22-column physical DCB descriptor", () 
   expect(MAIN_DCB_LAYOUT.every(({ row, rowSpan }) => row === 1 || rowSpan === 1)).toBe(true);
 });
 
-test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE FSL spinner", () => {
+test("AC1 — MAIN renders six WX latches, enabled SITE, enabled MODE submenu", () => {
   const html = dcbHtml();
   for (const id of ["wx1", "wx2", "wx3", "wx4", "wx5", "wx6"]) {
     expect(html).toMatch(new RegExp(`data-dcb-layout-id="${id}"`));
     expect(html).toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*data-dcb-kind="toggle"`));
     expect(html).not.toMatch(new RegExp(`aria-label="${id.toUpperCase()}"[^>]*\\bdisabled\\b`));
   }
-  expect(html).toMatch(/aria-label="Mode FSL"[^>]*data-dcb-kind="spinner"/);
-  expect(html).not.toMatch(/aria-label="Mode FSL"[^>]*disabled/);
+  expect(html).toMatch(/aria-label="Mode"[^>]*data-dcb-kind="submenu"/);
+  expect(html).not.toMatch(/aria-label="Mode"[^>]*disabled/);
+  expect(html).toContain(
+    '<span class="dcb-cell-line">MODE</span><span class="dcb-cell-line">FSL</span>',
+  );
+  const fmaView = createScopeView();
+  fmaView.fmaSurveillance.enabled = true;
+  const fmaHtml = renderToStaticMarkup(
+    createElement(DisplayControlBar, { view: fmaView, onChange: () => undefined }),
+  );
+  expect(fmaHtml).toContain(
+    '<span class="dcb-cell-line">MODE</span><span class="dcb-cell-line">FMA</span>',
+  );
   expect(html).toMatch(/aria-label="SITE FUSED"/);
   expect(html).not.toMatch(/aria-label="SITE FUSED"[^>]*disabled/);
   expect(html).toContain('data-dcb-layout="MAIN"');
@@ -165,6 +177,7 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/\.dcb-main-grid,[\s\S]*?gap:\s*1px !important;/);
   for (const [layout, columns] of [
     ["AUX", 17],
+    ["FMA_AUX", 22],
     ["MAPS", 18],
     ["BRITE", 10],
     ["CHAR_SIZE", 6],
@@ -193,6 +206,37 @@ test("AC2 — normal, pressed, and disabled caps have distinct physical tokens",
   expect(css).toMatch(/\.dcb-cell[\s\S]*?inset 0 1px var\(--dcb-highlight/);
   expect(css).toMatch(/var\(--dcb-disabled-text,\s*#4c604c\)/i);
   expect(css).not.toMatch(/repeating-linear-gradient|raster|stripe/i);
+});
+
+test("FMA AUX uses 22 full-width columns with only paired controls at half height", () => {
+  const html = renderToStaticMarkup(renderFmaAux(createScopeView(), () => undefined));
+  expect(html).toContain('data-dcb-layout="FMA_AUX"');
+  for (const cell of FMA_AUX_DCB_LAYOUT) {
+    expect(html).toContain(`data-dcb-layout-id="${cell.id}"`);
+    expect(html).toMatch(
+      new RegExp(`data-dcb-layout-id="${cell.id}"[^>]*data-dcb-row-span="${cell.rowSpan}"`),
+    );
+  }
+  for (const id of ["fma-amz", "fma-mag", "fma-ptl-len", "dwell-on", "shift"]) {
+    expect(FMA_AUX_DCB_LAYOUT.find((cell) => cell.id === id)?.rowSpan).toBe(2);
+  }
+  for (const id of ["fma-ntz-1", "fma-ntz-2", "fma-rwy-1", "fma-rwy-2"]) {
+    expect(FMA_AUX_DCB_LAYOUT.find((cell) => cell.id === id)?.rowSpan).toBe(1);
+  }
+  expect(html).toMatch(
+    /data-dcb-layout-id="fma-mag"[\s\S]*?<span class="dcb-cell-line">MAG<\/span>\s*<span class="dcb-cell-line">1<\/span>/,
+  );
+  expect(html).not.toMatch(
+    /data-dcb-layout-id="fma-mag"[\s\S]*?<span class="dcb-cell-line">MAG 1<\/span>/,
+  );
+  const css = cssSource();
+  expect(css).toMatch(
+    /\.dcb-vertical \.dcb-main-grid\[data-dcb-layout="FMA_AUX"\][\s\S]*?grid-template-rows:\s*repeat\(22,\s*minmax\(0,\s*1fr\)\)/,
+  );
+  const fontCss = readFileSync(new URL("../../../scope/starsFonts.css", import.meta.url), "utf8");
+  expect(fontCss).toMatch(
+    /\[data-dcb-layout="FMA_AUX"\][\s\S]*?grid-template-columns:\s*repeat\(22,\s*var\(--dcb-column,\s*72px\)\)/,
+  );
 });
 
 test("AC5 — copy and typography remain a STARS-like trainer approximation", () => {
@@ -237,6 +281,7 @@ test("AC7 — DCB follows fixed button widths without horizontal width cap", () 
   expect(css).toMatch(/\.dcb\s*\{[^}]*width:\s*max-content;/);
   expect(css).toMatch(/\.dcb\s*\{[^}]*flex:\s*0 0 80px;/);
   expect(css).toMatch(/\.dcb\s*\{[^}]*overflow:\s*visible;/);
+  expect(css).toMatch(/\.dcb-base\s*\{[^}]*overflow-x:\s*auto;/);
   expect(css).toMatch(/\.dcb-submenu\s*\{[^}]*width:\s*max-content;/);
   expect(css).toMatch(/\.dcb-submenu\s*>\s*\.dcb-main-grid,[\s\S]*?width:\s*max-content/);
   expect(source).toContain("buttonEdges");

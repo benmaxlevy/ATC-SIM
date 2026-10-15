@@ -19,7 +19,7 @@ import { availableVipLevels } from "./wx/mosaic";
 import type { WxMosaic } from "./wx/types";
 
 import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
-import { formatDcbRangeReadout, type RangeNm } from "./camera";
+import { type RangeNm } from "./camera";
 
 /** Default primary altimeter setting. */
 export const SSA_ALTIMETER_STUB = "30.17";
@@ -145,6 +145,10 @@ export interface SsaInput {
   visibility?: SsaVisibility;
   /** PTL minutes for the SSA PTL readout. Default 1.0. */
   ptlMinutes?: number;
+  /** FMA mode indicator. When true, PTL seconds formatting is used. */
+  fmaMode?: boolean;
+  /** FMA PTL seconds (0 removes PTL from SSA). */
+  fmaPtlSeconds?: number;
   /** Position subset number / TCP ID. Default 1. */
   subset?: number | string;
   /** Primary airport identifier. Default derived from scenario (e.g. "KDEM" or "BOS"). */
@@ -293,14 +297,21 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
     result.push({ text: spcs.join("  "), style: "spc" });
   }
 
-  // 7. Range + Predicted Track Line: 40NM PTL: 3.0
-  const ptlMinutes = input.ptlMinutes ?? 1.0;
-  const ptlText = formatSsaPtl(ptlMinutes);
-  if (vis.RANGE && vis.PTL) {
+  // 7. Range + Predicted Track Line: 40NM PTL: 3.0 or 40NM PTL: 5
+  let ptlText = "";
+  if (input.fmaMode) {
+    if (typeof input.fmaPtlSeconds === "number" && input.fmaPtlSeconds > 0) {
+      ptlText = `PTL: ${input.fmaPtlSeconds}`;
+    }
+  } else {
+    const ptlMinutes = input.ptlMinutes ?? 1.0;
+    ptlText = formatSsaPtl(ptlMinutes);
+  }
+  if (vis.RANGE && vis.PTL && ptlText) {
     result.push({ text: `${input.rangeNm}NM ${ptlText}`, style: "normal" });
   } else if (vis.RANGE) {
-    result.push({ text: formatDcbRangeReadout(input.rangeNm), style: "normal" });
-  } else if (vis.PTL) {
+    result.push({ text: `${input.rangeNm}NM`, style: "normal" });
+  } else if (vis.PTL && ptlText) {
     result.push({ text: ptlText, style: "normal" });
   }
 
@@ -314,10 +325,11 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
     if (input.filterEntry && input.filterEntry.phase !== "idle") {
       result.push({ text: formatFilterReadout(input.filter, input.filterEntry), style: "normal" });
     } else {
-      const uMin = input.unassociatedFilter?.minHundreds ?? input.filter.minHundreds;
-      const uMax = input.unassociatedFilter?.maxHundreds ?? input.filter.maxHundreds;
-      const aMin = input.associatedFilter?.minHundreds ?? input.filter.minHundreds;
-      const aMax = input.associatedFilter?.maxHundreds ?? input.filter.maxHundreds;
+      const defFilter = input.filter ?? { minHundreds: 0, maxHundreds: 180 };
+      const uMin = input.unassociatedFilter?.minHundreds ?? defFilter.minHundreds;
+      const uMax = input.unassociatedFilter?.maxHundreds ?? defFilter.maxHundreds;
+      const aMin = input.associatedFilter?.minHundreds ?? defFilter.minHundreds;
+      const aMax = input.associatedFilter?.maxHundreds ?? defFilter.maxHundreds;
       result.push({
         text: `${pad3(uMin)} ${pad3(uMax)} U ${pad3(aMin)} ${pad3(aMax)} A`,
         style: "normal",

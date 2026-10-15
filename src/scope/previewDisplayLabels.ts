@@ -1,6 +1,7 @@
 import { formatPreviewReadout, type PreviewAreaState } from "./previewArea";
 
 const MNEMONIC_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ["FMA/TSAS", "FMA/TSAS"],
   ["INIT CNTL", "IC"],
   ["TERM CNTL", "TC"],
   ["FLT DATA", "DA"],

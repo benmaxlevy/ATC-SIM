@@ -10,8 +10,8 @@
  * per-subsystem fonts converted from Vice's STARS bitmaps (DATA BLOCKS / LISTS / DCB / TOOLS / POS), not
  * a font picker. BRITE is per drawn channel (0–100 multiply); WX/WXC tint VIP
  * paint; BKC is a stored no-op. History records on each surveillance report, cap 5 dots, no
- * phosphor; AUX HISTORY spinner shows 0–5 of those dots (F8 / H
- * toggles 0 ↔ last non-zero). Default SITE mode is FUSED. PTL is a straight predicted track line (default
+ * phosphor; AUX HISTORY spinner shows 0–5 of those dots (H toggles 0 ↔ last non-zero).
+ * Default SITE mode is FUSED. PTL is a straight predicted track line (default
  * 1.0 min; AUX spinner 0.5/1/2/4). F10 toggles PTL ALL. F7 is MULTI FUNC and starts a separate operand buffer. PTL OWN is F3-owned
  * tracks; ALL wins if both are on. Per-track PTL is F7 `R` plus click
  * (`ptlByAircraftId`, session, not PREF). TPA J-rings: DCB 2/3/5/10 NM about the
@@ -25,7 +25,15 @@
  * Scope display state only. Never a Command, readback, or intent.
  */
 
-import type { LatLon, NmEastNorth } from "@core";
+import {
+  createFmaAlertState,
+  type FmaAlertInhibit,
+  type FmaAlertState,
+  type FmaAlertTrackResult,
+  type FmaAmz,
+  type LatLon,
+  type NmEastNorth,
+} from "@core";
 import {
   DEFAULT_ALTITUDE_FILTER,
   beginFilterEntry,
@@ -48,8 +56,13 @@ import {
   syncRoleMapVisibility,
   type RrIntervalNm,
 } from "./dcb/dcbFunctions";
-import { emptyDcbPrefRuntime, type DcbDock, type DcbPrefRuntime } from "./dcb/dcbPref";
-import { idleDcbSpinner, type DcbMenu, type DcbSpinnerState } from "./dcb/dcbMenu";
+import type { DcbDock, DcbPrefRuntime, FmaAmzPreference } from "./dcb/types";
+import {
+  cancelDcbSpinner,
+  idleDcbSpinner,
+  type DcbMenu,
+  type DcbSpinnerState,
+} from "./dcb/dcbMenu";
 import {
   cloneCharSizes,
   DEFAULT_CHAR_SIZE_PX,
@@ -100,8 +113,25 @@ import {
 import { DEFAULT_DIGITAL_MAP, type DigitalMap, type MapCache } from "./mapLayers";
 import { cloneBrite, type BriteState } from "./palette";
 import type { TrackDisplay } from "./trackDisplay";
+import type { SurveillanceReport } from "./surveillance";
+import {
+  advanceFmaSurveillance,
+  clearFmaSurveillance,
+  configureFmaSurveillance,
+  createFmaSurveillanceState,
+  pruneFmaSurveillance,
+  releaseFmaTrack,
+  releaseFmaTracks,
+  setFmaSensorStatus,
+  setFmaSensorFixture,
+  type FmaSensorFixture,
+  type FmaSensorStatus,
+  type FmaSurveillanceState,
+  type FmaSurveillanceTick,
+} from "./fmaSurveillance";
+import { applyFmaAmzWithWarning, applyLastNormalDcbPref, emptyDcbPrefRuntime } from "./dcb/dcbPref";
 import type { DatablockRenderSnapshot } from "./datablock";
-import type { RadarSite } from "@scenario";
+import { resolveFmaFlow, type RadarSite, type Scenario } from "@scenario";
 import {
   defaultSurveillanceMode,
   effectiveSurveillanceMode,
@@ -184,11 +214,11 @@ export interface ScopeView {
   mapCache: MapCache | null;
   /**
    * HISTORY dots to draw (0–9 from keyboard; AUX spinner 0–5). 0 = off (same skip as
-   * historyEnabled === false). Sampler still keeps 5 dots. F8 / H toggles 0 ↔ last
+   * historyEnabled === false). Sampler still keeps 5 dots. H toggles 0 ↔ last
    * non-zero (default 5).
    */
   historyDotCount: HistoryDotCount;
-  /** Last non-zero HISTORY count restored by F8 / H. */
+  /** Last non-zero HISTORY count restored by H. */
   lastHistoryDotCount: Exclude<HistoryDotCount, 0>;
   /** Derived from historyDotCount > 0. Kept so existing readers stay valid. */
   historyEnabled: boolean;
@@ -339,6 +369,25 @@ export interface ScopeView {
   surveillanceMode: SurveillanceMode;
   /** Trainer-authored sites from the loaded scenario. `[]` = implicit FUSED. */
   radarSites: RadarSite[];
+  /** Per-TCW FMA report retention. Separate from World alerts and SITE sampler. */
+  fmaSurveillance: FmaSurveillanceState;
+  /** Per-TCW qualified alert episodes and read-only results; never World.alerts. */
+  fmaAlertState: FmaAlertState;
+  fmaAlertResults: Map<string, FmaAlertTrackResult>;
+  fmaAlertOutlines: Map<string, "RED" | "YELLOW">;
+  fmaAlertDiagnostics: string[];
+  fmaScenarioDiagnostics: string[];
+  fmaAmzs: FmaAmz[];
+  fmaDefaultAmzId: string | null;
+  fmaAlertInhibit: FmaAlertInhibit;
+  /** Display-local episode acknowledgments; IDs expire with their alert episode. */
+  fmaAcknowledgedEpisodeIds: Set<string>;
+  fmaSilencedEpisodeIds: Set<string>;
+  /** T02-224 consumes these episode-local onset/cancel events and action tests for speech. */
+  fmaSpeechEvents: Array<
+    | { type: "onset" | "cancel"; episodeId: string; aircraftId: string }
+    | { type: "test"; level?: number }
+  >;
   /**
    * STARS VIP 1–6 display latches. Default all false.
    * Display only. Paint is weatherLayer. Does not steer aircraft.
@@ -356,10 +405,52 @@ export interface ScopeView {
    */
   vol: VolLevel;
   /**
-   * Global datablock display mode: "F" (Full), "S" (Semi/Partial), "L" (Limited).
-   * Default "F". Selected tracks retain full datablocks.
+   * STARS TCW FMA voice volume level (1–10). TI 6191.409 §§6.16.6–7.
+   * Default 6. Modulates browser SpeechSynthesis utterance volume (level / 10).
    */
-  modeFsl: ModeFsl;
+  fmaVoiceLevel: number;
+  /**
+   * Supported service level mode (EFSL, FSL, TRNG, FMA, DSF).
+   * TI 6191.409 Section 6.16.1, Figure 6-16.
+   * Default supported service state is "FSL".
+   */
+  serviceMode: ServiceMode;
+  /**
+   * Pending FMA confirmation state when MODE -> FMA is clicked.
+   * Requires ACCEPT to commit toggle, or DONE/cancel to dismiss.
+   */
+  fmaCandidateMode: boolean;
+  /**
+   * Configured hardware/display capability ("2K" or "1K").
+   * FMA requires 2K; 1K omits FMA from MODE submenu (Figure 6-16).
+   */
+  displayCapability: "2K" | "1K";
+  /**
+   * Operator workstation privilege ("controller" or "other").
+   * FMA requires controller privilege.
+   */
+  operatorPrivilege: "controller" | "other";
+  /**
+   * AMZ-keyed FMA preference store (analog Section 4.1 / 4.1.1).
+   */
+  amzPreferences: Map<string, FmaAmzPreference>;
+  /**
+   * Last operator-facing system warning (e.g. "NO PREF SET FOUND").
+   */
+  lastWarning: string | null;
+  /**
+   * FMA lateral magnification factor (1–8). TI 6191.409 §6.16.3. Default 1.
+   */
+  fmaMag: number;
+  /**
+   * FMA predicted track line length in whole seconds (0–adapted max, default 5). TI 6191.409 §6.16.4.
+   * 0 removes displayed PTLs in FMA and clears SSA PTL readout.
+   */
+  fmaPtlSeconds: number;
+  /**
+   * FMA runway-assigned leader direction overrides (runwayId -> LeaderDir | null). TI 6191.409 §6.16.5.
+   */
+  fmaRunwayLeaders: Map<string, LeaderDir | null>;
   /**
    * AUX H_RATE: History dot scan rate interval in seconds (default 4.5).
    * New history dots are sampled when elapsed time >= historyRateSec * 1000.
@@ -388,12 +479,17 @@ export interface ScopeView {
   rbl: RangeBearingLineState;
 }
 
+export type DisplayCapability = "2K" | "1K";
+export type OperatorPrivilege = "controller" | "other";
+
+export type ServiceMode = "EFSL" | "FSL" | "TRNG" | "FMA" | "DSF";
+export const DEFAULT_SERVICE_MODE: ServiceMode = "FSL";
+
+export type { FmaAmzPreference };
+
 export const VOL_STEPS = [0, 1, 2, 3, 4, 5] as const;
 export type VolLevel = (typeof VOL_STEPS)[number];
 export const DEFAULT_VOL_LEVEL: VolLevel = 2;
-
-export type ModeFsl = "F" | "S" | "L";
-export const DEFAULT_MODE_FSL: ModeFsl = "F";
 
 export type DwellMode = "OFF" | "ON" | "LOCK";
 export const DEFAULT_DWELL_MODE: DwellMode = "OFF";
@@ -417,12 +513,20 @@ export function createScopeView(
     primaryAltimeter?: string;
     airportAltimeters?: readonly SsaAirportAltimeter[];
     vol?: VolLevel;
-    modeFsl?: ModeFsl;
+    fmaVoiceLevel?: number;
+    serviceMode?: ServiceMode;
+    displayCapability?: "2K" | "1K";
+    operatorPrivilege?: "controller" | "other";
     historyRateSec?: number;
     dwellMode?: DwellMode;
     cursorHome?: boolean;
     cursorSpeed?: number;
     radarTilesetBoundaryNm?: readonly NmEastNorth[];
+    fmaAmzs?: readonly FmaAmz[];
+    fmaDefaultAmzId?: string | null;
+    fmaMag?: number;
+    fmaPtlSeconds?: number;
+    fmaRunwayLeaders?: ReadonlyMap<string, LeaderDir | null>;
   },
 ): ScopeView {
   const digitalMap = options?.digitalMap ?? DEFAULT_DIGITAL_MAP;
@@ -530,11 +634,32 @@ export function createScopeView(
     activeListEntries: [],
     surveillanceMode: options?.surveillanceMode ?? defaultSurveillanceMode(),
     radarSites: options?.radarSites ? [...options.radarSites] : [],
+    fmaSurveillance: createFmaSurveillanceState(),
+    fmaAlertState: createFmaAlertState(),
+    fmaAlertResults: new Map(),
+    fmaAlertOutlines: new Map(),
+    fmaAlertDiagnostics: [],
+    fmaScenarioDiagnostics: [],
+    fmaAmzs: options?.fmaAmzs ? [...options.fmaAmzs] : [],
+    fmaDefaultAmzId: options?.fmaDefaultAmzId ?? null,
+    fmaAlertInhibit: {},
+    fmaAcknowledgedEpisodeIds: new Set(),
+    fmaSilencedEpisodeIds: new Set(),
+    fmaSpeechEvents: [],
     wxLevels: cloneWxLevels(),
     wxMosaic: emptyWxMosaic(),
     arp,
     vol: options?.vol ?? DEFAULT_VOL_LEVEL,
-    modeFsl: options?.modeFsl ?? DEFAULT_MODE_FSL,
+    fmaVoiceLevel: options?.fmaVoiceLevel ?? 6,
+    serviceMode: options?.serviceMode ?? DEFAULT_SERVICE_MODE,
+    fmaCandidateMode: false,
+    displayCapability: options?.displayCapability ?? "2K",
+    operatorPrivilege: options?.operatorPrivilege ?? "controller",
+    amzPreferences: new Map(),
+    lastWarning: null,
+    fmaMag: options?.fmaMag ?? 1,
+    fmaPtlSeconds: options?.fmaPtlSeconds ?? 5,
+    fmaRunwayLeaders: options?.fmaRunwayLeaders ? new Map(options.fmaRunwayLeaders) : new Map(),
     historyRateSec: options?.historyRateSec ?? DEFAULT_HISTORY_RATE_SEC,
     dwellMode: options?.dwellMode ?? DEFAULT_DWELL_MODE,
     dwellLockedAircraftId: null,
@@ -579,6 +704,7 @@ export function applyRadarSites(view: ScopeView, sites: readonly RadarSite[]): v
   view.radarSites = [...sites];
   view.surveillanceMode = effectiveSurveillanceMode(view.surveillanceMode, view.radarSites);
   clearLastSurveillanceReports(view);
+  clearFmaSurveillanceView(view);
 }
 
 /** SITE / catalog change resamples immediately. Trainer delta: no 30 s coast. */
@@ -596,6 +722,179 @@ export function setSurveillanceMode(view: ScopeView, mode: SurveillanceMode): vo
   }
   view.surveillanceMode = next;
   clearLastSurveillanceReports(view);
+  clearFmaSurveillanceView(view);
+}
+
+/** Internal runtime seam for the later MODE / AMZ controls; no UI command. */
+export function configureFmaSurveillanceView(
+  view: ScopeView,
+  enabled: boolean,
+  selectedAmzId: string | null,
+  monitoring?: { surveillanceLossS: number; coastOutS: number },
+): void {
+  const selectedMonitoring = view.fmaAmzs.find((amz) => amz.id === selectedAmzId)?.monitoring;
+  const nextMonitoring =
+    monitoring ??
+    (selectedMonitoring
+      ? {
+          surveillanceLossS: selectedMonitoring.surveillanceLossS,
+          coastOutS: selectedMonitoring.coastOutS,
+        }
+      : view.fmaSurveillance.monitoring);
+  const previous = view.fmaSurveillance;
+  view.fmaSurveillance = configureFmaSurveillance(
+    view.fmaSurveillance,
+    enabled,
+    selectedAmzId,
+    nextMonitoring,
+  );
+  if (view.fmaSurveillance !== previous) {
+    view.fmaAlertInhibit = {};
+    for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    }
+    view.fmaAlertState = createFmaAlertState(selectedAmzId);
+    view.fmaAlertResults = new Map();
+    view.fmaAlertOutlines = new Map();
+    view.fmaAlertDiagnostics = [];
+    view.fmaAcknowledgedEpisodeIds.clear();
+    view.fmaSilencedEpisodeIds.clear();
+    cancelPreviewArea(view.preview);
+    for (const td of view.tracks.values()) delete td.presentationReport;
+  }
+}
+
+/** Deterministic sensor-source fixture input for synthetic tests/browser exercises. */
+export function setFmaSensorStatusView(view: ScopeView, status: FmaSensorStatus | null): void {
+  view.fmaSurveillance = setFmaSensorStatus(view.fmaSurveillance, status);
+}
+
+/** Deterministic report-feed override; [] deliberately interrupts every source. */
+export function setFmaSensorFixtureView(view: ScopeView, fixture: FmaSensorFixture | null): void {
+  view.fmaSurveillance = setFmaSensorFixture(view.fmaSurveillance, fixture);
+}
+
+/** Selects explicit fixture reports when present; an empty fixture remains a gap. */
+export function fmaReportsForSimulationTick(
+  view: ScopeView,
+  ordinaryReports: readonly SurveillanceReport[],
+): readonly SurveillanceReport[] {
+  return view.fmaSurveillance.sensorFixture?.reports ?? ordinaryReports;
+}
+
+/** Simulation-update observer. Caller must guard against unchanged sim time. */
+export function advanceFmaSurveillanceView(view: ScopeView, tick: FmaSurveillanceTick): void {
+  view.fmaSurveillance = advanceFmaSurveillance(view.fmaSurveillance, tick);
+  publishFmaPresentation(view);
+}
+
+/** Prune dead/disassociated tracks without evaluating report age. */
+export function pruneFmaSurveillanceView(
+  view: ScopeView,
+  liveTrackIds: ReadonlySet<string>,
+  associatedTrackIds?: ReadonlySet<string>,
+): void {
+  view.fmaSurveillance = pruneFmaSurveillance(
+    view.fmaSurveillance,
+    liveTrackIds,
+    associatedTrackIds,
+  );
+  publishFmaPresentation(view);
+}
+
+export function releaseFmaTrackView(view: ScopeView, aircraftId: string): void {
+  view.fmaSurveillance = releaseFmaTrack(view.fmaSurveillance, aircraftId);
+  delete view.tracks.get(aircraftId)?.presentationReport;
+}
+
+export function releaseFmaTracksView(view: ScopeView, aircraftIds: Iterable<string>): void {
+  const ids = [...aircraftIds];
+  view.fmaSurveillance = releaseFmaTracks(view.fmaSurveillance, ids);
+  for (const id of ids) delete view.tracks.get(id)?.presentationReport;
+}
+
+export function clearFmaSurveillanceView(view: ScopeView): void {
+  const pendingCancels = view.fmaSpeechEvents.filter(
+    (event): event is { type: "cancel"; episodeId: string; aircraftId: string } =>
+      event.type === "cancel",
+  );
+  view.fmaSpeechEvents.length = 0;
+  view.fmaSpeechEvents.push(...pendingCancels);
+  const canceledEpisodeIds = new Set(pendingCancels.map((event) => event.episodeId));
+  for (const [aircraftId, episode] of view.fmaAlertState.episodes) {
+    if (!canceledEpisodeIds.has(episode.id)) {
+      view.fmaSpeechEvents.push({ type: "cancel", episodeId: episode.id, aircraftId });
+    }
+  }
+  view.fmaSurveillance = clearFmaSurveillance(view.fmaSurveillance);
+  view.fmaAlertState = createFmaAlertState();
+  view.fmaAlertResults = new Map();
+  view.fmaAlertOutlines = new Map();
+  view.fmaAlertDiagnostics = [];
+  view.fmaAlertInhibit = {};
+  view.fmaAcknowledgedEpisodeIds.clear();
+  view.fmaSilencedEpisodeIds.clear();
+  cancelPreviewArea(view.preview);
+  cancelDcbSpinner(view);
+  for (const td of view.tracks.values()) delete td.presentationReport;
+}
+
+/**
+ * Rebind FMA configuration on scenario or catalog replacement (T02-225 contract rule 6):
+ * If previously enabled with an AMZ ID, rebind by stable known AMZ ID or initial valid AMZ;
+ * clear all session episodes, arms, retained tracks and speech.
+ */
+export function rebindFmaScenarioAmzs(
+  view: ScopeView,
+  nextAmzs: readonly FmaAmz[],
+  resolvedAmzId?: string | null,
+): void {
+  view.fmaAmzs = [...nextAmzs];
+  const currentAmzId = view.fmaSurveillance.selectedAmzId;
+  const stillValid = currentAmzId ? view.fmaAmzs.some((a) => a.id === currentAmzId) : false;
+  const wasEnabled = view.fmaSurveillance.enabled;
+
+  clearFmaSurveillanceView(view);
+  view.fmaCandidateMode = false;
+  view.fmaDefaultAmzId = nextAmzs.some((amz) => amz.id === resolvedAmzId)
+    ? resolvedAmzId!
+    : (nextAmzs[0]?.id ?? null);
+
+  if (wasEnabled && view.fmaAmzs.length > 0 && view.fmaDefaultAmzId) {
+    const targetAmzId =
+      resolvedAmzId === undefined && stillValid ? currentAmzId! : view.fmaDefaultAmzId;
+    configureFmaSurveillanceView(view, true, targetAmzId);
+    applyFmaAmzWithWarning(view, targetAmzId);
+  } else if (wasEnabled) {
+    configureFmaSurveillanceView(view, false, null);
+    applyLastNormalDcbPref(view);
+  }
+}
+
+/** Shared scenario-flow resolver and lifecycle binder used at boot and replacement. */
+export function bindFmaScenarioFlow(
+  view: ScopeView,
+  scenario: Pick<Scenario, "catalog" | "activeRunwayId" | "fma">,
+) {
+  const resolution = resolveFmaFlow(scenario.catalog, scenario.activeRunwayId, {
+    initialAmzId: scenario.fma?.initialAmzId,
+    preferredAmzId: view.fmaSurveillance.selectedAmzId ?? view.fmaDefaultAmzId,
+    excludeDerived: scenario.fma?.excludeDerivedGroups,
+  });
+  rebindFmaScenarioAmzs(view, resolution.amzs, resolution.selectedAmzId);
+  view.fmaScenarioDiagnostics = resolution.diagnostics;
+  return resolution;
+}
+
+function publishFmaPresentation(view: ScopeView): void {
+  for (const [id, td] of view.tracks) {
+    const retained = view.fmaSurveillance.tracks.get(id);
+    if (view.fmaSurveillance.enabled && retained) {
+      td.presentationReport = { ...retained.coastedReport };
+    } else {
+      delete td.presentationReport;
+    }
+  }
 }
 
 export function setBeaconatorActive(view: ScopeView, active: boolean): void {
@@ -610,7 +909,7 @@ function syncHistoryEnabled(view: ScopeView): void {
   view.historyEnabled = view.historyDotCount > 0;
 }
 
-/** F8 always-on; H only when scope-focused. Toggles 0 ↔ last non-zero (default 5). Never a Command. */
+/** H when scope-focused. Toggles history 0 ↔ last non-zero (default 5). Never a Command. */
 export function toggleHistoryEnabled(view: ScopeView): void {
   if (view.historyDotCount === 0) {
     view.historyDotCount = view.lastHistoryDotCount;
@@ -850,4 +1149,13 @@ export function centerOnLastClick(view: ScopeView): void {
 export function centerOnWorld(view: ScopeView, eastNm: number, northNm: number): void {
   view.camera.centerEastNm = eastNm;
   view.camera.centerNorthNm = northNm;
+}
+
+/**
+ * STARS TCW VOICE level action (1–10). TI 6191.409 §§6.16.6–7.
+ * Only levels 1 through 10 are accepted. Clamped to integer [1, 10].
+ */
+export function setFmaVoiceLevel(view: ScopeView, level: number): void {
+  if (!Number.isFinite(level)) return;
+  view.fmaVoiceLevel = Math.max(1, Math.min(10, Math.round(level)));
 }

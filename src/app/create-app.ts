@@ -44,8 +44,9 @@ import {
 } from "../ui/controls/settings-speech";
 import { createCaAlertTone, type CaAlertTone } from "./ca-alert-tone";
 import { createEventSounds, type EventSounds } from "./event-sounds";
+import { createFmaSpeechController, type FmaSpeechController } from "./fma-speech";
 
-export interface AppDeps {
+export type AppDeps = {
   speech: SpeechPort;
   /** When omitted, starts empty; boot should pass `createWorldFromScenario`. */
   world?: World;
@@ -71,9 +72,11 @@ export interface AppDeps {
   vfrRequestSeed?: number;
   /** Optional VFR pilot request queue instance. */
   vfrRequestQueue?: VfrRequestQueue;
-}
+  /** Injected in tests. Browser default speaks FMA alarms via SpeechSynthesis. */
+  fmaSpeech?: FmaSpeechController;
+};
 
-export interface AppHandles {
+export type AppHandles = {
   speech: SpeechPort;
   setSpeechPort(port: SpeechPort): boolean;
   speechSettings: SpeechSettingsController;
@@ -95,9 +98,10 @@ export interface AppHandles {
   subscribeVoiceStatus(listener: (status: string | null) => void): () => void;
   caAlertTone: CaAlertTone;
   eventSounds: EventSounds;
+  fmaSpeech: FmaSpeechController;
   /** Replace the session world after explicit setup confirmation. */
   replaceWorld(next: World): void;
-}
+};
 
 function selectedCallsignFromWorld(world: World): string | null {
   return world.aircraft.find((ac) => ac.id === world.selectedAircraftId)?.callsign ?? null;
@@ -341,6 +345,7 @@ export function createApp(deps: AppDeps): AppHandles {
   world.vfrRequestQueue = vfrRequestQueue;
   const caAlertTone = deps.caAlertTone ?? createCaAlertTone();
   const eventSounds = deps.eventSounds ?? createEventSounds();
+  const fmaSpeech = deps.fmaSpeech ?? createFmaSpeechController();
 
   function afterPhysicsTick(caAlertActive?: boolean, msawAlertActive?: boolean): void {
     // Newly scheduled STAR arrivals enter the same check-in queue as initial traffic.
@@ -399,6 +404,7 @@ export function createApp(deps: AppDeps): AppHandles {
     afterPhysicsTick,
     caAlertTone,
     eventSounds,
+    fmaSpeech,
     replaceWorld(next) {
       world = next;
       world.sessionLog = log;
@@ -410,6 +416,7 @@ export function createApp(deps: AppDeps): AppHandles {
       });
       vfrRequestQueue.scheduleFromWorld(world);
       world.vfrRequestQueue = vfrRequestQueue;
+      fmaSpeech.clearQueue();
     },
   };
 }

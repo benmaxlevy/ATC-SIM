@@ -14,7 +14,7 @@
 
 import { flightPlanForAircraft, isFlightPlanOperational, type World } from "@core";
 import type { LoadedVideoMap } from "@scenario";
-import { DCB_PREF_NAME_MAX_CHARS, parseDcbPrefName } from "./dcb/dcbPref";
+import { parseDcbPrefName, parseDcbPrefOwner } from "./dcb/dcbPref";
 import { type VideoMapTokenLayout } from "./dcb/dcbFunctions";
 import { CHORD_TIMEOUT_MS, chordTimedOut, digitFromKey } from "./keymap";
 import { cloneWxLevels, type WxLevels } from "./wx";
@@ -381,6 +381,8 @@ export function previewTrackingSlew(state: PreviewAreaState): PreviewArmedAction
 
 function trackingMnemonic(action: PreviewArmedAction): string {
   switch (action.type) {
+    case "fmaTrackInhibit":
+      return "FMA/TSAS";
     case "initCntl":
       return "INIT CNTL";
     case "termCntl":
@@ -432,6 +434,21 @@ export function isPrefNameEntry(state: PreviewAreaState): boolean {
   return state.phase === "entry" && state.armed?.type === "saveAsPref";
 }
 
+export function isPrefUserEntry(state: PreviewAreaState): boolean {
+  return state.phase === "entry" && state.armed?.type === "prefUserEntry";
+}
+
+export function beginPrefUserEntry(state: PreviewAreaState, nowMs: number): void {
+  state.phase = "entry";
+  state.buffer = "";
+  state.entryOrigin = null;
+  state.mnemonic = "USER";
+  state.flid = null;
+  state.rejection = null;
+  state.armed = { type: "prefUserEntry" };
+  state.lastKeyAtMs = nowMs;
+}
+
 /**
  * Analog: CRC STARS PREF SAVE AS name prompt (R07). Trainer delta: preview
  * buffer / status-line chord, not a proprietary dialog or HTML field.
@@ -445,10 +462,6 @@ export function beginPrefNameEntry(state: PreviewAreaState, nowMs: number): void
   state.rejection = null;
   state.armed = { type: "saveAsPref" };
   state.lastKeyAtMs = nowMs;
-}
-
-function prefNameInvalidReadout(buffer: string): string {
-  return buffer.length > 0 ? `PREF ${buffer} INV` : "PREF INV";
 }
 
 function handlePrefNameKey(
@@ -469,19 +482,49 @@ function handlePrefNameKey(
     return { consumed: true, action: null };
   }
   if (key === "Enter" || key === "NumpadEnter") {
-    const parsed = parseDcbPrefName(state.buffer);
-    if (parsed.ok) {
-      cancelPreviewArea(state);
-      return { consumed: true, action: { type: "saveAsPref", name: parsed.name } };
+    if (isPrefUserEntry(state)) {
+      if (state.buffer.length === 0) {
+        state.lastKeyAtMs = nowMs;
+        return { consumed: true, action: null };
+      }
+      const owner = parseDcbPrefOwner(state.buffer);
+      if (owner) {
+        cancelPreviewArea(state);
+        return { consumed: true, action: { type: "prefUser", user: owner } };
+      }
+      state.rejection = "ILL USER";
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
     }
-    state.rejection = prefNameInvalidReadout(state.buffer);
+    const trimmed = state.buffer.trim();
+    if (trimmed.length === 0) {
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
+    }
+    const parsed = parseDcbPrefName(trimmed);
+    if (!parsed.ok) {
+      state.rejection = "FORMAT";
+      state.lastKeyAtMs = nowMs;
+      return { consumed: true, action: null };
+    }
+    return { consumed: true, action: { type: "saveAsPref", name: parsed.name } };
+  }
+  const ch = previewBufferCharFromKey(key, code);
+  const rawInputChar = ch ?? key;
+  if (
+    (isPrefUserEntry(state) || isPrefNameEntry(state)) &&
+    rawInputChar.length === 1 &&
+    rawInputChar >= " " &&
+    rawInputChar <= "~"
+  ) {
+    state.rejection = null;
+    if (state.buffer.length < 32) state.buffer += rawInputChar.toUpperCase();
     state.lastKeyAtMs = nowMs;
     return { consumed: true, action: null };
   }
-  const ch = previewBufferCharFromKey(key, code);
   if (ch !== null && /^[A-Z0-9]$/.test(ch)) {
     state.rejection = null;
-    if (state.buffer.length < DCB_PREF_NAME_MAX_CHARS) {
+    if (state.buffer.length < 32) {
       state.buffer += ch;
     }
     state.lastKeyAtMs = nowMs;
@@ -1137,7 +1180,7 @@ export function handlePreviewBufferKey(
   maps?: readonly LoadedVideoMap[],
   layout?: VideoMapTokenLayout,
 ): PreviewKeyOutcome {
-  if (isPrefNameEntry(state)) {
+  if (isPrefNameEntry(state) || isPrefUserEntry(state)) {
     return handlePrefNameKey(state, key, nowMs, code);
   }
   if (isBeaconPreviewEntry(state)) {

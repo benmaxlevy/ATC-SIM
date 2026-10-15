@@ -1,6 +1,6 @@
 export type DcbCellKind = "action" | "toggle" | "spinner" | "submenu" | "disabled";
 
-export interface MainDcbLayoutCell {
+export type MainDcbLayoutCell = {
   id: string;
   row: 1 | 2;
   column: number;
@@ -8,7 +8,7 @@ export interface MainDcbLayoutCell {
   kind: DcbCellKind;
   label: string;
   value?: string;
-}
+};
 
 /**
  * Analog: CRC STARS MAIN DCB physical column grammar (R07).
@@ -43,10 +43,47 @@ export const MAIN_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
   { id: "ldr-dir", row: 1, column: 16, rowSpan: 1, kind: "spinner", label: "LDR DIR" },
   { id: "ldr-length", row: 2, column: 16, rowSpan: 1, kind: "spinner", label: "LDR" },
   { id: "char", row: 1, column: 17, rowSpan: 2, kind: "submenu", label: "CHAR SIZE" },
-  { id: "mode-fsl", row: 1, column: 18, rowSpan: 2, kind: "spinner", label: "MODE F" },
+  { id: "mode", row: 1, column: 18, rowSpan: 2, kind: "submenu", label: "MODE" },
   { id: "pref", row: 1, column: 19, rowSpan: 2, kind: "submenu", label: "PREF" },
   { id: "site-fused", row: 1, column: 20, rowSpan: 2, kind: "submenu", label: "SITE FUSED" },
   { id: "ssa-filter", row: 1, column: 21, rowSpan: 1, kind: "submenu", label: "SSA FILTER" },
   { id: "gi-text", row: 2, column: 21, rowSpan: 1, kind: "submenu", label: "GI TEXT FILTER" },
+  { id: "shift", row: 1, column: 22, rowSpan: 2, kind: "action", label: "SHIFT" },
+];
+
+/**
+ * Analog: Raytheon STARS TCW FMA Auxiliary Display Control Bar (TI 6191.409 Figure 6-17).
+ * Fixed 22-column, two-row projection in FMA mode.
+ */
+export const FMA_AUX_DCB_LAYOUT: readonly MainDcbLayoutCell[] = [
+  { id: "vol", row: 1, column: 1, rowSpan: 2, kind: "spinner", label: "VOL" },
+  { id: "hist", row: 1, column: 2, rowSpan: 1, kind: "spinner", label: "HISTORY" },
+  { id: "h-rate", row: 2, column: 2, rowSpan: 1, kind: "spinner", label: "H_RATE" },
+  { id: "cursor-home", row: 1, column: 3, rowSpan: 2, kind: "disabled", label: "CURSOR HOME" },
+  { id: "csr-spd", row: 1, column: 4, rowSpan: 2, kind: "disabled", label: "CSR SPD" },
+  { id: "map-uncor", row: 1, column: 5, rowSpan: 2, kind: "disabled", label: "MAP UNCOR" },
+  { id: "uncor", row: 1, column: 6, rowSpan: 2, kind: "disabled", label: "UNCOR" },
+  { id: "beacon-mode2", row: 1, column: 7, rowSpan: 2, kind: "disabled", label: "BEACON MODE-2" },
+  { id: "rtqc", row: 1, column: 8, rowSpan: 2, kind: "disabled", label: "RTQC" },
+  { id: "mcp", row: 1, column: 9, rowSpan: 2, kind: "disabled", label: "MCP" },
+  { id: "dock-top", row: 1, column: 10, rowSpan: 1, kind: "toggle", label: "DCB TOP" },
+  { id: "dock-left", row: 2, column: 10, rowSpan: 1, kind: "toggle", label: "DCB LEFT" },
+  { id: "dock-right", row: 1, column: 11, rowSpan: 1, kind: "toggle", label: "DCB RIGHT" },
+  { id: "dock-bottom", row: 2, column: 11, rowSpan: 1, kind: "toggle", label: "DCB BOTTOM" },
+  { id: "fma-amz", row: 1, column: 12, rowSpan: 2, kind: "spinner", label: "AMZ" },
+  { id: "fma-mag", row: 1, column: 13, rowSpan: 2, kind: "spinner", label: "MAG" },
+  { id: "fma-voice", row: 1, column: 14, rowSpan: 1, kind: "spinner", label: "VOICE" },
+  { id: "fma-voice-test", row: 2, column: 14, rowSpan: 1, kind: "action", label: "VOICE TEST" },
+  { id: "fma-ptl-len", row: 1, column: 15, rowSpan: 2, kind: "spinner", label: "PTL LNTH" },
+  { id: "fma-ntz-1", row: 1, column: 16, rowSpan: 1, kind: "toggle", label: "NTZ 1" },
+  { id: "fma-ntz-2", row: 2, column: 16, rowSpan: 1, kind: "toggle", label: "NTZ 2" },
+  { id: "fma-ntz-3", row: 1, column: 17, rowSpan: 1, kind: "toggle", label: "NTZ 3" },
+  { id: "fma-ntz-all", row: 2, column: 17, rowSpan: 1, kind: "toggle", label: "NTZ ALL" },
+  { id: "fma-rwy-1", row: 1, column: 18, rowSpan: 1, kind: "spinner", label: "RWY 1" },
+  { id: "fma-rwy-2", row: 2, column: 18, rowSpan: 1, kind: "spinner", label: "RWY 2" },
+  { id: "fma-rwy-3", row: 1, column: 19, rowSpan: 1, kind: "spinner", label: "RWY 3" },
+  { id: "fma-rwy-4", row: 2, column: 19, rowSpan: 1, kind: "spinner", label: "RWY 4" },
+  { id: "dwell-on", row: 1, column: 20, rowSpan: 2, kind: "spinner", label: "DWELL" },
+  { id: "tpa", row: 1, column: 21, rowSpan: 2, kind: "submenu", label: "TPA/ATPA" },
   { id: "shift", row: 1, column: 22, rowSpan: 2, kind: "action", label: "SHIFT" },
 ];
