@@ -618,11 +618,13 @@ body,
     inset 0 -1px var(--dcb-pressed-highlight, #7a8a7a);
 }
 
-.dcb-cell[data-dcb-cell^="wx"]:has(.dcb-cell-line + .dcb-cell-line) {
+.dcb-cell[data-dcb-cell^="wx"]:has(.dcb-cell-line + .dcb-cell-line:not(:empty)) {
   background: #5353a7;
 }
 
-.dcb-cell[data-dcb-cell^="wx"][aria-pressed="true"]:has(.dcb-cell-line + .dcb-cell-line) {
+.dcb-cell[data-dcb-cell^="wx"][aria-pressed="true"]:has(
+    .dcb-cell-line + .dcb-cell-line:not(:empty)
+  ) {
   background: #7474a6;
 }
 
