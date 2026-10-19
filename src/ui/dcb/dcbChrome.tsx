@@ -382,7 +382,11 @@ export function syncDisplayControlBar(
       setPressed(el, surveillanceModesEqual(liveSiteMode(view), { siteId }));
     }
   }
-  const availableWxLevels = availableVipLevels(view.wxMosaic);
+  const availableWxLevels = availableVipLevels(view.wxMosaic, {
+    arp: view.arp,
+    centerEastNm: view.camera.centerEastNm,
+    centerNorthNm: view.camera.centerNorthNm,
+  });
   for (let i = 0; i < 6; i += 1) {
     setPressed(doc.querySelector(`[data-dcb-cell="wx${i + 1}"]`), view.wxLevels[i] === true);
     const caption = doc.getElementById(`dcb-wx-${i + 1}-avl`);
@@ -838,7 +842,11 @@ export function renderSite(view: ScopeView, onChange: () => void) {
 }
 
 export function renderWxCell(view: ScopeView, onChange: () => void, n: 1 | 2 | 3 | 4 | 5 | 6) {
-  const available = availableVipLevels(view.wxMosaic).includes(n);
+  const available = availableVipLevels(view.wxMosaic, {
+    arp: view.arp,
+    centerEastNm: view.camera.centerEastNm,
+    centerNorthNm: view.camera.centerNorthNm,
+  }).includes(n);
   return (
     <DcbCell
       key={n}

@@ -124,6 +124,10 @@ test("WX caps show AVL only for their own qualifying VIP patches", () => {
   const view = createScopeView();
   view.wxMosaic = {
     ...view.wxMosaic,
+    westLon: -0.1,
+    eastLon: 0.1,
+    southLat: -0.1,
+    northLat: 0.1,
     widthPx: 4,
     heightPx: 4,
     vipMasks: [

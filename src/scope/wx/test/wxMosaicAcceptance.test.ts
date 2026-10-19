@@ -16,7 +16,7 @@ import {
  * Do not invent a visual pass.
  */
 import { expect, test, vi } from "vitest";
-import { INSTRUCTION_TYPES, SessionLog, createWorld, makeTestAircraft } from "@core";
+import { INSTRUCTION_TYPES, SessionLog, createWorld, makeTestAircraft, latLonToNm } from "@core";
 import { handleRadioText } from "@pilot";
 import { applyBrite } from "../../palette";
 import { handleScopeKeyDown } from "../../scopeKeys";
@@ -100,6 +100,87 @@ function patchMosaic(widthPx: number, heightPx: number, planes: number[][]) {
   }
   return mosaic;
 }
+
+function nmBounds(west: number, south: number, east: number, north: number) {
+  return { westLon: west / 60, southLat: south / 60, eastLon: east / 60, northLat: north / 60 };
+}
+
+test.each([
+  { name: "nearby", bounds: nmBounds(-10, -10, 10, 10), expected: [1] },
+  { name: "distant", bounds: nmBounds(190, -10, 210, 10), expected: [] },
+  { name: "whole tile extends beyond radius", bounds: nmBounds(80, -20, 110, 20), expected: [1] },
+  { name: "center exactly 100 NM", bounds: nmBounds(0, 0, 120, 160), expected: [1] },
+  { name: "center beyond 100 NM", bounds: nmBounds(0, 0, 120.01, 160), expected: [] },
+])("WX whole-tile center eligibility: $name", ({ bounds, expected }) => {
+  const mosaic = { ...patchMosaic(4, 4, [Array.from({ length: 16 }, (_, i) => i)]), ...bounds };
+  // No tile metadata treats the complete fixture/mosaic bbox as one source tile.
+  expect(
+    availableVipLevels(mosaic, {
+      arp: { latDeg: 0, lonDeg: 0 },
+      centerEastNm: 0,
+      centerNorthNm: 0,
+    }),
+  ).toEqual(expected);
+});
+
+test("WX pan reuses unchanged tile selection and excludes connecting weather in distant tiles", () => {
+  const pixels = [
+    ...Array.from({ length: 8 }, (_, i) => Math.floor(i / 4) * 8 + (i % 4)),
+    12,
+    13,
+    14,
+    15,
+    23,
+    31,
+    ...Array.from({ length: 8 }, (_, i) => (4 + Math.floor(i / 4)) * 8 + 4 + (i % 4)),
+  ];
+  const mosaic = {
+    ...patchMosaic(8, 8, [pixels]),
+    ...nmBounds(20, 20, 100, 100),
+    tiles: [
+      nmBounds(20, 60, 60, 100),
+      nmBounds(60, 60, 100, 100),
+      nmBounds(20, 20, 60, 60),
+      nmBounds(60, 20, 100, 60),
+    ],
+  };
+  let reads = 0;
+  mosaic.vipMasks = mosaic.vipMasks.map(
+    (mask) =>
+      new Proxy(mask, {
+        get(target, key) {
+          if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+          return Reflect.get(target, key, target);
+        },
+      }),
+  ) as unknown as typeof mosaic.vipMasks;
+  const area = { arp: { latDeg: 0, lonDeg: 0 }, centerEastNm: 0, centerNorthNm: 0 };
+  expect(availableVipLevels(mosaic)).toEqual([1]);
+  const initial = availableVipLevels(mosaic, area);
+  expect(initial).toEqual([]); // Two eight-pixel patches cannot join through the excluded top-right tile.
+  const initialReads = reads;
+  expect(availableVipLevels(mosaic, { ...area, centerEastNm: -1 })).toBe(initial);
+  expect(reads).toBe(initialReads);
+  expect(availableVipLevels(mosaic, { ...area, centerEastNm: 20, centerNorthNm: 20 })).toEqual([1]);
+  expect(reads).toBeGreaterThan(initialReads);
+});
+
+test("WX eligible pixels follow geographic rows rather than equal source tile row counts", () => {
+  const mosaic = {
+    ...patchMosaic(4, 20, [Array.from({ length: 16 }, (_, i) => i)]),
+    ...nmBounds(-5, 0, 5, 240),
+    tiles: [nmBounds(-5, 228, 5, 240), nmBounds(-5, 0, 5, 228)],
+  };
+  expect(availableVipLevels(mosaic)).toEqual([1]);
+  // Only the first geographic row (four pixels) belongs to the nearby northern tile.
+  expect(
+    availableVipLevels(mosaic, {
+      arp: { latDeg: 0, lonDeg: 0 },
+      centerEastNm: 0,
+      centerNorthNm: 234,
+    }),
+  ).toEqual([]);
+});
 
 test.each([
   {
@@ -342,6 +423,7 @@ test("512 NM fetch bounds concurrency and preserves Mercator latitude alignment"
   expect(vipAtNm(mosaic, 0, (50.3 - arp.latDeg) * 60, arp)).toBe(1);
   expect(vipAtNm(mosaic, 0, (49.7 - arp.latDeg) * 60, arp)).toBe(0);
   expect(shouldRefetch(mosaic, 2000, arp)).toBe(false);
+  expect(mosaic.tiles).toEqual(cover.tiles.map((tile) => tile.bbox));
   // Center containment alone must not reuse a cover that lacks the required pad.
   expect(shouldRefetch({ ...mosaic, ...bboxFromArp(arp, 80) }, 2000, arp)).toBe(true);
 });
@@ -489,6 +571,15 @@ test("WX AVL updates without clicks only after all tiles complete and only for p
     syncDisplayControlBar(view);
     expect(captions.map((caption) => caption.textContent)).toEqual(["", "", "", "", "", ""]);
     const cover = planIemN0qCover(bboxFromArp(view.arp));
+    // This coarse cover has tile centers beyond 100 NM from the equatorial ARP.
+    // Center the scope on one source tile to exercise local availability.
+    const tile = cover.tiles[Math.floor(cover.tiles.length / 2)]!.bbox;
+    const scopeCenter = latLonToNm(
+      { latDeg: (tile.southLat + tile.northLat) / 2, lonDeg: (tile.westLon + tile.eastLon) / 2 },
+      view.arp,
+    );
+    view.camera.centerEastNm = scopeCenter.xNm;
+    view.camera.centerNorthNm = scopeCenter.yNm;
     const original = view.wxMosaic;
     const intense = N0Q_RGB_DBZ_RAMP.find((stop) => stop.dbz === 51)!;
     const pixels = new Uint8Array(8 * 4 * 4);
@@ -528,8 +619,32 @@ test("WX AVL updates without clicks only after all tiles complete and only for p
     await loading;
     syncDisplayControlBar(view);
     expect(captions.map((caption) => caption.textContent)).toEqual(["AVL", "", "", "", "", "AVL"]);
-    expect(formatSsaWxTelemetry(view.wxLevels, view.wxMosaic).text).toBe("1 6");
+    expect(
+      formatSsaWxTelemetry(view.wxLevels, view.wxMosaic, undefined, {
+        arp: view.arp,
+        centerEastNm: scopeCenter.xNm,
+        centerNorthNm: scopeCenter.yNm,
+      }).text,
+    ).toBe("1 6");
     expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
+    const installed = view.wxMosaic;
+    view.camera.centerEastNm = 0;
+    view.camera.centerNorthNm = 0;
+    syncDisplayControlBar(view);
+    expect(captions.every((caption) => caption.textContent === "")).toBe(true);
+    expect(
+      formatSsaWxTelemetry(view.wxLevels, view.wxMosaic, undefined, {
+        arp: view.arp,
+        centerEastNm: 0,
+        centerNorthNm: 0,
+      }).text,
+    ).toBe("");
+    view.camera.centerEastNm = scopeCenter.xNm;
+    view.camera.centerNorthNm = scopeCenter.yNm;
+    syncDisplayControlBar(view);
+    expect(captions.map((caption) => caption.textContent)).toEqual(["AVL", "", "", "", "", "AVL"]);
+    expect(view.wxMosaic).toBe(installed);
+    expect(calls).toBe(cover.tiles.length);
     // New clear-weather batch removes previously available captions.
     const clear = new Uint8Array(encodeRgbaPng(1, 1, new Uint8Array([0, 0, 0, 0])));
     await ensureWxMosaic(view, {

@@ -773,11 +773,19 @@ T02-68–72 VIP mosaic is shipped: IEM N0Q fills + WXC contours, display only.
 Wind still later. Historical T02-22–30 remains accurate: its WX cells first
 shipped without weather paint.
 
-DCB `AVL` and SSA weather-level availability require a connected patch of at
-least 16 pixels in that exact VIP level in the completed mosaic. Horizontal,
-vertical, and diagonal neighbors count, including across stitched tile edges;
-disconnected speckles do not accumulate. Results are cached per mosaic.
-This threshold is a trainer noise-suppression choice, not a STARS requirement:
+DCB `AVL` and SSA weather-level availability consider only whole source tiles
+whose geographic centers are within 100 NM (inclusive) of the current scope
+center. Whole eligible tiles can extend beyond that radius. Panning or
+recentring updates eligibility without fetching new weather; range and FMA
+magnification do not change the geographic 100 NM limit. A mosaic without tile
+metadata is treated as one tile covering its bounds.
+
+An available level requires a connected patch of at least 16 pixels in that
+exact VIP level within the eligible tiles. Horizontal, vertical, and diagonal
+neighbors count, including across eligible stitched tile edges; disconnected
+speckles do not accumulate, and excluded tiles cannot bridge patches. Results
+are cached per mosaic and eligible tile selection.
+These thresholds are trainer noise-suppression choices, not STARS requirements:
 TI 6191.409 Revision 30, Table 2-6 (p. 2-25), Table 2-15 (p. 2-74), and §4.6
 (p. 4-42) describe availability but give no numerical detection threshold.
 Pixel footprints vary with latitude and fetched zoom. This policy does not

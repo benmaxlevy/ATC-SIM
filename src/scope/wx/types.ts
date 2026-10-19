@@ -1,3 +1,5 @@
+import type { LatLon } from "@core";
+
 /**
  * WX mosaic state. Display only — T02-70 DCB later. Do not steer aircraft.
  *
@@ -38,6 +40,13 @@ export interface WxBbox {
   northLat: number;
 }
 
+/** Scope-centered eligibility for whole source tiles used by WX availability. */
+export interface WxAvailabilityArea {
+  arp: LatLon;
+  centerEastNm: number;
+  centerNorthNm: number;
+}
+
 export interface WxMapSize {
   widthPx: number;
   heightPx: number;
@@ -57,6 +66,8 @@ export interface WxMosaic extends WxBbox {
   fetchedAtMs: number;
   /** Set after a fetch. Missing on a never-fetched empty mosaic. */
   source?: WxMosaicSource;
+  /** Unwrapped geographic source tile bounds, before latitude resampling. */
+  tiles?: readonly WxBbox[];
 }
 
 export function cloneWxLevels(levels: WxLevels = DEFAULT_WX_LEVELS): WxLevels {

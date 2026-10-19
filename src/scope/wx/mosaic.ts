@@ -1,4 +1,4 @@
-import { nmToLatLon, type LatLon } from "@core";
+import { latLonToNm, nmToLatLon, type LatLon } from "@core";
 import { bboxCovers, bboxFromArp } from "./bbox";
 import { N0Q_VIP_EDGES_HEIGHT, N0Q_VIP_EDGES_WIDTH, n0qVipEdgesRgba } from "./fixture";
 import { IEM_N0Q_FETCH_CONCURRENCY, planIemN0qCover, type WxTileCover } from "./iemUrl";
@@ -10,11 +10,13 @@ import {
   WX_REFRESH_MS,
   type VipBin,
   type VipLevel,
+  type WxAvailabilityArea,
   type WxBbox,
   type WxMapSize,
   type WxMosaic,
 } from "./types";
 import { binVip } from "./vip";
+export type { WxAvailabilityArea } from "./types";
 
 function emptyMasks(): WxMosaic["vipMasks"] {
   return [
@@ -68,12 +70,57 @@ export function vipMaskHasPixels(mosaic: WxMosaic, level: VipLevel): boolean {
 }
 
 const populatedLevels = new WeakMap<WxMosaic, readonly VipLevel[]>();
+const areaLevels = new WeakMap<WxMosaic, { selection: string; levels: readonly VipLevel[] }>();
 
 // Trainer noise suppression policy; the STARS manual gives no numerical cutoff.
 const MIN_AVAILABLE_PATCH_PIXELS = 16;
+const AVAILABILITY_RADIUS_NM = 100;
+
+function eligibleTiles(mosaic: WxMosaic, area: WxAvailabilityArea): WxBbox[] {
+  return (mosaic.tiles ?? [mosaic]).filter((tile) => {
+    const point = latLonToNm(
+      { lonDeg: (tile.westLon + tile.eastLon) / 2, latDeg: (tile.southLat + tile.northLat) / 2 },
+      area.arp,
+    );
+    return (
+      (point.xNm - area.centerEastNm) ** 2 + (point.yNm - area.centerNorthNm) ** 2 <=
+      AVAILABILITY_RADIUS_NM ** 2
+    );
+  });
+}
+
+/** Pixel centers belong to source tile bounds on the resampled geographic grid. */
+function eligiblePixelMask(mosaic: WxMosaic, tiles: readonly WxBbox[]): Uint8Array {
+  const { widthPx: width, heightPx: height } = mosaic;
+  const mask = new Uint8Array(Math.ceil((width * height) / 8));
+  const lonSpan = mosaic.eastLon - mosaic.westLon;
+  const latSpan = mosaic.northLat - mosaic.southLat;
+  if (lonSpan <= 0 || latSpan <= 0) return mask;
+  for (const tile of tiles) {
+    // West/north inclusive, east/south exclusive, matching source tile ownership.
+    const x0 = Math.max(0, Math.ceil(((tile.westLon - mosaic.westLon) / lonSpan) * width - 0.5));
+    const x1 = Math.min(
+      width,
+      Math.ceil(((tile.eastLon - mosaic.westLon) / lonSpan) * width - 0.5),
+    );
+    const y0 = Math.max(0, Math.ceil(((mosaic.northLat - tile.northLat) / latSpan) * height - 0.5));
+    const y1 = Math.min(
+      height,
+      Math.ceil(((mosaic.northLat - tile.southLat) / latSpan) * height - 0.5),
+    );
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) setMaskBit(mask, y * width + x);
+    }
+  }
+  return mask;
+}
 
 /** Eight-connected patches span the stitched mosaic, including tile seams. */
-function vipMaskHasAvailablePatch(mosaic: WxMosaic, level: VipLevel): boolean {
+function vipMaskHasAvailablePatch(
+  mosaic: WxMosaic,
+  level: VipLevel,
+  allowed?: Uint8Array,
+): boolean {
   const { widthPx: width, heightPx: height } = mosaic;
   const pixelCount = width * height;
   if (pixelCount < MIN_AVAILABLE_PATCH_PIXELS) return false;
@@ -83,11 +130,12 @@ function vipMaskHasAvailablePatch(mosaic: WxMosaic, level: VipLevel): boolean {
   // Discovery stops at the threshold, so neither traversal nor queue can grow unbounded.
   const queue = new Uint32Array(MIN_AVAILABLE_PATCH_PIXELS);
   for (let byte = 0; byte < byteCount; byte++) {
-    if (mask[byte] === 0) continue;
+    if (((mask[byte] ?? 0) & (allowed ? (allowed[byte] ?? 0) : 255)) === 0) continue;
     for (let bit = 0; bit < 8; bit++) {
       const seed = byte * 8 + bit;
       if (seed >= pixelCount) break;
-      if (!maskBit(mask, seed) || maskBit(visited, seed)) continue;
+      if (!maskBit(mask, seed) || maskBit(visited, seed) || (allowed && !maskBit(allowed, seed)))
+        continue;
       queue[0] = seed;
       setMaskBit(visited, seed);
       let discovered = 1;
@@ -98,7 +146,12 @@ function vipMaskHasAvailablePatch(mosaic: WxMosaic, level: VipLevel): boolean {
         for (let y = Math.max(0, row - 1); y <= Math.min(height - 1, row + 1); y++) {
           for (let x = Math.max(0, col - 1); x <= Math.min(width - 1, col + 1); x++) {
             const neighbor = y * width + x;
-            if (!maskBit(mask, neighbor) || maskBit(visited, neighbor)) continue;
+            if (
+              !maskBit(mask, neighbor) ||
+              maskBit(visited, neighbor) ||
+              (allowed && !maskBit(allowed, neighbor))
+            )
+              continue;
             setMaskBit(visited, neighbor);
             queue[discovered++] = neighbor;
             if (discovered >= MIN_AVAILABLE_PATCH_PIXELS) return true;
@@ -110,8 +163,28 @@ function vipMaskHasAvailablePatch(mosaic: WxMosaic, level: VipLevel): boolean {
   return false;
 }
 
-/** Completed mosaics are immutable snapshots; scan availability once per update. */
-export function availableVipLevels(mosaic: WxMosaic): readonly VipLevel[] {
+/** Immutable snapshots are scanned only when their eligible tile selection changes. */
+export function availableVipLevels(
+  mosaic: WxMosaic,
+  area?: WxAvailabilityArea,
+): readonly VipLevel[] {
+  if (area) {
+    const tiles = eligibleTiles(mosaic, area);
+    // Stable tile identity within one immutable mosaic; do not cache each pan coordinate.
+    const sourceTiles = mosaic.tiles ?? [mosaic];
+    const selection = tiles.map((tile) => sourceTiles.indexOf(tile)).join(",");
+    const cached = areaLevels.get(mosaic);
+    if (cached?.selection === selection) return cached.levels;
+    const allowed = eligiblePixelMask(mosaic, tiles);
+    const levels =
+      tiles.length === 0
+        ? []
+        : ([1, 2, 3, 4, 5, 6] as const).filter((level) =>
+            vipMaskHasAvailablePatch(mosaic, level, allowed),
+          );
+    areaLevels.set(mosaic, { selection, levels });
+    return levels;
+  }
   const cached = populatedLevels.get(mosaic);
   if (cached) return cached;
   const available = ([1, 2, 3, 4, 5, 6] as const).filter((level) =>
@@ -358,6 +431,7 @@ export async function fetchWxMosaic(opts: FetchWxMosaicOpts): Promise<WxMosaic> 
         opts.breaks,
       ),
       source: "iem",
+      tiles: cover.tiles.map((tile) => tile.bbox),
     };
   } catch {
     return failed();

@@ -1,6 +1,7 @@
 export type {
   VipBin,
   VipLevel,
+  WxAvailabilityArea,
   WxBbox,
   WxLevels,
   WxMapSize,

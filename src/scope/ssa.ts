@@ -16,7 +16,7 @@
  */
 
 import { availableVipLevels } from "./wx/mosaic";
-import type { WxMosaic } from "./wx/types";
+import type { WxAvailabilityArea, WxMosaic } from "./wx/types";
 
 import { formatFilterReadout, type AltitudeFilter, type FilterEntry } from "./altitudeFilter";
 import { type RangeNm } from "./camera";
@@ -108,25 +108,27 @@ export interface SsaWxTelemetry {
   isStale: boolean;
 }
 
-const wxTelemetry = new WeakMap<WxMosaic, Map<number, SsaWxTelemetry>>();
+const wxTelemetry = new WeakMap<readonly number[], Map<number, SsaWxTelemetry>>();
 const EMPTY_WX_TELEMETRY: SsaWxTelemetry = { text: "", isStale: false };
 
 export function formatSsaWxTelemetry(
   wxLevels?: readonly boolean[],
   wxMosaic?: WxMosaic,
   _nowMs?: number,
+  area?: WxAvailabilityArea,
 ): SsaWxTelemetry {
   if (!wxMosaic) return EMPTY_WX_TELEMETRY;
   let selected = 0;
   for (let level = 0; level < 6; level++) if (wxLevels?.[level]) selected |= 1 << level;
-  let selections = wxTelemetry.get(wxMosaic);
+  const available = availableVipLevels(wxMosaic, area);
+  let selections = wxTelemetry.get(available);
   if (!selections) {
     selections = new Map();
-    wxTelemetry.set(wxMosaic, selections);
+    wxTelemetry.set(available, selections);
   }
   const cached = selections.get(selected);
   if (cached) return cached;
-  const text = availableVipLevels(wxMosaic)
+  const text = available
     .map((level) => (selected & (1 << (level - 1)) ? `(${level})` : String(level)))
     .join(" ");
   const telemetry = { text, isStale: false };
@@ -179,6 +181,8 @@ export interface SsaInput {
   wxLevels?: readonly boolean[];
   /** Weather radar mosaic composite metadata. */
   wxMosaic?: WxMosaic;
+  /** Whole-tile weather eligibility around the current scope center. */
+  wxAvailabilityArea?: WxAvailabilityArea;
   /** Explicit weather status string override. */
   wxStatus?: string;
   /** Current time for weather staleness calculation. */
@@ -278,6 +282,7 @@ export function buildSsaRenderLines(input: SsaInput): SsaRenderLine[] {
         input.wxLevels,
         input.wxMosaic,
         input.nowMs ?? input.simTimeMs,
+        input.wxAvailabilityArea,
       );
       if (tel.text) {
         result.push({ text: tel.text, style: "normal" });

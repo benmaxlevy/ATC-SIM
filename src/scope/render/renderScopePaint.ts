@@ -2502,6 +2502,11 @@ export function drawSsa(
     airportAltimeters: view.airportAltimeters,
     wxLevels: view.wxLevels,
     wxMosaic: view.wxMosaic,
+    wxAvailabilityArea: {
+      arp: view.arp,
+      centerEastNm: view.camera.centerEastNm,
+      centerNorthNm: view.camera.centerNorthNm,
+    },
     crdaRpcStatus,
     systemStatus: SSA_NETWORK_HEALTH_STUB,
     surveillanceMode: surveillanceModeWord(
