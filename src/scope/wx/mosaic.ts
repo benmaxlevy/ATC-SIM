@@ -69,12 +69,53 @@ export function vipMaskHasPixels(mosaic: WxMosaic, level: VipLevel): boolean {
 
 const populatedLevels = new WeakMap<WxMosaic, readonly VipLevel[]>();
 
+// Trainer noise suppression policy; the STARS manual gives no numerical cutoff.
+const MIN_AVAILABLE_PATCH_PIXELS = 16;
+
+/** Eight-connected patches span the stitched mosaic, including tile seams. */
+function vipMaskHasAvailablePatch(mosaic: WxMosaic, level: VipLevel): boolean {
+  const { widthPx: width, heightPx: height } = mosaic;
+  const pixelCount = width * height;
+  if (pixelCount < MIN_AVAILABLE_PATCH_PIXELS) return false;
+  const mask = mosaic.vipMasks[level - 1];
+  const byteCount = Math.min(mask.length, Math.ceil(pixelCount / 8));
+  const visited = new Uint8Array(byteCount);
+  // Discovery stops at the threshold, so neither traversal nor queue can grow unbounded.
+  const queue = new Uint32Array(MIN_AVAILABLE_PATCH_PIXELS);
+  for (let byte = 0; byte < byteCount; byte++) {
+    if (mask[byte] === 0) continue;
+    for (let bit = 0; bit < 8; bit++) {
+      const seed = byte * 8 + bit;
+      if (seed >= pixelCount) break;
+      if (!maskBit(mask, seed) || maskBit(visited, seed)) continue;
+      queue[0] = seed;
+      setMaskBit(visited, seed);
+      let discovered = 1;
+      for (let head = 0; head < discovered; head++) {
+        const index = queue[head]!;
+        const row = Math.floor(index / width);
+        const col = index % width;
+        for (let y = Math.max(0, row - 1); y <= Math.min(height - 1, row + 1); y++) {
+          for (let x = Math.max(0, col - 1); x <= Math.min(width - 1, col + 1); x++) {
+            const neighbor = y * width + x;
+            if (!maskBit(mask, neighbor) || maskBit(visited, neighbor)) continue;
+            setMaskBit(visited, neighbor);
+            queue[discovered++] = neighbor;
+            if (discovered >= MIN_AVAILABLE_PATCH_PIXELS) return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /** Completed mosaics are immutable snapshots; scan availability once per update. */
 export function availableVipLevels(mosaic: WxMosaic): readonly VipLevel[] {
   const cached = populatedLevels.get(mosaic);
   if (cached) return cached;
   const available = ([1, 2, 3, 4, 5, 6] as const).filter((level) =>
-    vipMaskHasPixels(mosaic, level),
+    vipMaskHasAvailablePatch(mosaic, level),
   );
   populatedLevels.set(mosaic, available);
   return available;

@@ -120,19 +120,19 @@ test("submenu overlays the MAIN DCB in place", () => {
   expect(html).toContain('data-dcb-layout="BRITE"');
 });
 
-test("T02-121 — WX caps show AVL only for their own populated VIP masks", () => {
+test("WX caps show AVL only for their own qualifying VIP patches", () => {
   const view = createScopeView();
   view.wxMosaic = {
     ...view.wxMosaic,
-    widthPx: 3,
-    heightPx: 1,
+    widthPx: 4,
+    heightPx: 4,
     vipMasks: [
-      new Uint8Array([0]),
-      new Uint8Array([0b010]),
-      new Uint8Array([0]),
-      new Uint8Array([0]),
-      new Uint8Array([0]),
-      new Uint8Array([0b100]),
+      new Uint8Array([1, 0]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([255, 127]),
+      new Uint8Array([0, 0]),
+      new Uint8Array([0, 0]),
+      new Uint8Array([255, 255]),
     ],
   };
   const html = renderToStaticMarkup(

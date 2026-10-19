@@ -21,6 +21,8 @@ import { handleRadioText } from "@pilot";
 import { applyBrite } from "../../palette";
 import { handleScopeKeyDown } from "../../scopeKeys";
 import { createScopeView } from "../../scopeView";
+import { formatSsaWxTelemetry } from "../../ssa";
+import { availableVipLevels, vipMaskHasPixels } from "../mosaic";
 import { stepBriteChannel, toggleWxLevel } from "../../dcb/dcbFunctions";
 import {
   WX_VIP_CONTOUR_HEX,
@@ -86,6 +88,101 @@ function mockDrawCtx() {
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, drawImages };
 }
+
+function patchMosaic(widthPx: number, heightPx: number, planes: number[][]) {
+  const mosaic = { ...emptyWxMosaic(), widthPx, heightPx };
+  mosaic.vipMasks = mosaic.vipMasks.map(
+    () => new Uint8Array(Math.ceil((widthPx * heightPx) / 8)),
+  ) as unknown as typeof mosaic.vipMasks;
+  for (let level = 0; level < 6; level++) {
+    const mask = mosaic.vipMasks[level]!;
+    for (const index of planes[level] ?? []) mask[index >> 3] |= 1 << (index & 7);
+  }
+  return mosaic;
+}
+
+test.each([
+  {
+    name: "15 connected",
+    width: 16,
+    height: 1,
+    pixels: Array.from({ length: 15 }, (_, i) => i),
+    available: false,
+  },
+  {
+    name: "16 connected",
+    width: 16,
+    height: 1,
+    pixels: Array.from({ length: 16 }, (_, i) => i),
+    available: true,
+  },
+  {
+    name: "diagonal neighbors",
+    width: 16,
+    height: 16,
+    pixels: Array.from({ length: 16 }, (_, i) => i * 17),
+    available: true,
+  },
+  {
+    name: "separate 8-pixel patches",
+    width: 24,
+    height: 1,
+    pixels: Array.from({ length: 16 }, (_, i) => (i < 8 ? i : i + 8)),
+    available: false,
+  },
+  {
+    name: "isolated speckles",
+    width: 32,
+    height: 1,
+    pixels: Array.from({ length: 16 }, (_, i) => i * 2),
+    available: false,
+  },
+  {
+    name: "row edges do not wrap",
+    width: 32,
+    height: 2,
+    pixels: Array.from({ length: 16 }, (_, i) => 25 + i),
+    available: false,
+  },
+  {
+    name: "patch across tile seam",
+    width: 512,
+    height: 4,
+    pixels: Array.from({ length: 16 }, (_, i) => Math.floor(i / 4) * 512 + 254 + (i % 4)),
+    available: true,
+  },
+  {
+    name: "padding cannot complete patch",
+    width: 17,
+    height: 1,
+    pixels: Array.from({ length: 16 }, (_, i) => (i < 15 ? i + 2 : 17)),
+    available: false,
+  },
+])("WX availability requires one 16-pixel patch: $name", ({ width, height, pixels, available }) => {
+  const mosaic = patchMosaic(width, height, [pixels]);
+  expect(vipMaskHasPixels(mosaic, 1)).toBe(true);
+  const levels = availableVipLevels(mosaic);
+  expect(levels).toEqual(available ? [1] : []);
+  expect(availableVipLevels(mosaic)).toBe(levels);
+});
+
+test("WX availability never combines VIP levels or gates sampling and paint", () => {
+  const mosaic = patchMosaic(24, 2, [
+    Array.from({ length: 8 }, (_, i) => i),
+    Array.from({ length: 8 }, (_, i) => i + 8),
+    Array.from({ length: 16 }, (_, i) => i + 24),
+  ]);
+  expect(availableVipLevels(mosaic)).toEqual([3]);
+  expect(formatSsaWxTelemetry([true, true, true], mosaic).text).toBe("(3)");
+  const view = createScopeView();
+  view.wxMosaic = vip1Mosaic(); // Four pixels remain usable below the AVL threshold.
+  view.wxLevels = [true, false, false, false, false, false];
+  expect(availableVipLevels(view.wxMosaic)).toEqual([]);
+  expect(vipAtNm(view.wxMosaic, 0, 0, { latDeg: 0, lonDeg: 0 })).toBe(1);
+  const paint = mockDrawCtx();
+  drawWeatherLayer(paint.ctx, view, { widthPx: 800, heightPx: 800 });
+  expect(paint.drawImages).toHaveLength(1);
+});
 
 test("T02-72 — DCB WX, *WX, and BRITE WX/WXC share one display-only paint path", async () => {
   const log = new SessionLog();
@@ -394,9 +491,16 @@ test("WX AVL updates without clicks only after all tiles complete and only for p
     const cover = planIemN0qCover(bboxFromArp(view.arp));
     const original = view.wxMosaic;
     const intense = N0Q_RGB_DBZ_RAMP.find((stop) => stop.dbz === 51)!;
-    const png = new Uint8Array(
-      encodeRgbaPng(2, 1, new Uint8Array([0, 255, 0, 255, intense.r, intense.g, intense.b, 255])),
-    );
+    const pixels = new Uint8Array(8 * 4 * 4);
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 8; col++) {
+        pixels.set(
+          col < 4 ? [0, 255, 0, 255] : [intense.r, intense.g, intense.b, 255],
+          (row * 8 + col) * 4,
+        );
+      }
+    }
+    const png = new Uint8Array(encodeRgbaPng(8, 4, pixels));
     let lastRequested!: () => void;
     const finalRequest = new Promise<void>((resolve) => {
       lastRequested = resolve;
@@ -424,6 +528,7 @@ test("WX AVL updates without clicks only after all tiles complete and only for p
     await loading;
     syncDisplayControlBar(view);
     expect(captions.map((caption) => caption.textContent)).toEqual(["AVL", "", "", "", "", "AVL"]);
+    expect(formatSsaWxTelemetry(view.wxLevels, view.wxMosaic).text).toBe("1 6");
     expect(view.wxLevels).toEqual([false, false, false, false, false, false]);
     // New clear-weather batch removes previously available captions.
     const clear = new Uint8Array(encodeRgbaPng(1, 1, new Uint8Array([0, 0, 0, 0])));

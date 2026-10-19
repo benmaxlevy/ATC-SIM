@@ -21,15 +21,15 @@ import { createWorld, makeTestAircraft } from "@core";
 function availableMosaic(fetchedAtMs = 1) {
   return {
     ...emptyWxMosaic({ fetchedAtMs }),
-    widthPx: 1,
-    heightPx: 1,
+    widthPx: 4,
+    heightPx: 4,
     vipMasks: [
-      new Uint8Array([1]),
-      new Uint8Array([1]),
-      new Uint8Array([1]),
-      new Uint8Array([1]),
-      new Uint8Array([1]),
-      new Uint8Array([0]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([255, 255]),
+      new Uint8Array([0, 0]),
     ] as ReturnType<typeof emptyWxMosaic>["vipMasks"],
   };
 }

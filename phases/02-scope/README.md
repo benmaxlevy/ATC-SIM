@@ -773,6 +773,19 @@ T02-68–72 VIP mosaic is shipped: IEM N0Q fills + WXC contours, display only.
 Wind still later. Historical T02-22–30 remains accurate: its WX cells first
 shipped without weather paint.
 
+DCB `AVL` and SSA weather-level availability require a connected patch of at
+least 16 pixels in that exact VIP level in the completed mosaic. Horizontal,
+vertical, and diagonal neighbors count, including across stitched tile edges;
+disconnected speckles do not accumulate. Results are cached per mosaic.
+This threshold is a trainer noise-suppression choice, not a STARS requirement:
+TI 6191.409 Revision 30, Table 2-6 (p. 2-25), Table 2-15 (p. 2-74), and §4.6
+(p. 4-42) describe availability but give no numerical detection threshold.
+Pixel footprints vary with latitude and fetched zoom. This policy does not
+implement the manual's distinction between single-sensor and composite
+availability. WX selection and painting remain independent: smaller returns
+still paint when their level is selected, and initial/five-minute fetching
+continues with all WX levels off.
+
 | ID | Title | Pri | Size | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
 | [T02-68](tickets/T02-68-wx-mosaic-iem-client-and-vip.md) | WX mosaic IEM client and VIP decode | P0 | M | none | Shipped |
