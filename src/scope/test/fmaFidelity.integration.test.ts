@@ -2621,11 +2621,20 @@ test("T02-228 — actual MODE callbacks enable FMA with missing-pref warning and
       renderModeMenu(view, () => undefined),
       id,
     )!;
+  const expectPressedMode = (mode: "fsl" | "fma") => {
+    expect(cell("mode-fsl").pressed).toBe(mode === "fsl");
+    expect(cell("mode-fma").pressed).toBe(mode === "fma");
+  };
+  expectPressedMode("fsl");
   (cell("mode-fsl").onClick as () => void)();
   expect(view.serviceMode).toBe("FSL");
   expect((view as unknown as { modeFsl?: unknown }).modeFsl).toBeUndefined();
   (cell("mode-fma").onClick as () => void)();
   expect(view.fmaSurveillance.enabled).toBe(false);
+  expectPressedMode("fma");
+  cancelFmaConfirmation(view);
+  expectPressedMode("fsl");
+  (cell("mode-fma").onClick as () => void)();
   (
     findRenderedDcbCell(
       renderModeMenu(view, () => undefined),
@@ -2634,6 +2643,13 @@ test("T02-228 — actual MODE callbacks enable FMA with missing-pref warning and
   )();
   expect(view.fmaSurveillance.enabled).toBe(true);
   expect(view.lastWarning).toBe("NO PREF SET FOUND");
+  expectPressedMode("fma");
+
+  (cell("mode-fma").onClick as () => void)();
+  expectPressedMode("fma");
+  (cell("mode-accept").onClick as () => void)();
+  expect(view.fmaSurveillance.enabled).toBe(false);
+  expectPressedMode("fsl");
 });
 
 test("T02-225 AC2 — modeFsl state removed and legacy PREF migration discards modeFsl", () => {

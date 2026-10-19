@@ -3032,7 +3032,7 @@ export function renderPref(view: ScopeView, onChange: () => void) {
  */
 export function renderModeMenu(view: ScopeView, onChange: () => void) {
   const showFma = view.displayCapability !== "1K";
-  const fmaEnabled = view.fmaSurveillance.enabled;
+  const fmaPressed = view.fmaSurveillance.enabled || view.fmaCandidateMode;
   const fmaUsable = isFmaAvailable(view);
 
   return (
@@ -3070,7 +3070,7 @@ export function renderModeMenu(view: ScopeView, onChange: () => void) {
           kind="toggle"
           ariaLabel="FSL"
           dataDcb="mode-fsl"
-          pressed={view.serviceMode === "FSL"}
+          pressed={!fmaPressed && view.serviceMode === "FSL"}
           onClick={() => undefined}
         >
           <span className="dcb-cell-line">FSL</span>
@@ -3111,7 +3111,7 @@ export function renderModeMenu(view: ScopeView, onChange: () => void) {
             kind={fmaUsable ? "toggle" : "disabled"}
             ariaLabel="FMA"
             dataDcb="mode-fma"
-            pressed={fmaEnabled || view.fmaCandidateMode}
+            pressed={fmaPressed}
             disabled={!fmaUsable}
             onClick={() => {
               if (fmaUsable) {
