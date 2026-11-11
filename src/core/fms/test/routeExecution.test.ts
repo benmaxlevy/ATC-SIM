@@ -70,7 +70,7 @@ test("active executable route starts at its cursor and advances one fix at a tim
   expect(world.flightPlans[0]?.routeRecord).toMatchObject({ nextIndex: 1, revision: 1 });
 });
 
-test("active clearance routes turn at fixes instead of leading every route turn", () => {
+test("active clearance routes lead turns before reaching fixes", () => {
   const registry = buildFixRegistry({
     fixes: [
       { id: "TURN", xNm: 0, yNm: 0, kind: "fix" },
@@ -118,7 +118,8 @@ test("active clearance routes turn at fixes instead of leading every route turn"
     }
   }
   expect(aircraft.intent.lateral).toMatchObject({ type: "PROCEDURE", toFixIndex: 1 });
-  expect(sequenceDistanceNm).toBeLessThan(0.02);
+  expect(sequenceDistanceNm).toBeGreaterThan(0.4);
+  expect(sequenceDistanceNm).toBeLessThan(0.6);
   expect(aircraft.headingDeg).toBeCloseTo(89.7, 5);
 });
 

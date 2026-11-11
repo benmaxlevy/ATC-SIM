@@ -10,8 +10,13 @@ import {
   distanceNm,
   locDeviation,
   stepWorld,
+  stepAircraft,
+  turnRadiusNm,
+  turnRateDegPerSForSpeed,
 } from "@core";
 import type { FixRegistrySource } from "@core";
+import { applyLateralFms } from "../lateral";
+import type { PerformanceRegimeLimits } from "../../performance/types";
 import fixesJson from "../../../scenario/data/kdem/fixes.json";
 import ilsJson from "../../../scenario/data/kdem/ils.json";
 import ndbsJson from "../../../scenario/data/kdem/ndbs.json";
@@ -227,5 +232,108 @@ test("AC1/2/3/5 — rate-one lead turn captures reciprocal localizers without cr
         }
       }
     }
+  }
+});
+
+test("fly-by turns lead fixes and navaids using the movement turn rate", () => {
+  for (const mode of ["PROCEDURE", "DIRECT"] as const) {
+    for (const side of [-1, 1]) {
+      for (const speedKt of [180, 300]) {
+        for (const magVarDeg of [-12, 15]) {
+          for (const maxBankDeg of [15, 25]) {
+            const registry = buildFixRegistry({
+              fixes: [{ id: "NEXT", xNm: 0, yNm: side * 20, kind: "fix" }],
+              navaids: [{ id: "TURN", xNm: 0, yNm: 0, kind: "VOR" }],
+            });
+            const ac = createAircraft({
+              id: "turn-test",
+              callsign: "TEST1",
+              xNm: -8,
+              yNm: 0,
+              headingDeg: 90 - magVarDeg,
+              altitudeFt: 8000,
+              speedKt,
+            });
+            const routeFixIds = ["TURN", "NEXT"];
+            ac.intent.lateral =
+              mode === "PROCEDURE"
+                ? { type: "PROCEDURE", routeFixIds, toFixIndex: 0 }
+                : {
+                    type: "DIRECT",
+                    fixId: "TURN",
+                    continuation: {
+                      type: "RESUME_ROUTE",
+                      routeFixIds,
+                      index: 1,
+                      routeRevision: 1,
+                    },
+                  };
+            const performance: PerformanceRegimeLimits = {
+              minSpeedKt: 0,
+              maxSpeedKt: 500,
+              nominalClimbFpm: 1800,
+              nominalDescentFpm: 1800,
+              accelKtPerS: 1,
+              decelKtPerS: 1,
+              maxBankDeg,
+            };
+            const log = new SessionLog();
+            let sequenceDistance = 0;
+            let maxX = -Infinity;
+            for (let i = 0; i < 3000 && ac.yNm * side < 3; i += 1) {
+              const before = distanceNm(ac, registry.require("TURN"));
+              const heading = applyLateralFms(ac, 0.1, {
+                registry,
+                simTimeMs: i * 100,
+                magVarDeg,
+                performance,
+                log,
+              });
+              if (!sequenceDistance && log.byType("nav.direct.sequenced").length) {
+                sequenceDistance = before;
+              }
+              stepAircraft(ac, 0.1, heading, undefined, undefined, magVarDeg, performance);
+              maxX = Math.max(maxX, ac.xNm);
+            }
+            const radius = turnRadiusNm(speedKt, turnRateDegPerSForSpeed(speedKt, maxBankDeg));
+            expect(sequenceDistance).toBeCloseTo(radius, 1);
+            expect(ac.yNm * side).toBeGreaterThanOrEqual(3);
+            expect(maxX).toBeLessThan(0.05);
+            expect(log.byType("nav.direct.sequenced").map((event) => event.fixId)).toEqual([
+              "TURN",
+            ]);
+          }
+        }
+      }
+    }
+  }
+});
+
+test("straight legs, final fixes and inbound intercepts do not trigger an early turn", () => {
+  const registry = buildFixRegistry({
+    fixes: [
+      { id: "TURN", xNm: 0, yNm: 0, kind: "fix" },
+      { id: "STRAIGHT", xNm: 10, yNm: 0, kind: "fix" },
+      { id: "NEXT", xNm: 0, yNm: 10, kind: "fix" },
+    ],
+    navaids: [],
+  });
+  for (const { routeFixIds, headingDeg } of [
+    { routeFixIds: ["TURN", "STRAIGHT"], headingDeg: 90 },
+    { routeFixIds: ["TURN"], headingDeg: 90 },
+    { routeFixIds: ["TURN", "NEXT"], headingDeg: 0 },
+  ]) {
+    const ac = createAircraft({
+      id: "edge-test",
+      callsign: "TEST1",
+      xNm: -0.5,
+      yNm: 0,
+      headingDeg,
+      altitudeFt: 8000,
+      speedKt: 220,
+    });
+    ac.intent.lateral = { type: "PROCEDURE", routeFixIds, toFixIndex: 0 };
+    expect(applyLateralFms(ac, 0.1, { registry, simTimeMs: 0 })).toBe(90);
+    expect(ac.intent.lateral).toMatchObject({ type: "PROCEDURE", toFixIndex: 0 });
   }
 });

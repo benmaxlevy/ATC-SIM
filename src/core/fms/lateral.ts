@@ -1,8 +1,8 @@
 /**
- * Lateral FMS: fix-to-fix fly-over sequencing, loc intercept (T04-05).
+ * Lateral FMS: fix-to-fix fly-by sequencing, loc intercept (T04-05).
  *
  * Command heading = course to the active fix until sequence. Pilot owns Command
- * apply; this module sequences `lateral` when the aircraft reaches the fix or
+ * apply; this module sequences `lateral` at the turn lead point, at the final fix, or
  * captures the localizer. Positions come from `FixRegistry` / loc axis — no
  * hard-coded lat/lon. Loc capture uses position vs the loc axis, never heading
  * as a sensor.
@@ -17,7 +17,7 @@ import {
   TURN_RATE_DEG_PER_S,
 } from "../kinematics";
 import type { FixRegistry, RegisteredFix } from "../nav/fixRegistry";
-import { alongTrackNm, courseDeg, distanceNm, type NmPoint } from "../nav/geometry";
+import { alongTrackNm, courseDeg, distanceNm, turnRadiusNm, type NmPoint } from "../nav/geometry";
 import type { LocAxis } from "../nav/localizer";
 import {
   LOC_BREAKOUT_S,
@@ -133,6 +133,7 @@ export function advanceStarLeg(
     simTimeMs: args.simTimeMs ?? 0,
     catalog: args.catalog,
     performance: args.performance,
+    magVarDeg: args.magVarDeg,
   });
   stepAircraft(ac, dtS, heading, undefined, undefined, args.magVarDeg ?? 0, args.performance);
 }
@@ -148,13 +149,20 @@ function guideDirect(
   if (!fix) {
     return ac.intent.assignedHeadingDeg;
   }
-  if (shouldSequenceFlyOver(ac, fix, dtS, ctx.magVarDeg ?? 0)) {
-    if (holdFixForLocIntercept(ac, fix, ctx.magVarDeg ?? 0)) {
+  const continuation = lateral.continuation;
+  const nextId =
+    continuation?.type === "RESUME_ROUTE"
+      ? continuation.routeFixIds[continuation.index]
+      : undefined;
+  const nextFix = nextId === undefined ? undefined : registry.get(nextId);
+  const flyBy = nextFix !== undefined && shouldSequenceFlyBy(ac, fix, nextFix, dtS, ctx);
+  if (flyBy || shouldSequenceFlyOver(ac, fix, dtS, ctx.magVarDeg ?? 0)) {
+    if (!nextFix && holdFixForLocIntercept(ac, fix, ctx.magVarDeg ?? 0)) {
       return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
     }
     emitDirectSequenced(ac, ctx, fix.id);
-    continueAfterDirect(ac, lateral.continuation);
-    return ac.headingDeg;
+    continueAfterDirect(ac, continuation);
+    return nextFix ? trueToMagneticDeg(courseDeg(fix, nextFix), ctx.magVarDeg ?? 0) : ac.headingDeg;
   }
   return trueToMagneticDeg(courseDeg(ac, fix), ctx.magVarDeg ?? 0);
 }
@@ -191,7 +199,10 @@ function guideProcedure(
   const inbound = trueToMagneticDeg(inboundTrue, ctx.magVarDeg ?? 0);
   const nextCourse = trueToMagneticDeg(nextCourseTrue, ctx.magVarDeg ?? 0);
   const dist = distanceNm(ac, current);
-  if (dist > flyOverStepNm(ac.speedKt, dtS)) {
+  if (
+    dist > flyOverStepNm(ac.speedKt, dtS) &&
+    !(nextFix && shouldSequenceFlyBy(ac, current, nextFix, dtS, ctx))
+  ) {
     return inbound;
   }
   if (nextFix === undefined && holdFixForLocIntercept(ac, current, ctx.magVarDeg ?? 0)) {
@@ -213,6 +224,33 @@ function guideProcedure(
   }
   sequenceToPresentHeading(ac);
   return ac.headingDeg;
+}
+
+/**
+ * A constant-rate turn is tangent to both legs at R * tan(change / 2).
+ * Match the movement model's resolved turn rate, and allow one movement step
+ * for discrete integration. Bound the lead on short legs and near reversals;
+ * an aircraft still intercepting the inbound leg must not skip the fix early.
+ */
+function shouldSequenceFlyBy(
+  ac: Aircraft,
+  fix: NmPoint,
+  nextFix: NmPoint,
+  dtS: number,
+  ctx: LateralFmsContext,
+): boolean {
+  const inbound = courseDeg(ac, fix);
+  const headingTrue = magneticToTrueDeg(ac.headingDeg, ctx.magVarDeg ?? 0);
+  if (Math.abs(shortestDeltaDeg(headingTrue, inbound)) > 10) return false;
+  const changeDeg = Math.abs(shortestDeltaDeg(inbound, courseDeg(fix, nextFix)));
+  if (changeDeg < 1) return false;
+  const radiusNm = turnRadiusNm(ac.speedKt, turnRateFor(ac, ctx.performance));
+  if (radiusNm === 0) return false;
+  const leadNm = Math.min(
+    distanceNm(fix, nextFix) / 2,
+    radiusNm * Math.tan((Math.min(changeDeg, 170) * Math.PI) / 360),
+  );
+  return distanceNm(ac, fix) <= leadNm + flyOverStepNm(ac.speedKt, dtS);
 }
 
 function shouldSequenceFlyOver(
